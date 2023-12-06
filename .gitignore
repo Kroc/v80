@@ -1,0 +1,10 @@
+# ignore anything beginning with "__"
+# (used to hide stuff from the repository)
+__*
+**/__*
+
+# ignore build files
+*.o
+*.com
+*.sym
+*.lst
