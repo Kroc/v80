@@ -15,6 +15,9 @@
 ;       adc.hl+rr       ; rr= bc de hl sp
 ;       adc nn          ;
 ;
+;       ld*=hl          ; ld [nnnn], HL
+;       ldhl=*          ; ld HL, [nnnn]
+;
 REG_A = 7
 REG_B = 0
 REG_C = 1

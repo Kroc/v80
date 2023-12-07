@@ -9,7 +9,7 @@ It currently runs on CP/M with plans to make it self-hosting (can assemble itsel
 
 ## ~~Features~~
 
-- No Macros! Cut + Paste
+- No Macros! Use copy + Paste
 - No linker. You don't need one
 - No decimal numbers. Let's face it, you think in hexadecimal anyway
 
@@ -24,9 +24,9 @@ v80 uses a non-standard syntax designed for parsing simplicity / speed, not comp
   adc.a                 adc A
   adc.hl+bc             adc HL, BC
   adc*hl                adc [HL]      ; "*" like a pointer
-  adc*ix FF             adc [IX+$FF]
-  bit7.a                bit 7, A
-  bit7*hl               bit 7, [HL]
-  call FFFF             call $FFFF
+  adc*ix  FF            adc [IX+$FF]
+  bit7.a                bit 7,  A
+  bit7*hl               bit 7,  [HL]
+  call    FFFF          call    $FFFF
   call?nz FFFF          call nz $FFFF
 ```

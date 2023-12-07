@@ -37,6 +37,7 @@ init:
 
 @str:   .ASC "File Not Found!$"
 
+.BLOCK  "code"
 ;===============================================================================
 row:                    .WORD $0000     ; current line-number in file
 col:                    .BYTE $00       ; current column-number in file
@@ -44,12 +45,36 @@ char:                   .BYTE $00       ; current character
 
 param:                  .BYTE $00       ; next parameter properties
 
+; heap:
+;-------------------------------------------------------------------------------
 ; as assembly progresses, the dictionary of symbols and deferred calculations
 ; will be built up here. this position is currently arbitrary and ideally I
 ; want the heap to build downwards from top of memory, even on the stack itself
 .DEF    heap            $c000
 
-head:                   .WORD heap      ; current position on the heap
+head:                   .ADDR heap      ; current position on the heap
+dict:                   .ADDR $000      ; addr of last dictionary-entry
+
+; expression bytecode:
+;-------------------------------------------------------------------------------
+; calculations are compiled into bytecode to allow for later evaluation,
+; i.e. for deferred calculations where a symbol is not yet known
+;
+.DEF    EXPR_NUMBER     0               ; a number (hexadecimal)
+.DEF    EXPR_LABEL      1               ; a label (16-bit)
+.DEF    EXPR_CONST      2               ; a constant (flexible size)
+.DEF    EXPR_OP_LO      16              ; `<`: lo-byte operator
+.DEF    EXPR_OP_HI      17              ; `>`: hi-byte operator
+.DEF    EXPR_OP_ADD     32              ; `+`: add operator 
+.DEF    EXPR_OP_SUB     33              ; `-`: subtract operator
+.DEF    EXPR_OP_MUL     34              ; `*`: multiply operator
+.DEF    EXPR_OP_DIV     35              ; `/`: divide operator
+.DEF    EXPR_OP_AND     36              ; `&`: and operator
+.DEF    EXPR_OP_OR      37              ; `|`: or operator
+.DEF    EXPR_OP_XOR     38              ; `^`: xor operator
+.DEF    EXPR_OP_NOT     39              ; `!`: not operator
+
+expr:                   .ADDR $000      ; addr of last deferred expression
 
 
 assemble:
@@ -65,7 +90,7 @@ assemble:
   
         ; skip leading whitespace:
         ;-----------------------------------------------------------------------
-@word:  call    _getChar                ; read a character (returns z-flag)
+@word:  call    getChar                 ; read a character (returns z-flag)
         ret     z                       ; return C=0 for no word, end-of-file
         cp      ASCII_SPC+1             ; ignore any ASCII code <= $20 (spc)
         jr      c, @word                ; keep reading blank chars
@@ -80,11 +105,12 @@ assemble:
 
         ; skip comments
         ;-----------------------------------------------------------------------
-@skip:  call    _getChar                ; read next character (returns z-flag)
+@skip:  call    getChar                 ; read next character (returns z-flag)
         ret     z                       ; return C=0 for no word, end-of-file
         cp      ASCII_LF                ; is newline?
         jr      nz, @word               ; keep going until new line
         jr      @word                   ; try get next word
+
 
 parseInstruction:
 ;===============================================================================
@@ -93,6 +119,7 @@ parseInstruction:
 ; in:   HL              assembly addr to emit opcodes
 ; out:  HL              advanced to next [unused] addr
 ;       A|BC|DE         (clobbered)
+;       IX|IY           (undefined)
 ;-------------------------------------------------------------------------------
 .BLOCK  "opcode-parser"
         ld      DE,     opcodes         ; start at beginning of opcode tree
@@ -120,7 +147,7 @@ parseInstruction:
 
         ; get character from input file:
         ;-----------------------------------------------------------------------
-@char:  call    _getChar                ; read from input file
+@char:  call    getChar                 ; read from input file
         cp      ASCII_SPC+1             ; is it whitespace? (hold carry...)
 
         ; force lowercase, without also affecting numbers/(most) punctuation:
@@ -234,14 +261,14 @@ parseInstruction:
 
         ; handle parameters:
         ;-----------------------------------------------------------------------
-        
+        call    parseParameter
 
         ;///////////////////////////////////////////////////////////////////////
         ld      A,      '-'
         call    osPrintChar             ; DEBUG!
         ;///////////////////////////////////////////////////////////////////////
 
-        ; ...
+        ld      HL,     [code]
         ret
 
         ; not a recognised opcode!
@@ -259,7 +286,133 @@ parseInstruction:
 
 .ENDB
 
-_getChar:
+parseParameter:
+;===============================================================================
+; reserves bytes for a parameter value and parses the expression that follows;
+; deferring evaluation
+;-------------------------------------------------------------------------------
+        ; add an expression to the heap,
+        ; this requires:
+        ;
+        ; - the link addr to the previous expression
+        ; - the current code-segment address
+        ; - the size of the output; 1 or 2 bytes
+        ; - the current virtual program-counter
+        ;   (in case of relative jump)
+        ; - the expression (as bytecode)
+        ;
+        ; link this expression to the previous:
+        ; write the previous expr addr to the head of this one
+        ; (preserving the previous addr)
+        ;
+        ld      DE,     [head]          ; get current heap position
+        ld      HL,     expr            ; addr to read bytes from
+        ldi                             ; (copy bytes across)
+        ldi                             ; [DE]=[HL], DE++, HL++, BC--
+
+        ; update the last expression field to point to this expression:
+        ; warning: DE has already been advanced (by LDI), so we need to
+        ; get the heap address again (without resetting DE)
+        ld      HL,     [head]          ; start addr of our expression
+        ld      [expr], HL              ; write to last expression addr
+
+        ; write the current code-segment position;
+        ; this is where the calculation result will be filled in
+        ;
+        ld      HL,     code            ; current code segment position
+        ldi                             ; (copy bytes across)
+        ldi                             ; [DE]=[HL], DE++, HL++, BC--
+
+        ; set the size/type of the deferred result
+        ld      HL,     param           ; parameter-type byte
+        ldi                             ; (copy bytes across)
+        ldi                             ; [DE]=[HL], DE++, HL++, BC--
+
+        ; add the current virtual program-counter
+        ; (for calculating relative jumps)
+        ld      HL,     pc              ; virtual program-counter
+        ldi                             ; (copy bytes across)
+        ldi                             ; [HL]=[DE], HL++, DE++, BC--
+
+        ; begin parsing the expression, packing it into bytecode
+        ex      DE,     HL              ; (swap the current heap addr into HL)
+        call    parseExpression
+
+        ; attempt to evaluate the expression
+        ; ...
+        ld      [head], HL
+
+        ret
+
+parseExpression:
+;===============================================================================
+; parse an expression from the input file:
+;
+; words are read and converted into bytecode to evaluate later
+; (e.g. deferred expression where a symbol is not yet known)
+;
+; this is different from regular parsing as it does not write
+; to the code segment and opcodes are not permitted
+;
+; in:   HL              address on the heap to begin writing expr bytecode
+;-------------------------------------------------------------------------------
+        ; read the first character of the next word
+        ; (skipping whitespace/comments)
+        call    getChar
+        jr      z,      @eof            ; handle unexpected eond of file!
+
+        ; categorise it:
+        cp      '0'                     ; before "0"?
+        jr      c,      @lt0            ; <"0", not a number
+        cp      '9'+1                   ; after "9"?
+        jr      nc,     @gt9            ; >"9", not a number
+
+        ; it's a number:
+        ;-----------------------------------------------------------------------
+        ; parse the number and store it in the expression
+        ; 
+        ret
+
+        ; ASCII chars below "0" include only certain sigils supported!
+        ;-----------------------------------------------------------------------
+        ; `!` not operator, `"` strings, `#` constants, `%` modulo operator
+        ; `&` and operator, `*` multiply operator, `+` add operator
+        ; `-` subtract operator, `/` divide operator
+        ;
+@lt0:   halt
+        ret
+
+        ; ASCII chars above "9" include only certain sigils supported!
+        ;-----------------------------------------------------------------------
+        ; `:` label, `<` lo-byte operator, `>` hi-byte operator
+        ; `^` xor operator, `|` or operator
+        ;
+@gt9:   halt
+        ret
+
+        ; TODO: need to make an osPrintString
+        ;       how to handle CPM2's "$" terminator?
+@eof:   ld      C,      BDOS_PRNSTR
+        ld      DE,     @@str
+        call    BDOS                    ; how to unfold?
+        jp      0                       ; TODO: have proper osQuit?
+
+        ; TODO: with any error, print out file name, line & col number
+@@str   .BYTE "Unexpected end of file!"
+
+
+parseNumber:
+;===============================================================================
+; parses an ASCII hexadecimal number and returns the value:
+;
+; in:   A               first ASCII character of the number
+; out:  A               a width indicator, 0 = byte, 1 = word
+;       BC              the value, 0 padded for numbers < 256
+;-------------------------------------------------------------------------------
+        ret
+
+
+getChar:
 ;===============================================================================
 ; reads the next character in the file.
 ; current row and column are maintained
@@ -330,6 +483,8 @@ printHexByte:
         daa                             ; adjust to decimal
         jp      osPrintChar
 
+.ENDB
+
 
 ; input buffer:
 ;===============================================================================
@@ -374,7 +529,7 @@ help:
 
         ; skip leading whitespace:
         ;-----------------------------------------------------------------------
--       call    _getChar                ; read a character (returns z-flag)
+-       call    getChar                 ; read a character (returns z-flag)
         ret     z                       ; return C=0 for no word, end-of-file
         cp      ASCII_SPC+1             ; ignore any ASCII code <= $20 (spc)
         jr      c, -                    ; keep reading blank chars
@@ -385,7 +540,7 @@ help:
 
         ; skip comments
         ;-----------------------------------------------------------------------
--       call    _getChar                ; read next character (returns z-flag)
+-       call    getChar                 ; read next character (returns z-flag)
         ret     z                       ; return C=0 for no word, end-of-file
         cp      ASCII_LF                ; is newline?
         jr      nz, -                   ; keep going until new line
@@ -401,7 +556,7 @@ help:
 
         ; read characters:
         ;-----------------------------------------------------------------------
-@next:  call    _getChar                ; read next character
+@next:  call    getChar                 ; read next character
         cp      ASCII_SPC               ; check for non-visible character
         jr      nc,     +               ; stop if whitespace found
         inc     C                       ; increase character count
