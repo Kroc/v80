@@ -12,6 +12,7 @@ It currently runs on CP/M with plans to make it self-hosting (can assemble itsel
 - No Macros! Use copy + Paste
 - No linker. You don't need one
 - No decimal numbers. Let's face it, you think in hexadecimal anyway
+- No floating point numbers. Have you _tried_ coding floats on an 8-bit CPU??
 
 ## Syntax
 
@@ -24,9 +25,9 @@ v80 uses a non-standard syntax designed for parsing simplicity / speed, not comp
   adc.a                 adc A
   adc.hl+bc             adc HL, BC
   adc*hl                adc [HL]      ; "*" like a pointer
-  adc*ix  FF            adc [IX+$FF]
+  adc*ix  $FF           adc [IX+$FF]
   bit7.a                bit 7,  A
   bit7*hl               bit 7,  [HL]
-  call    FFFF          call    $FFFF
-  call?nz FFFF          call nz $FFFF
+  call    $FFFF         call    $FFFF
+  call?nz $FFFF         call nz $FFFF
 ```

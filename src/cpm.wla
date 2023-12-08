@@ -81,7 +81,7 @@ boot:
 @reset: ld      C,      BDOS_RESET
         jp      BDOS
 
-@str:   .ASC "Error: CP/M ", CPM_VER_STR, " or higher required!$"
+@str:   .BYTE "Error: CP/M ", CPM_VER_STR, " or higher required!$"
 
 
 ; BDOS calls:

@@ -1,8 +1,9 @@
 ; v80 CP/M (c) Kroc Camen 2023, MIT License
 ; a z80 assembler for Z80s
 ;
-.INC    "cpm.wla"
-.INC    "z80.wla"
+.INC    "cpm.wla"                       ; CP/M interface
+.INC    "err.wla"                       ; error message handling
+.INC    "z80.wla"                       ; static Z80 opcode binary tree
 
 init:
 ;===============================================================================
@@ -35,7 +36,7 @@ init:
         ld      DE,     @str
         jp      BDOS
 
-@str:   .ASC "File Not Found!$"
+@str:   .BYTE "File Not Found!$"
 
 .BLOCK  "code"
 ;===============================================================================
@@ -84,16 +85,9 @@ assemble:
 ; TODO: do the file opening here so that we can do includes
 ;-------------------------------------------------------------------------------
         ; parse a word from the input file (root context)
-        ;-----------------------------------------------------------------------
-        ; where we'll be assembling to
-        ld      HL,     [code]
-  
-        ; skip leading whitespace:
-        ;-----------------------------------------------------------------------
-@word:  call    getChar                 ; read a character (returns z-flag)
-        ret     z                       ; return C=0 for no word, end-of-file
-        cp      ASCII_SPC+1             ; ignore any ASCII code <= $20 (spc)
-        jr      c, @word                ; keep reading blank chars
+        ;
+        ld      HL,     [code]          ; where we'll be assembling to
+@word:  call    skipWhitespace          ; find first character
 
         ; first character determines the word type:
         cp      ';'                     ; is comment?
@@ -110,6 +104,19 @@ assemble:
         cp      ASCII_LF                ; is newline?
         jr      nz, @word               ; keep going until new line
         jr      @word                   ; try get next word
+
+
+skipWhitespace:
+;===============================================================================
+; reads input until a visible character (ASCII >32) is reached:
+; 
+; out:  A               ASCII code, 0 for end-of-file
+;-------------------------------------------------------------------------------
+-       call    getChar                 ; read a character (returns z-flag)
+        ret     z                       ; return z-flag set if end-of-file
+        cp      ASCII_SPC+1             ; ignore any ASCII code <= $20 (spc)
+        jr      c, -                    ; keep reading blank chars
+        ret
 
 
 parseInstruction:
@@ -282,7 +289,7 @@ parseInstruction:
 
         ret
 
-@errstr .ASC    "Invalid opcode.$"
+@errstr .BYTE    "Invalid opcode.$"
 
 .ENDB
 
@@ -334,7 +341,15 @@ parseParameter:
         ldi                             ; (copy bytes across)
         ldi                             ; [HL]=[DE], HL++, DE++, BC--
 
+        ; add the row/column of the expression in case of
+        ; error when we come back to it later
+        ld      HL,     row             ; current input file row number
+        ldi                             ; copy low byte,
+        ldi                             ;  hi byte,
+        ldi                             ; and the column number that follows
+
         ; begin parsing the expression, packing it into bytecode
+        ;-----------------------------------------------------------------------
         ex      DE,     HL              ; (swap the current heap addr into HL)
         call    parseExpression
 
@@ -357,21 +372,23 @@ parseExpression:
 ; in:   HL              address on the heap to begin writing expr bytecode
 ;-------------------------------------------------------------------------------
         ; read the first character of the next word
-        ; (skipping whitespace/comments)
-        call    getChar
-        jr      z,      @eof            ; handle unexpected eond of file!
+        call    skipWhitespace
+        jp      z,      errEndOfFile    ; handle unexpected eond of file!
 
         ; categorise it:
-        cp      '0'                     ; before "0"?
-        jr      c,      @lt0            ; <"0", not a number
-        cp      '9'+1                   ; after "9"?
-        jr      nc,     @gt9            ; >"9", not a number
+        ;
+        ; hexadecimal number? a sigil is required because A-F can't
+        ; be separated from instruction names without look-ahead
+        ;
+        cp      '$'                     ; hexadecimal sigil?
+        jr      z,      @hex
 
-        ; it's a number:
-        ;-----------------------------------------------------------------------
-        ; parse the number and store it in the expression
-        ; 
-        ret
+        ; no support for decimal numbers yet
+        ;cp      '0'                     ; before "0"?
+        ;jr      c,      @lt0            ; <"0", not a number
+        ;cp      '9'+1                   ; after "9"?
+        ;jr      nc,     @gt9            ; >"9", not a number
+        halt
 
         ; ASCII chars below "0" include only certain sigils supported!
         ;-----------------------------------------------------------------------
@@ -382,6 +399,12 @@ parseExpression:
 @lt0:   halt
         ret
 
+        ; it's a number:
+        ;-----------------------------------------------------------------------
+@hex:   call    parseHexNumber
+        halt
+        ret
+
         ; ASCII chars above "9" include only certain sigils supported!
         ;-----------------------------------------------------------------------
         ; `:` label, `<` lo-byte operator, `>` hi-byte operator
@@ -390,25 +413,117 @@ parseExpression:
 @gt9:   halt
         ret
 
-        ; TODO: need to make an osPrintString
-        ;       how to handle CPM2's "$" terminator?
-@eof:   ld      C,      BDOS_PRNSTR
-        ld      DE,     @@str
-        call    BDOS                    ; how to unfold?
-        jp      0                       ; TODO: have proper osQuit?
 
-        ; TODO: with any error, print out file name, line & col number
-@@str   .BYTE "Unexpected end of file!"
-
-
-parseNumber:
+parseHexNumber:
 ;===============================================================================
 ; parses an ASCII hexadecimal number and returns the value:
 ;
-; in:   A               first ASCII character of the number
-; out:  A               a width indicator, 0 = byte, 1 = word
-;       BC              the value, 0 padded for numbers < 256
+; out:  BC              the value, 0 padded for numbers < 256
+;       A, HL           (clobbered)
 ;-------------------------------------------------------------------------------
+        ld      BC,     0               ; return value will go here
+
+        ; try to read up to 4 digits; the 5th character
+        ; must be whitespace or end-of-file!
+        ;
+        ld      B,      5
+        ld      HL,     @num            ; where to write the bytes
+-       call    osGetChar               ; read a char from file
+        cp      33                      ; ASCII space or below?
+        ld      [HL],   A               ; append byte (preserves carry!)
+        jr      c,      +               ; stop when reaching whitespace
+        inc     HL                      ; space for next digit
+        djnz    -                       ; decrement B, loop until 0
+
+        ; if a 5th byte was read that wasn't whitespace,
+        ; it's an error -- the number is too long!
+        jp      errHexNumber
+
+        ;-----------------------------------------------------------------------
++       ld      HL,     @num            ; go back to the start of the number
+        
+        ; number of digits in hex number is inversed;
+        ; B=1 for 4 digits, B=2 for 3 digits, B=1 for 2 digits and B=0 for 1
+        ;
+        dec     B                       ; 4 digits?
+        jr      z,      @four
+        dec     B                       ; 3 digits?
+        jr      z,      @three
+        dec     B                       ; 2 digits?
+        jr      z,      @two
+        dec     B                       ; B=0 for 1-byte hex number in C
+        jr      z,      @one
+
+        ; if there were _no_ digits after the hexadecimal
+        ; sigil ("$") then B was 5 and we error
+        jp      errHexNumber
+
+        ; four-digit hex number:
+        ;-----------------------------------------------------------------------
+        ; a 4th digit must go in the upper nybble of B:
+        ;
+@four:  ld      A,      [HL]            ; get digit
+        call    @digit                  ; convert digit to number
+        add     A,      A               ;
+        add     A,      A               ; left-shift (faster than `sla A`)
+        add     A,      A               ; (shift lo-nybble to hi-nybble)
+        add     A,      A               ;
+        ld      B,      A               ; answer goes in B
+        inc     HL                      ; move to 3rd digit
+        ;-----------------------------------------------------------------------
+        ; a 3rd digit goes in the lower nybble of B:
+        ;
+@three: ld      A,      [HL]            ; get digit
+        call    @digit                  ; convert digit to number
+        or      B                       ; combine with hi-nybble (if present)
+        ld      B,      A               ; answer goes in B
+        inc     HL                      ; move to 2nd digit
+        ;-----------------------------------------------------------------------
+        ; a 2nd digit goes in the upper nybble of C:
+        ;
+@two:   ld      A,      [HL]            ; get digit
+        call    @digit                  ; convert digit to number
+        add     A,      A               ;
+        add     A,      A               ; left-shift (faster than `sla A`)
+        add     A,      A               ; (shift lo-nybble to hi-nybble)
+        add     A,      A               ;
+        ld      C,      A               ; answer goes in C
+        inc     HL                      ; move to 1st digit
+        ;-----------------------------------------------------------------------
+        ; 1st digit goes in the lower nybble of C:
+        ;
+@one:   ld      A,      [HL]            ; get digit
+        call    @digit                  ; convert digit to number
+        or      C                       ; combine with hi-nybble (if present)
+        ld      C,      A               ; answer goes in B
+
+        ret                             ; ship it!
+
+@num:   .BYTE   $00, $00, $00, $00
+
+        ; convert a digit to a number:
+        ;=======================================================================
+        ; whitespace must already be precluded. err if not hex-digit
+        ;
+        ; valid hex digit?
+        ;
+        ; if we unset bit 5 then ASCII "a"-"f" (97-102) becomes "A"-"F" (65-70)
+        ; without also altering existing uppercase letters. This also has the
+        ; side-effect of changing ASCII "0"-"9" (30-39) to codes 16-25!
+        ; (this is why ASCII codes 0-32 must be precluded beforehand)
+        ;
+@digit: res     5,      A               ; force upper-case for "a"-"f"
+        sub     16                      ; anything < "0" becomes >=128 (hi-bit)
+        cp      10                      ; 0-9 ("0"-"9") is okay
+        ret     c                       ; exit early for 0-9
+
+        ; between ASCII "9" and "A" is ":", ";", "<", "=", ">", "?" and "@";
+        ; if we subtract 7, "A" becomes 0 and any of those 7 become negative
+        ; (>=128, hi-bit set), therefore we only need to check 0-5 ("A"-"F")
+        sub     7
+        cp      6                       ; 0-5 ("A"-"F") are allowed
+        jp      nc,     errHexNumber    ; error for anything above "F"
+        add     10                      ; rebase "A" to 10, "F" to 15
         ret
 
 
@@ -420,21 +535,18 @@ getChar:
 ; TODO: handle tab (next 8th char boundary)
 ;
 ; out:  A                               ASCII code, 0 for end-of-file
+;       z                               zero-flag is set according to A
 ;       DE, HL                          (preserved)
 ;       BC, IX/Y                        (undefined)
 ;-------------------------------------------------------------------------------
-        call    osGetChar               ; read a char from file
+-       call    osGetChar               ; read a char from file
         ld      [char], A               ; retain returned character
-
-        ; if end-of-file, return the null byte;
-        ; the caller will fold
-        and     A                       ; (set flags)
-        ret     z                       ; return on null byte
+        ret     z                       ; return on null byte (end-of-file)
 
         ; check for end of line:
         ;-----------------------------------------------------------------------
         cp      ASCII_CR                ; /r is always ignored,
-        jr      z,      __label__       ;  don't advance row/col, get next char
+        jr      z, -                    ;  don't advance row/col, get next char
 
         exx                             ; must preserve HL & DE
         ld      HL',    col             ; prepare to increment column number
@@ -457,7 +569,9 @@ getChar:
         dec     [HL']                   ;  instructions than read+add+write)
 
 +       exx                             ; restore HL/DE
+        and     A                       ; return z-flag
         ret
+
 
 printHexByte:
 ;===============================================================================
@@ -516,8 +630,8 @@ help:
         ld      DE,     @str
         jp      BDOS
 
-@str:   .ASC "v80 CP/M v0, Kroc Camen 2023\n\n"
-        .ASC "    V80 SOURCE.V80$"
+@str:   .BYTE "v80 CP/M v0, Kroc Camen 2023\n\n"
+        .BYTE "    V80 SOURCE.V80$"
 
 
 /*getWord:

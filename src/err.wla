@@ -1,0 +1,34 @@
+; v80 CP/M (c) Kroc Camen 2023, MIT License
+; error stuff
+;
+errEndOfFile:
+;===============================================================================
+; unexpected end of file!
+;
+; CP/M doesn't require us to unwind the stack, we can just reset the machine
+;-------------------------------------------------------------------------------
+        ; TODO: need to make an osPrintString
+        ;       how to handle CPM2's "$" terminator?
+        ld      C,      BDOS_PRNSTR
+        ld      DE,     @str
+        call    BDOS
+        ld      C,      BDOS_RESET
+        jp      BDOS                    ; TODO: have proper osQuit?
+
+        ; TODO: with any error, print out file name, line & col number
+@str    .BYTE "Unexpected end of file!"
+
+errHexNumber:
+;===============================================================================
+; not a valid hexadecimal number!
+;-------------------------------------------------------------------------------
+        ; TODO: need to make an osPrintString
+        ;       how to handle CPM2's "$" terminator?
+@err:   ld      C,      BDOS_PRNSTR
+        ld      DE,     @str
+        call    BDOS
+        ld      C,      BDOS_RESET
+        jp      BDOS                    ; TODO: have proper osQuit?
+
+        ; TODO: with any error, print out file name, line & col number
+@str    .BYTE "Not valid hexadecimal number!"
