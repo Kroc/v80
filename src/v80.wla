@@ -421,7 +421,7 @@ parseHexNumber:
 ; out:  BC              the value, 0 padded for numbers < 256
 ;       A, HL           (clobbered)
 ;-------------------------------------------------------------------------------
-        ld      BC,     0               ; return value will go here
+        ld      C,     0                ; return value will go here
 
         ; try to read up to 4 digits; the 5th character
         ; must be whitespace or end-of-file!
@@ -495,11 +495,11 @@ parseHexNumber:
 @one:   ld      A,      [HL]            ; get digit
         call    @digit                  ; convert digit to number
         or      C                       ; combine with hi-nybble (if present)
-        ld      C,      A               ; answer goes in B
+        ld      C,      A               ; answer goes in C
 
         ret                             ; ship it!
 
-@num:   .BYTE   $00, $00, $00, $00
+@num:   .BYTE   $00, $00, $00, $00, $00
 
         ; convert a digit to a number:
         ;=======================================================================
