@@ -25,5 +25,13 @@
     "files.readonlyInclude": {
         "bin/wla-dx/*" : true,
         "bin/RunCPM/*.exe" : true
-    }
+    },
+    "cSpell.enableFiletypes": [
+        "wla-dx-asm"
+    ],
+    "cSpell.words": [
+        "BDOS",
+        "Camen",
+        "djnz"
+    ]
 }

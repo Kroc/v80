@@ -7,28 +7,44 @@ errEndOfFile:
 ;
 ; CP/M doesn't require us to unwind the stack, we can just reset the machine
 ;-------------------------------------------------------------------------------
-        ; TODO: need to make an osPrintString
-        ;       how to handle CPM2's "$" terminator?
-        ld      C,      BDOS_PRNSTR
         ld      DE,     @str
-        call    BDOS
+        call    osPrintStr
         ld      C,      BDOS_RESET
         jp      BDOS                    ; TODO: have proper osQuit?
 
         ; TODO: with any error, print out file name, line & col number
-@str    .BYTE "Unexpected end of file!"
+@str    .BYTE   "Unexpected end of file!$"
+
+errOpcode:
+;===============================================================================
+; not a recognised opcode!
+;-------------------------------------------------------------------------------
+        ld      DE,     @str
+        call    osPrintStr
+        ld      C,      BDOS_RESET
+        jp      BDOS
+
+@str    .BYTE   "Invalid opcode!$"
+
+errExpr:
+;===============================================================================
+; not a valid expression!
+;-------------------------------------------------------------------------------
+        ld      DE,     @str
+        call    osPrintStr
+        ld      C,      BDOS_RESET
+        jp      BDOS
+
+@str    .BYTE   "Invalid expression!$"
 
 errHexNumber:
 ;===============================================================================
 ; not a valid hexadecimal number!
 ;-------------------------------------------------------------------------------
-        ; TODO: need to make an osPrintString
-        ;       how to handle CPM2's "$" terminator?
-@err:   ld      C,      BDOS_PRNSTR
         ld      DE,     @str
-        call    BDOS
+        call    osPrintStr
         ld      C,      BDOS_RESET
         jp      BDOS                    ; TODO: have proper osQuit?
 
         ; TODO: with any error, print out file name, line & col number
-@str    .BYTE "Not valid hexadecimal number!"
+@str    .BYTE "Not valid hexadecimal number!$"

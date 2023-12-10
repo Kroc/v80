@@ -38,13 +38,14 @@ init:
 
 @str:   .BYTE "File Not Found!$"
 
+
 .BLOCK  "code"
 ;===============================================================================
-row:                    .WORD $0000     ; current line-number in file
-col:                    .BYTE $00       ; current column-number in file
-char:                   .BYTE $00       ; current character
+row:    .WORD $0000                     ; current line-number in file
+col:    .BYTE $00                       ; current column-number in file
+char:   .BYTE $00                       ; current character
 
-param:                  .BYTE $00       ; next parameter properties
+param:  .BYTE $00                       ; next parameter properties
 
 ; heap:
 ;-------------------------------------------------------------------------------
@@ -53,29 +54,31 @@ param:                  .BYTE $00       ; next parameter properties
 ; want the heap to build downwards from top of memory, even on the stack itself
 .DEF    heap            $c000
 
-head:                   .ADDR heap      ; current position on the heap
-dict:                   .ADDR $000      ; addr of last dictionary-entry
+head:   .ADDR heap                      ; current position on the heap
+dict:   .ADDR $000                      ; addr of last dictionary-entry
 
 ; expression bytecode:
 ;-------------------------------------------------------------------------------
 ; calculations are compiled into bytecode to allow for later evaluation,
 ; i.e. for deferred calculations where a symbol is not yet known
 ;
-.DEF    EXPR_NUMBER     0               ; a number (hexadecimal)
-.DEF    EXPR_LABEL      1               ; a label (16-bit)
-.DEF    EXPR_CONST      2               ; a constant (flexible size)
-.DEF    EXPR_OP_LO      16              ; `<`: lo-byte operator
-.DEF    EXPR_OP_HI      17              ; `>`: hi-byte operator
-.DEF    EXPR_OP_ADD     32              ; `+`: add operator 
-.DEF    EXPR_OP_SUB     33              ; `-`: subtract operator
-.DEF    EXPR_OP_MUL     34              ; `*`: multiply operator
-.DEF    EXPR_OP_DIV     35              ; `/`: divide operator
-.DEF    EXPR_OP_AND     36              ; `&`: and operator
-.DEF    EXPR_OP_OR      37              ; `|`: or operator
-.DEF    EXPR_OP_XOR     38              ; `^`: xor operator
-.DEF    EXPR_OP_NOT     39              ; `!`: not operator
+.DEF    EXPR_END        0               ; expression terminator
+.DEF    EXPR_NUMBER     '$'             ; hexadecimal literal
+.DEF    EXPR_LABEL      ':'             ; a label (16-bit)
+.DEF    EXPR_CONST      '#'             ; a constant (flexible size)
+.DEF    EXPR_OP_LO      '<'             ; `<`: lo-byte operator
+.DEF    EXPR_OP_HI      '>'             ; `>`: hi-byte operator
+.DEF    EXPR_OP_NOT     '!'             ; `!`: not operator
+.DEF    EXPR_OP_ADD     '+'             ; `+`: add operator 
+.DEF    EXPR_OP_SUB     '-'             ; `-`: subtract operator
+.DEF    EXPR_OP_MUL     '*'             ; `*`: multiply operator
+.DEF    EXPR_OP_DIV     '/'             ; `/`: divide operator
+.DEF    EXPR_OP_AND     '&'             ; `&`: and operator
+.DEF    EXPR_OP_OR      '|'             ; `|`: or operator
+.DEF    EXPR_OP_XOR     '^'             ; `^`: xor operator
+.DEF    EXPR_OP_MOD     '%'             ; `%`: modulo operator
 
-expr:                   .ADDR $000      ; addr of last deferred expression
+expr:   .ADDR $000                      ; addr of last deferred expression
 
 
 assemble:
@@ -187,7 +190,7 @@ parseInstruction:
 @retry: ld      A,      [DE]            ; read from current position in tree
         and     A                       ; (set flags!)
 
-        ; if the top-bit is set, this is either a continutation character
+        ; if the top-bit is set, this is either a continuation character
         ; (it must match and there is no branch) or an end of branch
         jp      m,      @cont
 
@@ -213,9 +216,9 @@ parseInstruction:
         ; this is also an unknown opcode
         ;
 @cont:  and     %01111111               ; remove top bit before comparison
-        jr      z,      @err            ; end of branch? (128 -> 0)
+        jp      z,      errOpcode       ; end of branch? (128 -> 0)
         cp      A,      C               ; compare with input char
-        jr      nz,     @err            ; if they don't match, error!
+        jp      nz,     errOpcode       ; if they don't match, error!
         inc     DE                      ; match -- move to next char in tree
         jr      @char
 
@@ -277,26 +280,18 @@ parseInstruction:
 
         ld      HL,     [code]
         ret
-
-        ; not a recognised opcode!
-        ;-----------------------------------------------------------------------
-@err:   ld      C,      BDOS_PRNSTR
-        ld      DE,     @errstr
-        call    BDOS
-
-        ld      C,      BDOS_RESET
-        jp      BDOS
-
-        ret
-
-@errstr .BYTE    "Invalid opcode.$"
-
 .ENDB
 
 parseParameter:
 ;===============================================================================
 ; reserves bytes for a parameter value and parses the expression that follows;
 ; deferring evaluation
+;-------------------------------------------------------------------------------
+
+pushExpression:
+;===============================================================================
+; append an expression to the heap:
+;
 ;-------------------------------------------------------------------------------
         ; add an expression to the heap,
         ; this requires:
@@ -332,7 +327,6 @@ parseParameter:
 
         ; set the size/type of the deferred result
         ld      HL,     param           ; parameter-type byte
-        ldi                             ; (copy bytes across)
         ldi                             ; [DE]=[HL], DE++, HL++, BC--
 
         ; add the current virtual program-counter
@@ -348,10 +342,13 @@ parseParameter:
         ldi                             ;  hi byte,
         ldi                             ; and the column number that follows
 
+        ; reserve the correct number of bytes for the result
+
+
         ; begin parsing the expression, packing it into bytecode
         ;-----------------------------------------------------------------------
         ex      DE,     HL              ; (swap the current heap addr into HL)
-        call    parseExpression
+        call    parseExpr
 
         ; attempt to evaluate the expression
         ; ...
@@ -359,11 +356,14 @@ parseParameter:
 
         ret
 
-parseExpression:
+
+-       inc     HL                      ; (move to next byte on heap)
+
+parseExpr:
 ;===============================================================================
 ; parse an expression from the input file:
 ;
-; words are read and converted into bytecode to evaluate later
+; words are read and converted into tokens to evaluate later
 ; (e.g. deferred expression where a symbol is not yet known)
 ;
 ; this is different from regular parsing as it does not write
@@ -371,46 +371,123 @@ parseExpression:
 ;
 ; in:   HL              address on the heap to begin writing expr bytecode
 ;-------------------------------------------------------------------------------
-        ; read the first character of the next word
-        call    skipWhitespace
-        jp      z,      errEndOfFile    ; handle unexpected eond of file!
+        call    skipWhitespace          ; read first character of the next word
+        jp      z,      errEndOfFile    ; handle unexpected end of file!
 
-        ; categorise it:
+        ; an expression must begin with either a value
+        ; or a unary operator + a value
+@operand:
+        ; unary operator?
+        ;-----------------------------------------------------------------------
+        ; unary operators can always precede values, even after an operator
+        ; e.g. `$10 + <:label`
         ;
-        ; hexadecimal number? a sigil is required because A-F can't
-        ; be separated from instruction names without look-ahead
-        ;
-        cp      '$'                     ; hexadecimal sigil?
-        jr      z,      @hex
+        cp      '<'                     ; lo-byte operator?
+        jr      nz,     +
+        ld      [HL],   A               ; push a lo-byte operator token
+        jr      @unary                  ; a value must follow a unary operator
+        ;-----------------------------------------------------------------------
++       cp      '>'                     ; hi-byte operator?
+        jr      nz,     +
+        ld      [HL],   A               ; push a hi-byte operator token
+        jr      @unary                  ; a value must follow a unary operator
+        ;-----------------------------------------------------------------------
++       cp      '!'                     ; not operator?
+        jr      nz,     +               ; no unary operators, check for values
+        ld      [HL],   A               ; push a not operator token
 
-        ; no support for decimal numbers yet
-        ;cp      '0'                     ; before "0"?
-        ;jr      c,      @lt0            ; <"0", not a number
-        ;cp      '9'+1                   ; after "9"?
-        ;jr      nc,     @gt9            ; >"9", not a number
+        ; a unary operator has been added,
+        ; read the next character:
+@unary: inc     HL                      ; (move to next byte on heap)
+        call    skipWhitespace          ; read first character of the next word
+        jp      z,      errEndOfFile    ; handle unexpected end of file!
+
++       ; hexadecimal literal?
+        ;-----------------------------------------------------------------------
+        ; a sigil is required because A-F can't be separated
+        ; from instruction names without look-ahead
+        ;
+@value: cp      '$'                     ; hexadecimal sigil?
+        jr      nz,     +
+
+        ld      [HL],   A               ; push a number token
+        inc     HL
+        call    parseHexNumber          ; parse the hex number into BC
+        ld      [HL],   C
+        inc     HL
+        ld      [HL],   B
+        inc     HL
+        
+        jr      @operator               ; an operator can follow a value
+
+        ; constant?
+        ;-----------------------------------------------------------------------
++       cp      '#'                     ; a constant?
+        jr      nz,     +
+
         halt
 
-        ; ASCII chars below "0" include only certain sigils supported!
+        ; label?
         ;-----------------------------------------------------------------------
-        ; `!` not operator, `"` strings, `#` constants, `%` modulo operator
-        ; `&` and operator, `*` multiply operator, `+` add operator
-        ; `-` subtract operator, `/` divide operator
-        ;
-@lt0:   halt
-        ret
-
-        ; it's a number:
-        ;-----------------------------------------------------------------------
-@hex:   call    parseHexNumber
++       cp      ':'                     ; a label?
+        jp      nz,     errExpr         ; expression has no value!!
+        
         halt
-        ret
 
-        ; ASCII chars above "9" include only certain sigils supported!
         ;-----------------------------------------------------------------------
-        ; `:` label, `<` lo-byte operator, `>` hi-byte operator
-        ; `^` xor operator, `|` or operator
+        ; a value has been added, check for the presence of an operator:
+        ; if there's no operator, the expression ends here
+@operator:
+        call    skipWhitespace          ; read first character of the next word
+        jr      z,      @end            ; if end-of-file, end the expression
+
+        cp      '+'                     ; add operator?
+        jr      nc,     +
+        ld      [HL],   A               ; push an ADD operator token
+        jr      -
+        ;-----------------------------------------------------------------------
++       cp      '-'                     ; subtract operator?
+        jr      nc,     +
+        ld      [HL],   A               ; push a SUB operator token
+        jr      -
+        ;-----------------------------------------------------------------------
++       cp      '*'                     ; multiply operator?
+        jr      nc,     +
+        ld      [HL],   A               ; push a MUL operator token
+        jr      -
+        ;-----------------------------------------------------------------------
++       cp      '/'                     ; divide operator?
+        jr      nc,     +
+        ld      [HL],   A               ; push a DIV operator token
+        jr      -
+        ;-----------------------------------------------------------------------
++       cp      '&'                     ; and operator?
+        jr      nc,     +
+        ld      [HL],   A               ; push an AND operator token
+        jr      -
+        ;-----------------------------------------------------------------------
++       cp      '|'                     ; or operator?
+        jr      nc,     +
+        ld      [HL],   A               ; push an OR operator token
+        jr      -
+        ;-----------------------------------------------------------------------
++       cp      '^'                     ; xor operator?
+        jr      nc,     +
+        ld      [HL],   A               ; push a XOR operator token
+        jr      -
+        ;-----------------------------------------------------------------------
++       cp      '%'                     ; modulo operator?
+        jr      nc,     @end
+
+        ld      [HL],   A               ; push a MOD operator token
+        jr      -
+
+        ;-----------------------------------------------------------------------
+        ; whatever it is, it isn't an operator;
+        ; fall through and terminate the expression
         ;
-@gt9:   halt
+@end:   ld      [HL],   EXPR_END        ; terminate the expression
+        inc     HL
         ret
 
 
@@ -430,8 +507,8 @@ parseHexNumber:
         ld      HL,     @num            ; where to write the bytes
 -       call    osGetChar               ; read a char from file
         cp      33                      ; ASCII space or below?
-        ld      [HL],   A               ; append byte (preserves carry!)
         jr      c,      +               ; stop when reaching whitespace
+        ld      [HL],   A               ; append byte
         inc     HL                      ; space for next digit
         djnz    -                       ; decrement B, loop until 0
 
@@ -442,7 +519,7 @@ parseHexNumber:
         ;-----------------------------------------------------------------------
 +       ld      HL,     @num            ; go back to the start of the number
         
-        ; number of digits in hex number is inversed;
+        ; number of digits in hex number is reversed;
         ; B=1 for 4 digits, B=2 for 3 digits, B=1 for 2 digits and B=0 for 1
         ;
         dec     B                       ; 4 digits?
@@ -499,6 +576,8 @@ parseHexNumber:
 
         ret                             ; ship it!
 
+        ; TODO: so long as these bytes don't cross a page-boundary 
+        ;       ($xxFF->$xx00) we could change `inc HL` for `inc L`
 @num:   .BYTE   $00, $00, $00, $00, $00
 
         ; convert a digit to a number:
@@ -596,15 +675,7 @@ printHexByte:
         adc     $40                     ; more magic?
         daa                             ; adjust to decimal
         jp      osPrintChar
-
 .ENDB
-
-
-; input buffer:
-;===============================================================================
-word_buff:
-;-------------------------------------------------------------------------------
-        .DSB 80, 0
 
 ; * * *   O B J E C T   C O D E   * * *
 ;===============================================================================
@@ -626,60 +697,8 @@ help:
 ;
 ; this isn't needed once assembly starts, so it gets overwritten
 ;-------------------------------------------------------------------------------
-        ld      C,      BDOS_PRNSTR
         ld      DE,     @str
-        jp      BDOS
+        jp      osPrintStr
 
 @str:   .BYTE "v80 CP/M v0, Kroc Camen 2023\n\n"
         .BYTE "    V80 SOURCE.V80$"
-
-
-/*getWord:
-;===============================================================================
-; read a word from the input file:
-; (automatically skips comments)
-;-------------------------------------------------------------------------------
-        ld      C,      0               ; return C=0 if no words remaining
-
-        ; skip leading whitespace:
-        ;-----------------------------------------------------------------------
--       call    getChar                 ; read a character (returns z-flag)
-        ret     z                       ; return C=0 for no word, end-of-file
-        cp      ASCII_SPC+1             ; ignore any ASCII code <= $20 (spc)
-        jr      c, -                    ; keep reading blank chars
-
-        ; first character determines the word type
-        cp      ';'                     ; is comment?
-        jr      nz, +                   ; skip until end of line
-
-        ; skip comments
-        ;-----------------------------------------------------------------------
--       call    getChar                 ; read next character (returns z-flag)
-        ret     z                       ; return C=0 for no word, end-of-file
-        cp      ASCII_LF                ; is newline?
-        jr      nz, -                   ; keep going until new line
-        jr      __label__               ; try get next word
-
-        ;-----------------------------------------------------------------------
-        ; add the first character to the buffer
-        ;
-+       ld      HL,     word_buff       ; read into the word buffer (80 chars)
-        inc     C                       ; set starting length of word
-        ld      [HL],   A               ; write first character
-        inc     HL                      ; move to next space in buffer
-
-        ; read characters:
-        ;-----------------------------------------------------------------------
-@next:  call    getChar                 ; read next character
-        cp      ASCII_SPC               ; check for non-visible character
-        jr      nc,     +               ; stop if whitespace found
-        inc     C                       ; increase character count
-        ld      [HL],   A               ; add to the word buffer
-        inc     HL                      ; and move to the next character
-        jr      @next
-
-        ; null-terminate the string
-+       xor     A
-        ld      [HL],   A
-
-        ret*/

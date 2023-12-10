@@ -158,8 +158,8 @@ osGetChar:
 ;===============================================================================
 ; read an ASCII character from an open file:
 ;
-; out:  A                               character, 0 for end-of-file
-;       BC, DE, HL, IX/Y                (preserved)
+; out:  A               character, 0 for end-of-file
+;       BC|DE|HL|IX/Y   (preserved)
 ;
 ; NOTE: this assumes no other file activity or line-input in between reads!
 ; TODO: index byte will not be reset when changing file!
@@ -219,9 +219,9 @@ osPrintChar:
 ;===============================================================================
 ; prints a single ASCII character:
 ;
-; in:   A                               input character
-; out:  BC, DE, HL, IX/Y                (preserved)
-;       A                               (clobbered)
+; in:   A               input character
+; out:  BC|DE|HL|IX/Y   (preserved)
+;       A               (clobbered)
 ;-------------------------------------------------------------------------------
         exx                             ; swap to shadow registers
 
@@ -231,3 +231,14 @@ osPrintChar:
 
         exx                             ; restore register set
         ret
+
+osPrintStr:
+;===============================================================================
+; TODO: this relies on "$" as terminator on CPM2.2;
+;       we can speed up a byte-by-byte print a little by using direct I/O
+;
+; in:   DE              string addr
+; out:  C               (clobbered)
+;-------------------------------------------------------------------------------
+        ld      C,      BDOS_PRNSTR
+        jp      BDOS

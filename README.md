@@ -13,6 +13,7 @@ It currently runs on CP/M with plans to make it self-hosting (can assemble itsel
 - No linker. You don't need one
 - No decimal numbers. Let's face it, you think in hexadecimal anyway
 - No floating point numbers. Have you _tried_ coding floats on an 8-bit CPU??
+- Negative numbers. I do not know of this "minus" of which you speak
 
 ## Syntax
 
