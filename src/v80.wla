@@ -45,10 +45,8 @@ init:
         call    assemble
         ;-----------------------------------------------------------------------
 
-        ; return to CP/M handler to quit the program
-        ret
-
-
+        call    memStat
+        ret                             ; return to CP/M to quit the program
 
         ;-----------------------------------------------------------------------
 @banner .BYTE   "v80 CP/M v0, Kroc Camen 2023$"
@@ -146,9 +144,9 @@ assemble:
 ;
 ; TODO: do the file opening here so that we can do includes
 ;-------------------------------------------------------------------------------
-        ; parse a word from the input file (root context)
-        ;
         ld      HL,     [code]          ; where we'll be assembling to
+        ld      DE,     [pc]            ; virtual program-counter
+
 @word:  call    skipWhitespace          ; find first character
 
         ; first character determines the word type:
@@ -157,7 +155,10 @@ assemble:
 
         call    parseInstruction
 
-        call      memStat
+        ;///////////////////////////////////////////////////////////////////////
+        ld      A,      '-'
+        call    osPrintChar             ; DEBUG!
+        ;///////////////////////////////////////////////////////////////////////
         ret
 
         ; skip comments
@@ -187,11 +188,14 @@ parseInstruction:
 ;===============================================================================
 ; parse a Z80 instruction into opcodes:
 ;
-; in:   HL              code-segment addr to emit opcodes
-; out:  HL              advanced to next [unused] addr
-;       A|BC|DE         (clobbered)
+; in:   A               first character of word to parse
+;       HL              code-segment addr to emit opcodes
+;       DE              virtual program-counter
+; out:  HL              advanced to next [unused] code-segment addr
+;       A, BC           (clobbered)
 ;       IX|IY           (undefined)
 ;-------------------------------------------------------------------------------
+        push    DE                      ; stash virtual program-counter
         ld      DE,     opcodes         ; start at beginning of opcode tree
 
         ; the first character is already in A
@@ -282,15 +286,20 @@ parseInstruction:
         inc     DE                      ; match -- move to next char in tree
         jr      @char
 
-        ; emit opcode:
-        ;-----------------------------------------------------------------------
+        ;=======================================================================
+        ; emit opcode(s):
+        ;
 @opcode ld      [param],        A       ; retain flags for parameter fetching
         ld      C,      A               ; retain the opcode-flags byte
         ld      A,      [DE]            ; read the opcode byte
 
         ; with the instruction matched to opcode, we no longer need
-        ; the tree position; load up the virtual program-counter
-        ld      DE,     [pc]
+        ; the tree position; return to the virtual program-counter
+        pop     DE
+
+        ; is there any parameter?
+        bit     2,      C               ; bit 2 indicates a parameter
+        jr      z,      @emit           ; if no, emit opcode only and return
 
         ; the flags byte is a set of flags for Z80-specifics
         ; and what, if any, kind of parameter is required
@@ -309,6 +318,13 @@ parseInstruction:
         inc     DE                      ; increment virtual program-counter
 
         ;-----------------------------------------------------------------------
++       bit     5,      C               ; bit 5 indicates extended ($ED) opcode
+        jr      z,      +               ; (these must appear after IX/IY bytes)
+        ld      [HL],   $ed             ; emit $ED prefix byte
+        inc     HL                      ; move to next byte in code-segment
+        inc     DE                      ; increment virtual program-counter
+
+        ;-----------------------------------------------------------------------
 +       bit     3,      C               ; bit 3 indicates extended ($CB) opcode
         jr      z,      +               ; (these must appear after IX/IY bytes)
         ld      [HL],   $cb             ; emit $CB prefix byte
@@ -319,40 +335,24 @@ parseInstruction:
         ; the opcode after the parameter! if this is the case, we have to
         ; insert the parameter first, then return for the opcode
         ;
-        ;;and     %01010000               ; is IX|IY bit set as well?
-        ;;jr      z,      @emit           ; if not, $CB prefix without IX|IY
+        and     %01010000               ; is IX|IY bit set as well?
+        jr      z,      +               ; if not, $CB prefix without IX|IY
+
+        call    parseParameter          ; emit parameter first,
+        jp      @emit                   ;  and then the opcode byte
 
         ;-----------------------------------------------------------------------
-+       bit     5,      C               ; bit 5 indicates extended ($ED) opcode
-        jr      z,      +               ; (these must appear after IX/IY bytes)
-        ld      [HL],   $ed             ; emit $ED prefix byte
-        inc     HL                      ; move to next byte in code-segment
-        inc     DE                      ; increment virtual program-counter
-+
-
-@emit:  ld      [HL],   C               ; now emit the opcode byte
-        inc     HL                      ; move to next byte in code-segment
-        inc     DE                      ; increment virtual program-counter
-
-        call    @param
-
-        ld      HL,     [code]
-        ret
++       call    @emit                   ; emit opcode byte,
+        jp      parseParameter          ;  and then the parameter
         
         ;-----------------------------------------------------------------------
-@param: ld      [code], HL              ; write back code-segment position
-        ld      [pc],   DE              ; write back virtual program-counter
-
-        ; handle parameter:
-        ;-----------------------------------------------------------------------
-        call    parseParameter
-        
-        ;///////////////////////////////////////////////////////////////////////
-        ld      A,      '-'
-        call    osPrintChar             ; DEBUG!
-        ;///////////////////////////////////////////////////////////////////////
-
+        ; emit the main opcode byte:
+        ;
+@emit:  ld      [HL],   C               ; emit the opcode byte
+        inc     HL                      ; move to next byte in code-segment
+        inc     DE                      ; increment virtual program-counter
         ret
+
 .ENDB
 
 parseParameter:
@@ -361,6 +361,12 @@ parseParameter:
 ; that follows, deferring evaluation:
 ;
 ;-------------------------------------------------------------------------------
+        call    pushExpr
+
+        ld      HL,     [code]
+        ld      DE,     [pc]
+        ret
+
 ;;        ; reserve the correct number of bytes for the result
 ;;        ;
 ;;        ld      DE,     [code]
@@ -379,6 +385,8 @@ pushExpr:
 ;===============================================================================
 ; push an expression to the heap:
 ;
+; in:   HL              code-segment addr
+;       DE              virtual program-counter
 ; out:  *               (clobbered)
 ;-------------------------------------------------------------------------------
         ; add an expression to the heap,
@@ -393,6 +401,12 @@ pushExpr:
         ;   (in case of error)
         ; - the expression (as tokens)
         ;
+        ; stash the code-segment addr and virtual program-counter.
+        ; this routine will copy the values from these RAM positions
+        ;
+        ld      [code], HL              ; write back code-segment position
+        ld      [pc],   DE              ; write back virtual program-counter
+
         ; link this expression to the previous:
         ; write the previous expr addr to the head of this one
         ; (preserving the previous addr)
