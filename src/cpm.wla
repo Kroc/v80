@@ -34,6 +34,7 @@ TBASE                   = $0100         ; start of transient program area
 
 ; bootstrap:
 ;===============================================================================
+.BLOCK  "os-cpm"
 
 .BANK 0 SLOT "TPA"
 .ORGA TBASE
@@ -66,12 +67,9 @@ boot:
         call    init
         ;-----------------------------------------------------------------------
 
-        ; since we've overwritten the CCP, we need to restart CP/M fully.
-        ; CP/M documentation says we can jump to 0, but this is possibly
-        ; buggy in RunCPM, where non-zero values of E cause the disk to
-        ; not be found upon warm boot
-        ; 
-        ret
+        ; since we've overwritten the CCP,
+        ; we need to restart CP/M fully
+        jr      @reset
 
         ; exit with a version error
         ;-----------------------------------------------------------------------
@@ -242,3 +240,5 @@ osPrintStr:
 ;-------------------------------------------------------------------------------
         ld      C,      BDOS_PRNSTR
         jp      BDOS
+
+.ENDB

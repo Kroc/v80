@@ -1,3 +1,4 @@
+bit0*ix $ee
 adc     $1
 adc.a
 adc.b

@@ -7,37 +7,21 @@
 
 init:
 ;===============================================================================
+        ld      DE,     @banner         ; print the program banner
+        call    osPrintStr
+
         ; set heap position below stack:
         ;-----------------------------------------------------------------------
-        ; *assuming* we are at least 1 call deep on the stack, we want to print
-        ; the stack's original top, i.e $FD00, rather than $FCFE; this avoids
-        ; having to print the lo-byte and is just easier to look at
+        ; this *assumes* we are at least 1 call deep on the stack,
+        ; i.e. $FCFE rather than the unused stack top $FD00
         ;
-        ld      HL,     $0100           ; oddly, there's no `ld HL, SP`!
+        ld      HL,     $0000           ; oddly, there's no `ld HL, SP`!
         add     HL,     SP              ; stack address, e.g. $FCFE
         ex      DE,     HL              ; swap SP into DE
-        ld      A,      D               ; take high byte with 1 added
-        ld      HL,     @stack          ; stack addr position in banner string
-        call    @hex                    ; convert and insert
-
-        dec     D                       ; drop down a page
-        ld      A,      D
-        ld      HL,     @heap           ; heap addr position in banner string
-        call    @hex                    ; convert and insert
-
-        dec     DE                      ; heap is post-decrement, unlike stack
+        ld      E,      0               ; use 0 for lo-byte, e.g. $FC00
+        dec     DE                      ; heap is post-decrement, i.e. $FBFF
         ld      [heap], DE              ; finally set the heap position
-
-        ld      DE,     __code
-        ld      HL,     @code           ; code addr position in banner string
-        ld      A,      D
-        call    @hex                    ; convert and insert
-        inc     HL
-        ld      A,      E
-        call    @hex                    ; convert and insert
-
-        ld      DE,     @banner         ; print the banner + memory status
-        call    osPrintStr
+        call    memStat                 ; print the memory status
 
         ; check for an automatic file-reference,
         ; i.e. a file parameter was passed on the command line
@@ -64,18 +48,47 @@ init:
         ; return to CP/M handler to quit the program
         ret
 
+
+
         ;-----------------------------------------------------------------------
-        ; convert A to ASCCI hexadecimal digits and insert in the banner string
+@banner .BYTE   "v80 CP/M v0, Kroc Camen 2023$"
+
+memStat:
+;===============================================================================
+; prints memory status:
+;-------------------------------------------------------------------------------
+        ld      HL,     $0000           ; oddly, there's no `ld HL, SP`!
+        add     HL,     SP              ; stack address, e.g. $FCFE
+        ex      DE,     HL              ; swap SP into DE
+        ld      HL,     @stack          ; stack addr position in string
+        call    @hex                    ; convert and insert
+
+        ld      DE,     [heap]
+        ld      HL,     @heap           ; heap addr position in string
+        call    @hex                    ; convert and insert
+
+        ld      DE,     [code]
+        ld      HL,     @code           ; code addr position in string
+        call    @hex                    ; convert and insert
+
+        ld      DE,     @mem
+        jp      osPrintStr
+
+        ;-----------------------------------------------------------------------
+        ; convert DE to ASCII hexadecimal digits and insert in the string
         ;
-@hex:   call    getHexByte
+@hex:   ld      A,      D
+        call    @byte
+        ld      A,      E
+@byte:  call    getHexByte
         ld      [HL],   B
         inc     HL
         ld      [HL],   C
+        inc     HL
         ret
 
         ;-----------------------------------------------------------------------
-@banner .BYTE   "v80 CP/M v0, Kroc Camen 2023\n"
-        .BYTE   "[stack: "
+@mem    .BYTE   "\n[stack: "
 @stack  .BYTE   "0000"
         .BYTE   " | heap: "
 @heap   .BYTE   "0000"
@@ -144,12 +157,13 @@ assemble:
 
         call    parseInstruction
 
-        jr      @word
+        call      memStat
+        ret
 
         ; skip comments
         ;-----------------------------------------------------------------------
 @skip:  call    getChar                 ; read next character (returns z-flag)
-        ret     z                       ; return C=0 for no word, end-of-file
+        ret     z                       ; return on end-of-file
         cp      ASCII_LF                ; is newline?
         jr      nz, @word               ; keep going until new line
         jr      @word                   ; try get next word
@@ -167,17 +181,17 @@ skipWhitespace:
         jr      c, -                    ; keep reading blank chars
         ret
 
+.BLOCK  "opcode-parser"
 
 parseInstruction:
 ;===============================================================================
 ; parse a Z80 instruction into opcodes:
 ;
-; in:   HL              assembly addr to emit opcodes
+; in:   HL              code-segment addr to emit opcodes
 ; out:  HL              advanced to next [unused] addr
 ;       A|BC|DE         (clobbered)
 ;       IX|IY           (undefined)
 ;-------------------------------------------------------------------------------
-.BLOCK  "opcode-parser"
         ld      DE,     opcodes         ; start at beginning of opcode tree
 
         ; the first character is already in A
@@ -280,64 +294,92 @@ parseInstruction:
 
         ; the flags byte is a set of flags for Z80-specifics
         ; and what, if any, kind of parameter is required
-        ;
+        ;-----------------------------------------------------------------------
         bit     4,      C               ; bit 4 indicates an IX instruction
         jr      z,      +
         ld      [HL],   $dd             ; emit IX prefix byte ($DD)
-        inc     HL                      ; move to next byte in code segment
+        inc     HL                      ; move to next byte in code-segment
         inc     DE                      ; increment virtual program-counter
 
+        ;-----------------------------------------------------------------------
 +       bit     6,      C               ; bit 6 indicates an IY instruction
         jr      z,      +
         ld      [HL],   $fd             ; emit IY prefix byte ($FD)
-        inc     HL                      ; move to next byte in code segment
+        inc     HL                      ; move to next byte in code-segment
         inc     DE                      ; increment virtual program-counter
 
+        ;-----------------------------------------------------------------------
 +       bit     3,      C               ; bit 3 indicates extended ($CB) opcode
         jr      z,      +               ; (these must appear after IX/IY bytes)
         ld      [HL],   $cb             ; emit $CB prefix byte
-        inc     HL                      ; move to next byte in code segment
+        inc     HL                      ; move to next byte in code-segment
         inc     DE                      ; increment virtual program-counter
 
+        ; on the Z80, a combination of $DD|$FB (IX|IY) + $CB opcodes place
+        ; the opcode after the parameter! if this is the case, we have to
+        ; insert the parameter first, then return for the opcode
+        ;
+        ;;and     %01010000               ; is IX|IY bit set as well?
+        ;;jr      z,      @emit           ; if not, $CB prefix without IX|IY
+
+        ;-----------------------------------------------------------------------
 +       bit     5,      C               ; bit 5 indicates extended ($ED) opcode
         jr      z,      +               ; (these must appear after IX/IY bytes)
         ld      [HL],   $ed             ; emit $ED prefix byte
-        inc     HL                      ; move to next byte in code segment
+        inc     HL                      ; move to next byte in code-segment
         inc     DE                      ; increment virtual program-counter
 +
 
-        ; TODO: DD|FB + CB opcodes put the opcode after the parameter!
-        ; we'll have to reserve the parameter and return here
+@emit:  ld      [HL],   C               ; now emit the opcode byte
+        inc     HL                      ; move to next byte in code-segment
+        inc     DE                      ; increment virtual program-counter
 
-        ld      [HL],   A               ; now emit the opcode byte
-        inc     HL
+        call    @param
 
-        ld      [code], HL              ; write back code segment position
+        ld      HL,     [code]
+        ret
+        
+        ;-----------------------------------------------------------------------
+@param: ld      [code], HL              ; write back code-segment position
         ld      [pc],   DE              ; write back virtual program-counter
 
-        ; handle parameters:
+        ; handle parameter:
         ;-----------------------------------------------------------------------
         call    parseParameter
-
+        
         ;///////////////////////////////////////////////////////////////////////
         ld      A,      '-'
         call    osPrintChar             ; DEBUG!
         ;///////////////////////////////////////////////////////////////////////
 
-        ld      HL,     [code]
         ret
 .ENDB
 
 parseParameter:
 ;===============================================================================
-; reserves bytes for a parameter value and parses the expression that follows;
-; deferring evaluation
+; reserves bytes for a parameter value and parses the expression
+; that follows, deferring evaluation:
+;
 ;-------------------------------------------------------------------------------
+;;        ; reserve the correct number of bytes for the result
+;;        ;
+;;        ld      DE,     [code]
+;;        bit     2,      A               ; bit 2 indicates an 8-bit parameter
+;;        jr      z,      +               ; skip if no parameter
+;;        xor     A
+;;        ld      [DE],   A               ; add placeholder $00 to code-segment
+;;        inc     HL
+;;        bit     1,      A               ; bit 1 indicates a 16-bit parameter
+;;        jr      z,      +
+;;        ld      [DE],   A               ; add placeholder $00 to code-segment
+;;        inc     DE
+;;+       ld      [code], DE              ; write back code-segment addr
 
 pushExpr:
 ;===============================================================================
 ; push an expression to the heap:
 ;
+; out:  *               (clobbered)
 ;-------------------------------------------------------------------------------
         ; add an expression to the heap,
         ; this requires:
@@ -390,18 +432,17 @@ pushExpr:
         ldd                             ;  then row lo-byte
         ldd                             ;  and hi byte, that follows
 
-        ; reserve the correct number of bytes for the result
-
-
         ; begin parsing the expression, packing it into bytecode
         ;-----------------------------------------------------------------------
+        call    skipWhitespace          ; read first character of the next word
+        jp      z,      errExpr         ; unexpected end of file!
+
         ex      DE,     HL              ; (swap the current heap addr into HL)
         call    parseExpr
 
         ; attempt to evaluate the expression
         ; ...
         ld      [heap], HL
-
         ret
 
 ; parseExpr:
@@ -409,27 +450,32 @@ pushExpr:
 ; parse an expression from the input file:
 ;
 ; words are read and converted into tokens to evaluate later
-; (e.g. deferred expression where a symbol is not yet known)
+; (e.g. deferred expressions where a symbol is not yet known)
 ;
-; this is different from regular parsing as it does not write
-; to the code segment and opcodes are not permitted
+; WARN: the first character of the expression is assumed to be read and
+;       the first character of the next word following the expression
+;       will be returned! this allows chaining of expressions, but you
+;       must avoid losing the unused character between calls!
 ;
-; in:   HL              address on the heap to begin writing expr bytecode
+; in:   A               first character of the expression
+;       HL              address on the heap to begin writing expr tokens
+; out:  A               unused first character of the next word!
+;       HL              updated heap address
 ;-------------------------------------------------------------------------------
 -       dec     HL                      ; (move to next byte on heap)
 
+        call    skipWhitespace          ; read first character of the next word
+        jp      z,      errExpr         ; unexpected end of file!
+
 parseExpr:
         ;=======================================================================
-        call    skipWhitespace          ; read first character of the next word
-        jp      z,      errEndOfFile    ; handle unexpected end of file!
-
-        ; an expression must begin with either a value
+        ; an expression must begin with either a value,
         ; or a unary operator + a value
 @operand:
         ; unary operator?
         ;-----------------------------------------------------------------------
-        ; unary operators can always precede values, even after an operator
-        ; e.g. `$10 + <:label`
+        ; unary operators can always precede values,
+        ; even after an operator, e.g. `$10 + <:label`
         ;
         cp      '<'                     ; lo-byte operator?
         jr      nz,     +
@@ -545,9 +591,12 @@ parseHexNumber:
 ; parses an ASCII hexadecimal number and returns the value:
 ;
 ; out:  BC              the value, 0 padded for numbers < 256
-;       A, HL           (clobbered)
+;       HL              (preserved)
+;       A               (clobbered)
+;       DE              (undefined) -- depends on osGetChar
 ;-------------------------------------------------------------------------------
         ld      C,     0                ; return value will go here
+        push    HL                      ; preserve HL
 
         ; try to read up to 4 digits; the 5th character
         ; must be whitespace or end-of-file!
@@ -623,6 +672,7 @@ parseHexNumber:
         or      C                       ; combine with hi-nybble (if present)
         ld      C,      A               ; answer goes in C
 
+        pop     HL                      ; (restore HL)
         ret                             ; ship it!
 
         ; TODO: so long as these bytes don't cross a page-boundary 
@@ -641,17 +691,18 @@ parseHexNumber:
         ; (this is why ASCII codes 0-32 must be precluded beforehand)
         ;
 @digit: res     5,      A               ; force upper-case for "a"-"f"
-        sub     16                      ; anything < "0" becomes >=128 (hi-bit)
+        sub     '0'                     ; anything < "0" becomes >=128 (hi-bit)
         cp      10                      ; 0-9 ("0"-"9") is okay
         ret     c                       ; exit early for 0-9
 
         ; between ASCII "9" and "A" is ":", ";", "<", "=", ">", "?" and "@";
-        ; if we subtract 7, "A" becomes 0 and any of those 7 become negative
+        ; if we subtract 17, "A" becomes 0 and any of those 7 become negative
         ; (>=128, hi-bit set), therefore we only need to check 0-5 ("A"-"F")
-        sub     7
+        sub     17
         cp      6                       ; 0-5 ("A"-"F") are allowed
         jp      nc,     errHexNumber    ; error for anything above "F"
         add     10                      ; rebase "A" to 10, "F" to 15
+
         ret
 
 
@@ -770,4 +821,4 @@ help:
         ld      DE,     @str
         jp      osPrintStr
 
-@str:   .BYTE "\n    V80 SOURCE.V80$"
+@str    .BYTE "\n    V80 SOURCE.V80$"
