@@ -9,8 +9,12 @@ init:
 ;===============================================================================
         ; set heap position below stack:
         ;-----------------------------------------------------------------------
+        ; *assuming* we are at least 1 call deep on the stack, we want to print
+        ; the stack's original top, i.e $FD00, rather than $FCFE; this avoids
+        ; having to print the lo-byte and is just easier to look at
+        ;
         ld      HL,     $0100           ; oddly, there's no `ld HL, SP`!
-        add     HL,     SP              ; stack address, e.g. $FCFF
+        add     HL,     SP              ; stack address, e.g. $FCFE
         ex      DE,     HL              ; swap SP into DE
         ld      A,      D               ; take high byte with 1 added
         ld      HL,     @stack          ; stack addr position in banner string
@@ -20,7 +24,7 @@ init:
         ld      A,      D
         ld      HL,     @heap           ; heap addr position in banner string
         call    @hex                    ; convert and insert
-        
+
         dec     DE                      ; heap is post-decrement, unlike stack
         ld      [heap], DE              ; finally set the heap position
 
@@ -120,7 +124,7 @@ dict:   .ADDR $000                      ; addr of last dictionary-entry
 .DEF    EXPR_OP_XOR     '^'             ; `^`: xor operator
 .DEF    EXPR_OP_MOD     '%'             ; `%`: modulo operator
 
-expr:   .ADDR $000                      ; addr of last deferred expression
+expr:   .ADDR $000                      ; addr of last expression
 
 
 assemble:
@@ -155,7 +159,7 @@ skipWhitespace:
 ;===============================================================================
 ; reads input until a visible character (ASCII >32) is reached:
 ; 
-; out:  A               ASCII code, 0 for end-of-file
+; out:  A               ASCII code. 0 = end-of-file
 ;-------------------------------------------------------------------------------
 -       call    getChar                 ; read a character (returns z-flag)
         ret     z                       ; return z-flag set if end-of-file
@@ -330,9 +334,9 @@ parseParameter:
 ; deferring evaluation
 ;-------------------------------------------------------------------------------
 
-pushExpression:
+pushExpr:
 ;===============================================================================
-; append an expression to the heap:
+; push an expression to the heap:
 ;
 ;-------------------------------------------------------------------------------
         ; add an expression to the heap,
@@ -343,46 +347,48 @@ pushExpression:
         ; - the size of the output; 1 or 2 bytes
         ; - the current virtual program-counter
         ;   (in case of relative jump)
-        ; - the expression (as bytecode)
+        ; - the current col/row in the input file
+        ;   (in case of error)
+        ; - the expression (as tokens)
         ;
         ; link this expression to the previous:
         ; write the previous expr addr to the head of this one
         ; (preserving the previous addr)
         ;
         ld      DE,     [heap]          ; get current heap position
-        ld      HL,     expr            ; addr to read bytes from
-        ldi                             ; (copy bytes across)
-        ldi                             ; [DE]=[HL], DE++, HL++, BC--
+        ld      HL,     expr+1          ; addr to read bytes from
+        ldd                             ; (copy bytes across)
+        ldd                             ; [DE]=[HL], DE--, HL--, BC--
 
         ; update the last expression field to point to this expression:
-        ; warning: DE has already been advanced (by LDI), so we need to
-        ; get the heap address again (without resetting DE)
+        ; warning: DE has already been decremented (by LDD), so we need
+        ; to get the heap address again (without resetting DE)
         ld      HL,     [heap]          ; start addr of our expression
         ld      [expr], HL              ; write to last expression addr
 
         ; write the current code-segment position;
         ; this is where the calculation result will be filled in
         ;
-        ld      HL,     code            ; current code segment position
-        ldi                             ; (copy bytes across)
-        ldi                             ; [DE]=[HL], DE++, HL++, BC--
+        ld      HL,     code+1          ; current code segment position
+        ldd                             ; (copy bytes across)
+        ldd                             ; [DE]=[HL], DE--, HL--, BC--
 
         ; set the size/type of the deferred result
         ld      HL,     param           ; parameter-type byte
-        ldi                             ; [DE]=[HL], DE++, HL++, BC--
+        ldd                             ; [DE]=[HL], DE--, HL--, BC--
 
         ; add the current virtual program-counter
         ; (for calculating relative jumps)
-        ld      HL,     pc              ; virtual program-counter
-        ldi                             ; (copy bytes across)
-        ldi                             ; [HL]=[DE], HL++, DE++, BC--
+        ld      HL,     pc+1            ; virtual program-counter
+        ldd                             ; (copy bytes across)
+        ldd                             ; [DE]=[HL], DE--, HL--, BC--
 
         ; add the row/column of the expression in case of
         ; error when we come back to it later
-        ld      HL,     row             ; current input file row number
-        ldi                             ; copy low byte,
-        ldi                             ;  hi byte,
-        ldi                             ; and the column number that follows
+        ld      HL,     col             ; addr of input file column number
+        ldd                             ; copy column number,
+        ldd                             ;  then row lo-byte
+        ldd                             ;  and hi byte, that follows
 
         ; reserve the correct number of bytes for the result
 
@@ -398,10 +404,7 @@ pushExpression:
 
         ret
 
-
--       inc     HL                      ; (move to next byte on heap)
-
-parseExpr:
+; parseExpr:
 ;===============================================================================
 ; parse an expression from the input file:
 ;
@@ -413,6 +416,10 @@ parseExpr:
 ;
 ; in:   HL              address on the heap to begin writing expr bytecode
 ;-------------------------------------------------------------------------------
+-       dec     HL                      ; (move to next byte on heap)
+
+parseExpr:
+        ;=======================================================================
         call    skipWhitespace          ; read first character of the next word
         jp      z,      errEndOfFile    ; handle unexpected end of file!
 
@@ -440,7 +447,7 @@ parseExpr:
 
         ; a unary operator has been added,
         ; read the next character:
-@unary: inc     HL                      ; (move to next byte on heap)
+@unary: dec     HL                      ; (move to next byte on heap)
         call    skipWhitespace          ; read first character of the next word
         jp      z,      errEndOfFile    ; handle unexpected end of file!
 
@@ -453,12 +460,12 @@ parseExpr:
         jr      nz,     +
 
         ld      [HL],   A               ; push a number token
-        inc     HL
+        dec     HL
         call    parseHexNumber          ; parse the hex number into BC
-        ld      [HL],   C
-        inc     HL
         ld      [HL],   B
-        inc     HL
+        dec     HL
+        ld      [HL],   C
+        dec     HL
         
         jr      @operator               ; an operator can follow a value
 
@@ -484,42 +491,42 @@ parseExpr:
         jr      z,      @end            ; if end-of-file, end the expression
 
         cp      '+'                     ; add operator?
-        jr      nc,     +
+        jr      nz,     +
         ld      [HL],   A               ; push an ADD operator token
         jr      -
         ;-----------------------------------------------------------------------
 +       cp      '-'                     ; subtract operator?
-        jr      nc,     +
+        jr      nz,     +
         ld      [HL],   A               ; push a SUB operator token
         jr      -
         ;-----------------------------------------------------------------------
 +       cp      '*'                     ; multiply operator?
-        jr      nc,     +
+        jr      nz,     +
         ld      [HL],   A               ; push a MUL operator token
         jr      -
         ;-----------------------------------------------------------------------
 +       cp      '/'                     ; divide operator?
-        jr      nc,     +
+        jr      nz,     +
         ld      [HL],   A               ; push a DIV operator token
         jr      -
         ;-----------------------------------------------------------------------
 +       cp      '&'                     ; and operator?
-        jr      nc,     +
+        jr      nz,     +
         ld      [HL],   A               ; push an AND operator token
         jr      -
         ;-----------------------------------------------------------------------
 +       cp      '|'                     ; or operator?
-        jr      nc,     +
+        jr      nz,     +
         ld      [HL],   A               ; push an OR operator token
         jr      -
         ;-----------------------------------------------------------------------
 +       cp      '^'                     ; xor operator?
-        jr      nc,     +
+        jr      nz,     +
         ld      [HL],   A               ; push a XOR operator token
         jr      -
         ;-----------------------------------------------------------------------
 +       cp      '%'                     ; modulo operator?
-        jr      nc,     @end
+        jr      nz,     @end
 
         ld      [HL],   A               ; push a MOD operator token
         jr      -
@@ -529,7 +536,7 @@ parseExpr:
         ; fall through and terminate the expression
         ;
 @end:   ld      [HL],   EXPR_END        ; terminate the expression
-        inc     HL
+        dec     HL
         ret
 
 
