@@ -1,6 +1,17 @@
 ; v80 CP/M (c) Kroc Camen 2023, MIT License
 ; error stuff
 ;
+errFile:
+;===============================================================================
+; file not found!
+;-------------------------------------------------------------------------------
+        ld      DE,     @str
+        call    osPrintStr
+        ld      C,      BDOS_RESET
+        jp      BDOS
+
+@str:   .BYTE "File not found!$"
+
 errEndOfFile:
 ;===============================================================================
 ; unexpected end of file!

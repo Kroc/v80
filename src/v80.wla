@@ -7,9 +7,37 @@
 
 init:
 ;===============================================================================
+        ; set heap position below stack:
+        ;-----------------------------------------------------------------------
+        ld      HL,     $0100           ; oddly, there's no `ld HL, SP`!
+        add     HL,     SP              ; stack address, e.g. $FCFF
+        ex      DE,     HL              ; swap SP into DE
+        ld      A,      D               ; take high byte with 1 added
+        ld      HL,     @stack          ; stack addr position in banner string
+        call    @hex                    ; convert and insert
+
+        dec     D                       ; drop down a page
+        ld      A,      D
+        ld      HL,     @heap           ; heap addr position in banner string
+        call    @hex                    ; convert and insert
+        
+        dec     DE                      ; heap is post-decrement, unlike stack
+        ld      [heap], DE              ; finally set the heap position
+
+        ld      DE,     __code
+        ld      HL,     @code           ; code addr position in banner string
+        ld      A,      D
+        call    @hex                    ; convert and insert
+        inc     HL
+        ld      A,      E
+        call    @hex                    ; convert and insert
+
+        ld      DE,     @banner         ; print the banner + memory status
+        call    osPrintStr
+
         ; check for an automatic file-reference,
         ; i.e. a file parameter was passed on the command line
-        ;
+        ;-----------------------------------------------------------------------
         ; check filename first-letter in the built-in file-control-block
         ld      A,      [command_fcb.filename]
         cp      ' '+1                   ; non-visible char? $00-$20?
@@ -22,7 +50,7 @@ init:
         ld      DE,     command_fcb     ; use default FileControlBlock
         call    BDOS
         and     A                       ; (set flags!)
-        jp      m,      @err            ; $FF = error
+        jp      m,      errFile         ; $FF = error
 
         ; assemble the file
         ;-----------------------------------------------------------------------
@@ -32,11 +60,24 @@ init:
         ; return to CP/M handler to quit the program
         ret
 
-@err:   ld      C,      BDOS_PRNSTR
-        ld      DE,     @str
-        jp      BDOS
+        ;-----------------------------------------------------------------------
+        ; convert A to ASCCI hexadecimal digits and insert in the banner string
+        ;
+@hex:   call    getHexByte
+        ld      [HL],   B
+        inc     HL
+        ld      [HL],   C
+        ret
 
-@str:   .BYTE "File Not Found!$"
+        ;-----------------------------------------------------------------------
+@banner .BYTE   "v80 CP/M v0, Kroc Camen 2023\n"
+        .BYTE   "[stack: "
+@stack  .BYTE   "0000"
+        .BYTE   " | heap: "
+@heap   .BYTE   "0000"
+        .BYTE   " | code: "
+@code   .BYTE   "0000"
+        .BYTE   "]\n$"
 
 
 .BLOCK  "code"
@@ -49,12 +90,13 @@ param:  .BYTE $00                       ; next parameter properties
 
 ; heap:
 ;-------------------------------------------------------------------------------
-; as assembly progresses, the dictionary of symbols and deferred calculations
-; will be built up here. this position is currently arbitrary and ideally I
-; want the heap to build downwards from top of memory, even on the stack itself
-.DEF    heap            $c000
-
-head:   .ADDR heap                      ; current position on the heap
+; as assembly progresses, the dictionary of symbols and deferred expressions
+; will be built up on the heap. it works downwards from the top of memory
+; in order to maximise the available space before the assembled binary
+; and heap collide. during initialisation the heap will be placed 256 bytes
+; below the stack at the top of memory, giving enough room for the stack
+;
+heap:   .ADDR $fff                      ; current position on the heap
 dict:   .ADDR $000                      ; addr of last dictionary-entry
 
 ; expression bytecode:
@@ -307,7 +349,7 @@ pushExpression:
         ; write the previous expr addr to the head of this one
         ; (preserving the previous addr)
         ;
-        ld      DE,     [head]          ; get current heap position
+        ld      DE,     [heap]          ; get current heap position
         ld      HL,     expr            ; addr to read bytes from
         ldi                             ; (copy bytes across)
         ldi                             ; [DE]=[HL], DE++, HL++, BC--
@@ -315,7 +357,7 @@ pushExpression:
         ; update the last expression field to point to this expression:
         ; warning: DE has already been advanced (by LDI), so we need to
         ; get the heap address again (without resetting DE)
-        ld      HL,     [head]          ; start addr of our expression
+        ld      HL,     [heap]          ; start addr of our expression
         ld      [expr], HL              ; write to last expression addr
 
         ; write the current code-segment position;
@@ -352,7 +394,7 @@ pushExpression:
 
         ; attempt to evaluate the expression
         ; ...
-        ld      [head], HL
+        ld      [heap], HL
 
         ret
 
@@ -657,24 +699,45 @@ printHexByte:
 ; print a byte as hexadecimal:
 ;
 ; in:   A               byte to print
-; out:  A               (clobbered)
-;       BC|DE|HL|IXY    (undefined) -- depends on osPrintChar
+; out:  A, BC           (clobbered)
+;       DE|HL|IXY       (undefined) -- depends on osPrintChar
 ;
 ; NOTE: multiple online sources cite this method, dating back to the 70s!
 ;-------------------------------------------------------------------------------
-        push    AF
-        rra
-        rra
-        rra
-        rra
-        call    @digit
-        pop     AF
-@digit: and     %00001111               ; isolate low-nybble
-        add     $90                     ; magic?
-        daa                             ; adjust to decimal
-        adc     $40                     ; more magic?
-        daa                             ; adjust to decimal
+        call    getHexByte
+        ld      A,      B
+        call    osPrintChar
+        ld      A,      C
         jp      osPrintChar
+
+getHexByte:
+;===============================================================================
+; convert a byte into two ASCII hexadecimal digits:
+;
+; in:   A               input byte
+; out:  BC              ASCII hex digits in hi,lo (printable) order
+;       DE|HL|IX/Y      (preserved)
+;       A               (clobbered)
+;-------------------------------------------------------------------------------
+        ld      B,      A               ; preserve for 2nd digit
+        rra                             ;
+        rra                             ; shift upper nybble down
+        rra                             ;
+        rra                             ;
+        call    @digit                  ; convert to ASCII
+        ld      A,      B               ; retrieve 2nd digit
+        ld      B,      C               ; set upper ASCII digit
+
+        ; fallthrough to convert 2nd digit
+        ; ...
+
+@digit: and     %00001111               ; isolate low-nybble
+        add     $90                     ; magic!
+        daa                             ; adjust to decimal
+        adc     $40                     ; more magic!
+        daa                             ; adjust to decimal
+        ld      C,      A
+        ret
 .ENDB
 
 ; * * *   O B J E C T   C O D E   * * *
@@ -700,5 +763,4 @@ help:
         ld      DE,     @str
         jp      osPrintStr
 
-@str:   .BYTE "v80 CP/M v0, Kroc Camen 2023\n\n"
-        .BYTE "    V80 SOURCE.V80$"
+@str:   .BYTE "\n    V80 SOURCE.V80$"

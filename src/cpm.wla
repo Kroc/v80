@@ -58,6 +58,7 @@ boot:
         ; on RunCPM this is $FCFF
         ;
 @ok:    ld      HL,     [BDOS+1]        ; get BDOS address from `jp $xxxx`
+        ld      L,      0               ; normalise to beginning of page
         ld      SP,     HL
 
         ; run the program
@@ -74,9 +75,8 @@ boot:
 
         ; exit with a version error
         ;-----------------------------------------------------------------------
-@err:   ld      C,      BDOS_PRNSTR
-        ld      DE,     @str
-        jp    BDOS
+@err:   ld      DE,     @str
+        call    osPrintStr
 
 @reset: ld      C,      BDOS_RESET
         jp      BDOS
