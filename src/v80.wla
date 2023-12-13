@@ -179,7 +179,7 @@ assemble:
         ;///////////////////////////////////////////////////////////////////////
         ret
 
-        ; skip comments
+        ; skip comments:
         ;=======================================================================
 @skip:  call    getChar                 ; read next character (returns z-flag)
         ret     z                       ; return on end-of-file
@@ -187,7 +187,7 @@ assemble:
         jr      nz, @word               ; keep going until new line
         jr      @word                   ; try get next word
 
-        ; define label
+        ; define label:
         ;=======================================================================
 @label: call    readWord                ; read the label in
         ret
@@ -222,21 +222,27 @@ readWord:
         ; we use the bottom of the stack to hold the incoming word;
         ; because this is page-aligned we can get away with using
         ; `INC L` instead of `INC HL`
-        ld      HL,     [temp]
-        
-        ld      B,      32              ; max word-length
+        ;
+        ld      HL,     [temp]          ; bottom of stack, e.g. $FC00
+        inc     L                       ; first byte will hold word-length
+        ld      B,      32              ; B = max word-length
         jr      +                       ; (skip first character)
         ;-----------------------------------------------------------------------
 -       call    osGetChar               ; read char form input file
         cp      ASCII_SPC+1             ; whitespace?
-        jr      c,      +               ; (leave loop at whitespace)
+        jr      c,      @ok             ; (leave loop at whitespace)
 +       ld      [HL],   A               ; add the character to the buffer
         inc     L                       ; move to next space in buffer
         djnz    -                       ; keep looping until B=0
         ;-----------------------------------------------------------------------
         jp      errWord                 ; word too long!
 
-+       ld      [HL],   0               ; terminate the word buffer
+        ;-----------------------------------------------------------------------
+@ok:    ld      [HL],   0               ; terminate the word buffer
+        ld      A,      32              ; 32 - characters remaining
+        sub     B                       ; = length of word
+        ld      [temp], A               ; write length to first byte
+
         pop     HL                      ; restore HL going out
         ret
 
@@ -252,7 +258,7 @@ pushLabel:
 
 pushSymbol:
 ;===============================================================================
-; adds a new symbol to the heap: (label or constant)
+; push a new symbol to the heap: (label or constant)
 ; WARN: does not check if the symbol already exists!
 ;
 ; in:   HL              dictionary entry point (contains last addr of symbol)
@@ -311,8 +317,8 @@ pushLink:
         ld      [DE],   A               ; write this to heap
         ld      [HL],   E               ; write heap lo-byte to entry point
         dec     DE                      ; move to next free byte in heap
+        ld      [heap], DE              ; write back heap position
 
-        ld      [heap], DE
         ret
 
 .BLOCK  "code-parser"

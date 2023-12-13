@@ -1,22 +1,23 @@
-bit0*ix $ee
-adc     $1
-adc.a
-adc.b
-adc.c
-adc.d
-adc.e
-adc.h
-adc.l
-adc.ixh
-adc.ixl
-adc.iyh
-adc.iyl
-adc.hl+bc
-adc.hl+de
-adc.hl+hl
-adc.hl+sp
-adc*hl
-adc*ix
-adc*iy
-add
-and
+:label
+	bit0*ix	$ee
+	adc	$1
+	adc.a
+	adc.b
+	adc.c
+	adc.d
+	adc.e
+	adc.h
+	adc.l
+	adc.ixh
+	adc.ixl
+	adc.iyh
+	adc.iyl
+	adc.hl+bc
+	adc.hl+de
+	adc.hl+hl
+	adc.hl+sp
+	adc*hl
+	adc*ix
+	adc*iy
+	add
+	and
