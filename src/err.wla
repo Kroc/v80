@@ -1,61 +1,61 @@
 ; v80 CP/M (c) Kroc Camen 2023, MIT License
 ; error stuff
 ;
+; TODO: use an error number to deduplicate these calls
+; TODO: with any error, print out file name, line & col number
+;
+_strFile:       .BYTE "File not found!$"
+_strEndOfFile:  .BYTE "Unexpected end of file!$"
+_strWord:       .BYTE "Word too long! (max 32 chars)$"
+_strOpcode:     .BYTE "Invalid opcode!$"
+_strExpr:       .BYTE "Invalid expression!$"
+_strHex:        .BYTE "Invalid hexadecimal number!$"
+
+_printQuit:
+;===============================================================================
+; (print string and quit to OS)
+;-------------------------------------------------------------------------------
+        call    osPrintStr
+        jp      osQuit
+
 errFile:
 ;===============================================================================
 ; file not found!
 ;-------------------------------------------------------------------------------
-        ld      DE,     @str
-        call    osPrintStr
-        ld      C,      BDOS_RESET
-        jp      BDOS
-
-@str:   .BYTE "File not found!$"
+        ld      DE,     _strFile
+        jr      _printQuit
 
 errEndOfFile:
 ;===============================================================================
 ; unexpected end of file!
-;
-; CP/M doesn't require us to unwind the stack, we can just reset the machine
 ;-------------------------------------------------------------------------------
-        ld      DE,     @str
-        call    osPrintStr
-        ld      C,      BDOS_RESET
-        jp      BDOS                    ; TODO: have proper osQuit?
+        ld      DE,     _strEndOfFile
+        jr      _printQuit
 
-        ; TODO: with any error, print out file name, line & col number
-@str    .BYTE   "Unexpected end of file!$"
+errWord:
+;===============================================================================
+; word is too long!
+;-------------------------------------------------------------------------------
+        ld      DE,     _strWord
+        jr      _printQuit
 
 errOpcode:
 ;===============================================================================
 ; not a recognised opcode!
 ;-------------------------------------------------------------------------------
-        ld      DE,     @str
-        call    osPrintStr
-        ld      C,      BDOS_RESET
-        jp      BDOS
-
-@str    .BYTE   "Invalid opcode!$"
+        ld      DE,     _strOpcode
+        jr      _printQuit
 
 errExpr:
 ;===============================================================================
 ; not a valid expression!
 ;-------------------------------------------------------------------------------
-        ld      DE,     @str
-        call    osPrintStr
-        ld      C,      BDOS_RESET
-        jp      BDOS
+        ld      DE,     _strExpr
+        jr      _printQuit
 
-@str    .BYTE   "Invalid expression!$"
-
-errHexNumber:
+errHex:
 ;===============================================================================
 ; not a valid hexadecimal number!
 ;-------------------------------------------------------------------------------
-        ld      DE,     @str
-        call    osPrintStr
-        ld      C,      BDOS_RESET
-        jp      BDOS                    ; TODO: have proper osQuit?
-
-        ; TODO: with any error, print out file name, line & col number
-@str    .BYTE "Not valid hexadecimal number!$"
+        ld      DE,     _strHex
+        jr      _printQuit

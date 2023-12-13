@@ -69,15 +69,13 @@ boot:
 
         ; since we've overwritten the CCP,
         ; we need to restart CP/M fully
-        jr      @reset
+        jp      osQuit
 
         ; exit with a version error
         ;-----------------------------------------------------------------------
 @err:   ld      DE,     @str
         call    osPrintStr
-
-@reset: ld      C,      BDOS_RESET
-        jp      BDOS
+        jp      osQuit
 
 @str:   .BYTE "Error: CP/M ", CPM_VER_STR, " or higher required!$"
 
@@ -150,6 +148,14 @@ command_fcb             INSTANCEOF FileControlBlock
 buffer                  DSB 128
 ;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 .ENDS
+
+
+osQuit:
+;===============================================================================
+; quit the application and return to the OS (if present)
+;-------------------------------------------------------------------------------
+        ld      C,      BDOS_RESET      ; CP/M doesn't require us to unwind
+        jp      BDOS                    ;  the stack, we can just reset
 
 
 osGetChar:

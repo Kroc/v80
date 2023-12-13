@@ -19,6 +19,7 @@ init:
         add     HL,     SP              ; stack address, e.g. $FCFE
         ex      DE,     HL              ; swap SP into DE
         ld      E,      0               ; use 0 for lo-byte, e.g. $FC00
+        ld      [temp], DE              ; use bottom of stack for temp bytes
         dec     DE                      ; heap is post-decrement, i.e. $FBFF
         ld      [heap], DE              ; finally set the heap position
         call    memStat                 ; print the memory status
@@ -97,6 +98,10 @@ memStat:
 
 .BLOCK  "code"
 ;===============================================================================
+; the bottom of the stack, just above the heap,
+; can be used as temporary space for a few bytes
+temp:   .ADDR $fc00                     ; (set during initialisation)
+
 row:    .WORD $0000                     ; current line-number in file
 col:    .BYTE $00                       ; current column-number in file
 char:   .BYTE $00                       ; current character
@@ -111,8 +116,16 @@ param:  .BYTE $00                       ; next parameter properties
 ; and heap collide. during initialisation the heap will be placed 256 bytes
 ; below the stack at the top of memory, giving enough room for the stack
 ;
-heap:   .ADDR $fff                      ; current position on the heap
-dict:   .ADDR $000                      ; addr of last dictionary-entry
+heap:   .ADDR $fbff                     ; current position on the heap
+
+; dictionaries:
+;-------------------------------------------------------------------------------
+; labels and constants are stored as a linked-list of dictionary entries.
+; each has its own entry point to avoid wasting time searching for labels
+; amongst constants and vice-versa
+;
+label:  .ADDR $000                      ; addr of last label dictionary-entry
+const:  .ADDR $000                      ; addr of last const dictionary-entry
 
 ; expression bytecode:
 ;-------------------------------------------------------------------------------
@@ -135,7 +148,7 @@ dict:   .ADDR $000                      ; addr of last dictionary-entry
 .DEF    EXPR_OP_XOR     '^'             ; `^`: xor operator
 .DEF    EXPR_OP_MOD     '%'             ; `%`: modulo operator
 
-expr:   .ADDR $000                      ; addr of last expression
+expr:   .ADDR $0000                     ; addr of last expression
 
 
 assemble:
@@ -146,28 +159,38 @@ assemble:
 ;-------------------------------------------------------------------------------
         ld      HL,     [code]          ; where we'll be assembling to
         ld      DE,     [pc]            ; virtual program-counter
+        
+        ld      IX,     [code]          ; where we'll be assembling to
+        ld      IY,     [pc]            ; virtual program-counter
 
 @word:  call    skipWhitespace          ; find first character
 
         ; first character determines the word type:
         cp      ';'                     ; is comment?
         jr      z,      @skip           ; skip until end of line
+        cp      ':'                     ; is label?
+        jr      z,      @label          ; define a label
 
         call    parseInstruction
 
         ;///////////////////////////////////////////////////////////////////////
-        ld      A,      '-'
+        ld      A,      ASCII_LF
         call    osPrintChar             ; DEBUG!
         ;///////////////////////////////////////////////////////////////////////
         ret
 
         ; skip comments
-        ;-----------------------------------------------------------------------
+        ;=======================================================================
 @skip:  call    getChar                 ; read next character (returns z-flag)
         ret     z                       ; return on end-of-file
         cp      ASCII_LF                ; is newline?
         jr      nz, @word               ; keep going until new line
         jr      @word                   ; try get next word
+
+        ; define label
+        ;=======================================================================
+@label: call    readWord                ; read the label in
+        ret
 
 
 skipWhitespace:
@@ -182,7 +205,117 @@ skipWhitespace:
         jr      c, -                    ; keep reading blank chars
         ret
 
-.BLOCK  "opcode-parser"
+readWord:
+;===============================================================================
+; reads a word into a buffer:
+;
+; NOTE: an error occurs if a word is > 32 chars long.
+;       this routine doesn't handle strings
+;
+; in:   A               first character of word already read
+; out:  HL              (preserved)
+;       A, BC           (clobbered)
+;       DE|IX|IY        (undefined) -- depends on osGetChar
+;-------------------------------------------------------------------------------
+        push    HL                      ; preserve HL coming in
+
+        ; we use the bottom of the stack to hold the incoming word;
+        ; because this is page-aligned we can get away with using
+        ; `INC L` instead of `INC HL`
+        ld      HL,     [temp]
+        
+        ld      B,      32              ; max word-length
+        jr      +                       ; (skip first character)
+        ;-----------------------------------------------------------------------
+-       call    osGetChar               ; read char form input file
+        cp      ASCII_SPC+1             ; whitespace?
+        jr      c,      +               ; (leave loop at whitespace)
++       ld      [HL],   A               ; add the character to the buffer
+        inc     L                       ; move to next space in buffer
+        djnz    -                       ; keep looping until B=0
+        ;-----------------------------------------------------------------------
+        jp      errWord                 ; word too long!
+
++       ld      [HL],   0               ; terminate the word buffer
+        pop     HL                      ; restore HL going out
+        ret
+
+pushLabel:
+;===============================================================================
+; push a new label to the heap:
+; WARN: does not check if the label already exists!
+;-------------------------------------------------------------------------------
+        ld      HL,     label           ; last entry in the label dictionary
+        call    pushSymbol              ; append the label symbol
+
+        ret
+
+pushSymbol:
+;===============================================================================
+; adds a new symbol to the heap: (label or constant)
+; WARN: does not check if the symbol already exists!
+;
+; in:   HL              dictionary entry point (contains last addr of symbol)
+;       temp            the symbol is assumed to be in the temp word buffer,
+;                       i.e. after calling `readWord`
+; out:  *               (clobbered)
+;-------------------------------------------------------------------------------
+        ; each symbol added to the heap requires:
+        ;
+        ; - a link address to the previous symbol
+        ; - a byte indicating the type / state of the symbol
+        ; - a word representing the value
+        ; - a length-prefixed name string
+        ;
+        call    pushLink                ; create the link first
+
+        ret
+
+pushLink:
+;===============================================================================
+; adds a new link on the heap that points to the [now] previous entry,
+; and updates the entry point to point to the new one:
+;
+; labels, constants and expressions pushed on the heap all begin with a link
+; field that points to the previous entry. this chain is followed to find a
+; specific entry, e.g. searching for constant
+;
+; in:   HL              dictionary entry point (contains newest entry addr)
+; out:  *               (clobbered)
+;-------------------------------------------------------------------------------
+        ; do the ol' switcheroo -- copy the previous entry link address to
+        ; the new entry and update the entry point to point to our new entry
+        ;
+        ; although the heap extends downwards, the link address has to point
+        ; to the lo-byte of the entry's link field which is technically the
+        ; 2nd byte in the entry
+        ;
+        ;                      +------+
+        ;           .----------| link | (entry point)
+        ;           |          +------+
+        ; - - ------v------+
+        ; ...symbol | link | < heap extends downwards
+        ; - - -------------+
+        ;
+        ; one byte is swapped at a time (hi, then lo) to allow for writing
+        ; the correct heap address back to the entry address
+        ; 
+        ld      DE,     [heap]          ; get current heap position
+        inc     HL                      ; (start with hi-byte; copy backwards)
+        ld      A,      [HL]            ; read entry point hi-byte
+        ld      [DE],   A               ; write this to the heap
+        dec     DE                      ; (this is the addr we want)
+        ld      [HL],   D               ; write heap hi-byte to entry point
+        dec     HL                      ; now handle lo-bytes
+        ld      A,      [HL]            ; read entry point lo-byte
+        ld      [DE],   A               ; write this to heap
+        ld      [HL],   E               ; write heap lo-byte to entry point
+        dec     DE                      ; move to next free byte in heap
+
+        ld      [heap], DE
+        ret
+
+.BLOCK  "code-parser"
 
 parseInstruction:
 ;===============================================================================
@@ -584,21 +717,24 @@ parseHexNumber:
         ; try to read up to 4 digits; the 5th character
         ; must be whitespace or end-of-file!
         ;
+        ; the bottom of the stack is used for temporary bytes (e.g. $FC00..)
+        ; as we know this is page-aligned and can use INC L instead of INC HL
+        ;
         ld      B,      5
-        ld      HL,     @num            ; where to write the bytes
+        ld      HL,     [temp]          ; where to write the bytes
 -       call    osGetChar               ; read a char from file
         cp      33                      ; ASCII space or below?
         jr      c,      +               ; stop when reaching whitespace
         ld      [HL],   A               ; append byte
-        inc     HL                      ; space for next digit
+        inc     L                       ; space for next digit
         djnz    -                       ; decrement B, loop until 0
 
         ; if a 5th byte was read that wasn't whitespace,
         ; it's an error -- the number is too long!
-        jp      errHexNumber
+        jp      errHex
 
         ;-----------------------------------------------------------------------
-+       ld      HL,     @num            ; go back to the start of the number
++       ld      HL,     [temp]          ; go back to the start of the number
         
         ; number of digits in hex number is reversed;
         ; B=1 for 4 digits, B=2 for 3 digits, B=1 for 2 digits and B=0 for 1
@@ -614,7 +750,7 @@ parseHexNumber:
 
         ; if there were _no_ digits after the hexadecimal
         ; sigil ("$") then B was 5 and we error
-        jp      errHexNumber
+        jp      errHex
 
         ; four-digit hex number:
         ;-----------------------------------------------------------------------
@@ -627,7 +763,7 @@ parseHexNumber:
         add     A,      A               ; (shift lo-nybble to hi-nybble)
         add     A,      A               ;
         ld      B,      A               ; answer goes in B
-        inc     HL                      ; move to 3rd digit
+        inc     L                       ; move to 3rd digit
         ;-----------------------------------------------------------------------
         ; a 3rd digit goes in the lower nybble of B:
         ;
@@ -635,7 +771,7 @@ parseHexNumber:
         call    @digit                  ; convert digit to number
         or      B                       ; combine with hi-nybble (if present)
         ld      B,      A               ; answer goes in B
-        inc     HL                      ; move to 2nd digit
+        inc     L                       ; move to 2nd digit
         ;-----------------------------------------------------------------------
         ; a 2nd digit goes in the upper nybble of C:
         ;
@@ -646,7 +782,7 @@ parseHexNumber:
         add     A,      A               ; (shift lo-nybble to hi-nybble)
         add     A,      A               ;
         ld      C,      A               ; answer goes in C
-        inc     HL                      ; move to 1st digit
+        inc     L                       ; move to 1st digit
         ;-----------------------------------------------------------------------
         ; 1st digit goes in the lower nybble of C:
         ;
@@ -657,10 +793,6 @@ parseHexNumber:
 
         pop     HL                      ; (restore HL)
         ret                             ; ship it!
-
-        ; TODO: so long as these bytes don't cross a page-boundary 
-        ;       ($xxFF->$xx00) we could change `inc HL` for `inc L`
-@num:   .BYTE   $00, $00, $00, $00, $00
 
         ; convert a digit to a number:
         ;=======================================================================
@@ -683,7 +815,7 @@ parseHexNumber:
         ; (>=128, hi-bit set), therefore we only need to check 0-5 ("A"-"F")
         sub     17
         cp      6                       ; 0-5 ("A"-"F") are allowed
-        jp      nc,     errHexNumber    ; error for anything above "F"
+        jp      nc,     errHex          ; error for anything above "F"
         add     10                      ; rebase "A" to 10, "F" to 15
 
         ret
@@ -742,8 +874,6 @@ printHexByte:
 ; in:   A               byte to print
 ; out:  A, BC           (clobbered)
 ;       DE|HL|IXY       (undefined) -- depends on osPrintChar
-;
-; NOTE: multiple online sources cite this method, dating back to the 70s!
 ;-------------------------------------------------------------------------------
         call    getHexByte
         ld      A,      B
@@ -772,6 +902,8 @@ getHexByte:
         ; fallthrough to convert 2nd digit
         ; ...
 
+        ; NOTE: multiple online sources cite this method,
+        ;       dating back to at least the 70s!
 @digit: and     %00001111               ; isolate low-nybble
         add     $90                     ; magic!
         daa                             ; adjust to decimal
@@ -786,10 +918,10 @@ getHexByte:
 ; this is where the assembled code will be placed;
 ; anything beyond this point will be overwritten
 ;
-pc:     .WORD $0000                     ; assembly virtual program-counter
+pc:     .WORD $0000                     ; virtual program-counter
 code:
 ;-------------------------------------------------------------------------------
-        .WORD __code                    ; pointer to current position
+        .ADDR __code                    ; pointer to current position
 
 __code: ; WARNING: ANYTHING PLACED AFTER HERE WILL BE OVERWRITTEN
 
