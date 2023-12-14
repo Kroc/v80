@@ -157,14 +157,15 @@ assemble:
 ;
 ; TODO: do the file opening here so that we can do includes
 ;-------------------------------------------------------------------------------
-        ld      HL,     [code]          ; where we'll be assembling to
-        
         ; the virtual program counter is permanently pinned to IX since
         ; it's a value that needs to be incremented often but not read
         ; back too often. this avoids a bunch of HL/DE register swapping
         ;
         ld      IX,     $0100           ; virtual program-counter
+        ld      DE,     [heap]          ; where symbols / expressions go
 
+        ; parse root scope:
+        ;-----------------------------------------------------------------------
 @word:  call    skipWhitespace          ; find first character
 
         ; first character determines the word type:
@@ -192,6 +193,8 @@ assemble:
         ; define label:
         ;=======================================================================
 @label: call    readWord                ; read the label in
+        ; TODO: check if label already exists
+        call    pushLabel               ; define label on the heap
         ret
 
 
@@ -215,12 +218,10 @@ readWord:
 ;       this routine doesn't handle strings
 ;
 ; in:   A               first character of word already read
-; out:  HL              (preserved)
-;       A, BC           (clobbered)
-;       DE|IX|IY        (undefined) -- depends on osGetChar
+; out:  DE              (preserved)
+;       A, BC|HL        (clobbered)
+;       IX|IY           (undefined) -- depends on osGetChar
 ;-------------------------------------------------------------------------------
-        push    HL                      ; preserve HL coming in
-
         ; we use the bottom of the stack to hold the incoming word;
         ; because this is page-aligned we can get away with using
         ; `INC L` instead of `INC HL`
@@ -240,21 +241,24 @@ readWord:
         jp      errWord                 ; word too long!
 
         ;-----------------------------------------------------------------------
-@ok:    ld      [HL],   0               ; terminate the word buffer
+@ok:    ld      [HL],   EXPR_END        ; terminate the word buffer
         ld      A,      32              ; 32 - characters remaining
         sub     B                       ; = length of word
         ld      [temp], A               ; write length to first byte
 
-        pop     HL                      ; restore HL going out
         ret
 
 pushLabel:
 ;===============================================================================
 ; push a new label to the heap:
 ; WARN: does not check if the label already exists!
+; 
+; in:   DE              heap position to write new label
+;       temp            the label is assumed to be in the temp word buffer,
+;                       i.e. after calling `readWord`
+; out:  DE              heap position is advanced (downwards!)
 ;-------------------------------------------------------------------------------
-        ld      HL,     [heap]          ; current position in the heap
-        ld      DE,     label           ; last entry in the label dictionary
+        ld      HL,     label           ; last entry in the label dictionary
         call    pushSymbol              ; append the label symbol
 
         ret
@@ -264,11 +268,11 @@ pushSymbol:
 ; push a new symbol to the heap: (label or constant)
 ; WARN: does not check if the symbol already exists!
 ;
-; in:   HL              heap position to write symbol
-;       DE              dictionary entry point (contains last addr of symbol)
+; in:   DE              heap position to write symbol
+;       HL              dictionary entry point (contains last addr of symbol)
 ;       temp            the symbol is assumed to be in the temp word buffer,
 ;                       i.e. after calling `readWord`
-; out:  *               (clobbered)
+; out:  DE              heap position is updated
 ;-------------------------------------------------------------------------------
         ; each symbol added to the heap requires:
         ;
@@ -290,12 +294,11 @@ pushLink:
 ; field that points to the previous entry. this chain is followed to find a
 ; specific entry, e.g. searching for constant
 ;
-; in:   HL              heap position to write link
-;       DE              dictionary entry point (contains newest entry addr)
-; out:  HL              the updated heap position is written back to `heap`
-;                       but also returned in HL for immediate use
+; in:   DE              heap position to write link
+;       HL              dictionary entry point (contains newest entry addr)
+; out:  DE              updated heap position
 ;       BC, IX/Y        (preserved)
-;       A, DE           (clobbered)
+;       A, HL           (clobbered)
 ;-------------------------------------------------------------------------------
         ; do the ol' switcheroo -- copy the previous entry link address to
         ; the new entry and update the entry point to point to our new entry
@@ -304,31 +307,27 @@ pushLink:
         ; to the lo-byte of the entry's link field which is technically the
         ; 2nd byte in the entry
         ;
-        ;                      +------+
-        ;           .----------| link | (entry point)
-        ;           |          +------+
-        ; - - ------v------+
-        ; ...symbol | link | < heap extends downwards
-        ; - - -------------+
+        ;                     +------+
+        ;          .--------->| addr |  (entry point)
+        ;       2. |          +--|---+
+        ; - - -----+------+      | 1.
+        ;  ...data | addr | <----'      (heap extends downwards)
+        ; - - -----+------+
         ;
         ; one byte is swapped at a time (hi, then lo) to allow for writing
         ; the correct heap address back to the entry address
         ; 
-        ex      DE,     HL              ; swap DE/HL due to Z80 limitations
+        inc     HL              ; (start with hi-bytes; copy-backwards)
+        ld      A,      [HL]    ; read entry point hi-byte
+        ld      [DE],   A       ; write to heap
+        dec     DE              ; (this is the heap addr we need)
+        ld      [HL],   D       ; update entry point hi-byte to heap hi-byte
+        dec     HL              ; move to entry point lo-byte
+        ld      [HL],   A       ; read entry point lo-byte
+        ld      [DE],   A       ; write to heap
+        ld      [HL],   E       ; update entry point lo-byte to heap lo-byte
+        dec     DE              ; next free byte in heap
 
-        inc     HL                      ; (start with hi-byte; copy backwards)
-        ld      A,      [HL]            ; read entry point hi-byte
-        ld      [DE],   A               ; write this to the heap
-        dec     DE                      ; (this is the addr we want)
-        ld      [HL],   D               ; write heap hi-byte to entry point
-        dec     HL                      ; now handle lo-bytes
-        ld      A,      [HL]            ; read entry point lo-byte
-        ld      [DE],   A               ; write this to heap
-        ld      [HL],   E               ; write heap lo-byte to entry point
-        dec     DE                      ; move to next free byte in heap
-
-        ex      DE,     HL
-        ld      [heap], HL              ; write back heap position
         ret
 
 .BLOCK  "code-parser"
@@ -338,9 +337,13 @@ parseInstruction:
 ; parse a Z80 instruction into opcodes:
 ;
 ; in:   A               first character of word to parse
-; out:  A, BC|DE|HL     (clobbered)
-;       IX|IY           (undefined)
+;       DE              heap position
+;       HL              position in code-segment to write opcodes, etc.
+; out:  DE              heap position is advanced for any expressions
+;       HL              code-segment addr is advanced
+;       A, BC           (clobbered)
 ;-------------------------------------------------------------------------------
+        push    HL                      ; preserve code-segment addr
         ld      HL,     opcodes         ; start at beginning of opcode tree
 
         ; the first character is already in A
@@ -367,7 +370,8 @@ parseInstruction:
 @char:  call    getChar                 ; read from input file
         cp      ASCII_SPC+1             ; is it whitespace? (hold carry...)
 
-        ; force lowercase, without also affecting numbers/(most) punctuation:
+        ; force lowercase, without also affecting
+        ; numbers / [most] punctuation:
         ;
         ; this essentially forces ASCII codes 64-95 (@A-Z[\]^_) to codes
         ; 96-127 (`a-z{|}~) which makes A-Z lowercase with the caveat that
@@ -435,7 +439,7 @@ parseInstruction:
 @opcode ld      [param],        A       ; retain flags for parameter fetching
         ld      C,      A               ; retain the opcode-flags byte
         ld      A,      [HL]            ; read the opcode byte
-        ld      HL,     [code]          ; switch to code-segment
+        pop     HL                      ; return to code-segment addr
 
         ; is there any parameter?
         bit     2,      C               ; bit 2 indicates a parameter
@@ -499,7 +503,8 @@ pushExpr:
 ;===============================================================================
 ; push an expression to the heap:
 ;
-; in:   HL              code-segment addr
+; in:   DE              heap position
+;       HL              code-segment addr
 ;       IX              virtual program-counter
 ; out:  *               (clobbered)
 ;-------------------------------------------------------------------------------
@@ -515,53 +520,43 @@ pushExpr:
         ;   (in case of error)
         ; - the expression (as tokens)
         ;
-        ; stash the code-segment addr and virtual program-counter.
-        ; this routine will copy the values from these RAM positions
-        ;
-        ld      [code], HL              ; write back code-segment position
+        ; stash the code-segment addr. we need to write this to the expression
+        ; header, but we don't need to write to the code-segment itself
+        push    HL
 
-        ; link this expression to the previous:
-        ; write the previous expr addr to the head of this one
-        ; (preserving the previous addr)
-        ;
-        ld      DE,     [heap]          ; get current heap position
-        ld      HL,     expr+1          ; addr to read bytes from
-        ldd                             ; (copy bytes across)
-        ldd                             ; [DE]=[HL], DE--, HL--, BC--
+        ld      HL,     expr            ; link this expression to the previous
+        call    pushLink                ; (writes previous expr addr to heap)
 
-        ; update the last expression field to point to this expression:
-        ; warning: DE has already been decremented (by LDD), so we need
-        ; to get the heap address again (without resetting DE)
-        ld      HL,     [heap]          ; start addr of our expression
-        ld      [expr], HL              ; write to last expression addr
-
-        ; write the current code-segment position;
-        ; this is where the calculation result will be filled in
+        ; write the current code-segment position; this is where
+        ; the expression result will be filled in after evaluation
         ;
-        ld      HL,     code+1          ; current code segment position
-        ldd                             ; (copy bytes across)
-        ldd                             ; [DE]=[HL], DE--, HL--, BC--
+        pop     HL
+        ex      DE,     HL              ; swap heap to HL, code-segment to DE
+        ld      [HL],   D
+        dec     HL
+        ld      [HL],   E
+        dec     HL
+        ex      DE,     HL              ; swap heap to DE, code-segment to HL
 
         ; reserve bytes for the expr result:
         ;
         ; this routine is only called if there is a parameter, which assumes
         ; a minimum of 1 byte. check the bit for a 16-bit parameter (e.g. JP)
         ;
-        ld      HL,     [code]          ; retrieve code-segment position
         ld      A,      [param]         ; get opcode-flags byte
         bit     1,      A               ; bit 1 indicates a 16-bit parameter
-        call    nz,     @byte           ; reserve an additional byte
-        call    @byte                   ; reserve a byte
-        ld      [code], HL              ; write back code-segment position
+        jr      z,      +
+        inc     HL                      ; reserve a byte and increment
+        inc     IX                      ;  virtual program-counter
++       inc     HL                      ; reserve an additional byte
+        inc     IX                      ;  and increment program-counter 
 
         ; set the size/type of the deferred result
-        ld      HL,     param           ; parameter-type byte
-        ldd                             ; [DE]=[HL], DE--, HL--, BC--
+        ld      [DE],   A               ; write opcode flags byte to heap
+        dec     DE                      ; extend heap downwards
 
         ; add the current virtual program-counter (for calculating relative
-        ; jumps); the PC is always stored in IX, not RAM. despite the number
-        ; of instructions here, this is still faster than writing the PC
-        ; to RAM and using LDD
+        ; jumps); the PC is always stored in IX, not RAM
         ;
         ld      A,      IXH             ; virtual program-counter hi-byte
         ld      [DE],   A               ; add to the heap
@@ -582,22 +577,11 @@ pushExpr:
         call    skipWhitespace          ; read first character of the next word
         jp      z,      errExpr         ; unexpected end of file!
 
-        ex      DE,     HL              ; (swap the current heap addr into HL)
         call    parseExpr
-        ld      [heap], HL              ; write back updated heap addr
 
         ; attempt to evaluate the expression
         ; ...
 
-        ld      HL,     [code]
-        ret
-
-        ;-----------------------------------------------------------------------
-        ; reserve a byte in the code-segment where the result will go
-        ;
-@byte:  ld      [HL],   0               ; push a 0
-        inc     HL                      ; increment code-segment addr
-        inc     DE                      ; increment virtual program-counter
         ret
 
 ; parseExpr:
@@ -613,12 +597,12 @@ pushExpr:
 ;       must avoid losing the unused character between calls!
 ;
 ; in:   A               first character of the expression
-;       HL              address on the heap to begin writing expr tokens
+;       DE              address on the heap to begin writing expr tokens
 ; out:  A               unused first character of the next word!
-;       HL              updated heap address
+;       DE              updated heap address
 ;-------------------------------------------------------------------------------
---      ld      [HL],   A               ; push token in A to heap
--       dec     HL                      ; (move to next byte on heap)
+--      ld      [DE],   A               ; push token in A to heap
+-       dec     DE                      ; (move to next byte on heap)
 
         call    skipWhitespace          ; read first character of the next word
         jp      z,      errExpr         ; unexpected end of file!
@@ -644,8 +628,8 @@ parseExpr:
 
         ; a unary operator has been added,
         ; read the next character:
-+       ld      [HL],   A               ; push a unary operator token
-        dec     HL                      ; (move to next byte on heap)
++       ld      [DE],   A               ; push a unary operator token
+        dec     DE                      ; (move to next byte on heap)
         call    skipWhitespace          ; read first character of the next word
         jp      z,      errEndOfFile    ; handle unexpected end of file!
 
@@ -657,13 +641,15 @@ parseExpr:
 @value: cp      '$'                     ; hexadecimal sigil?
         jr      nz,     +
 
-        ld      [HL],   A               ; push a number token
-        dec     HL
+        ld      [DE],   A               ; push a number token
+        dec     DE
         call    parseHexNumber          ; parse the hex number into BC
-        ld      [HL],   B
-        dec     HL
-        ld      [HL],   C
-        dec     HL
+        ld      A,      B
+        ld      [DE],   A
+        dec     DE
+        ld      A,      C
+        ld      [DE],   A
+        dec     DE
 
         jr      @operator               ; an operator can follow a value
 
@@ -709,8 +695,9 @@ parseExpr:
         ; whatever it is, it isn't an operator;
         ; fall through and terminate the expression
         ;
-@end:   ld      [HL],   EXPR_END        ; terminate the expression
-        dec     HL
+@end:   xor     A
+        ld      [DE],   A               ; terminate the expression
+        dec     DE
         ret
 
 
