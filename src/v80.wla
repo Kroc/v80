@@ -122,7 +122,7 @@ heap:   .ADDR $fbff                     ; current position on the heap
 ;-------------------------------------------------------------------------------
 ; labels and constants are stored as a linked-list of dictionary entries.
 ; each has its own entry point to avoid wasting time searching for labels
-; amongst constants and vice-versa
+; amongst constants and vice-versa. $0000 terminates the list
 ;
 label:  .ADDR $000                      ; addr of last label dictionary-entry
 const:  .ADDR $000                      ; addr of last const dictionary-entry
@@ -158,10 +158,12 @@ assemble:
 ; TODO: do the file opening here so that we can do includes
 ;-------------------------------------------------------------------------------
         ld      HL,     [code]          ; where we'll be assembling to
-        ld      DE,     [pc]            ; virtual program-counter
         
-        ld      IX,     [code]          ; where we'll be assembling to
-        ld      IY,     [pc]            ; virtual program-counter
+        ; the virtual program counter is permanently pinned to IX since
+        ; it's a value that needs to be incremented often but not read
+        ; back too often. this avoids a bunch of HL/DE register swapping
+        ;
+        ld      IX,     $0100           ; virtual program-counter
 
 @word:  call    skipWhitespace          ; find first character
 
@@ -287,7 +289,10 @@ pushLink:
 ; specific entry, e.g. searching for constant
 ;
 ; in:   HL              dictionary entry point (contains newest entry addr)
-; out:  *               (clobbered)
+; out:  DE              the updated heap position is written back to `heap`
+;                       but also returned in DE for immediate use
+;       BC              (preserved)
+;       A, HL           (clobbered)
 ;-------------------------------------------------------------------------------
         ; do the ol' switcheroo -- copy the previous entry link address to
         ; the new entry and update the entry point to point to our new entry
@@ -427,11 +432,7 @@ parseInstruction:
 @opcode ld      [param],        A       ; retain flags for parameter fetching
         ld      C,      A               ; retain the opcode-flags byte
         ld      A,      [DE]            ; read the opcode byte
-
-        ; with the instruction matched to opcode, we no longer need
-        ; the tree position; return to the virtual program-counter
-        ld      HL,     [code]
-        ld      DE,     [pc]
+        ld      HL,     [code]          ; switch to code-segment
 
         ; is there any parameter?
         bit     2,      C               ; bit 2 indicates a parameter
@@ -444,28 +445,28 @@ parseInstruction:
         jr      z,      +
         ld      [HL],   $dd             ; emit IX prefix byte ($DD)
         inc     HL                      ; move to next byte in code-segment
-        inc     DE                      ; increment virtual program-counter
+        inc     IX                      ; increment virtual program-counter
 
         ;-----------------------------------------------------------------------
 +       bit     6,      C               ; bit 6 indicates an IY instruction
         jr      z,      +
         ld      [HL],   $fd             ; emit IY prefix byte ($FD)
         inc     HL                      ; move to next byte in code-segment
-        inc     DE                      ; increment virtual program-counter
+        inc     IX                      ; increment virtual program-counter
 
         ;-----------------------------------------------------------------------
 +       bit     5,      C               ; bit 5 indicates extended ($ED) opcode
         jr      z,      +               ; (these must appear after IX/IY bytes)
         ld      [HL],   $ed             ; emit $ED prefix byte
         inc     HL                      ; move to next byte in code-segment
-        inc     DE                      ; increment virtual program-counter
+        inc     IX                      ; increment virtual program-counter
 
         ;-----------------------------------------------------------------------
 +       bit     3,      C               ; bit 3 indicates extended ($CB) opcode
         jr      z,      +               ; (these must appear after IX/IY bytes)
         ld      [HL],   $cb             ; emit $CB prefix byte
         inc     HL                      ; move to next byte in code-segment
-        inc     DE                      ; increment virtual program-counter
+        inc     IX                      ; increment virtual program-counter
 
         ; on the Z80, a combination of $DD|$FB (IX|IY) + $CB opcodes place
         ; the opcode after the parameter! if this is the case, we have to
@@ -486,7 +487,7 @@ parseInstruction:
         ;
 @emit:  ld      [HL],   C               ; emit the opcode byte
         inc     HL                      ; move to next byte in code-segment
-        inc     DE                      ; increment virtual program-counter
+        inc     IX                      ; increment virtual program-counter
         ret
 
 .ENDB
@@ -496,7 +497,7 @@ pushExpr:
 ; push an expression to the heap:
 ;
 ; in:   HL              code-segment addr
-;       DE              virtual program-counter
+;       IX              virtual program-counter
 ; out:  *               (clobbered)
 ;-------------------------------------------------------------------------------
         ; add an expression to the heap,
@@ -515,7 +516,6 @@ pushExpr:
         ; this routine will copy the values from these RAM positions
         ;
         ld      [code], HL              ; write back code-segment position
-        ld      [pc],   DE              ; write back virtual program-counter
 
         ; link this expression to the previous:
         ; write the previous expr addr to the head of this one
@@ -545,23 +545,27 @@ pushExpr:
         ; a minimum of 1 byte. check the bit for a 16-bit parameter (e.g. JP)
         ;
         ld      HL,     [code]          ; retrieve code-segment position
-        ld      DE,     [pc]            ; retrieve virtual program-counter
         ld      A,      [param]         ; get opcode-flags byte
         bit     1,      A               ; bit 1 indicates a 16-bit parameter
         call    nz,     @byte           ; reserve an additional byte
         call    @byte                   ; reserve a byte
         ld      [code], HL              ; write back code-segment position
-        ld      [pc],   DE              ; write back virtual program-counter
 
         ; set the size/type of the deferred result
         ld      HL,     param           ; parameter-type byte
         ldd                             ; [DE]=[HL], DE--, HL--, BC--
 
-        ; add the current virtual program-counter
-        ; (for calculating relative jumps)
-        ld      HL,     pc+1            ; virtual program-counter
-        ldd                             ; (copy bytes across)
-        ldd                             ; [DE]=[HL], DE--, HL--, BC--
+        ; add the current virtual program-counter (for calculating relative
+        ; jumps); the PC is always stored in IX, not RAM. despite the number
+        ; of instructions here, this is still faster than writing the PC
+        ; to RAM and using LDD
+        ;
+        ld      A,      IXH             ; virtual program-counter hi-byte
+        ld      [DE],   A               ; add to the heap
+        dec     DE                      ; extend heap downwards
+        ld      A,      IXL             ; virtual program-counter lo-byte
+        ld      [DE],   A               ; add to the heap
+        dec     DE                      ; extend heap downwards
 
         ; add the row/column of the expression in case of
         ; error when we come back to it later
@@ -583,7 +587,6 @@ pushExpr:
         ; ...
 
         ld      HL,     [code]
-        ld      DE,     [pc]
         ret
 
         ;-----------------------------------------------------------------------
@@ -924,7 +927,6 @@ getHexByte:
 ; this is where the assembled code will be placed;
 ; anything beyond this point will be overwritten
 ;
-pc:     .WORD $0000                     ; virtual program-counter
 code:
 ;-------------------------------------------------------------------------------
         .ADDR __code                    ; pointer to current position
