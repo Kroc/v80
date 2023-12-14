@@ -1,5 +1,5 @@
-:label
 	bit0*ix	$ee
+:label
 	adc	$1
 	adc.a
 	adc.b

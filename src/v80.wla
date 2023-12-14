@@ -253,7 +253,8 @@ pushLabel:
 ; push a new label to the heap:
 ; WARN: does not check if the label already exists!
 ;-------------------------------------------------------------------------------
-        ld      HL,     label           ; last entry in the label dictionary
+        ld      HL,     [heap]          ; current position in the heap
+        ld      DE,     label           ; last entry in the label dictionary
         call    pushSymbol              ; append the label symbol
 
         ret
@@ -263,7 +264,8 @@ pushSymbol:
 ; push a new symbol to the heap: (label or constant)
 ; WARN: does not check if the symbol already exists!
 ;
-; in:   HL              dictionary entry point (contains last addr of symbol)
+; in:   HL              heap position to write symbol
+;       DE              dictionary entry point (contains last addr of symbol)
 ;       temp            the symbol is assumed to be in the temp word buffer,
 ;                       i.e. after calling `readWord`
 ; out:  *               (clobbered)
@@ -288,11 +290,12 @@ pushLink:
 ; field that points to the previous entry. this chain is followed to find a
 ; specific entry, e.g. searching for constant
 ;
-; in:   HL              dictionary entry point (contains newest entry addr)
-; out:  DE              the updated heap position is written back to `heap`
-;                       but also returned in DE for immediate use
-;       BC              (preserved)
-;       A, HL           (clobbered)
+; in:   HL              heap position to write link
+;       DE              dictionary entry point (contains newest entry addr)
+; out:  HL              the updated heap position is written back to `heap`
+;                       but also returned in HL for immediate use
+;       BC, IX/Y        (preserved)
+;       A, DE           (clobbered)
 ;-------------------------------------------------------------------------------
         ; do the ol' switcheroo -- copy the previous entry link address to
         ; the new entry and update the entry point to point to our new entry
@@ -311,7 +314,8 @@ pushLink:
         ; one byte is swapped at a time (hi, then lo) to allow for writing
         ; the correct heap address back to the entry address
         ; 
-        ld      DE,     [heap]          ; get current heap position
+        ex      DE,     HL              ; swap DE/HL due to Z80 limitations
+
         inc     HL                      ; (start with hi-byte; copy backwards)
         ld      A,      [HL]            ; read entry point hi-byte
         ld      [DE],   A               ; write this to the heap
@@ -322,8 +326,9 @@ pushLink:
         ld      [DE],   A               ; write this to heap
         ld      [HL],   E               ; write heap lo-byte to entry point
         dec     DE                      ; move to next free byte in heap
-        ld      [heap], DE              ; write back heap position
 
+        ex      DE,     HL
+        ld      [heap], HL              ; write back heap position
         ret
 
 .BLOCK  "code-parser"
@@ -336,7 +341,7 @@ parseInstruction:
 ; out:  A, BC|DE|HL     (clobbered)
 ;       IX|IY           (undefined)
 ;-------------------------------------------------------------------------------
-        ld      DE,     opcodes         ; start at beginning of opcode tree
+        ld      HL,     opcodes         ; start at beginning of opcode tree
 
         ; the first character is already in A
         set     5,      A               ; force lowercase (see desc. below)
@@ -345,19 +350,17 @@ parseInstruction:
         ;=======================================================================
         ; match; follow the branch
         ;-----------------------------------------------------------------------
-@match: inc     DE                      ; step over the character to the addr
-        ld      A,      [DE]            ; read the hi-byte / opcode-flags
-        inc     DE                      ; move to lo-byte / opcode-byte
+@match: inc     HL                      ; step over the character to the addr
+        ld      A,      [HL]            ; read the hi-byte / opcode-flags
+        inc     HL                      ; move to lo-byte / opcode-byte
 
         ; is it a jump to another branch, or an opcode? (opcode-flags have
         ; to be in the hi-byte because a jump-address lo-byte could be >128)
         and     A                       ; (set flags)
         jp      m,      @opcode         ; high-bit set = this is an opcode
 
-        ex      DE,     HL              ; swap DE|HL due to Z80 limitations
         ld      L,      [HL]            ; read lo-byte
         ld      H,      A               ; apply the hi-byte from before
-        ex      DE,     HL              ; swap DE|HL back
 
         ; get character from input file:
         ;-----------------------------------------------------------------------
@@ -391,7 +394,7 @@ parseInstruction:
 
         ; get character from opcode tree:
         ;-----------------------------------------------------------------------
-@retry: ld      A,      [DE]            ; read from current position in tree
+@retry: ld      A,      [HL]            ; read from current position in tree
         and     A                       ; (set flags!)
 
         ; if the top-bit is set, this is either a continuation character
@@ -404,9 +407,9 @@ parseInstruction:
 
         ; no match; try the next branch:
         ;-----------------------------------------------------------------------
-@skip:  inc     DE
-        inc     DE
-        inc     DE
+@skip:  inc     HL
+        inc     HL
+        inc     HL
         jr      @retry
 
         ;-----------------------------------------------------------------------
@@ -423,7 +426,7 @@ parseInstruction:
         jp      z,      errOpcode       ; end of branch? (128 -> 0)
         cp      A,      C               ; compare with input char
         jp      nz,     errOpcode       ; if they don't match, error!
-        inc     DE                      ; match -- move to next char in tree
+        inc     HL                      ; match -- move to next char in tree
         jr      @char
 
         ;=======================================================================
@@ -431,7 +434,7 @@ parseInstruction:
         ;
 @opcode ld      [param],        A       ; retain flags for parameter fetching
         ld      C,      A               ; retain the opcode-flags byte
-        ld      A,      [DE]            ; read the opcode byte
+        ld      A,      [HL]            ; read the opcode byte
         ld      HL,     [code]          ; switch to code-segment
 
         ; is there any parameter?
