@@ -101,12 +101,18 @@ memStat:
 ; the bottom of the stack, just above the heap,
 ; can be used as temporary space for a few bytes
 temp:   .ADDR $fc00                     ; (set during initialisation)
+sp:     .ADDR $fcff                     ; stack pointer backup
 
-row:    .WORD $0000                     ; current line-number in file
-col:    .BYTE $00                       ; current column-number in file
 char:   .BYTE $00                       ; current character
 
+row:    .WORD $0000                     ; current line-number in file
+
+; NOTE: these two bytes are specifically grouped together because
+;       they are required by expressions written to the heap,
+;       and are pushed together as a single  word
+expr_param_col:
 param:  .BYTE $00                       ; next parameter properties
+col:    .BYTE $00                       ; current column-number in file
 
 ; heap:
 ;-------------------------------------------------------------------------------
@@ -506,7 +512,11 @@ pushExpr:
 ; in:   DE              heap position
 ;       HL              code-segment addr
 ;       IX              virtual program-counter
-; out:  *               (clobbered)
+;
+; out:  DE              updated heap position (expr added to heap)
+;       HL              updated code-segment addr (expr result space reserved)
+;       IX              updated virtual program-counter (as with HL)
+;       A               (clobbered)
 ;-------------------------------------------------------------------------------
         ; add an expression to the heap,
         ; this requires:
@@ -523,61 +533,65 @@ pushExpr:
         ; stash the code-segment addr. we need to write this to the expression
         ; header, but we don't need to write to the code-segment itself
         push    HL
-
         ld      HL,     expr            ; link this expression to the previous
         call    pushLink                ; (writes previous expr addr to heap)
-
-        ; write the current code-segment position; this is where
-        ; the expression result will be filled in after evaluation
-        ;
         pop     HL
+
+        ; we need to push a bunch of values to the heap and the fastest way
+        ; to write 16-bit values easily is... the stack! simply make the heap
+        ; into the stack and we can PUSH our stuff on to it!
+        ;
+        ; WE DO NOT NEED TO DISABLE INTERRUPTS!!! any interrupt is going to
+        ; push to our heap and then pop the address off when it returns,
+        ; which has no affect on the values we're pushing
+        ;
         ex      DE,     HL              ; swap heap to HL, code-segment to DE
-        ld      [HL],   D
-        dec     HL
-        ld      [HL],   E
-        dec     HL
-        ex      DE,     HL              ; swap heap to DE, code-segment to HL
+        ld      [sp],   SP              ; backup stack pointer
+        inc     HL                      ; fix addr for stack use
+        ld      SP,     HL              ; move stack to heap!
+        ;-----------------------------------------------------------------------
+
+        ; push the current code-segment position; this is where
+        ; the expression result will be filled in after evaluation
+        push    DE
+
+        ; push the current virtual program-counter
+        ; (for calculating relative jumps)
+        push    IX                      ; PC is always stored in IX, not RAM
+
+        ; push the source file line-number
+        ld      BC,     [row]
+        push    BC
+        ; push the source file column-number, plus the opcode
+        ; flags byte that gives the type/size of the result
+        ld      BC,     [expr_param_col]
+        push    BC
 
         ; reserve bytes for the expr result:
         ;
         ; this routine is only called if there is a parameter, which assumes
-        ; a minimum of 1 byte. check the bit for a 16-bit parameter (e.g. JP)
+        ; a minimum of 1 byte. check the bit for a 16-bit parameter (e.g. JP).
         ;
-        ld      A,      [param]         ; get opcode-flags byte
-        bit     1,      A               ; bit 1 indicates a 16-bit parameter
+        ; NOTE: the opcode-flags byte is in C, from the load above
+        bit     1,      C               ; bit 1 indicates a 16-bit parameter
         jr      z,      +
-        inc     HL                      ; reserve a byte and increment
+        inc     DE                      ; reserve a byte and increment
         inc     IX                      ;  virtual program-counter
-+       inc     HL                      ; reserve an additional byte
++       inc     DE                      ; reserve an additional byte
         inc     IX                      ;  and increment program-counter 
 
-        ; set the size/type of the deferred result
-        ld      [DE],   A               ; write opcode flags byte to heap
-        dec     DE                      ; extend heap downwards
-
-        ; add the current virtual program-counter (for calculating relative
-        ; jumps); the PC is always stored in IX, not RAM
-        ;
-        ld      A,      IXH             ; virtual program-counter hi-byte
-        ld      [DE],   A               ; add to the heap
-        dec     DE                      ; extend heap downwards
-        ld      A,      IXL             ; virtual program-counter lo-byte
-        ld      [DE],   A               ; add to the heap
-        dec     DE                      ; extend heap downwards
-
-        ; add the row/column of the expression in case of
-        ; error when we come back to it later
-        ld      HL,     col             ; addr of input file column number
-        ldd                             ; copy column number,
-        ldd                             ;  then row lo-byte
-        ldd                             ;  and hi byte, that follows
+        ;-----------------------------------------------------------------------
+        ld      SP,     [sp]
+        ex      DE,     HL              ; swap heap to DE, code-segment to HL
 
         ; begin parsing the expression, packing it into bytecode:
         ;-----------------------------------------------------------------------
         call    skipWhitespace          ; read first character of the next word
         jp      z,      errExpr         ; unexpected end of file!
 
-        call    parseExpr
+        push    HL                      ; does not need code-segment addr?
+        call    parseExpr               ; -- addr to write is in expr header
+        pop     HL
 
         ; attempt to evaluate the expression
         ; ...
@@ -600,6 +614,7 @@ pushExpr:
 ;       DE              address on the heap to begin writing expr tokens
 ; out:  A               unused first character of the next word!
 ;       DE              updated heap address
+;       A, HL           (clobbered)
 ;-------------------------------------------------------------------------------
 --      ld      [DE],   A               ; push token in A to heap
 -       dec     DE                      ; (move to next byte on heap)
@@ -706,12 +721,10 @@ parseHexNumber:
 ; parses an ASCII hexadecimal number and returns the value:
 ;
 ; out:  BC              the value, 0 padded for numbers < 256
-;       HL              (preserved)
-;       A               (clobbered)
+;       A, HL           (clobbered)
 ;       DE              (undefined) -- depends on osGetChar
 ;-------------------------------------------------------------------------------
         ld      C,      0               ; return value will go here
-        push    HL                      ; preserve HL
 
         ; try to read up to 4 digits; the 5th character
         ; must be whitespace or end-of-file!
@@ -790,7 +803,6 @@ parseHexNumber:
         or      C                       ; combine with hi-nybble (if present)
         ld      C,      A               ; answer goes in C
 
-        pop     HL                      ; (restore HL)
         ret                             ; ship it!
 
         ; convert a digit to a number:
