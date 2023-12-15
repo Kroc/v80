@@ -21,6 +21,7 @@ It currently runs on CP/M with plans to make it self-hosting (can assemble itsel
 
 v80 uses a non-standard syntax designed for parsing simplicity / speed, not compatibility with existing source code.
 
+The basic principle is that v80 can only recognise a word by the first character, so everything must be prefixed with a sigil type or otherwise be easily categorizable, e.g. `a`-`z` = instruction.
 
     v80: ................ zilog:
 
@@ -39,6 +40,15 @@ v80 uses a non-standard syntax designed for parsing simplicity / speed, not comp
 Labels begin with a colon.
 
     :label
+
+Labels can begin with a number; in fact, almost any character is game as only whitespace is considered the end of a label name, although you should avoid going too far. `a`-`z`, `0`-`9` and `_` are recommended.
+
+    :1
+
+### keywords:
+
+    .b  $AD $DE $EF $BE     ; write bytes
+    .w  $DEAD $BEEF         ; write words
 
 ### Operators:
 

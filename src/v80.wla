@@ -239,9 +239,9 @@ readWord:
 ;       this routine doesn't handle strings
 ;
 ; in:   A               first character of word already read
-; out:  HL              (preserved)
-;       A, BC           (clobbered)
-;       DE|IX|IY        (undefined) -- depends on osGetChar
+; out:  B               length of word
+;       HL              (preserved)
+;       A, C            (clobbered)
 ;-------------------------------------------------------------------------------
         push    HL                      ; preserve HL coming in
 
@@ -264,10 +264,13 @@ readWord:
         jp      errWord                 ; word too long!
 
         ;-----------------------------------------------------------------------
-@ok:    ld      [HL],   EXPR_END        ; terminate the word buffer
+@ok:    xor     A                       ; set A to zero
+        ld      [HL],   A               ; terminate the word buffer (EXPR_END)
+        ld      L,      A               ; return to start of word-buffer
         ld      A,      32              ; 32 - characters remaining
-        sub     B                       ; = length of word
-        ld      [temp], A               ; write length to first byte
+        sub     B                       ;    = length of word
+        ld      [HL],   A               ; write length to first byte
+        ld      B,      A               ; return word length
 
         pop     HL                      ; restore HL going out
         ret
@@ -275,9 +278,17 @@ readWord:
 pushLabel:
 ;===============================================================================
 ; push a new label to the heap:
-; WARN: does not check if the label already exists!
 ; 
+; - the link addr to the previous label
+; - the label value; the current virtual program-counter
+; - the label name as a length-prefixed string,
+;   written BACKWARDS -- i.e. the heap extends downwards
+;   the letters are written in order, downwards
+;
+; WARN: does not check if the label already exists!
+;
 ; in:   HL              heap position to write new label
+;       B               label name length
 ;       temp            the label is assumed to be in the temp word buffer,
 ;                       i.e. after calling `readWord`
 ; out:  HL              heap position is advanced (downwards!)
@@ -300,7 +311,22 @@ pushLabel:
         dec     HL
         ld      A,      IXL
         ld      [HL],   A
-ret
+
+        ; push the label name:
+        ;-----------------------------------------------------------------------
+        ; write the label name to the heap; the first byte is the length.
+        ; we already have the length in B so we don't need to read it first
+        ;
+        ld      DE,     [temp]          ; get word-buffer address
+        ;-----------------------------------------------------------------------
+-       ld      A,      [DE]            ; read from word-buffer
+        dec     HL                      ; pre-decrement heap to empty byte
+        ld      [HL],   A               ; add character to heap
+        inc     E                       ; move *forward* in word-buffer
+        djnz    -                       ; keep looping
+        ;-----------------------------------------------------------------------
+
+        ret
 
 .BLOCK  "code-parser"
 
@@ -421,7 +447,7 @@ parseInstruction:
 
         ; no parameter!
         ex      DE,     HL              ; swap heap back to HL, code to DE
-        jp      @emit                   ; write the opcode byte to code-segment
+        jr      @emit                   ; write the opcode byte to code-segment
 
         ;-----------------------------------------------------------------------
         ; the flags byte is a set of flags for Z80-specifics
@@ -478,7 +504,6 @@ parseInstruction:
         ld      [DE],   A               ; emit opcode byte to code-segment
         inc     DE                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
-        ld      [code], DE              ; write back updated addr
         ret
 
 .ENDB
