@@ -13,7 +13,7 @@ init:
         ; set heap position below stack:
         ;-----------------------------------------------------------------------
         ; this *assumes* we are at least 1 call deep on the stack,
-        ; i.e. $FCFE rather than the unused stack top $FD00
+        ; i.e. $FCFE rather than the unused stack top @ $FD00
         ;
         ld      HL,     $0000           ; oddly, there's no `ld HL, SP`!
         add     HL,     SP              ; stack address, e.g. $FCFE
@@ -133,6 +133,16 @@ heap:   .ADDR $fc00                     ; current position on the heap
 ; each has its own entry point to avoid wasting time searching for labels
 ; amongst constants and vice-versa. $0000 terminates the list
 ;
+; although the heap extends downwards, the link address has to point to
+; the lo-byte of the entry's link field which is technically the 2nd byte
+; of the record
+;                     +------+
+;          .--------->| addr |  (entry point)
+;       2. |          +--|---+
+; - - -----+------+      | 1.
+;  ...data | addr | <----'      (heap extends downwards)
+; - - -----+------+
+;
 label:  .ADDR $000                      ; addr of last label dictionary-entry
 const:  .ADDR $000                      ; addr of last const dictionary-entry
 
@@ -172,6 +182,7 @@ assemble:
         ;
         ld      IX,     $0100           ; virtual program-counter
         ld      DE,     [heap]          ; where symbols / expressions go
+        ld      HL,     [code]          ; where code is assembled to
 
         ; parse root scope:
         ;-----------------------------------------------------------------------
@@ -227,10 +238,12 @@ readWord:
 ;       this routine doesn't handle strings
 ;
 ; in:   A               first character of word already read
-; out:  DE              (preserved)
-;       A, BC|HL        (clobbered)
-;       IX|IY           (undefined) -- depends on osGetChar
+; out:  HL              (preserved)
+;       A, BC           (clobbered)
+;       DE|IX|IY        (undefined) -- depends on osGetChar
 ;-------------------------------------------------------------------------------
+        push    HL                      ; preserve HL coming in
+
         ; we use the bottom of the stack to hold the incoming word;
         ; because this is page-aligned we can get away with using
         ; `INC L` instead of `INC HL`
@@ -255,6 +268,7 @@ readWord:
         sub     B                       ; = length of word
         ld      [temp], A               ; write length to first byte
 
+        pop     HL                      ; restore HL going out
         ret
 
 pushLabel:
@@ -290,53 +304,6 @@ pushSymbol:
         ; - a word representing the value
         ; - a length-prefixed name string
         ;
-        call    pushLink                ; create the link first
-
-        ret
-
-pushLink:
-;===============================================================================
-; adds a new link on the heap that points to the [now] previous entry,
-; and updates the entry point to point to the new one:
-;
-; labels, constants and expressions pushed on the heap all begin with a link
-; field that points to the previous entry. this chain is followed to find a
-; specific entry, e.g. searching for constant
-;
-; in:   DE              heap position to write link
-;       HL              dictionary entry point (contains newest entry addr)
-; out:  DE              updated heap position
-;       BC, IX/Y        (preserved)
-;       A, HL           (clobbered)
-;-------------------------------------------------------------------------------
-        ; do the ol' switcheroo -- copy the previous entry link address to
-        ; the new entry and update the entry point to point to our new entry
-        ;
-        ; although the heap extends downwards, the link address has to point
-        ; to the lo-byte of the entry's link field which is technically the
-        ; 2nd byte in the entry
-        ;
-        ;                     +------+
-        ;          .--------->| addr |  (entry point)
-        ;       2. |          +--|---+
-        ; - - -----+------+      | 1.
-        ;  ...data | addr | <----'      (heap extends downwards)
-        ; - - -----+------+
-        ;
-        ; one byte is swapped at a time (hi, then lo) to allow for writing
-        ; the correct heap address back to the entry address
-        ; 
-        dec     DE              ; pre-decrement heap into empty byte
-        inc     HL              ; (start with hi-bytes; copy-backwards)
-        ld      A,      [HL]    ; read entry point hi-byte
-        ld      [DE],   A       ; write to heap
-        dec     DE              ; (this is the heap addr we need)
-        ld      [HL],   D       ; update entry point hi-byte to heap hi-byte
-        dec     HL              ; move to entry point lo-byte
-        ld      [HL],   A       ; read entry point lo-byte
-        ld      [DE],   A       ; write to heap
-        ld      [HL],   E       ; update entry point lo-byte to heap lo-byte
-
         ret
 
 .BLOCK  "code-parser"
@@ -512,6 +479,16 @@ pushExpr:
 ;===============================================================================
 ; push an expression to the heap:
 ;
+; - the link addr to the previous expression
+; - the current code-segment address
+; - the current virtual program-counter
+;   (in case of relative jump)
+; - the current line number in the input file
+; - the current column number in the input file
+; - the size of the output; 1 or 2 bytes
+;   (in case of error)
+; - the expression (as tokens)
+;
 ; in:   DE              heap position
 ;       HL              code-segment addr
 ;       IX              virtual program-counter
@@ -521,25 +498,6 @@ pushExpr:
 ;       IX              updated virtual program-counter (as with HL)
 ;       A               (clobbered)
 ;-------------------------------------------------------------------------------
-        ; add an expression to the heap,
-        ; this requires:
-        ;
-        ; - the link addr to the previous expression
-        ; - the current code-segment address
-        ; - the size of the output; 1 or 2 bytes
-        ; - the current virtual program-counter
-        ;   (in case of relative jump)
-        ; - the current col/row in the input file
-        ;   (in case of error)
-        ; - the expression (as tokens)
-        ;
-        ; stash the code-segment addr. we need to write this to the expression
-        ; header, but we don't need to write to the code-segment itself
-        push    HL
-        ld      HL,     expr            ; link this expression to the previous
-        call    pushLink                ; (writes previous expr addr to heap)
-        pop     HL
-
         ; we need to push a bunch of values to the heap and the fastest way
         ; to write 16-bit values easily is... the stack! simply make the heap
         ; into the stack and we can PUSH our stuff on to it!
@@ -552,6 +510,13 @@ pushExpr:
         ld      [sp],   SP              ; backup stack pointer
         ld      SP,     HL              ; move stack to heap!
         ;-----------------------------------------------------------------------
+
+        ; link this expression to the previous one:
+        ; (since the heap address is in SP, we can reuse HL)
+        ;
+        ld      HL,     [expr]          ; get previous expr address
+        push    HL                      ; write to heap
+        ld      [expr], SP              ; write heap addr to the entry point!
 
         ; push the current code-segment position; this is where
         ; the expression result will be filled in after evaluation
