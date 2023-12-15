@@ -2,9 +2,9 @@
 
 _v80_ is a (very) small, (very) fast Z80 assembler that runs on Z80 for bootstrapping larger projects.
 
-It currently runs on CP/M with plans to make it self-hosting (can assemble itself) with ports to [ZealOS] and [Agon Light].
+It currently runs on CP/M with plans to make it self-hosting (can assemble itself) with ports to [Zeal 8-bit OS] and [Agon Light].
 
-[ZealOS]: https://github.com/Zeal-Operating-System/ZealOS
+[Zeal 8-bit OS]: https://github.com/zeal8bit/Zeal-8-bit-OS
 [Agon Light]: https://www.thebyteattic.com/p/agon.html
 
 ## ~~Features~~
