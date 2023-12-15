@@ -108,7 +108,7 @@ row:    .WORD $0000                     ; current line-number in file
 
 ; NOTE: these two bytes are specifically grouped together because
 ;       they are required by expressions written to the heap,
-;       and are pushed together as a single  word
+;       and are pushed together as a single word
 expr_param_col:
 param:  .BYTE $00                       ; next parameter properties
 col:    .BYTE $00                       ; current column-number in file
@@ -281,30 +281,27 @@ pushLabel:
 ;                       i.e. after calling `readWord`
 ; out:  DE              heap position is advanced (downwards!)
 ;-------------------------------------------------------------------------------
-        ld      HL,     label           ; last entry in the label dictionary
-        call    pushSymbol              ; append the label symbol
-
-        ret
-
-pushSymbol:
-;===============================================================================
-; push a new symbol to the heap: (label or constant)
-; WARN: does not check if the symbol already exists!
-;
-; in:   DE              heap position to write symbol
-;       HL              dictionary entry point (contains last addr of symbol)
-;       temp            the symbol is assumed to be in the temp word buffer,
-;                       i.e. after calling `readWord`
-; out:  DE              heap position is updated
-;-------------------------------------------------------------------------------
-        ; each symbol added to the heap requires:
+        ; link this label to the previous one:
         ;
-        ; - a link address to the previous symbol
-        ; - a byte indicating the type / state of the symbol
-        ; - a word representing the value
-        ; - a length-prefixed name string
+        ex      DE,     HL              ; swap heap to HL
+        ld      DE,     [label]         ; read prev label addr
+        dec     HL                      ; pre-decrement heap to empty byte
+        ld      [HL],   D               ; write prev label addr hi-byte
+        dec     HL                      ; (this is the heap addr we want)
+        ld      [HL],   E               ; write prev label addr lo-byte
+        ld      [label],DE              ; update entry point with heap addr
+
+        ; push the label value, which is the virtual program-counter
         ;
-        ret
+        dec     HL
+        ld      A,      IXH
+        ld      [HL],   A
+        dec     HL
+        ld      A,      IXL
+        ld      [HL],   A
+
+        ex      DE,     HL              ; swap heap to DE
+ret
 
 .BLOCK  "code-parser"
 
