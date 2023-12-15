@@ -20,7 +20,6 @@ init:
         ex      DE,     HL              ; swap SP into DE
         ld      E,      0               ; use 0 for lo-byte, e.g. $FC00
         ld      [temp], DE              ; use bottom of stack for temp bytes
-        dec     DE                      ; heap is post-decrement, i.e. $FBFF
         ld      [heap], DE              ; finally set the heap position
         call    memStat                 ; print the memory status
 
@@ -122,7 +121,11 @@ col:    .BYTE $00                       ; current column-number in file
 ; and heap collide. during initialisation the heap will be placed 256 bytes
 ; below the stack at the top of memory, giving enough room for the stack
 ;
-heap:   .ADDR $fbff                     ; current position on the heap
+; like the stack, the heap is pre-decrement meaning that the heap address
+; is decremented first before writing a value, ergo the heap addr points
+; to a currently occupied byte on the heap
+;
+heap:   .ADDR $fc00                     ; current position on the heap
 
 ; dictionaries:
 ;-------------------------------------------------------------------------------
@@ -323,6 +326,7 @@ pushLink:
         ; one byte is swapped at a time (hi, then lo) to allow for writing
         ; the correct heap address back to the entry address
         ; 
+        dec     DE              ; pre-decrement heap into empty byte
         inc     HL              ; (start with hi-bytes; copy-backwards)
         ld      A,      [HL]    ; read entry point hi-byte
         ld      [DE],   A       ; write to heap
@@ -332,7 +336,6 @@ pushLink:
         ld      [HL],   A       ; read entry point lo-byte
         ld      [DE],   A       ; write to heap
         ld      [HL],   E       ; update entry point lo-byte to heap lo-byte
-        dec     DE              ; next free byte in heap
 
         ret
 
@@ -547,7 +550,6 @@ pushExpr:
         ;
         ex      DE,     HL              ; swap heap to HL, code-segment to DE
         ld      [sp],   SP              ; backup stack pointer
-        inc     HL                      ; fix addr for stack use
         ld      SP,     HL              ; move stack to heap!
         ;-----------------------------------------------------------------------
 
@@ -581,8 +583,10 @@ pushExpr:
         inc     IX                      ;  and increment program-counter 
 
         ;-----------------------------------------------------------------------
-        ld      SP,     [sp]
+        ld      HL,     0               ; there is no `LD HL, SP` (!?), so
+        add     HL,     SP              ;  it's quicker to just add SP to 0!
         ex      DE,     HL              ; swap heap to DE, code-segment to HL
+        ld      SP,     [sp]            ; restore stack pointer!
 
         ; begin parsing the expression, packing it into bytecode:
         ;-----------------------------------------------------------------------
@@ -616,8 +620,8 @@ pushExpr:
 ;       DE              updated heap address
 ;       A, HL           (clobbered)
 ;-------------------------------------------------------------------------------
---      ld      [DE],   A               ; push token in A to heap
--       dec     DE                      ; (move to next byte on heap)
+-       dec     DE                      ; pre-decrement heap to empty byte
+        ld      [DE],   A               ; push token in A to heap
 
         call    skipWhitespace          ; read first character of the next word
         jp      z,      errExpr         ; unexpected end of file!
@@ -643,8 +647,9 @@ parseExpr:
 
         ; a unary operator has been added,
         ; read the next character:
-+       ld      [DE],   A               ; push a unary operator token
-        dec     DE                      ; (move to next byte on heap)
++       dec     DE                      ; pre-decrement heap to empty byte
+        ld      [DE],   A               ; push a unary operator token
+
         call    skipWhitespace          ; read first character of the next word
         jp      z,      errEndOfFile    ; handle unexpected end of file!
 
@@ -656,15 +661,15 @@ parseExpr:
 @value: cp      '$'                     ; hexadecimal sigil?
         jr      nz,     +
 
+        dec     DE                      ; pre-decrement heap to empty byte
         ld      [DE],   A               ; push a number token
-        dec     DE
         call    parseHexNumber          ; parse the hex number into BC
         ld      A,      B
+        dec     DE                      ; pre-decrement heap to empty byte
         ld      [DE],   A
-        dec     DE
         ld      A,      C
+        dec     DE                      ; pre-decrement heap to empty byte
         ld      [DE],   A
-        dec     DE
 
         jr      @operator               ; an operator can follow a value
 
@@ -690,29 +695,29 @@ parseExpr:
         jr      z,      @end            ; if end-of-file, end the expression
 
         cp      '+'                     ; add operator?
-        jr      z,      --              ; push token to heap, find next operand
+        jr      z,      -               ; push token to heap, find next operand
         cp      '-'                     ; subtract operator?
-        jr      z,      --              ; ...
+        jr      z,      -               ; ...
         cp      '*'                     ; multiply operator?
-        jr      z,      --              ; ...
+        jr      z,      -               ; ...
         cp      '/'                     ; divide operator?
-        jr      z,      --              ; ...
+        jr      z,      -               ; ...
         cp      '&'                     ; and operator?
-        jr      z,      --              ; ...
+        jr      z,      -               ; ...
         cp      '|'                     ; or operator?
-        jr      z,      --              ; ...
+        jr      z,      -               ; ...
         cp      '^'                     ; xor operator?
-        jr      z,      --              ; ...
+        jr      z,      -               ; ...
         cp      '%'                     ; modulo operator?
-        jr      z,      --              ; ...
+        jr      z,      -               ; ...
 
         ;-----------------------------------------------------------------------
         ; whatever it is, it isn't an operator;
         ; fall through and terminate the expression
         ;
 @end:   xor     A
+        dec     DE                      ; pre-decrement heap to empty byte
         ld      [DE],   A               ; terminate the expression
-        dec     DE
         ret
 
 
