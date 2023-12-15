@@ -275,15 +275,40 @@ readWord:
         pop     HL                      ; restore HL going out
         ret
 
+findSymbol:
+;===============================================================================
+; search for a symbol (label / constant) in a dictionary:
+;
+; in:   HL              addr of first symbol (starting point)
+;       B               length of symbol name
+;       temp            the label is assumed to be in the temp word buffer,
+;                       i.e. after calling `readWord`
+;-------------------------------------------------------------------------------
+        dec     HL                      ; move to length byte
+        ld      A,      [HL]            ; get the symbol name length
+        cp      B                       ; same length?
+        jr      z,      @check
+        inc     HL
+        ld      A,      [HL]
+        inc     HL
+        ld      H,      [HL]
+        or      H                       ; is the link addr $0000?
+        ld      L,      A
+        jr      findSymbol
+
+        ; symbol length matches, check characters:
+        ;-----------------------------------------------------------------------
+@check:
+        ret
+
 pushLabel:
 ;===============================================================================
 ; push a new label to the heap:
 ; 
 ; - the link addr to the previous label
+; - the label name length; here for faster searching
 ; - the label value; the current virtual program-counter
-; - the label name as a length-prefixed string,
-;   written BACKWARDS -- i.e. the heap extends downwards
-;   the letters are written in order, downwards
+; - the label name written BACKWARDS -- the heap extends downwards!
 ;
 ; WARN: does not check if the label already exists!
 ;
@@ -303,6 +328,10 @@ pushLabel:
         ld      [HL],   E               ; write prev label addr lo-byte
         ld      [label],DE              ; update entry point with heap addr
 
+        ; label name length:
+        dec     HL                      ; pre-decrement heap to empty byte
+        ld      [HL],   B               ; write the label name length byte
+
         ; push the label value, which is
         ; the virtual program-counter:
         dec     HL                      ; pre-decrement heap to empty byte
@@ -314,10 +343,10 @@ pushLabel:
 
         ; push the label name:
         ;-----------------------------------------------------------------------
-        ; write the label name to the heap; the first byte is the length.
         ; we already have the length in B so we don't need to read it first
         ;
         ld      DE,     [temp]          ; get word-buffer address
+        inc     E                       ; skip length byte
         ;-----------------------------------------------------------------------
 -       ld      A,      [DE]            ; read from word-buffer
         dec     HL                      ; pre-decrement heap to empty byte
@@ -434,8 +463,7 @@ parseInstruction:
         ; emit opcode(s):
         ;
 @opcode ld      [param],A               ; retain flags for parameter fetching
-        ld      B,      A               ; and again
-        ld      C,      [HL]            ; read the opcode byte
+        ld      B,      [HL]            ; read the opcode byte
         pop     HL                      ; return to heap addr in HL
         push    BC                      ; keep opcode until emit time
         ex      DE,     HL              ; swap code to HL, heap to DE
@@ -499,8 +527,7 @@ parseInstruction:
         ;-----------------------------------------------------------------------
         ; emit the main opcode byte:
         ;
-@emit:  pop     BC                      ; retrieve opcode bytes
-        ld      A,      C               ; Z80 opcode byte
+@emit:  pop     AF                      ; retrieve opcode bytes
         ld      [DE],   A               ; emit opcode byte to code-segment
         inc     DE                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
@@ -569,11 +596,11 @@ pushExpr:
         ; reserve bytes for the expr result:
         ;
         ; this routine is only called if there is a parameter, which assumes
-        ; a minimum of 1 byte. check the bit for a 16-bit parameter (e.g. JP).
-        ;
+        ; a minimum of 1 byte. check the bit for a 16-bit parameter (e.g. JP)
         ; NOTE: the opcode-flags byte is in C, from the load above
+        ;
         bit     1,      C               ; bit 1 indicates a 16-bit parameter
-        jr      z,      +
+        jr      z,      +               ;
         inc     DE                      ; reserve a byte and increment
         inc     IX                      ;  virtual program-counter
 +       inc     DE                      ; reserve an additional byte
