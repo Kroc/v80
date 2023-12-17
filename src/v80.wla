@@ -292,7 +292,9 @@ readWord:
 ;===============================================================================
 ; search for a symbol (label / constant) in a dictionary:
 ;
-; in:   HL              addr of symbol in heap
+; in:   HL              dictionary entry point: an addr that contains the
+;                       addr of the last symbol added to the dictionary,
+;                       e.g. `label` for labels & `const` for constants
 ;       BC              length of symbol name; `readWord` provides this.
 ;                       despite names being limited to 30 chars, B must be 0
 ;       DE              address of word-buffer, i.e. [word]
@@ -300,9 +302,23 @@ readWord:
 ;                       i.e. after calling `readWord`
 ; out:  A               0 if symbol not found, non-zero if found
 ;       BC              if symbol found, BC holds its value
-;                       if not found, BC is the word size in the word-buffer
+;                       if not found, BC retains the name length
 ;       HL|DE           (clobbered)
 ;-------------------------------------------------------------------------------
+        ; (this is a loop fall-through, see the label below for entry point)
+
+        ; names do not match!
+        ;-----------------------------------------------------------------------
+        ; we need to jump from an arbitrary position in the name string back to
+        ; the length field. we can use the number of chars checked to do this!
+        ;
+--      ld      A,      30              ; max no. of chars
+        sub     C                       ; subtract characters checked
+        ld      C,      A               ; = no. of bytes to move forward
+        add     HL,     BC              ; leap forward to length field
+        add     E                       ; do the same for DE (word-buffer)
+        ld      C,      [HL]            ; re-get word-length to check
+
 -       inc     HL                      ; move *up* to link addr lo-byte
 
 findSymbol:
@@ -339,7 +355,7 @@ findSymbol:
 @loop:  dec     E                       ; move down a character in word-buffer
         ld      A,      [DE]            ; read char from word-buffer
         cpd                             ; = CP A, [HL]; DEC HL; DEC BC
-        jr      nz,     @nope           ; stop looping if mismatch
+        jr      nz,     --              ; stop looping if mismatch
         jp      pe,     @loop           ; keep looping until chars run out
 
         ; names match! read and return the symbol value:
@@ -349,20 +365,8 @@ findSymbol:
         ld      B,      [HL]            ; symbol value hi-byte
         dec     HL                      ; move to symbol lo-byte
         ld      C,      [HL]            ; return BC = symbol value
-        ret
 
-        ; names do not match!
-        ;-----------------------------------------------------------------------
-        ; we need to jump from an arbitrary position in the name string back to
-        ; the length field. we can use the number of chars checked to do this!
-        ;
-@nope:  ld      A,      30              ; max no. of chars
-        sub     C                       ; subtract characters checked
-        ld      C,      A               ; = no. of bytes to move forward
-        add     HL,     BC              ; 
-        add     E                       ; do the same for DE (word-buffer)
-        ld      C,      [HL]            ; re-get word-length to check
-        jr      -                       ; follow link to next symbol
+        ret
 
 pushLabel:
 ;===============================================================================
