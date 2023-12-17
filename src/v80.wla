@@ -17,10 +17,13 @@ init:
         ;
         ld      HL,     $0000           ; oddly, there's no `ld HL, SP`!
         add     HL,     SP              ; stack address, e.g. $FCFE
-        ex      DE,     HL              ; swap SP into DE
-        ld      E,      0               ; use 0 for lo-byte, e.g. $FC00
-        ld      [temp], DE              ; use bottom of stack for temp bytes
-        ld      [heap], DE              ; finally set the heap position
+        ld      L,      0               ; use 0 for lo-byte, e.g. $FC00
+        ld      [temp], HL              ; use bottom of stack for temp bytes
+        ld      [heap], HL              ; finally set the heap position
+        ld      BC,     30+1            ; max word-length for word buffer,
+        add     HL,     BC              ;  plus 1 byte to store word-length
+        ld      [word], HL              ;  (word buffer works downwards)
+
         call    memStat                 ; print the memory status
 
         ; check for an automatic file-reference,
@@ -100,7 +103,10 @@ memStat:
 ;===============================================================================
 ; the bottom of the stack, just above the heap,
 ; can be used as temporary space for a few bytes
-temp:   .ADDR $fc00                     ; (set during initialisation)
+; (these values are set during initialisation)
+;
+temp:   .ADDR $fc00                     ; temp bytes at bottom of stack
+word:   .ADDR $fc20                     ; word-buffer (works backwards)
 sp:     .ADDR $fcff                     ; stack pointer backup
 
 char:   .BYTE $00                       ; current character
@@ -214,8 +220,16 @@ assemble:
         ; define label:
         ;=======================================================================
 @label: call    readWord                ; read the label in
-        ; TODO: check if label already exists
+        push    HL                      ; preserve current bottom of heap
+
+        ld      HL,     label           ; addr of label dictionary entry point
+        call    findSymbol              ; does it already exist?
+
+        pop     HL                      ; restore bottom of heap addr
+
+        jr      nz,     +
         call    pushLabel               ; define label on the heap
++
         ret
 
 
@@ -239,67 +253,116 @@ readWord:
 ;       this routine doesn't handle strings
 ;
 ; in:   A               first character of word already read
-; out:  B               length of word
+; out:  BC              length of word
+;       DE              addr of word-buffer, word-length byte, e.g. $FC20
 ;       HL              (preserved)
-;       A, C            (clobbered)
 ;-------------------------------------------------------------------------------
-        push    HL                      ; preserve HL coming in
-
+        ; note that the word is written *downwards* in RAM, to match how
+        ; symbol names are written on the heap, for faster comparison --
         ; we use the bottom of the stack to hold the incoming word;
         ; because this is page-aligned we can get away with using
-        ; `INC L` instead of `INC HL`
+        ; `DEC E` instead of `DEC DE`
         ;
-        ld      HL,     [temp]          ; bottom of stack, e.g. $FC00
-        inc     L                       ; first byte will hold word-length
-        ld      B,      32              ; B = max word-length
-        jr      +                       ; (skip first character)
+        ld      DE,     [word]          ; top of word-buffer, e.g $FC20
+        dec     E                       ; first byte is word-length, skip
+        ld      B,      30+1            ; max number of bytes, +1 for djnz
+        jr      +                       ; (first character already read)
         ;-----------------------------------------------------------------------
 -       call    osGetChar               ; read char form input file
         cp      ASCII_SPC+1             ; whitespace?
         jr      c,      @ok             ; (leave loop at whitespace)
-+       ld      [HL],   A               ; add the character to the buffer
-        inc     L                       ; move to next space in buffer
-        djnz    -                       ; keep looping until B=0
++       ld      [DE],   A               ; add the character to the buffer
+        dec     E                       ; move to next space in buffer
+        djnz    -
         ;-----------------------------------------------------------------------
         jp      errWord                 ; word too long!
 
         ;-----------------------------------------------------------------------
-@ok:    xor     A                       ; set A to zero
-        ld      [HL],   A               ; terminate the word buffer (EXPR_END)
-        ld      L,      A               ; return to start of word-buffer
-        ld      A,      32              ; 32 - characters remaining
-        sub     B                       ;    = length of word
-        ld      [HL],   A               ; write length to first byte
-        ld      B,      A               ; return word length
+@ok:    ld      A,      30              ; 30 - characters remaining
+        sub     E                       ;    = length of word
+        ld      E,      $20             ; go back to word-length byte
+        ld      [DE],   A               ; write word length byte
 
-        pop     HL                      ; restore HL going out
+        ld      C,      A               ; return word-length in BC,
+        ld      B,      0               ;  convenient for `findSymbol` etc.
+
         ret
 
-findSymbol:
+; findSymbol:
 ;===============================================================================
 ; search for a symbol (label / constant) in a dictionary:
 ;
-; in:   HL              addr of first symbol (starting point)
-;       B               length of symbol name
-;       temp            the label is assumed to be in the temp word buffer,
+; in:   HL              addr of symbol in heap
+;       BC              length of symbol name; `readWord` provides this.
+;                       despite names being limited to 30 chars, B must be 0
+;       DE              address of word-buffer, i.e. [word]
+;       [word]          the label is assumed to be in the word-buffer,
 ;                       i.e. after calling `readWord`
+; out:  A               0 if symbol not found, non-zero if found
+;       BC              if symbol found, BC holds its value
+;                       if not found, BC is the word size in the word-buffer
+;       HL|DE           (clobbered)
 ;-------------------------------------------------------------------------------
-        dec     HL                      ; move to length byte
-        ld      A,      [HL]            ; get the symbol name length
-        cp      B                       ; same length?
-        jr      z,      @check
-        inc     HL
-        ld      A,      [HL]
-        inc     HL
-        ld      H,      [HL]
-        or      H                       ; is the link addr $0000?
-        ld      L,      A
-        jr      findSymbol
+-       inc     HL                      ; move *up* to link addr lo-byte
 
-        ; symbol length matches, check characters:
+findSymbol:
+        ;=======================================================================
+        ; the link field of a symbol points to      - - -+------+
+        ; the lo-byte of the next symbol's link          | link |
+        ; field in the chain, with the remaining    - - -+--|---+
+        ; fields extending *downwards* in RAM            .--'
+        ;                                                v
+        ;          +-------+---+---+---+---+---+---+-----+------+
+        ;  < heap  | value | l | e | b | a | l | : | len | link |
+        ;          +-------+---+---+---+---+---+---+-----+------+
+        ;
+        ; follow this link, but exit if it's $0000
+        ;
+        ld      A,      [HL]            ; read next symbol addr, lo-byte
+        inc     HL                      ; move *up* to link addr hi-byte
+        ld      H,      [HL]            ; read next symbol addr, hi-byte
+        ld      L,      A               ; (complete the addr)
+        or      H                       ; is the link addr $0000?
+        ret     z                       ; terminate at end of chain
+
+        ; (HL is now the next symbol addr in the heap)
+
+        dec     HL                      ; move down to length byte
+        ld      A,      [HL]            ; get symbol name length
+        cp      C                       ; compare with word-buffer length
+        jr      nz,      -              ; different? return to link and follow
+
         ;-----------------------------------------------------------------------
-@check:
+        ; symbol length matches, check characters:
+        ;
+        dec     HL                      ; move down a character in the heap
+@loop:  dec     E                       ; move down a character in word-buffer
+        ld      A,      [DE]            ; read char from word-buffer
+        cpd                             ; = CP A, [HL]; DEC HL; DEC BC
+        jr      nz,     @nope           ; stop looping if mismatch
+        jp      pe,     @loop           ; keep looping until chars run out
+
+        ; names match! read and return the symbol value:
+        ;-----------------------------------------------------------------------
+        ; NOTE: CPD has already decremented HL to the value hi-byte
+        ;
+        ld      B,      [HL]            ; symbol value hi-byte
+        dec     HL                      ; move to symbol lo-byte
+        ld      C,      [HL]            ; return BC = symbol value
         ret
+
+        ; names do not match!
+        ;-----------------------------------------------------------------------
+        ; we need to jump from an arbitrary position in the name string back to
+        ; the length field. we can use the number of chars checked to do this!
+        ;
+@nope:  ld      A,      30              ; max no. of chars
+        sub     C                       ; subtract characters checked
+        ld      C,      A               ; = no. of bytes to move forward
+        add     HL,     BC              ; 
+        add     E                       ; do the same for DE (word-buffer)
+        ld      C,      [HL]            ; re-get word-length to check
+        jr      -                       ; follow link to next symbol
 
 pushLabel:
 ;===============================================================================
@@ -307,14 +370,13 @@ pushLabel:
 ; 
 ; - the link addr to the previous label
 ; - the label name length; here for faster searching
+; - the label name, written right-to-left -- the heap extends downwards!
 ; - the label value; the current virtual program-counter
-; - the label name written BACKWARDS -- the heap extends downwards!
 ;
 ; WARN: does not check if the label already exists!
 ;
 ; in:   HL              heap position to write new label
-;       B               label name length
-;       temp            the label is assumed to be in the temp word buffer,
+;       [word]          the label is assumed to be in the word-buffer,
 ;                       i.e. after calling `readWord`
 ; out:  HL              heap position is advanced (downwards!)
 ;       A, BC|DE        clobbered
@@ -328,32 +390,34 @@ pushLabel:
         ld      [HL],   E               ; write prev label addr lo-byte
         ld      [label],DE              ; update entry point with heap addr
 
-        ; label name length:
-        dec     HL                      ; pre-decrement heap to empty byte
-        ld      [HL],   B               ; write the label name length byte
+        ; push the label name:
+        ;
+        ld      DE,     [word]          ; get word-buffer addr
+        ld      A,      [DE]            ; first byte is word-length
+        ld      B,      0               ; loop count must be in BC
+        ld      C,      A               ; 
+        inc     C                       ; +1 to include the length-byte
 
-        ; push the label value, which is
-        ; the virtual program-counter:
-        dec     HL                      ; pre-decrement heap to empty byte
+        ; note that LDDR is post-decrement (copy-then-decrement), whereas
+        ; the heap is pre-decrement like the stack (decrement-then-copy)
+        ; -- decrement HL once to adjust for this before the copy
+        ;
+        dec     HL                      ; adjust heap for post-decrement copy
+        lddr                            ; copy BC bytes from [DE] to [HL]!
+
+        ; push the label value (virtual program-counter):
+        ;
+        ; the value comes after the label name to speed up symbol searching
+        ; as the value is only needed once a symbol name is matched and then
+        ; the addr is in the right place
+        ;
+        ; NOTE: CPDR has already decremented HL to the value hi-byte
+        ;
         ld      A,      IXH
         ld      [HL],   A
         dec     HL
         ld      A,      IXL
         ld      [HL],   A
-
-        ; push the label name:
-        ;-----------------------------------------------------------------------
-        ; we already have the length in B so we don't need to read it first
-        ;
-        ld      DE,     [temp]          ; get word-buffer address
-        inc     E                       ; skip length byte
-        ;-----------------------------------------------------------------------
--       ld      A,      [DE]            ; read from word-buffer
-        dec     HL                      ; pre-decrement heap to empty byte
-        ld      [HL],   A               ; add character to heap
-        inc     E                       ; move *forward* in word-buffer
-        djnz    -                       ; keep looping
-        ;-----------------------------------------------------------------------
 
         ret
 
@@ -910,7 +974,6 @@ printHexByte:
 ;
 ; in:   A               byte to print
 ; out:  A, BC           (clobbered)
-;       DE|HL|IXY       (undefined) -- depends on osPrintChar
 ;-------------------------------------------------------------------------------
         call    getHexByte
         ld      A,      B
