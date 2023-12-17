@@ -13,6 +13,8 @@ REM # RunCPM "emulator"
 SET "CPM_DIR=%BIN_DIR%\RunCPM"
 SET RUN_CPM="%CPM_DIR%\RunCPM.exe"
 
+IF NOT EXIST "build" MKDIR "build"
+
 %WLA_Z80% -v ^
     -o "build\v80.o" ^
        "v80.wla"
