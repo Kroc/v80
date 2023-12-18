@@ -194,6 +194,7 @@ assemble:
         ; parse root scope:
         ;-----------------------------------------------------------------------
 @word:  call    skipWhitespace          ; find first character
+        ret     z                       ; stop at end-of-file
 
         ; first character determines the word type:
         cp      ';'                     ; is comment?
@@ -207,7 +208,9 @@ assemble:
         ld      A,      ASCII_LF
         call    osPrintChar             ; DEBUG!
         ;///////////////////////////////////////////////////////////////////////
-        ret
+        
+        jr      @word
+
 
         ; skip comments:
         ;=======================================================================
@@ -219,18 +222,15 @@ assemble:
 
         ; define label:
         ;=======================================================================
-@label: call    readWord                ; read the label in
-        push    HL                      ; preserve current bottom of heap
+@label: push    DE                      ; code-segment is not used here...
 
-        ld      HL,     label           ; addr of label dictionary entry point
-        call    findSymbol              ; does it already exist?
-
-        pop     HL                      ; restore bottom of heap addr
-
-        jr      nz,     +
+        call    readWord                ; read the label in
+        call    findLabel               ; does it already exist?
+        jp      nz,     errLabel        ; cannot redefine labels!
         call    pushLabel               ; define label on the heap
-+
-        ret
+
+        pop     DE                      ; restore code-segment
+        jr      @word
 
 
 skipWhitespace:
@@ -286,6 +286,30 @@ readWord:
         ld      C,      A               ; return word-length in BC,
         ld      B,      0               ;  convenient for `findSymbol` etc.
 
+        ret
+
+findLabel:
+;===============================================================================
+; search the dictionary for a label:
+;-------------------------------------------------------------------------------
+        push    HL                      ; preserve heap position
+
+        ld      HL,     label           ; label dictionary entry point
+        call    findSymbol
+
+        pop     HL                      ; restore heap position
+        ret
+
+findConstant:
+;===============================================================================
+; search the dictionary for a constant:
+;-------------------------------------------------------------------------------
+        push    HL                      ; preserve heap position
+
+        ld      HL,     const           ; constants dictionary entry point
+        call    findSymbol
+
+        pop     HL                      ; restore heap position
         ret
 
 ; findSymbol:
@@ -363,7 +387,7 @@ findSymbol:
         ; NOTE: CPD has already decremented HL to the value hi-byte
         ;
         ld      B,      [HL]            ; symbol value hi-byte
-        dec     HL                      ; move to symbol lo-byte
+        dec     HL                      ; move to value lo-byte
         ld      C,      [HL]            ; return BC = symbol value
 
         ret

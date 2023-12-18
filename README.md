@@ -45,6 +45,8 @@ Labels can begin with a number; in fact, almost any character is game as only wh
 
     :1
 
+Labels cannot be redefined. All labels must be unique.
+
 ### keywords:
 
     .b  $AD $DE $EF $BE     ; write bytes

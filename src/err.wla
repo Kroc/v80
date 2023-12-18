@@ -10,6 +10,7 @@ _strWord:       .BYTE "Word too long! (max 32 chars)$"
 _strOpcode:     .BYTE "Invalid opcode!$"
 _strExpr:       .BYTE "Invalid expression!$"
 _strHex:        .BYTE "Invalid hexadecimal number!$"
+_strLabel:      .BYTE "Labels cannot be redefined!$"
 
 _printQuit:
 ;===============================================================================
@@ -58,4 +59,11 @@ errHex:
 ; not a valid hexadecimal number!
 ;-------------------------------------------------------------------------------
         ld      DE,     _strHex
+        jr      _printQuit
+
+errLabel:
+;===============================================================================
+; labels cannot be redefined!
+;-------------------------------------------------------------------------------
+        ld      DE,     _strLabel
         jr      _printQuit
