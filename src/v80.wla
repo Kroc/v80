@@ -235,14 +235,25 @@ assemble:
 
 skipWhitespace:
 ;===============================================================================
-; reads input until a visible character (ASCII >32) is reached:
+; reads input until a visible character (ASCII >32),
+; or the end of the file is reached:
 ; 
 ; out:  A               ASCII code. 0 = end-of-file
+;       z               zero-flag is set only if end-of-file
 ;-------------------------------------------------------------------------------
 -       call    getChar                 ; read a character (returns z-flag)
         ret     z                       ; return z-flag set if end-of-file
-        cp      ASCII_SPC+1             ; ignore any ASCII code <= $20 (spc)
-        jr      c, -                    ; keep reading blank chars
+        
+        ; we need to be careful not to return z-flag set!
+        ; we cannot check for ASCII_SPC+1 ("!") as if this character appears,
+        ; the parser will think the file ended. instead look for space itself
+        ; -- for any ASCII code below we continue looping, and space itself
+        ; is caught with the zero-flag and re-looped
+        ; 
+        cp      ASCII_SPC               ; is ASCII code a space?
+        jr      c,      -               ; keep reading if codes 1-31
+        jr      z,      -               ; also, keep reading if space
+
         ret
 
 readWord:
