@@ -7,7 +7,7 @@
 _strFile:       .BYTE "File not found!$"
 _strEndOfFile:  .BYTE "Unexpected end of file!$"
 _strWord:       .BYTE "Word too long! (max 32 chars)$"
-_strOpcode:     .BYTE "Invalid opcode!$"
+_strOpcode:     .BYTE "Invalid Z80 instruction!$"
 _strExpr:       .BYTE "Invalid expression!$"
 _strHex:        .BYTE "Invalid hexadecimal number!$"
 _strLabel:      .BYTE "Labels cannot be redefined!$"

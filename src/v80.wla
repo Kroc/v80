@@ -482,17 +482,22 @@ parseInstruction:
         ;=======================================================================
         ; match; follow the branch:
         ;-----------------------------------------------------------------------
-@match: inc     HL                      ; step over the character to the addr
-        ld      A,      [HL]            ; read the hi-byte / opcode-flags
-        inc     HL                      ; move to lo-byte / opcode-byte
+        ; once a character matches, the next two bytes are either an offset to
+        ; the next branch to follow, or an opcode pair
+        ;
+@match: inc     HL                      ; step over the matched character
+        ld      C,      [HL]            ; read the offset lo-byte / opcode-byte
+        inc     HL                      ; move to next byte in tree
+        ld      A,      [HL]            ; read the offset hi-byte / opcode-flags
+        
+        ; is it a jump to another branch, or an opcode?
+        ;
+        and     A                       ; (set CPU flags!)
+        jp      m,      @opcode         ; hi-bit set = this is an opcode
 
-        ; is it a jump to another branch, or an opcode? (opcode-flags have
-        ; to be in the hi-byte because a jump-address lo-byte could be >128)
-        and     A                       ; (set flags)
-        jp      m,      @opcode         ; high-bit set = this is an opcode
-
-        ld      L,      [HL]            ; read lo-byte
-        ld      H,      A               ; apply the hi-byte from before
+        ; add the offset to the current position to jump to the new branch:
+        ld      B,      A
+        add     HL,     BC
 
         ; get character from input file:
         ;-----------------------------------------------------------------------
@@ -566,25 +571,29 @@ parseInstruction:
         ; emit opcode(s):
         ;
 @opcode ld      [param],A               ; retain flags for parameter fetching
-        ld      B,      [HL]            ; read the opcode byte
         pop     HL                      ; return to heap addr in HL
-        push    BC                      ; keep opcode until emit time
-        ex      DE,     HL              ; swap code to HL, heap to DE
-                                        ; (writing opcodes is easier in HL)
+        push    AF                      ; keep opcode (C) until emit time
+
+        ; if a branch ends in an opcode, then no more characters must follow!
+        ; if the char is already 0, then no further check is needed
+        ;
+        call    getChar
+        cp      ASCII_SPC+1             ; is it whitespace (or eof)?
+        jp      c,      errOpcode       ; if not, invalid instruction!
 
         ; is there any parameter?
-        bit     2,      A               ; bit 2 indicates a parameter
-        jr      nz,     +               ; if yes, handle parameter type
-
-        ; no parameter!
-        ex      DE,     HL              ; swap heap back to HL, code to DE
-        jr      @emit                   ; write the opcode byte to code-segment
-
         ;-----------------------------------------------------------------------
+        ld      A,      [param]
+        bit     2,      A               ; bit 2 indicates a parameter
+        jr      z,      @emit           ; if no emit single byte opcode
+
+        ex      DE,     HL              ; swap code to HL, heap to DE
+                                        ; (writing opcodes is easier in HL)
+        
         ; the flags byte is a set of flags for Z80-specifics
         ; and what, if any, kind of parameter is required
         ;
-+       bit     4,      A               ; bit 4 indicates an IX instruction
+        bit     4,      A               ; bit 4 indicates an IX instruction
         jr      z,      +
         ld      [HL],   $dd             ; emit IX prefix byte ($DD)
         inc     HL                      ; move to next byte in code-segment
@@ -611,30 +620,33 @@ parseInstruction:
         inc     HL                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
 
-        ex      DE,     HL              ; swap heap back to HL, code to DE
-
         ; on the Z80, a combination of $DD|$FB (IX|IY) + $CB opcodes place
         ; the opcode after the parameter! if this is the case, we have to
         ; insert the parameter first, then return for the opcode
         ;
         and     %01010000               ; is IX|IY bit set as well?
-        jr      z,      +               ; if not, $CB prefix without IX|IY
+        jr      z,      +               ; no; is standard opcode+param
 
-        call    pushExpr                ; emit parameter first,
-        jp      @emit                   ;  and then the opcode byte
+        ex      DE,     HL              ; swap heap back to HL, code to DE
+        call    pushExpr                ; emit parameter first
 
-        ;-----------------------------------------------------------------------
-+       call    @emit                   ; emit opcode byte,
-        jp      pushExpr                ;  and then the parameter
+        ; fallthrough
+        ; ...
 
-        ;-----------------------------------------------------------------------
         ; emit the main opcode byte:
-        ;
+        ;-----------------------------------------------------------------------
 @emit:  pop     AF                      ; retrieve opcode bytes
         ld      [DE],   A               ; emit opcode byte to code-segment
         inc     DE                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
         ret
+
+        ;-----------------------------------------------------------------------
+        ; emit opcode + param:
+        ;
++       ex      DE,     HL              ; swap heap back to HL, code to DE
+        call    @emit                   ; emit opcode byte,
+        jp      pushExpr                ;  and then the parameter
 
 .ENDB
 

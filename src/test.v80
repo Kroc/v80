@@ -1,6 +1,6 @@
 :23456789012345678901234567890
-	bit0*ix	$ee
 	adc	$1
+	bit0*ix	$ee
 	adc.a
 	adc.b
 	adc.c
