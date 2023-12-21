@@ -158,21 +158,21 @@ const:  .ADDR $000                      ; addr of last const dictionary-entry
 ; calculations are compiled into bytecode to allow for later evaluation,
 ; i.e. for deferred calculations where a symbol is not yet known
 ;
-.DEF    EXPR_END        0               ; expression terminator
-.DEF    EXPR_NUMBER     '$'             ; hexadecimal literal
-.DEF    EXPR_LABEL      ':'             ; a label (16-bit)
-.DEF    EXPR_CONST      '#'             ; a constant (flexible size)
-.DEF    EXPR_OP_LO      '<'             ; `<`: lo-byte operator
-.DEF    EXPR_OP_HI      '>'             ; `>`: hi-byte operator
-.DEF    EXPR_OP_NOT     '!'             ; `!`: not operator
-.DEF    EXPR_OP_ADD     '+'             ; `+`: add operator 
-.DEF    EXPR_OP_SUB     '-'             ; `-`: subtract operator
-.DEF    EXPR_OP_MUL     '*'             ; `*`: multiply operator
-.DEF    EXPR_OP_DIV     '/'             ; `/`: divide operator
-.DEF    EXPR_OP_AND     '&'             ; `&`: and operator
-.DEF    EXPR_OP_OR      '|'             ; `|`: or operator
-.DEF    EXPR_OP_XOR     '^'             ; `^`: xor operator
-.DEF    EXPR_OP_MOD     '%'             ; `%`: modulo operator
+.DEF    WORD_END        0               ; expression terminator
+.DEF    WORD_NUMBER     '$'             ; hexadecimal literal
+.DEF    WORD_LABEL      ':'             ; a label (16-bit)
+.DEF    WORD_CONST      '#'             ; a constant (flexible size)
+.DEF    WORD_OP_LO      '<'             ; `<`: lo-byte operator
+.DEF    WORD_OP_HI      '>'             ; `>`: hi-byte operator
+.DEF    WORD_OP_NOT     '!'             ; `!`: not operator
+.DEF    WORD_OP_ADD     '+'             ; `+`: add operator 
+.DEF    WORD_OP_SUB     '-'             ; `-`: subtract operator
+.DEF    WORD_OP_MUL     '*'             ; `*`: multiply operator
+.DEF    WORD_OP_DIV     '/'             ; `/`: divide operator
+.DEF    WORD_OP_AND     '&'             ; `&`: and operator
+.DEF    WORD_OP_OR      '|'             ; `|`: or operator
+.DEF    WORD_OP_XOR     '^'             ; `^`: xor operator
+.DEF    WORD_OP_MOD     '%'             ; `%`: modulo operator
 
 expr:   .ADDR $0000                     ; addr of last expression
 
@@ -189,7 +189,6 @@ assemble:
         ;
         ld      IX,     $0100           ; virtual program-counter
         ld      HL,     [heap]          ; where symbols / expressions go
-        ld      DE,     [code]          ; where code is assembled to
 
         ; parse root scope:
         ;-----------------------------------------------------------------------
@@ -468,11 +467,10 @@ parseInstruction:
 ;
 ; in:   A               first character of word to parse
 ;       HL              heap addr
-;       DE              code-segment addr where opcodes are written
 ; out:  HL              heap addr is advanced for any expressions
 ;       A, BC|DE        (clobbered)
 ;-------------------------------------------------------------------------------
-        push    HL                      ; preserve heap addr
+        ex      DE,     HL              ; swap heap to DE for now
         ld      HL,     opcodes         ; start at beginning of opcode tree
 
         ; the first character is already in A
@@ -482,21 +480,21 @@ parseInstruction:
         ;=======================================================================
         ; match; follow the branch:
         ;-----------------------------------------------------------------------
-        ; once a character matches, the next two bytes are either an offset to
-        ; the next branch to follow, or an opcode pair
+        ; once a character matches, the next two bytes are either
+        ; an offset to the next branch to follow, or an opcode pair
         ;
 @match: inc     HL                      ; step over the matched character
         ld      C,      [HL]            ; read the offset lo-byte / opcode-byte
         inc     HL                      ; move to next byte in tree
-        ld      A,      [HL]            ; read the offset hi-byte / opcode-flags
-        
-        ; is it a jump to another branch, or an opcode?
-        ;
-        and     A                       ; (set CPU flags!)
-        jp      m,      @opcode         ; hi-bit set = this is an opcode
+        ld      B,      [HL]            ; read the offset hi-byte / opcode-flags
+
+        bit     7,      B               ; is hi-bit of hi-byte set?
+        jr      nz,     @opcode         ; if so, this is an opcode
 
         ; add the offset to the current position to jump to the new branch:
-        ld      B,      A
+        ; NOTE: the offset in the binary tree is reduced by 1 to compensate
+        ; for adding from the hi-byte addr, rather than the lo-byte addr
+        ;
         add     HL,     BC
 
         ; get character from input file:
@@ -522,131 +520,152 @@ parseInstruction:
         set     5,      A               ; force partial lowercase
         jr      nc,     +               ; was this a non-visible char before?
         xor     A                       ; any whitespace = end-of-word (0)
-+       ld      C,      A               ; set as character to compare against
-
-        ;///////////////////////////////////////////////////////////////////////
-        push    AF
-        call    osPrintChar             ; DEBUG!
-        pop     AF
-        ;///////////////////////////////////////////////////////////////////////
-
-        ; get character from opcode tree:
++       
+        ; compare with opcode tree:
         ;-----------------------------------------------------------------------
-@retry: ld      A,      [HL]            ; read from current position in tree
-        and     A                       ; (set flags!)
+-       cp      [HL]                    ; compare input char with tree char
+        jr      z,      @match          ; characters match?
 
-        ; if the top-bit is set, this is either a continuation character
-        ; (it must match and there is no branch) or an end of branch
-        jp      m,      @cont
+        ; if the hi-bit of the character from the opcode tree is set, it's
+        ; either a continuation character (>128) or the end of a branch (=128).
+        ; in these cases, the result of the compare will always be negative!
+        ;
+        jp      m,      @cont           ; handle continuation char / end
 
-        ; does the character match the one in the opcode tree?
-        cp      A,      C
-        jr      z,      @match
-
-        ; no match; try the next branch:
+        ; no match; try the next character:
         ;-----------------------------------------------------------------------
-@skip:  inc     HL
         inc     HL
         inc     HL
-        jr      @retry
+        inc     HL
+        jr      -
 
         ;-----------------------------------------------------------------------
         ; handle continuation character / end-of-branch:
         ;
-        ; a continuation character has no branch, one character has to
-        ; immediately follow another; any mismatch is an unknown opcode
+        ; a continuation character has no branch -- one character has to
+        ; immediately follow another -- any mismatch is an unknown opcode
         ;
-        ; if, after removing the high-bit, the char is null, then we've reached
-        ; the end of a branch and there are no more alternate paths to take.
-        ; this is also an unknown opcode
-        ;
-@cont:  and     %01111111               ; remove top bit before comparison
-        jp      z,      errOpcode       ; end of branch? (128 -> 0)
-        cp      A,      C               ; compare with input char
-        jp      nz,     errOpcode       ; if they don't match, error!
+@cont:  or      %10000000               ; *add* top bit to input char
+        cp      [HL]                    ; redo comparison with tree
+        jp      nz,     errOpcode       ; any mismatch is an error!
         inc     HL                      ; match -- move to next char in tree
         jr      @char
 
         ;=======================================================================
         ; emit opcode(s):
         ;
-@opcode ld      [param],A               ; retain flags for parameter fetching
-        pop     HL                      ; return to heap addr in HL
-        push    AF                      ; keep opcode (C) until emit time
-
-        ; if a branch ends in an opcode, then no more characters must follow!
-        ; if the char is already 0, then no further check is needed
+        ; if a branch ends in an opcode,
+        ; then no more characters must follow!
         ;
+@opcode and     A                       ; if the last char is already 0,
+        jr      z,     +                ; then no further check is needed
+
         call    getChar
         cp      ASCII_SPC+1             ; is it whitespace (or eof)?
         jp      c,      errOpcode       ; if not, invalid instruction!
 
-        ; is there any parameter?
-        ;-----------------------------------------------------------------------
-        ld      A,      [param]
-        bit     2,      A               ; bit 2 indicates a parameter
-        jr      z,      @emit           ; if no emit single byte opcode
++       ld      HL,     [code]          ; retrieve code-segment address
 
-        ex      DE,     HL              ; swap code to HL, heap to DE
-                                        ; (writing opcodes is easier in HL)
-        
         ; the flags byte is a set of flags for Z80-specifics
         ; and what, if any, kind of parameter is required
-        ;
-        bit     4,      A               ; bit 4 indicates an IX instruction
-        jr      z,      +
-        ld      [HL],   $dd             ; emit IX prefix byte ($DD)
-        inc     HL                      ; move to next byte in code-segment
-        inc     IX                      ; increment virtual program-counter
-
         ;-----------------------------------------------------------------------
-+       bit     6,      A               ; bit 6 indicates an IY instruction
-        jr      z,      +
-        ld      [HL],   $fd             ; emit IY prefix byte ($FD)
+        ld      A,      B               ; opcode flags byte
+        and     %01111111               ; remove the top bit
+        jr      nz,     +               ; if 0, no extension or params
+
+@out:   ld      [HL],   C               ; emit opcode byte
         inc     HL                      ; move to next byte in code-segment
-        inc     IX                      ; increment virtual program-counter
-
-        ;-----------------------------------------------------------------------
-+       bit     5,      A               ; bit 5 indicates extended ($ED) opcode
-        jr      z,      +               ; (these must appear after IX/IY bytes)
-        ld      [HL],   $ed             ; emit $ED prefix byte
-        inc     HL                      ; move to next byte in code-segment
-        inc     IX                      ; increment virtual program-counter
-
-        ;-----------------------------------------------------------------------
-+       bit     3,      A               ; bit 3 indicates extended ($CB) opcode
-        jr      z,      +               ; (these must appear after IX/IY bytes)
-        ld      [HL],   $cb             ; emit $CB prefix byte
-        inc     HL                      ; move to next byte in code-segment
-        inc     IX                      ; increment virtual program-counter
-
-        ; on the Z80, a combination of $DD|$FB (IX|IY) + $CB opcodes place
-        ; the opcode after the parameter! if this is the case, we have to
-        ; insert the parameter first, then return for the opcode
-        ;
-        and     %01010000               ; is IX|IY bit set as well?
-        jr      z,      +               ; no; is standard opcode+param
-
-        ex      DE,     HL              ; swap heap back to HL, code to DE
-        call    pushExpr                ; emit parameter first
-
-        ; fallthrough
-        ; ...
-
-        ; emit the main opcode byte:
-        ;-----------------------------------------------------------------------
-@emit:  pop     AF                      ; retrieve opcode bytes
-        ld      [DE],   A               ; emit opcode byte to code-segment
-        inc     DE                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
         ret
 
         ;-----------------------------------------------------------------------
-        ; emit opcode + param:
+        ; opcode with extensions or parameters:
         ;
-+       ex      DE,     HL              ; swap heap back to HL, code to DE
-        call    @emit                   ; emit opcode byte,
-        jp      pushExpr                ;  and then the parameter
+        ; TODO: we may be able to optimise all these BIT instructions
+        ;       by switching to RLA / RLCA to pop bits off one-by-one
+        ;
++       bit     6,      B               ; bit 6 indicates IX or IY
+        jr      nz,     @ixy            ; go handle IX|IY madness...
+
+        ; is it a $CB or $ED extended opcode?
+        ;
+        bit     4,      B               ; bit 4 indicates an extended opcode
+        jr      z,      +               ; not extended? skip ahead
+
+        and     %00100010               ; bit 5&1 = $22 ($ED) or $00 ($CB)
+        add     $cb                     ; $CB+$00 = $CB or $CB+$22 = $ED
+        ld      [HL],   A               ; emit $CB|$ED prefix byte
+        inc     HL                      ; move to next byte in code-segment
+        inc     IX                      ; increment virtual program-counter
+
+        ; any parameters:
+        ;
+        ; bit 1 indicates any kind of parameter for non IX|IY opcodes,
+        ; i.e. 8 / 16 bit literal, or relative (bit 3)
+        ;
++       bit     1,      B               ; if no parameters, extensions have
+        jr      z,      @out            ;  been done, output opcode byte
+
+        ; output opcode and parse a parameter expression:
+        ; (inlining this is only 1 byte more than using `call @out`)
+        ;
+        ld      [HL],   C               ; emit opcode byte
+        inc     HL                      ; move to next byte in code-segment
+        inc     IX                      ; increment virtual program-counter
+        jp      pushExpr
+
+        ;-----------------------------------------------------------------------
+        ; handle IX|IY opcodes: (bit 5 chooses between IX & IY)
+        ;
+@ixy:   and     %00100000               ; isolate bit 5
+        or      %11011101               ; map to $DD (IX) or $FD (IY)
+        ld      [HL],   A               ; emit IX|IY prefix byte
+        inc     HL                      ; move to next byte in code-segment
+        inc     IX                      ; increment virtual program-counter
+
+        ; on the Z80, a combination of $DD|$FB (IX|IY) + $CB opcodes place
+        ; the opcode after the offset parameter! if this is the case, we
+        ; have to insert the parameter first, then return for the opcode
+        ;
+        bit     4,      B               ; bit 4 on indicates $CB-extended
+        jr      nz,     @cb             ; go handle reverse parameter order
+
+        ; at this point, all parameters (if any) follow the opcode,
+        ; so we can output the opcode now and forget it
+        ;
+        ld      [HL],   C               ; emit opcode byte
+        inc     HL                      ; move to next byte in code-segment
+        inc     IX                      ; increment virtual program-counter
+
+        ; bit 3 (offset), bit 2 (8-bit), and
+        ; bit 0 (16-bit) indicate parameters
+        ;
+        ld      A,      B               ; opcode flags byte
+        and     %00001101               ; filter out parameter flags
+        jr      z,      @out            ; if none, output opcode and finish!
+
+        ; the question now is whether we have 1 or 2 parameters:
+        ; TODO: we have to differentiate the type of each param
+        ; TODO: 2nd parameter
+        ;
+        jp      pushExpr
+
+        ;-----------------------------------------------------------------------
+        ; IX|IY + $CB is the edge-case that keeps on giving: at all other
+        ; times the IX|IY offset byte follows the opcode, but not here!
+        ;
+@cb:    ld      [HL],   $cb             ; emit $CB prefix byte
+        inc     HL                      ; move to next byte in code-segment
+        inc     IX                      ; increment virtual program-counter
+
+        ; TODO: i hate everything about this
+        push    BC                      ; keep opcode until emit time
+        ex      DE,     HL              ; swap heap back to HL
+        call    pushExpr
+        pop     BC
+        ld      A,      B
+        ld      [DE],   A
+        ret
 
 .ENDB
 
@@ -665,7 +684,6 @@ pushExpr:
 ; - the expression (as tokens)
 ;
 ; in:   HL              heap position
-;       DE              code-segment addr
 ;       IX              virtual program-counter
 ;
 ; out:  HL              updated heap position (expr added to heap)
@@ -673,6 +691,10 @@ pushExpr:
 ;       IX              updated virtual program-counter (as with DE)
 ;       A               (clobbered)
 ;-------------------------------------------------------------------------------
+        ld      A,      B               ; TODO: remove this
+        ld      [param],A               ; retain flags for parameter fetching
+        ld      DE,     [code]          ; retrieve current code-segment addr
+
         ; we need to push a bunch of values to the heap and the fastest way
         ; to write 16-bit values easily is... the stack! simply make the heap
         ; into the stack and we can PUSH our stuff on to it!
@@ -732,13 +754,12 @@ pushExpr:
         call    skipWhitespace          ; read first character of the next word
         jp      z,      errExpr         ; unexpected end of file!
 
-        push    DE                      ; (doesn't need code-segment addr?)
         call    parseExpr               ; -- addr to write is in expr header
-        pop     DE
 
         ; attempt to evaluate the expression
         ; ...
 
+        ld      DE,     [code]
         ret
 
 ; parseExpr:
@@ -853,7 +874,7 @@ parseExpr:
         ; fall through and terminate the expression
         ;
 @end:   dec     HL                      ; pre-decrement heap to empty byte
-        ld      [HL],   EXPR_END        ; terminate the expression (0)
+        ld      [HL],   WORD_END        ; terminate the expression (0)
         ret
 
 
@@ -863,7 +884,6 @@ parseHexNumber:
 ;
 ; out:  BC              the value, 0 padded for numbers < 256
 ;       A, DE           (clobbered)
-;       HL              (undefined) -- depends on osGetChar
 ;-------------------------------------------------------------------------------
         ld      C,      0               ; return value will go here
 
@@ -983,7 +1003,7 @@ getChar:
 ; out:  A                               ASCII code, 0 for end-of-file
 ;       z                               zero-flag is set according to A
 ;       DE, HL                          (preserved)
-;       BC, IX/Y                        (undefined)
+;       BC                              (undefined)
 ;-------------------------------------------------------------------------------
 -       call    osGetChar               ; read a char from file
         ld      [char], A               ; retain returned character
