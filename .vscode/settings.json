@@ -1,4 +1,6 @@
 {
+    // needed to ensure "build.bat" opens with CMD instead of PowerShell
+    "terminal.integrated.defaultProfile.windows": "Command Prompt",
     "editor.insertSpaces": true,
     "editor.wordWrap": "wordWrapColumn",
     "editor.wordWrapColumn": 80,
