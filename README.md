@@ -16,6 +16,7 @@ It currently runs on CP/M with plans to make it self-hosting (can assemble itsel
 - No negative numbers. It's all 1s in 2s compliment
 - No shift operators. Multiply/divide by powers of 2  
   (honestly the reason for this is just because the parser is limited to single-character operators)
+- true = 0, like how a CPU _actually_ works
 
 ## Syntax
 
@@ -45,12 +46,53 @@ Labels can begin with a number; in fact, almost any character is game as only wh
 
     :1
 
+A line that 'begins' with a label name, that is, before any keyword, defines the label as having the current Program Counter.
+
 Labels cannot be redefined. All labels must be unique.
+
+### Constants:
+
+A constant is a reusable value given a name.
+A line that begins with constant name defines a constant:
+
+    #true   0
+
+Constant names can begin with a number:
+
+(the parser is very basic and considers everything between `#` and whitespace to be the constant name, although you should try stick to `a`-`z`, `0`-`9` & `_`)
+
+    #1      $31         ; ASCII "1"
+
+Constants _can_ be redefined, but their _value_ must be constant!  
+That is, a constant cannot use a forward-reference or undefined constant.
+
+    :1
+    #back   :1          ; OK!
+
+    :2
+    #back   :2          ; OK!
+
+    #fwd    :3          ; invalid! `:3` is unknown
+    :3
 
 ### keywords:
 
+Use `.b` & `.w` to write bytes and words to the assembled binary.
+
     .b  $AD $DE $EF $BE     ; write bytes
     .w  $DEAD $BEEF         ; write words
+
+Once either keyword is encountered, expressions will be read until the end of the line or another keyword is encountered; keywords cannot be expressions.
+
+    .b $1 $2 $3 .w $4 $5 $6 ; = $01 $02 $03 $0400 $0500 $0600
+
+An expression can be described as:
+
+>   an optional unary operator followed by a value,  
+>   optionally followed by an operator and another expression
+
+With a _value_ being any word that evaluates to a number;  
+i.e. number literals, labels, or constants.
 
 ### Operators:
 
@@ -71,4 +113,4 @@ Standard operators come between values:
     ^  xor
     %  modulo
 
-There are no shift operators, simply because the parser can only handle single-character operators and couldn't distinguish `>` and `>>`. Multiply or divide by powers of 2 to do shifts; e.g. `* 2` = `<< 1`, `/ 8` = `>> 3`. Also, there's no power/exponentiation operator :P
+There are no shift operators, simply because the parser can only handle single-character operators and couldn't distinguish `>` and `>>`. To do shifts, multiply or divide by powers of 2, e.g. `* 2` = `<< 1`, `/ 8` = `>> 3`. Also, there's no power / exponentiation operator :P
