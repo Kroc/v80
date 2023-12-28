@@ -158,21 +158,22 @@ const:  .ADDR $000                      ; addr of last const dictionary-entry
 ; calculations are compiled into bytecode to allow for later evaluation,
 ; i.e. for deferred calculations where a symbol is not yet known
 ;
-.DEF    WORD_END        0               ; expression terminator
-.DEF    WORD_NUMBER     '$'             ; hexadecimal literal
-.DEF    WORD_LABEL      ':'             ; a label (16-bit)
-.DEF    WORD_CONST      '#'             ; a constant (flexible size)
-.DEF    WORD_OP_LO      '<'             ; `<`: lo-byte operator
-.DEF    WORD_OP_HI      '>'             ; `>`: hi-byte operator
-.DEF    WORD_OP_NOT     '!'             ; `!`: not operator
-.DEF    WORD_OP_ADD     '+'             ; `+`: add operator 
-.DEF    WORD_OP_SUB     '-'             ; `-`: subtract operator
-.DEF    WORD_OP_MUL     '*'             ; `*`: multiply operator
-.DEF    WORD_OP_DIV     '/'             ; `/`: divide operator
-.DEF    WORD_OP_AND     '&'             ; `&`: and operator
-.DEF    WORD_OP_OR      '|'             ; `|`: or operator
-.DEF    WORD_OP_XOR     '^'             ; `^`: xor operator
-.DEF    WORD_OP_MOD     '%'             ; `%`: modulo operator
+.DEF    CHAR_END         0              ; general terminator
+.DEF    CHAR_COMMENT    ';'             ; comment
+.DEF    CHAR_HEX        '$'             ; hexadecimal literal or PC
+.DEF    CHAR_LABEL      ':'             ; a label (16-bit)
+.DEF    CHAR_CONST      '#'             ; a constant (flexible size)
+.DEF    CHAR_OP_LO      '<'             ; lo-byte unary operator
+.DEF    CHAR_OP_HI      '>'             ; hi-byte unary operator
+.DEF    CHAR_OP_NOT     '!'             ; not unary operator
+.DEF    CHAR_OP_ADD     '+'             ; add operator 
+.DEF    CHAR_OP_SUB     '-'             ; subtract operator
+.DEF    CHAR_OP_MUL     '*'             ; multiply operator
+.DEF    CHAR_OP_DIV     '/'             ; divide operator
+.DEF    CHAR_OP_AND     '&'             ; and operator
+.DEF    CHAR_OP_OR      '|'             ; or operator
+.DEF    CHAR_OP_XOR     '^'             ; xor operator
+.DEF    CHAR_OP_MOD     '\'             ; modulo operator
 
 expr:   .ADDR $0000                     ; addr of last expression
 
@@ -196,9 +197,9 @@ assemble:
         ret     z                       ; stop at end-of-file
 
         ; first character determines the word type:
-        cp      ';'                     ; is comment?
+        cp      CHAR_COMMENT            ; is comment?
         jr      z,      @skip           ; skip until end of line
-        cp      ':'                     ; is label?
+        cp      CHAR_LABEL              ; is label?
         jr      z,      @label          ; define a label
 
         call    parseInstruction
@@ -588,13 +589,13 @@ parseExpr:
         ; unary operators can always precede values,
         ; even after an operator, e.g. `$10 + <:label`
         ;
-@unary: cp      '<'                     ; lo-byte operator?
+@unary: cp      CHAR_OP_LO              ; lo-byte operator?
         jr      z,      +               ; a value must follow a unary operator
         ;-----------------------------------------------------------------------
-        cp      '>'                     ; hi-byte operator?
+        cp      CHAR_OP_HI              ; hi-byte operator?
         jr      z,      +               ; a value must follow a unary operator
         ;-----------------------------------------------------------------------
-        cp      '!'                     ; not operator?
+        cp      CHAR_OP_NOT             ; not operator?
         jr      nz,     @value          ; no unary operators, check for values
 
         ; a unary operator has been added,
@@ -610,7 +611,7 @@ parseExpr:
         ; a sigil is required because A-F can't be separated
         ; from instruction names without look-ahead
         ;
-@value: cp      '$'                     ; hexadecimal sigil?
+@value: cp      CHAR_HEX                ; hexadecimal sigil?
         jr      nz,     +
 
         dec     HL                      ; pre-decrement heap to empty byte
@@ -625,14 +626,14 @@ parseExpr:
 
         ; constant?
         ;-----------------------------------------------------------------------
-+       cp      '#'                     ; a constant?
++       cp      CHAR_CONST              ; a constant?
         jr      nz,     +
 
         halt
 
         ; label?
         ;-----------------------------------------------------------------------
-+       cp      ':'                     ; a label?
++       cp      CHAR_LABEL              ; a label?
         jp      nz,     errExpr         ; expression has no value!!
         
         halt
@@ -644,21 +645,21 @@ parseExpr:
         call    skipWhitespace          ; read first character of the next word
         jr      z,      @end            ; if end-of-file, end the expression
 
-        cp      '+'                     ; add operator?
+        cp      CHAR_OP_ADD             ; add operator?
         jr      z,      -               ; push token to heap, find next operand
-        cp      '-'                     ; subtract operator?
+        cp      CHAR_OP_SUB             ; subtract operator?
         jr      z,      -               ; ...
-        cp      '*'                     ; multiply operator?
+        cp      CHAR_OP_MUL             ; multiply operator?
         jr      z,      -               ; ...
-        cp      '/'                     ; divide operator?
+        cp      CHAR_OP_DIV             ; divide operator?
         jr      z,      -               ; ...
-        cp      '&'                     ; and operator?
+        cp      CHAR_OP_AND             ; and operator?
         jr      z,      -               ; ...
-        cp      '|'                     ; or operator?
+        cp      CHAR_OP_OR              ; or operator?
         jr      z,      -               ; ...
-        cp      '^'                     ; xor operator?
+        cp      CHAR_OP_XOR             ; xor operator?
         jr      z,      -               ; ...
-        cp      '%'                     ; modulo operator?
+        cp      CHAR_OP_MOD             ; modulo operator?
         jr      z,      -               ; ...
 
         ;-----------------------------------------------------------------------
@@ -666,7 +667,7 @@ parseExpr:
         ; fall through and terminate the expression
         ;
 @end:   dec     HL                      ; pre-decrement heap to empty byte
-        ld      [HL],   WORD_END        ; terminate the expression (0)
+        ld      [HL],   CHAR_END        ; terminate the expression (0)
         ret
 
 
