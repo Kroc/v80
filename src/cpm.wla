@@ -56,7 +56,7 @@ boot:
         ;
         ; the address at $06/07 points to the beginning of BDOS,
         ; so if we set the stack there the first push will go to BDOS-1.
-        ; on RunCPM this is $FCFF
+        ; on RunCPM this is $FD00
         ;
 @ok:    ld      HL,     [BDOS+1]        ; get BDOS address from `jp $xxxx`
         ld      L,      0               ; normalise to beginning of page

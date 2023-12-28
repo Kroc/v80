@@ -3,7 +3,7 @@
 ;
 .INC    "cpm.wla"                       ; CP/M interface
 .INC    "err.wla"                       ; error message handling
-.INC    "z80.wla"                       ; static Z80 opcode binary tree
+.INC    "z80.wla"                       ; Z80 parser & opcode binary tree
 
 init:
 ;===============================================================================
@@ -244,6 +244,7 @@ skipWhitespace:
         ret     z                       ; return z-flag set if end-of-file
         
         ; we need to be careful not to return z-flag set!
+        ;
         ; we cannot check for ASCII_SPC+1 ("!") as if this character appears,
         ; the parser will think the file ended. instead look for space itself
         ; -- for any ASCII code below we continue looping, and space itself
@@ -459,215 +460,6 @@ pushLabel:
 
         ret
 
-.BLOCK  "code-parser"
-
-parseInstruction:
-;===============================================================================
-; parse a Z80 instruction into opcodes:
-;
-; in:   A               first character of word to parse
-;       HL              heap addr
-; out:  HL              heap addr is advanced for any expressions
-;       A, BC|DE        (clobbered)
-;-------------------------------------------------------------------------------
-        ex      DE,     HL              ; swap heap to DE for now
-        ld      HL,     opcodes         ; start at beginning of opcode tree
-
-        ; the first character is already in A
-        set     5,      A               ; force lowercase (see desc. below)
-        jr      +                       ; jump into the parsing loop
-
-        ;=======================================================================
-        ; match; follow the branch:
-        ;-----------------------------------------------------------------------
-        ; once a character matches, the next two bytes are either
-        ; an offset to the next branch to follow, or an opcode pair
-        ;
-@match: inc     HL                      ; step over the matched character
-        ld      C,      [HL]            ; read the offset lo-byte / opcode-byte
-        inc     HL                      ; move to next byte in tree
-        ld      B,      [HL]            ; read the offset hi-byte / opcode-flags
-
-        bit     7,      B               ; is hi-bit of hi-byte set?
-        jr      nz,     @opcode         ; if so, this is an opcode
-
-        ; add the offset to the current position to jump to the new branch:
-        ; NOTE: the offset in the binary tree is reduced by 1 to compensate
-        ; for adding from the hi-byte addr, rather than the lo-byte addr
-        ;
-        add     HL,     BC
-
-        ; get character from input file:
-        ;-----------------------------------------------------------------------
-@char:  call    getChar                 ; read from input file
-        cp      ASCII_SPC+1             ; is it whitespace? (hold carry...)
-
-        ; force lowercase, without also affecting
-        ; numbers / [most] punctuation:
-        ;
-        ; this essentially forces ASCII codes 64-95 (@A-Z[\]^_) to codes
-        ; 96-127 (`a-z{|}~) which makes A-Z lowercase with the caveat that
-        ; some punctuation cannot be differentiated "@"<->"`", "[]"<->"{}"",
-        ; "\"<->"|" and "^"<->"~" but we aren't using any of those in the
-        ; instruction names anyway
-        ;
-        ; it also means that ASCII codes 0-31 (non-visible) are promoted
-        ; to 32-64 (visible), but we have already checked for ASCII codes
-        ; 32 (space) or below and this is signalled by the carry flag; so
-        ; even though the below instruction would change tab into ")", we
-        ; will undo this afterwards
-        ;
-        set     5,      A               ; force partial lowercase
-        jr      nc,     +               ; was this a non-visible char before?
-        xor     A                       ; any whitespace = end-of-word (0)
-+       
-        ; compare with opcode tree:
-        ;-----------------------------------------------------------------------
--       cp      [HL]                    ; compare input char with tree char
-        jr      z,      @match          ; characters match?
-
-        ; if the hi-bit of the character from the opcode tree is set, it's
-        ; either a continuation character (>128) or the end of a branch (=128).
-        ; in these cases, the result of the compare will always be negative!
-        ;
-        jp      m,      @cont           ; handle continuation char / end
-
-        ; no match; try the next character:
-        ;-----------------------------------------------------------------------
-        inc     HL
-        inc     HL
-        inc     HL
-        jr      -
-
-        ;-----------------------------------------------------------------------
-        ; handle continuation character / end-of-branch:
-        ;
-        ; a continuation character has no branch -- one character has to
-        ; immediately follow another -- any mismatch is an unknown opcode
-        ;
-@cont:  or      %10000000               ; *add* top bit to input char
-        cp      [HL]                    ; redo comparison with tree
-        jp      nz,     errOpcode       ; any mismatch is an error!
-        inc     HL                      ; match -- move to next char in tree
-        jr      @char
-
-        ;=======================================================================
-        ; emit opcode(s):
-        ;
-        ; if a branch ends in an opcode,
-        ; then no more characters must follow!
-        ;
-@opcode and     A                       ; if the last char is already 0,
-        jr      z,     +                ; then no further check is needed
-
-        call    getChar
-        cp      ASCII_SPC+1             ; is it whitespace (or eof)?
-        jp      c,      errOpcode       ; if not, invalid instruction!
-
-+       ld      HL,     [code]          ; retrieve code-segment address
-
-        ; the flags byte is a set of flags for Z80-specifics
-        ; and what, if any, kind of parameter is required
-        ;-----------------------------------------------------------------------
-        ld      A,      B               ; opcode flags byte
-        and     %01111111               ; remove the top bit
-        jr      nz,     +               ; if 0, no extension or params
-
-@out:   ld      [HL],   C               ; emit opcode byte
-        inc     HL                      ; move to next byte in code-segment
-        inc     IX                      ; increment virtual program-counter
-        ret
-
-        ;-----------------------------------------------------------------------
-        ; opcode with extensions or parameters:
-        ;
-        ; TODO: we may be able to optimise all these BIT instructions
-        ;       by switching to RLA / RLCA to pop bits off one-by-one
-        ;
-+       bit     6,      B               ; bit 6 indicates IX or IY
-        jr      nz,     @ixy            ; go handle IX|IY madness...
-
-        ; is it a $CB or $ED extended opcode?
-        ;
-        bit     4,      B               ; bit 4 indicates an extended opcode
-        jr      z,      +               ; not extended? skip ahead
-
-        and     %00100010               ; bit 5&1 = $22 ($ED) or $00 ($CB)
-        add     $cb                     ; $CB+$00 = $CB or $CB+$22 = $ED
-        ld      [HL],   A               ; emit $CB|$ED prefix byte
-        inc     HL                      ; move to next byte in code-segment
-        inc     IX                      ; increment virtual program-counter
-
-        ; any parameters:
-        ;
-        ; bit 1 indicates any kind of parameter for non IX|IY opcodes,
-        ; i.e. 8 / 16 bit literal, or relative (bit 3)
-        ;
-+       bit     1,      B               ; if no parameters, extensions have
-        jr      z,      @out            ;  been done, output opcode byte
-
-        ; output opcode and parse a parameter expression:
-        ; (inlining this is only 1 byte more than using `call @out`)
-        ;
-        ld      [HL],   C               ; emit opcode byte
-        inc     HL                      ; move to next byte in code-segment
-        inc     IX                      ; increment virtual program-counter
-        jp      pushExpr
-
-        ;-----------------------------------------------------------------------
-        ; handle IX|IY opcodes: (bit 5 chooses between IX & IY)
-        ;
-@ixy:   and     %00100000               ; isolate bit 5
-        or      %11011101               ; map to $DD (IX) or $FD (IY)
-        ld      [HL],   A               ; emit IX|IY prefix byte
-        inc     HL                      ; move to next byte in code-segment
-        inc     IX                      ; increment virtual program-counter
-
-        ; on the Z80, a combination of $DD|$FB (IX|IY) + $CB opcodes place
-        ; the opcode after the offset parameter! if this is the case, we
-        ; have to insert the parameter first, then return for the opcode
-        ;
-        bit     4,      B               ; bit 4 on indicates $CB-extended
-        jr      nz,     @cb             ; go handle reverse parameter order
-
-        ; at this point, all parameters (if any) follow the opcode,
-        ; so we can output the opcode now and forget it
-        ;
-        ld      [HL],   C               ; emit opcode byte
-        inc     HL                      ; move to next byte in code-segment
-        inc     IX                      ; increment virtual program-counter
-
-        ; bit 3 (offset), bit 2 (8-bit), and
-        ; bit 0 (16-bit) indicate parameters
-        ;
-        ld      A,      B               ; opcode flags byte
-        and     %00001101               ; filter out parameter flags
-        jr      z,      @out            ; if none, output opcode and finish!
-
-        ; the question now is whether we have 1 or 2 parameters:
-        ; TODO: we have to differentiate the type of each param
-        ; TODO: 2nd parameter
-        ;
-        jp      pushExpr
-
-        ;-----------------------------------------------------------------------
-        ; IX|IY + $CB is the edge-case that keeps on giving: at all other
-        ; times the IX|IY offset byte follows the opcode, but not here!
-        ;
-@cb:    ld      [HL],   $cb             ; emit $CB prefix byte
-        inc     HL                      ; move to next byte in code-segment
-        inc     IX                      ; increment virtual program-counter
-
-        ; TODO: i hate everything about this
-        push    BC                      ; keep opcode until emit time
-        ex      DE,     HL              ; swap heap back to HL
-        call    pushExpr
-        pop     BC
-        ld      A,      B
-        ld      [DE],   A
-        ret
-
-.ENDB
 
 pushExpr:
 ;===============================================================================
@@ -679,8 +471,8 @@ pushExpr:
 ;   (in case of relative jump)
 ; - the current line number in the input file
 ; - the current column number in the input file
-; - the size of the output; 1 or 2 bytes
 ;   (in case of error)
+; - the size of the output; 1 or 2 bytes
 ; - the expression (as tokens)
 ;
 ; in:   HL              heap position
