@@ -9,7 +9,7 @@ parseInstruction:
 ;
 ; in:   A               first character of word to parse
 ;       HL              heap addr
-; out:  HL              heap addr is advanced for any expressions
+; out:  HL              heap addr is advanced for any expressions deferred
 ;       A, BC|DE        (clobbered)
 ;-------------------------------------------------------------------------------
         ex      DE,     HL              ; swap heap to DE for now
@@ -62,9 +62,15 @@ parseInstruction:
         set     5,      A               ; force partial lowercase
         jr      nc,     +               ; was this a non-visible char before?
         xor     A                       ; any whitespace = end-of-word (0)
-+       
-        ; compare with opcode tree:
+       
++       ; compare with opcode tree:
         ;-----------------------------------------------------------------------
+        ;///////////////////////////////////////////////////////////////////////
+        push    AF
+        call    osPrintChar
+        pop     AF
+        ;///////////////////////////////////////////////////////////////////////
+
 -       cp      [HL]                    ; compare input char with tree char
         jr      z,      @match          ; characters match?
 
@@ -118,6 +124,7 @@ parseInstruction:
 @out:   ld      [HL],   C               ; emit opcode byte
         inc     HL                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
+        ex      DE,     HL              ; swap heap to HL, code to DE
         ret
 
         ;-----------------------------------------------------------------------
@@ -154,7 +161,8 @@ parseInstruction:
         ld      [HL],   C               ; emit opcode byte
         inc     HL                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
-        jp      pushExpr
+        ex      DE,     HL              ; swap heap to HL, code to DE
+        jp      parseExpr
 
         ;-----------------------------------------------------------------------
         ; handle IX|IY opcodes: (bit 5 chooses between IX & IY)
@@ -190,7 +198,8 @@ parseInstruction:
         ; TODO: we have to differentiate the type of each param
         ; TODO: 2nd parameter
         ;
-        jp      pushExpr
+        ex      DE,     HL              ; swap heap to HL, code to DE
+        jp      parseExpr
 
         ;-----------------------------------------------------------------------
         ; IX|IY + $CB is the edge-case that keeps on giving: at all other
@@ -203,7 +212,7 @@ parseInstruction:
         ; TODO: i hate everything about this
         push    BC                      ; keep opcode until emit time
         ex      DE,     HL              ; swap heap back to HL
-        call    pushExpr
+        call    parseExpr
         pop     BC
         ld      A,      B
         ld      [DE],   A
@@ -230,10 +239,15 @@ parseInstruction:
 ;
 ; opcode flags byte:
 ;-------------------------------------------------------------------------------
+; the opcode tree indicates the end of a branch with an opcode-flags byte
+; that describes the opcode prefixes and parameters used:
+;
+; bit 7 is always set as that indicates an opcode, rather than a branch 
+;
 ; bit 6 on indicates that the opcode is IX ($DD) or IY ($FD) extended
-
-; bit 5 is used to select between extensions; if bit 6 is on, then bit 5 off
-;       chooses IX, and bit 5 on chooses IY
+;
+; bit 5 is used to select between extensions; if bit 6 is on,
+;       then bit 5 off chooses IX, and bit 5 on chooses IY
 ;
 ; bit 4 on indicates a $CB (or $ED) extension. if bit 6 is off (no IX|Y),
 ;       then bits 5 & 1 on ($22) indicates an $ED extensions, otherwise

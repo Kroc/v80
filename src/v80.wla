@@ -194,7 +194,7 @@ assemble:
         ; parse root scope:
         ;-----------------------------------------------------------------------
 @word:  call    skipWhitespace          ; find first character
-        ret     z                       ; stop at end-of-file
+-       ret     z                       ; stop at end-of-file
 
         ; first character determines the word type:
         cp      CHAR_COMMENT            ; is comment?
@@ -209,7 +209,8 @@ assemble:
         call    osPrintChar             ; DEBUG!
         ;///////////////////////////////////////////////////////////////////////
         
-        jr      @word
+        and     A
+        jr      -
 
 
         ; skip comments:
@@ -256,6 +257,58 @@ skipWhitespace:
         jr      z,      -               ; also, keep reading if space
 
         ret
+
+getChar:
+;===============================================================================
+; reads the next character in the file.
+; current row and column are maintained
+;
+; TODO: handle tab (next 8th char boundary)
+;
+; out:  A                               ASCII code, 0 for end-of-file
+;       z                               zero-flag is set according to A
+;       DE, HL                          (preserved)
+;       BC                              (undefined)
+;-------------------------------------------------------------------------------
+-       call    osGetChar               ; read a char from file
+        ld      [char], A               ; retain returned character
+        ret     z                       ; return on null byte (end-of-file)
+
+        ; check for end of line:
+        ;-----------------------------------------------------------------------
+        cp      ASCII_CR                ; /r is always ignored,
+        jr      z, -                    ;  don't advance row/col, get next char
+
+        exx                             ; must preserve HL & DE
+        ld      HL',    col             ; prepare to increment column number
+
+        cp      ASCII_LF                ; /n is newline
+        jr      nz,     @col            ; if not, skip to next column
+
+        ; increment line-number:
+        ;-----------------------------------------------------------------------
+        ; TODO: should we pin this to IY?
+        ;
+        ld      DE',    [row]           ; 16-bit load,
+        inc     DE'                     ;  and increment,
+        ld      [row],  DE'             ;  and write
+        ld      [HL'],  0               ; reset column number
+
+        ; increment column number:
+        ;-----------------------------------------------------------------------
+        ; (capped at 255 even though lines can be longer)
+        ; TODO: don't even bother capping the length! lines should not
+        ; be longer than 80 and an incorrect number beyond 255 is not
+        ; a major issue
+        ;
+@col:   inc     [HL']
+        jr      nz,     +               ; if roll over, roll back (less
+        dec     [HL']                   ;  instructions than read+add+write)
+
++       exx                             ; restore HL/DE
+        and     A                       ; return z-flag
+        ret
+
 
 readWord:
 ;===============================================================================
@@ -462,7 +515,160 @@ pushLabel:
         ret
 
 
-pushExpr:
+parseExpr:
+;===============================================================================
+; parse an expression from the input file, tokenise it and evaluate it,
+; writing the result to the code-segment. if the expression has forward-
+; references, it'll be deferred
+;
+; in:   HL              current heap addr. the expr will be
+;                       tokenised onto the heap and evaluated
+;-------------------------------------------------------------------------------
+        call    tokenExpr               ; read expr and tokenise
+
+        ; TODO: handle deferred expression
+
+        ; evaluate the expression and return its value:
+        ; (fallthrough...)
+
+evalExpr:
+;===============================================================================
+; evaluates an expr:
+;
+; in:   HL      addr of the expr tokens on the heap
+; out:  BC      result value
+;-------------------------------------------------------------------------------
+        ret
+
+
+tokenExpr:
+;===============================================================================
+; read an expression from the input file into tokens:
+;
+; words are read and converted into tokens on the heap.
+; if the expression contains forward references a flag is returned
+;
+; WARN: the first character of the expression is assumed to be read and
+;       the first character of the next word following the expression
+;       will be read but not used! this allows chaining of expressions,
+;       but you must avoid calling `getChar` without first using the
+;       character waiting in `[char]`
+;
+; in:   HL              address on the heap to begin writing expr tokens
+; out:  HL              starting heap addr of expr
+;       DE              ending heap addr of expr
+;       BC, A           (clobbered)
+;-------------------------------------------------------------------------------
+        ; retain the current heap position so that after parsing
+        ; the expr we can return to its starting position
+        push    HL
+        ld      A,      [char]          ; get current input char
+        jr      @unary                  ; jump into the parsing loop
+
+        ;=======================================================================
+-       dec     HL                      ; pre-decrement heap to empty byte
+        ld      [HL],   A               ; push token in A to heap
+
+        call    skipWhitespace          ; read first character of the next word
+        jp      z,      errExpr         ; unexpected end of file!
+
+        ; an expression must begin with either a value,
+        ; or a unary operator + a value
+        ;
+        ; unary operator?
+        ;-----------------------------------------------------------------------
+        ; unary operators can always precede values,
+        ; even after an operator, e.g. `$10 + <:label`
+        ;
+@unary: cp      CHAR_OP_LO              ; lo-byte operator?
+        jr      z,      +               ; a value must follow a unary operator
+        ;-----------------------------------------------------------------------
+        cp      CHAR_OP_HI              ; hi-byte operator?
+        jr      z,      +               ; a value must follow a unary operator
+        ;-----------------------------------------------------------------------
+        cp      CHAR_OP_NOT             ; not operator?
+        jr      nz,     @value          ; no unary operators, check for values
+
+        ; a unary operator has been added,
+        ; read the next character:
++       dec     HL                      ; pre-decrement heap to empty byte
+        ld      [HL],   A               ; push a unary operator token
+
+        call    skipWhitespace          ; read first character of the next word
+        jp      z,      errEndOfFile    ; handle unexpected end of file!
+
+        ; hexadecimal literal?
+        ;-----------------------------------------------------------------------
+        ; a sigil is required because A-F can't be separated
+        ; from instruction names without look-ahead
+        ;
+@value: cp      CHAR_HEX                ; hexadecimal sigil?
+        jr      nz,     +
+
+        dec     HL                      ; pre-decrement heap to empty byte
+        ld      [HL],   A               ; push a number token
+        call    parseHexNumber          ; parse the hex number into BC
+        dec     HL                      ; pre-decrement heap to empty byte
+        ld      [HL],   B               ; push the number hi-byte
+        dec     HL                      ; pre-decrement heap to empty byte
+        ld      [HL],   C               ; push the number lo-byte
+
+        jr      @operator               ; an operator can follow a value
+
+        ; constant?
+        ;-----------------------------------------------------------------------
++       cp      CHAR_CONST              ; a constant?
+        jr      nz,     +
+
+        halt
+
+        ; label?
+        ;-----------------------------------------------------------------------
++       cp      CHAR_LABEL              ; a label?
+        jp      nz,     errExpr         ; expression has no value!!
+        
+        halt
+
+        ;-----------------------------------------------------------------------
+        ; a value has been added, check for the presence of an operator:
+        ; if there's no operator, the expression ends here
+@operator:
+        call    skipWhitespace          ; read first character of the next word
+        jr      z,      @end            ; if end-of-file, end the expression
+
+        cp      CHAR_OP_ADD             ; add operator?
+        jr      z,      -               ; push token to heap, find next operand
+        cp      CHAR_OP_SUB             ; subtract operator?
+        jr      z,      -               ; ...
+        cp      CHAR_OP_MUL             ; multiply operator?
+        jr      z,      -               ; ...
+        cp      CHAR_OP_DIV             ; divide operator?
+        jr      z,      -               ; ...
+        cp      CHAR_OP_AND             ; and operator?
+        jr      z,      -               ; ...
+        cp      CHAR_OP_OR              ; or operator?
+        jr      z,      -               ; ...
+        cp      CHAR_OP_XOR             ; xor operator?
+        jr      z,      -               ; ...
+        cp      CHAR_OP_MOD             ; modulo operator?
+        jr      z,      -               ; ...
+
+        ;-----------------------------------------------------------------------
+        ; whatever it is, it isn't an operator;
+        ; fall through and terminate the expression
+        ;
+@end:   dec     HL                      ; pre-decrement heap to empty byte
+        ld      [HL],   CHAR_END        ; terminate the expression (0)
+
+        ; remember the end of the expr addr; if the expr cannot be
+        ; evaluated we need to keep it on the heap and defer it
+        ;
+        ex      DE,     HL              ; move end-of-expr heap addr to DE
+        pop     HL                      ; return to beginning of expr
+        ret
+
+
+deferExpr:
 ;===============================================================================
 ; push an expression to the heap:
 ;
@@ -553,121 +759,6 @@ pushExpr:
         ; ...
 
         ld      DE,     [code]
-        ret
-
-; parseExpr:
-;===============================================================================
-; parse an expression from the input file:
-;
-; words are read and converted into tokens to evaluate later
-; (e.g. deferred expressions where a symbol is not yet known)
-;
-; WARN: the first character of the expression is assumed to be read and
-;       the first character of the next word following the expression
-;       will be returned! this allows chaining of expressions, but you
-;       must avoid losing the unused character between calls!
-;
-; in:   A               first character of the expression
-;       HL              address on the heap to begin writing expr tokens
-; out:  A               unused first character of the next word!
-;       HL              updated heap address
-;       A, BC|DE        (clobbered)
-;-------------------------------------------------------------------------------
--       dec     HL                      ; pre-decrement heap to empty byte
-        ld      [HL],   A               ; push token in A to heap
-
-        call    skipWhitespace          ; read first character of the next word
-        jp      z,      errExpr         ; unexpected end of file!
-
-parseExpr:
-        ;=======================================================================
-        ; an expression must begin with either a value,
-        ; or a unary operator + a value
-        ;
-        ; unary operator?
-        ;-----------------------------------------------------------------------
-        ; unary operators can always precede values,
-        ; even after an operator, e.g. `$10 + <:label`
-        ;
-@unary: cp      CHAR_OP_LO              ; lo-byte operator?
-        jr      z,      +               ; a value must follow a unary operator
-        ;-----------------------------------------------------------------------
-        cp      CHAR_OP_HI              ; hi-byte operator?
-        jr      z,      +               ; a value must follow a unary operator
-        ;-----------------------------------------------------------------------
-        cp      CHAR_OP_NOT             ; not operator?
-        jr      nz,     @value          ; no unary operators, check for values
-
-        ; a unary operator has been added,
-        ; read the next character:
-+       dec     HL                      ; pre-decrement heap to empty byte
-        ld      [HL],   A               ; push a unary operator token
-
-        call    skipWhitespace          ; read first character of the next word
-        jp      z,      errEndOfFile    ; handle unexpected end of file!
-
-        ; hexadecimal literal?
-        ;-----------------------------------------------------------------------
-        ; a sigil is required because A-F can't be separated
-        ; from instruction names without look-ahead
-        ;
-@value: cp      CHAR_HEX                ; hexadecimal sigil?
-        jr      nz,     +
-
-        dec     HL                      ; pre-decrement heap to empty byte
-        ld      [HL],   A               ; push a number token
-        call    parseHexNumber          ; parse the hex number into BC
-        dec     HL                      ; pre-decrement heap to empty byte
-        ld      [HL],   B               ; push the number hi-byte
-        dec     HL                      ; pre-decrement heap to empty byte
-        ld      [HL],   C               ; push the number lo-byte
-
-        jr      @operator               ; an operator can follow a value
-
-        ; constant?
-        ;-----------------------------------------------------------------------
-+       cp      CHAR_CONST              ; a constant?
-        jr      nz,     +
-
-        halt
-
-        ; label?
-        ;-----------------------------------------------------------------------
-+       cp      CHAR_LABEL              ; a label?
-        jp      nz,     errExpr         ; expression has no value!!
-        
-        halt
-
-        ;-----------------------------------------------------------------------
-        ; a value has been added, check for the presence of an operator:
-        ; if there's no operator, the expression ends here
-@operator:
-        call    skipWhitespace          ; read first character of the next word
-        jr      z,      @end            ; if end-of-file, end the expression
-
-        cp      CHAR_OP_ADD             ; add operator?
-        jr      z,      -               ; push token to heap, find next operand
-        cp      CHAR_OP_SUB             ; subtract operator?
-        jr      z,      -               ; ...
-        cp      CHAR_OP_MUL             ; multiply operator?
-        jr      z,      -               ; ...
-        cp      CHAR_OP_DIV             ; divide operator?
-        jr      z,      -               ; ...
-        cp      CHAR_OP_AND             ; and operator?
-        jr      z,      -               ; ...
-        cp      CHAR_OP_OR              ; or operator?
-        jr      z,      -               ; ...
-        cp      CHAR_OP_XOR             ; xor operator?
-        jr      z,      -               ; ...
-        cp      CHAR_OP_MOD             ; modulo operator?
-        jr      z,      -               ; ...
-
-        ;-----------------------------------------------------------------------
-        ; whatever it is, it isn't an operator;
-        ; fall through and terminate the expression
-        ;
-@end:   dec     HL                      ; pre-decrement heap to empty byte
-        ld      [HL],   CHAR_END        ; terminate the expression (0)
         ret
 
 
@@ -783,52 +874,6 @@ parseHexNumber:
         jp      nc,     errHex          ; error for anything above "F"
         add     10                      ; rebase "A" to 10, "F" to 15
 
-        ret
-
-
-getChar:
-;===============================================================================
-; reads the next character in the file.
-; current row and column are maintained
-;
-; TODO: handle tab (next 8th char boundary)
-;
-; out:  A                               ASCII code, 0 for end-of-file
-;       z                               zero-flag is set according to A
-;       DE, HL                          (preserved)
-;       BC                              (undefined)
-;-------------------------------------------------------------------------------
--       call    osGetChar               ; read a char from file
-        ld      [char], A               ; retain returned character
-        ret     z                       ; return on null byte (end-of-file)
-
-        ; check for end of line:
-        ;-----------------------------------------------------------------------
-        cp      ASCII_CR                ; /r is always ignored,
-        jr      z, -                    ;  don't advance row/col, get next char
-
-        exx                             ; must preserve HL & DE
-        ld      HL',    col             ; prepare to increment column number
-
-        cp      ASCII_LF                ; /n is newline
-        jr      nz,     @col            ; if not, skip to next column
-
-        ; increment line-number:
-        ;-----------------------------------------------------------------------
-        ld      DE',    [row]           ; 16-bit load,
-        inc     DE'                     ;  and increment,
-        ld      [row],  DE'             ;  and write
-        ld      [HL'],  0               ; reset column number
-
-        ; increment column number:
-        ;-----------------------------------------------------------------------
-        ; (capped at 255 even though lines can be longer)
-@col:   inc     [HL']
-        jr      nz,     +               ; if roll over, roll back (less
-        dec     [HL']                   ;  instructions than read+add+write)
-
-+       exx                             ; restore HL/DE
-        and     A                       ; return z-flag
         ret
 
 
