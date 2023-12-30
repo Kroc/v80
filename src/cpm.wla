@@ -41,6 +41,12 @@ TBASE                   = $0100         ; start of transient program area
 
 boot:
 ;===============================================================================
+        ; always print the banner first,
+        ; it differs for each OS/platform
+        ;
+        ld      DE,     @banner         ; print the program banner
+        call    osPrintStr
+
         ; check CP/M version -- it's not likely we're going to be running
         ; on CP/M-1 but this same check will be required for a CP/M-3 version
         ;
@@ -62,6 +68,24 @@ boot:
         ld      L,      0               ; normalise to beginning of page
         ld      SP,     HL
 
+        ; check for an automatic file-reference,
+        ; i.e. a file parameter was passed on the command line
+        ;-----------------------------------------------------------------------
+        ; check filename first-letter in the built-in file-control-block
+        ld      A,      [command_fcb.filename]
+        and     %01111111               ; (hi-bit might be set)
+        cp      ' '+1                   ; non-visible char? $00-$20?
+        jp      c,      @help           ; show help msg and quit
+
+        ; open file:
+        xor     A                       ; start reading at record 0
+        ld      [command_fcb.current_record],   A
+        ld      C,      BDOS_OPEN
+        ld      DE,     command_fcb     ; use default FileControlBlock
+        call    BDOS
+        and     A                       ; (set flags!)
+        jp      m,      errFile         ; $FF = error
+
         ; run the program
         ;-----------------------------------------------------------------------
         call    init
@@ -71,13 +95,21 @@ boot:
         ; we need to restart CP/M fully
         jp      osQuit
 
-        ; exit with a version error
         ;-----------------------------------------------------------------------
-@err:   ld      DE,     @str
+@banner .BYTE   "v80 CP/M v0, Kroc Camen 2023\n$"
+
+        ;=======================================================================
+@err:   ld      DE,     @@str           ; exit with a version error
         call    osPrintStr
         jp      osQuit
 
-@str:   .BYTE "Error: CP/M ", CPM_VER_STR, " or higher required!$"
+@@str   .BYTE "Error: CP/M ", CPM_VER_STR, " or higher required!$"
+
+        ;=======================================================================
+@help:  ld      DE,     @@str
+        jp      osPrintStr
+
+@@str   .BYTE "\n    V80 SOURCE.V80$"
 
 
 ; BDOS calls:

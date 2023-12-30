@@ -7,9 +7,6 @@
 
 init:
 ;===============================================================================
-        ld      DE,     @banner         ; print the program banner
-        call    osPrintStr
-
         ; set heap position below stack:
         ;-----------------------------------------------------------------------
         ; this *assumes* we are at least 1 call deep on the stack,
@@ -26,23 +23,6 @@ init:
 
         call    memStat                 ; print the memory status
 
-        ; check for an automatic file-reference,
-        ; i.e. a file parameter was passed on the command line
-        ;-----------------------------------------------------------------------
-        ; check filename first-letter in the built-in file-control-block
-        ld      A,      [command_fcb.filename]
-        cp      ' '+1                   ; non-visible char? $00-$20?
-        jp      c,      help            ; show help msg and quit
-
-        ; open file:
-        xor     A                       ; start reading at record 0
-        ld      [command_fcb.current_record],   A
-        ld      C,      BDOS_OPEN
-        ld      DE,     command_fcb     ; use default FileControlBlock
-        call    BDOS
-        and     A                       ; (set flags!)
-        jp      m,      errFile         ; $FF = error
-
         ; assemble the file
         ;-----------------------------------------------------------------------
         call    assemble
@@ -52,8 +32,6 @@ init:
         call    memStat
         ret                             ; return to CP/M to quit the program
 
-        ;-----------------------------------------------------------------------
-@banner .BYTE   "v80 CP/M v0, Kroc Camen 2023\n$"
 
 memStat:
 ;===============================================================================
@@ -934,14 +912,3 @@ code:
 __code: ; WARNING: ANYTHING PLACED AFTER HERE WILL BE OVERWRITTEN
 
 ;///////////////////////////////////////////////////////////////////////////////
-
-help:
-;===============================================================================
-; print the help string:
-;
-; this isn't needed once assembly starts, so it gets overwritten
-;-------------------------------------------------------------------------------
-        ld      DE,     @str
-        jp      osPrintStr
-
-@str    .BYTE "\n    V80 SOURCE.V80$"
