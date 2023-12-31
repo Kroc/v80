@@ -91,11 +91,11 @@ char:   .BYTE $00                       ; current character
 
 row:    .WORD $0000                     ; current line-number in file
 
-; NOTE: these two bytes are specifically grouped together because
-;       they are required by expressions written to the heap,
+; NOTE: these two bytes are specifically grouped together because they
+;       are required by deferred expressions written to the heap,
 ;       and are pushed together as a single word
-expr_param_col:
-param:  .BYTE $00                       ; next parameter properties
+stride_col:
+stride: .BYTE $00                       ; number of bytes to occupy
 col:    .BYTE $00                       ; current column-number in file
 
 ; heap:
@@ -658,18 +658,17 @@ deferExpr:
 ; - the current column number in the input file
 ;   (in case of error)
 ; - the size of the output; 1 or 2 bytes
-; - the expression (as tokens)
+; - the addr of the expr tokens
 ;
-; in:   HL              heap position
+; in:   HL              current heap position
+;       DE              expr tokens addr on heap
 ;       IX              virtual program-counter
 ;
-; out:  HL              updated heap position (expr added to heap)
+; out:  HL              updated heap position (defer record added to heap)
 ;       DE              updated code-segment addr (expr result space reserved)
 ;       IX              updated virtual program-counter (as with DE)
-;       A               (clobbered)
+;       A, BC           (clobbered)
 ;-------------------------------------------------------------------------------
-        ld      A,      B               ; TODO: remove this
-        ld      [param],A               ; retain flags for parameter fetching
         ld      DE,     [code]          ; retrieve current code-segment addr
 
         ; we need to push a bunch of values to the heap and the fastest way
@@ -702,19 +701,18 @@ deferExpr:
         ; push the source file line-number
         ld      BC,     [row]
         push    BC
-        ; push the source file column-number, plus the opcode
-        ; flags byte that gives the type/size of the result
-        ld      BC,     [expr_param_col]
+        ; push the source file column-number, plus the number of bytes
+        ; the result should occupy in the code-segment
+        ld      BC,     [stride_col]
         push    BC
 
         ; reserve bytes for the expr result:
         ;
         ; this routine is only called if there is a parameter, which assumes
-        ; a minimum of 1 byte. check the bit for a 16-bit parameter (e.g. JP)
-        ; NOTE: the opcode-flags byte is in C, from the load above
+        ; a minimum of 1 byte, so check for a second byte
         ;
-        bit     1,      C               ; bit 1 indicates a 16-bit parameter
-        jr      z,      +               ;
+        dec     C                       ; is the stride 1 or 2?
+        jr      z,      +               ; if it is 1, skip the 2nd byte
         inc     DE                      ; reserve a byte and increment
         inc     IX                      ;  virtual program-counter
 +       inc     DE                      ; reserve an additional byte
