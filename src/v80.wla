@@ -5,89 +5,16 @@
 .INC    "err.wla"                       ; error message handling
 .INC    "z80.wla"                       ; Z80 parser & opcode binary tree
 
-.DEF    WORD_LEN        30              ; maximum symbol name length
-
-init:
-;===============================================================================
-        ; set heap position below stack:
-        ;-----------------------------------------------------------------------
-        ; this *assumes* we are at least 1 call deep on the stack,
-        ; i.e. $FCFE rather than the unused stack top @ $FD00
-        ;
-        ld      HL,     $0000           ; oddly, there's no `ld HL, SP`!
-        add     HL,     SP              ; stack address, e.g. $FCFE
-        ld      L,      0               ; use 0 for lo-byte, e.g. $FC00
-        ld      [temp], HL              ; use bottom of stack for temp bytes
-        ld      [heap], HL              ; finally set the heap position
-        ld      BC,     WORD_LEN+1      ; max word-length for word buffer,
-        add     HL,     BC              ;  plus 1 byte to store word-length
-        ld      [word], HL              ;  (word buffer works downwards)
-
-        call    memStat                 ; print the memory status
-
-        ; assemble the file
-        ;-----------------------------------------------------------------------
-        call    assemble
-        ;-----------------------------------------------------------------------
-
-        ld      [heap], HL
-        call    memStat
-        ret                             ; return to CP/M to quit the program
-
-
-memStat:
-;===============================================================================
-; prints memory status:
-;-------------------------------------------------------------------------------
-        ld      HL,     $0000           ; oddly, there's no `ld HL, SP`!
-        add     HL,     SP              ; stack address, e.g. $FCFE
-        ex      DE,     HL              ; swap SP into DE
-        ld      HL,     @stack          ; stack addr position in string
-        call    @hex                    ; convert and insert
-
-        ld      DE,     [heap]
-        ld      HL,     @heap           ; heap addr position in string
-        call    @hex                    ; convert and insert
-
-        ld      DE,     [code]
-        ld      HL,     @code           ; code addr position in string
-        call    @hex                    ; convert and insert
-
-        ld      DE,     @mem
-        jp      osPrintStr
-
-        ;-----------------------------------------------------------------------
-        ; convert DE to ASCII hexadecimal digits and insert in the string
-        ;
-@hex:   ld      A,      D
-        call    @byte
-        ld      A,      E
-@byte:  call    getHexByte
-        ld      [HL],   B
-        inc     HL
-        ld      [HL],   C
-        inc     HL
-        ret
-
-        ;-----------------------------------------------------------------------
-@mem    .BYTE   "[stack: "
-@stack  .BYTE   "0000"
-        .BYTE   " | heap: "
-@heap   .BYTE   "0000"
-        .BYTE   " | code: "
-@code   .BYTE   "0000"
-        .BYTE   "]\n$"
-
-
 .BLOCK  "code"
 ;===============================================================================
 ; the bottom of the stack, just above the heap,
 ; can be used as temporary space for a few bytes
 ; (these values are set during initialisation)
 ;
+.DEF    WORD_LEN        30              ; maximum symbol name length
+
 temp:   .ADDR $fc00                     ; temp bytes at bottom of stack
 word:   .ADDR $fc1f                     ; word-buffer (works backwards)
-expr:   .ADDR $fc20                     ; expression token space
 sp:     .ADDR $fd00                     ; stack pointer backup
 
 char:   .BYTE $00                       ; current character
@@ -156,7 +83,82 @@ const:  .ADDR $000                      ; addr of last const dictionary-entry
 .DEF    CHAR_OP_XOR     '^'             ; xor operator
 .DEF    CHAR_OP_MOD     '\'             ; modulo operator
 
+expr:   .ADDR $fc20                     ; expression token space
 defer:  .ADDR $0000                     ; addr of last deferred expr
+
+
+init:
+;===============================================================================
+        ; set heap position below stack:
+        ;-----------------------------------------------------------------------
+        ; this *assumes* we are at least 1 call deep on the stack,
+        ; i.e. $FCFE rather than the unused stack top @ $FD00
+        ;
+        ld      HL,     $0000           ; oddly, there's no `ld HL, SP`!
+        add     HL,     SP              ; stack address, e.g. $FCFE
+        ld      L,      0               ; use 0 for lo-byte, e.g. $FC00
+        ld      [temp], HL              ; use bottom of stack for temp bytes
+        ld      [heap], HL              ; finally set the heap position
+        ld      BC,     WORD_LEN+1      ; max word-length for word buffer,
+        add     HL,     BC              ;  plus 1 byte to store word-length
+        ld      [word], HL              ;  (word buffer works downwards)
+        inc     HL                      ; immediately above that
+        ld      [expr], HL              ;  is the expr tokens space
+
+        call    memStat                 ; print the memory status
+
+        ; assemble the file
+        ;-----------------------------------------------------------------------
+        call    assemble
+        ;-----------------------------------------------------------------------
+
+        ld      [heap], HL
+        call    memStat
+        ret                             ; return to CP/M to quit the program
+
+
+memStat:
+;===============================================================================
+; prints memory status:
+;-------------------------------------------------------------------------------
+        ld      HL,     $0000           ; oddly, there's no `ld HL, SP`!
+        add     HL,     SP              ; stack address, e.g. $FCFE
+        ex      DE,     HL              ; swap SP into DE
+        ld      HL,     @stack          ; stack addr position in string
+        call    @hex                    ; convert and insert
+
+        ld      DE,     [heap]
+        ld      HL,     @heap           ; heap addr position in string
+        call    @hex                    ; convert and insert
+
+        ld      DE,     [code]
+        ld      HL,     @code           ; code addr position in string
+        call    @hex                    ; convert and insert
+
+        ld      DE,     @mem
+        jp      osPrintStr
+
+        ;-----------------------------------------------------------------------
+        ; convert DE to ASCII hexadecimal digits and insert in the string
+        ;
+@hex:   ld      A,      D
+        call    @byte
+        ld      A,      E
+@byte:  call    getHexByte
+        ld      [HL],   B
+        inc     HL
+        ld      [HL],   C
+        inc     HL
+        ret
+
+        ;-----------------------------------------------------------------------
+@mem    .BYTE   "[stack: "
+@stack  .BYTE   "0000"
+        .BYTE   " | heap: "
+@heap   .BYTE   "0000"
+        .BYTE   " | code: "
+@code   .BYTE   "0000"
+        .BYTE   "]\n$"
 
 
 assemble:
@@ -192,7 +194,6 @@ assemble:
         
         and     A
         jr      -
-
 
         ; skip comments:
         ;=======================================================================
