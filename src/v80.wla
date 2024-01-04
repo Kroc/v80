@@ -5,6 +5,8 @@
 .INC    "err.wla"                       ; error message handling
 .INC    "z80.wla"                       ; Z80 parser & opcode binary tree
 
+.DEF    WORD_LEN        30              ; maximum symbol name length
+
 init:
 ;===============================================================================
         ; set heap position below stack:
@@ -17,7 +19,7 @@ init:
         ld      L,      0               ; use 0 for lo-byte, e.g. $FC00
         ld      [temp], HL              ; use bottom of stack for temp bytes
         ld      [heap], HL              ; finally set the heap position
-        ld      BC,     30+1            ; max word-length for word buffer,
+        ld      BC,     WORD_LEN+1      ; max word-length for word buffer,
         add     HL,     BC              ;  plus 1 byte to store word-length
         ld      [word], HL              ;  (word buffer works downwards)
 
@@ -84,8 +86,9 @@ memStat:
 ; (these values are set during initialisation)
 ;
 temp:   .ADDR $fc00                     ; temp bytes at bottom of stack
-word:   .ADDR $fc20                     ; word-buffer (works backwards)
-sp:     .ADDR $fcff                     ; stack pointer backup
+word:   .ADDR $fc1f                     ; word-buffer (works backwards)
+expr:   .ADDR $fc20                     ; expression token space
+sp:     .ADDR $fd00                     ; stack pointer backup
 
 char:   .BYTE $00                       ; current character
 
@@ -153,7 +156,7 @@ const:  .ADDR $000                      ; addr of last const dictionary-entry
 .DEF    CHAR_OP_XOR     '^'             ; xor operator
 .DEF    CHAR_OP_MOD     '\'             ; modulo operator
 
-expr:   .ADDR $0000                     ; addr of last expression
+defer:  .ADDR $0000                     ; addr of last deferred expr
 
 
 assemble:
@@ -292,13 +295,13 @@ readWord:
 ;===============================================================================
 ; reads a word into a buffer:
 ;
-; NOTE: an error occurs if a word is > 30 chars long.
+; NOTE: an error occurs if a word is > WORD_LEN chars long.
 ;       this routine doesn't handle strings
 ;
 ; in:   A               first character of word already read
 ; out:  BC              length of word
-;       DE              addr of word-buffer, word-length byte, e.g. $FC20
 ;       HL              (preserved)
+;       DE              (clobbered)
 ;-------------------------------------------------------------------------------
         ; note that the word is written *downwards* in RAM, to match how
         ; symbol names are written on the heap, for faster comparison --
@@ -306,25 +309,22 @@ readWord:
         ; because this is page-aligned we can get away with using
         ; `DEC E` instead of `DEC DE`
         ;
-        ld      DE,     [word]          ; top of word-buffer, e.g $FC20
-        dec     E                       ; first byte is word-length, skip
-        ld      B,      30+1            ; max number of bytes, +1 for djnz
+        ld      DE,     [word]          ; top of word-buffer, e.g $FC1F
         jr      +                       ; (first character already read)
         ;-----------------------------------------------------------------------
 -       call    osGetChar               ; read char form input file
         cp      ASCII_SPC+1             ; whitespace?
         jr      c,      @ok             ; (leave loop at whitespace)
-+       ld      [DE],   A               ; add the character to the buffer
-        dec     E                       ; move to next space in buffer
-        djnz    -
++       dec     E                       ; move to next space in buffer
+        ld      [DE],   A               ; add the character to the buffer
+        jp      p,      -               ; keep going until buffer full
         ;-----------------------------------------------------------------------
         jp      errWord                 ; word too long!
 
         ;-----------------------------------------------------------------------
-@ok:    ld      A,      30              ; 30 - characters remaining
-        sub     E                       ;    = length of word
-        ld      E,      $20             ; go back to word-length byte
-        ld      [DE],   A               ; write word length byte
+@ok:    ld      A,      WORD_LEN        ; max size - characters remaining
+        sub     E                       ;  = length of word
+        ld      [word], A               ; write word-length byte
 
         ld      C,      A               ; return word-length in BC,
         ld      B,      0               ;  convenient for `findSymbol` etc.
@@ -369,7 +369,7 @@ findConstant:
         and     A                       ; set z-flag according to result
         ret
 
-; findSymbol:
+findSymbol:
 ;===============================================================================
 ; search for a symbol (label / constant) in a dictionary:
 ;
@@ -378,7 +378,6 @@ findConstant:
 ;                       e.g. `label` for labels & `const` for constants
 ;       BC              length of symbol name; `readWord` provides this.
 ;                       despite names being limited to 30 chars, B must be 0
-;       DE              address of word-buffer, i.e. [word]
 ;       [word]          the label is assumed to be in the word-buffer,
 ;                       i.e. after calling `readWord`
 ;
@@ -389,20 +388,21 @@ findConstant:
 ;                       pointing to the lo-byte of the link field
 ;       DE              (clobbered)
 ;-------------------------------------------------------------------------------
+        ld      DE,     [word]          ; initialise addr of word-buffer
+        jr      _findSymbol             ; jump into the main loop
+
         ; (this is a loop fall-through, see the label below for entry point)
 
+        ;=======================================================================
         ; names do not match!
-        ;-----------------------------------------------------------------------
-        ; TODO: `ld DE, [word]` could be patched to
-        ;       `ld DE, $nnnn` to save 10 cycles per string mismatch
         ;
---      ld      DE,     [word]          ; snap back to length byte in buffer
+--      ld      E,      WORD_LEN+1      ; snap back to length byte in buffer
         pop     HL                      ; snap back to length byte in symbol
         ld      C,      [HL]            ; re-get word-length to check
 -       inc     HL                      ; move *up* to link addr lo-byte        
 
-findSymbol:
-        ;=======================================================================
+_findSymbol:
+        ;-----------------------------------------------------------------------
         ; the link field of a symbol points to      - - -+------+
         ; the lo-byte of the next symbol's link          | link |
         ; field in the chain, with the remaining    - - -+--|---+
@@ -721,9 +721,9 @@ deferExpr:
         ; link this expression to the previous one:
         ; (since the heap address is in SP, we can reuse HL)
         ;
-        ld      HL,     [expr]          ; get previous expr address
+        ld      HL,     [defer]         ; get previous deferred expr address
         push    HL                      ; write to heap
-        ld      [expr], SP              ; write heap addr to the entry point!
+        ld      [defer],SP              ; write heap addr to the entry point!
 
         ; push the current code-segment position; this is where
         ; the expression result will be filled in after evaluation
