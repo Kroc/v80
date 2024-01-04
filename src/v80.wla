@@ -213,6 +213,8 @@ assemble:
         ;=======================================================================
 @label: push    DE                      ; code-segment is not used here...
 
+        ; TODO: fill in forward reference!
+        ;
         call    readWord                ; read the label in
         call    findLabel               ; does it already exist?
         jp      nz,     errLabel        ; cannot redefine labels!
@@ -343,8 +345,9 @@ findLabel:
 ; search the dictionary for a label:
 ;
 ; out:  A               0 if symbol not found, non-zero if found
-;       z               z-flag is set according to the above
-;       BC              if symbol found, BC holds its value
+;       zf              zero-flag is set according to the above
+;       BC              if label found, BC holds its value
+;                       if not found, BC retains the name length
 ;       HL              (preserved)
 ;       DE              (clobbered)
 ;-------------------------------------------------------------------------------
@@ -362,8 +365,9 @@ findConstant:
 ; search the dictionary for a constant:
 ;
 ; out:  A               0 if symbol not found, non-zero if found
-;       z               z-flag is set according to the above
-;       BC              if symbol found, BC holds its value
+;       zf              zero-flag is set according to the above
+;       BC              if constant found, BC holds its value
+;                       if not found, BC retains the name length
 ;       HL              (preserved)
 ;       DE              (clobbered)
 ;-------------------------------------------------------------------------------
@@ -389,8 +393,9 @@ findSymbol:
 ;                       i.e. after calling `readWord`
 ;
 ; out:  A               0 if symbol not found, non-zero if found
+;       zf              zero-flag is set according to the above
 ;       BC              if symbol found, BC holds its value
-;                       if not found, BC retains the name length
+;                       if not found, **BC retains the name length**
 ;       HL              if found, the addr of the symbol record,
 ;                       pointing to the lo-byte of the link field
 ;       DE              (clobbered)
@@ -420,6 +425,7 @@ _findSymbol:
         ;          +-------+---+---+---+---+---+---+-----+------+
         ;
         ; follow this link, but exit if it's $0000
+        ; (also setting the zero-flag)
         ;
         ld      A,      [HL]            ; read next symbol addr, lo-byte
         inc     HL                      ; move *up* to link addr hi-byte
@@ -438,7 +444,7 @@ _findSymbol:
         ;-----------------------------------------------------------------------
         ; symbol length matches, check characters:
         ;
-        ; remember this position to snap-back to if the symbol doesn't
+        ; remember this position to snap back to if the symbol doesn't
         ; match and we need to follow the link to the next symbol
         push    HL
 
@@ -451,8 +457,21 @@ _findSymbol:
 
         ; names match! read and return the symbol value:
         ;-----------------------------------------------------------------------
-        ; NOTE: CPD has already decremented HL to the value hi-byte
+        ; the flag byte is used to indicate a forward-reference on a label;
+        ; the label name is known, but doesn't have a value yet. we return
+        ; this flag in the carry flag by shifting it out of the byte
         ;
+        ; to indicate a found label (even if deferred), A must be non-zero
+        ; and the zero-flag must be clear. we do this by shifting a 1 into
+        ; bit 7 of A as we shift the forward-reference flag out
+        ;
+        ; NOTE: CPD has already decremented HL to the flag byte
+        ;
+        ld      A,      [HL]            ; forward-reference flag byte
+        scf                             ; ensure A != 0 for return
+        rra                             ; shift bit 0 into carry
+
+        dec     HL                      ; now move to symbol value
         ld      B,      [HL]            ; symbol value hi-byte
         dec     HL                      ; move to value lo-byte
         ld      C,      [HL]            ; return BC = symbol value
@@ -470,17 +489,22 @@ pushLabel:
 ; - the link addr to the previous label
 ; - the label name length; here for faster searching
 ; - the label name, written right-to-left -- the heap extends downwards!
+; - a flag to indicate a forward-reference:
+;   this happens when a label that does not exist is encountered in an expr,
+;   a placeholder label is added to the heap to be filled in later
 ; - the label value; the current virtual program-counter
 ;
 ; WARN: does not check if the label already exists!
 ;
-; in:   HL              heap position to write new label
+; in:   cf              carry-flag set indicates a forward-reference!
+;       HL              heap position to write new label
 ;       [word]          the label is assumed to be in the word-buffer,
 ;                       i.e. after calling `readWord`
 ; out:  HL              heap position is advanced (downwards!)
 ;       A, BC|DE        clobbered
 ;-------------------------------------------------------------------------------
         ; link this label to the previous one:
+        ; (note that these instructions don't change carry...)
         ;
         ld      DE,     [label]         ; read prev label addr
         dec     HL                      ; pre-decrement heap to empty byte
@@ -490,6 +514,7 @@ pushLabel:
         ld      [label],DE              ; update entry point with heap addr
 
         ; push the label name:
+        ; (note that these instructions don't change carry...)
         ;
         ld      DE,     [word]          ; get word-buffer addr
         ld      A,      [DE]            ; first byte is word-length
@@ -501,20 +526,28 @@ pushLabel:
         ; the heap is pre-decrement like the stack (decrement-then-copy)
         ; -- decrement HL once to adjust for this before the copy
         ;
+        ; (note that these instructions don't change carry...)
+        ;
         dec     HL                      ; adjust heap for post-decrement copy
         lddr                            ; copy BC bytes from [DE] to [HL]!
 
+        ; push flag to indicate a forward-reference
+        ; NOTE: LDDR has already decremented HL for us!
+        ;
+        rl      B                       ; shift carry flag into bit 0
+        ld      [HL],   B               ; (note that B will be 0 or 1)
+
         ; push the label value (virtual program-counter):
+        ; if the label is a forward-reference, this value is ignored
         ;
         ; the value comes after the label name to speed up symbol searching
         ; as the value is only needed once a symbol name is matched and then
         ; the addr is in the right place
         ;
-        ; NOTE: CPDR has already decremented HL to the value hi-byte
-        ;
+        dec     HL                      ; pre-decrement heap to empty byte
         ld      A,      IXH
         ld      [HL],   A
-        dec     HL
+        dec     HL                      ; pre-decrement heap to empty byte
         ld      A,      IXL
         ld      [HL],   A
 
