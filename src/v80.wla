@@ -7,6 +7,12 @@
 
 .BLOCK  "code"
 ;===============================================================================
+; memory map:
+;
+;   +-----+----------------------------------------+------+----------------+
+;   | v80 | code->                          <-heap | word | expr-> <-stack |
+;   +-----+----------------------------------------+------+----------------+
+;
 ; the bottom of the stack, just above the heap,
 ; can be used as temporary space for a few bytes
 ; (these values are set during initialisation)
@@ -521,8 +527,8 @@ parseExpr:
 ; writing the result to the code-segment. if the expression has forward-
 ; references, it'll be deferred
 ;
-; in:   HL              current heap addr. the expr will be
-;                       tokenised onto the heap and evaluated
+; in:   HL              current heap addr; if the expr has to be deferred
+;                       it'll be pushed to the heap
 ;       [stride]        the stride (parameter width) needs to be set as this
 ;                       determines the number of bytes the result fits in
 ;-------------------------------------------------------------------------------
@@ -551,7 +557,7 @@ tokenExpr:
 ;===============================================================================
 ; read an expression from the input file into tokens:
 ;
-; words are read and converted into tokens on the heap.
+; words are read and converted into tokens.
 ; if the expression contains forward references a flag is returned
 ;
 ; WARN: the first character of the expression is assumed to be read and
@@ -562,20 +568,23 @@ tokenExpr:
 ;
 ; TODO: return some flag for evaluable state. A? c? z?
 ;
-; in:   HL              address on the heap to begin writing expr tokens
-; out:  HL              starting heap addr of expr
-;       DE              ending heap addr of expr
-;       BC, A           (clobbered)
+; out:  A, BC|DE|HL     (clobbered)
 ;-------------------------------------------------------------------------------
-        ; retain the current heap position so that after parsing
-        ; the expr we can return to its starting position
-        push    HL
+        ; expressions are tokenised into a temporary space at the bottom of
+        ; the stack, this is because any forward-references to labels will
+        ; need to be pushed to the heap so we can't have the expr on the
+        ; heap at the same time!
+        ;
+        ; TODO: `ld HL, [expr]` can be patched with `ld HL, $xx20`
+        ;       to save 10 cycles here
+        ;
+        ld      HL,     [expr]          ; get addr of expr bytecode space
         ld      A,      [char]          ; get current unused input char
         jr      @unary                  ; jump into the parsing loop
 
         ;=======================================================================
--       dec     HL                      ; pre-decrement heap to empty byte
-        ld      [HL],   A               ; push token in A to heap
+-       ld      [HL],   A               ; push token in A to expr
+        inc     HL                      ; move to next token space
 
         call    skipWhitespace          ; read first character of the next word
         jp      z,      errExpr         ; unexpected end of file!
@@ -599,8 +608,8 @@ tokenExpr:
 
         ; a unary operator has been added,
         ; read the next character:
-+       dec     HL                      ; pre-decrement heap to empty byte
-        ld      [HL],   A               ; push a unary operator token
++       ld      [HL],   A               ; push a unary operator token
+        inc     HL                      ; move to next token space
 
         call    skipWhitespace          ; read first character of the next word
         jp      z,      errEndOfFile    ; handle unexpected end of file!
@@ -613,13 +622,13 @@ tokenExpr:
 @value: cp      CHAR_HEX                ; hexadecimal sigil?
         jr      nz,     +
 
-        dec     HL                      ; pre-decrement heap to empty byte
         ld      [HL],   A               ; push a number token
+        inc     HL                      ; move to next token space
         call    parseHexNumber          ; parse the hex number into BC
-        dec     HL                      ; pre-decrement heap to empty byte
         ld      [HL],   B               ; push the number hi-byte
-        dec     HL                      ; pre-decrement heap to empty byte
+        inc     HL                      ; move to next token space
         ld      [HL],   C               ; push the number lo-byte
+        inc     HL                      ; move to next token space
 
         jr      @operator               ; an operator can follow a value
 
@@ -671,15 +680,7 @@ tokenExpr:
         ; whatever it is, it isn't an operator;
         ; fall through and terminate the expression
         ;
-@end:   dec     HL                      ; pre-decrement heap to empty byte
-        ld      [HL],   CHAR_END        ; terminate the expression (0)
-
-        ; remember the end of the expr addr; if the expr cannot be
-        ; evaluated we need to keep it on the heap and defer it
-        ;
-        ex      DE,     HL              ; move end-of-expr heap addr to DE
-        pop     HL                      ; return heap to beginning of expr
-
+@end:   ld      [HL],   CHAR_END        ; terminate the expression (0)
         ret
 
 
