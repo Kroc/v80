@@ -1,4 +1,4 @@
-; v80 CP/M (c) Kroc Camen 2023, MIT License
+; v80, (C) Kroc Camen 2023-2024, MIT License
 ; a z80 assembler for Z80s
 ;
 .INC    "cpm.wla"                       ; CP/M interface
@@ -292,7 +292,7 @@ readWord:
 ;===============================================================================
 ; reads a word into a buffer:
 ;
-; NOTE: an error occurs if a word is > 32 chars long.
+; NOTE: an error occurs if a word is > 30 chars long.
 ;       this routine doesn't handle strings
 ;
 ; in:   A               first character of word already read
@@ -334,6 +334,12 @@ readWord:
 findLabel:
 ;===============================================================================
 ; search the dictionary for a label:
+;
+; out:  A               0 if symbol not found, non-zero if found
+;       z               z-flag is set according to the above
+;       BC              if symbol found, BC holds its value
+;       HL              (preserved)
+;       DE              (clobbered)
 ;-------------------------------------------------------------------------------
         push    HL                      ; preserve heap position
 
@@ -341,11 +347,18 @@ findLabel:
         call    findSymbol
 
         pop     HL                      ; restore heap position
+        and     A                       ; set z-flag according to result
         ret
 
 findConstant:
 ;===============================================================================
 ; search the dictionary for a constant:
+;
+; out:  A               0 if symbol not found, non-zero if found
+;       z               z-flag is set according to the above
+;       BC              if symbol found, BC holds its value
+;       HL              (preserved)
+;       DE              (clobbered)
 ;-------------------------------------------------------------------------------
         push    HL                      ; preserve heap position
 
@@ -353,6 +366,7 @@ findConstant:
         call    findSymbol
 
         pop     HL                      ; restore heap position
+        and     A                       ; set z-flag according to result
         ret
 
 ; findSymbol:
@@ -367,26 +381,25 @@ findConstant:
 ;       DE              address of word-buffer, i.e. [word]
 ;       [word]          the label is assumed to be in the word-buffer,
 ;                       i.e. after calling `readWord`
+;
 ; out:  A               0 if symbol not found, non-zero if found
 ;       BC              if symbol found, BC holds its value
 ;                       if not found, BC retains the name length
-;       HL|DE           (clobbered)
+;       HL              if found, the addr of the symbol record,
+;                       pointing to the lo-byte of the link field
+;       DE              (clobbered)
 ;-------------------------------------------------------------------------------
         ; (this is a loop fall-through, see the label below for entry point)
 
         ; names do not match!
         ;-----------------------------------------------------------------------
-        ; we need to jump from an arbitrary position in the name string back to
-        ; the length field. we can use the number of chars checked to do this!
+        ; TODO: `ld DE, [word]` could be patched to
+        ;       `ld DE, $nnnn` to save 10 cycles per string mismatch
         ;
---      ld      A,      30              ; max no. of chars
-        sub     C                       ; subtract characters checked
-        ld      C,      A               ; = no. of bytes to move forward
-        add     HL,     BC              ; leap forward to length field
-        add     E                       ; do the same for DE (word-buffer)
+--      ld      DE,     [word]          ; snap back to length byte in buffer
+        pop     HL                      ; snap back to length byte in symbol
         ld      C,      [HL]            ; re-get word-length to check
-
--       inc     HL                      ; move *up* to link addr lo-byte
+-       inc     HL                      ; move *up* to link addr lo-byte        
 
 findSymbol:
         ;=======================================================================
@@ -418,6 +431,10 @@ findSymbol:
         ;-----------------------------------------------------------------------
         ; symbol length matches, check characters:
         ;
+        ; remember this position to snap-back to if the symbol doesn't
+        ; match and we need to follow the link to the next symbol
+        push    HL
+
         dec     HL                      ; move down a character in the heap
 @loop:  dec     E                       ; move down a character in word-buffer
         ld      A,      [DE]            ; read char from word-buffer
@@ -432,6 +449,10 @@ findSymbol:
         ld      B,      [HL]            ; symbol value hi-byte
         dec     HL                      ; move to value lo-byte
         ld      C,      [HL]            ; return BC = symbol value
+        
+        ; return the address of the symbol:
+        pop     HL                      ; snap back to the symbol-len field
+        inc     HL                      ; move *up* to link addr lo-byte   
 
         ret
 
@@ -501,10 +522,16 @@ parseExpr:
 ;
 ; in:   HL              current heap addr. the expr will be
 ;                       tokenised onto the heap and evaluated
+;       [stride]        the stride (parameter width) needs to be set as this
+;                       determines the number of bytes the result fits in
 ;-------------------------------------------------------------------------------
         call    tokenExpr               ; read expr and tokenise
 
-        ; TODO: handle deferred expression
+        ; HL, the start of the expression will be returned as-is. DE will
+        ; contain the *end* of the expression. if we can't evaluate the
+        ; expression, we need to keep it and append a defer record
+        ;
+
 
         ; evaluate the expression and return its value:
         ; (fallthrough...)
@@ -532,6 +559,8 @@ tokenExpr:
 ;       but you must avoid calling `getChar` without first using the
 ;       character waiting in `[char]`
 ;
+; TODO: return some flag for evaluable state. A? c? z?
+;
 ; in:   HL              address on the heap to begin writing expr tokens
 ; out:  HL              starting heap addr of expr
 ;       DE              ending heap addr of expr
@@ -540,7 +569,7 @@ tokenExpr:
         ; retain the current heap position so that after parsing
         ; the expr we can return to its starting position
         push    HL
-        ld      A,      [char]          ; get current input char
+        ld      A,      [char]          ; get current unused input char
         jr      @unary                  ; jump into the parsing loop
 
         ;=======================================================================
@@ -551,7 +580,7 @@ tokenExpr:
         jp      z,      errExpr         ; unexpected end of file!
 
         ; an expression must begin with either a value,
-        ; or a unary operator + a value
+        ; or a unary operator and a value
         ;
         ; unary operator?
         ;-----------------------------------------------------------------------
@@ -604,7 +633,13 @@ tokenExpr:
         ;-----------------------------------------------------------------------
 +       cp      CHAR_LABEL              ; a label?
         jp      nz,     errExpr         ; expression has no value!!
-        
+
+        call    readWord                ; get the full label name
+        call    findLabel               ; try get the label's value
+
+        ; TODO: handle missing label
+
+
         halt
 
         ;-----------------------------------------------------------------------
@@ -642,7 +677,8 @@ tokenExpr:
         ; evaluated we need to keep it on the heap and defer it
         ;
         ex      DE,     HL              ; move end-of-expr heap addr to DE
-        pop     HL                      ; return to beginning of expr
+        pop     HL                      ; return heap to beginning of expr
+
         ret
 
 
@@ -661,7 +697,6 @@ deferExpr:
 ; - the addr of the expr tokens
 ;
 ; in:   HL              current heap position
-;       DE              expr tokens addr on heap
 ;       IX              virtual program-counter
 ;
 ; out:  HL              updated heap position (defer record added to heap)

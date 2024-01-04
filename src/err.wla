@@ -1,4 +1,4 @@
-; v80 CP/M (c) Kroc Camen 2023, MIT License
+; v80, (C) Kroc Camen 2023-2024, MIT License
 ; error stuff
 ;
 ; TODO: use an error number to deduplicate these calls
