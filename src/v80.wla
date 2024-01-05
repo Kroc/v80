@@ -13,6 +13,12 @@
 ;   | v80 | code->                          <-heap | word | expr-> <-stack |
 ;   +-----+----------------------------------------+------+----------------+
 ;
+; code:  source code is assembled here
+; heap:  symbols and other in-flight data goes here (builds downwards)
+; word:  a buffer for capturing words (symbols)
+; expr:  expression are tokenised here
+; stack: usual Z80 stack (builds downwards)
+;
 ; the bottom of the stack, just above the heap,
 ; can be used as temporary space for a few bytes
 ; (these values are set during initialisation)
@@ -511,7 +517,7 @@ pushLabel:
         ld      [HL],   D               ; write prev label addr hi-byte
         dec     HL                      ; (this is the heap addr we want)
         ld      [HL],   E               ; write prev label addr lo-byte
-        ld      [label],DE              ; update entry point with heap addr
+        ld      [label],HL              ; update entry point with heap addr
 
         ; push the label name:
         ; (note that these instructions don't change carry...)
