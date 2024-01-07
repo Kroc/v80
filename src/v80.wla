@@ -19,19 +19,19 @@
 ; expr:  expression are tokenised here
 ; stack: usual Z80 stack (builds downwards)
 ;
-; the bottom of the stack, just above the heap,
-; can be used as temporary space for a few bytes
-; (these values are set during initialisation)
-;
 .DEF    WORD_LEN        30              ; maximum symbol name length
 
+; the bottom of the stack, just above the heap, can be used as temporary space
+; for a few bytes. the word buffer is here too so their use can't overlap
+;
+; (these addresses are set during initialisation,
+;  the values here are only examples)
+;
 temp:   .ADDR $fc00                     ; temp bytes at bottom of stack
 word:   .ADDR $fc1f                     ; word-buffer (works backwards)
 sp:     .ADDR $fd00                     ; stack pointer backup
 
-char:   .BYTE $00                       ; current character
-
-row:    .WORD $0000                     ; current line-number in file
+char:   .BYTE $00                       ; current input character
 
 ; NOTE: these two bytes are specifically grouped together because they
 ;       are required by deferred expressions written to the heap,
@@ -39,6 +39,7 @@ row:    .WORD $0000                     ; current line-number in file
 stride_col:
 stride: .BYTE $00                       ; number of bytes to occupy
 col:    .BYTE $00                       ; current column-number in file
+row:    .WORD $0000                     ; current line-number in file
 
 ; heap:
 ;-------------------------------------------------------------------------------
@@ -209,7 +210,7 @@ assemble:
 
         ; skip comments:
         ;=======================================================================
-@skip:  call    getChar                 ; read next character (returns z-flag)
+@skip:  call    readChar                ; read next character (returns z-flag)
         ret     z                       ; return on end-of-file
         cp      ASCII_LF                ; is newline?
         jr      nz, @word               ; keep going until new line
@@ -238,7 +239,7 @@ skipWhitespace:
 ; out:  A               ASCII code. 0 = end-of-file
 ;       z               zero-flag is set only if end-of-file
 ;-------------------------------------------------------------------------------
--       call    getChar                 ; read a character (returns z-flag)
+-       call    readChar                ; read a character (returns z-flag)
         ret     z                       ; return z-flag set if end-of-file
         
         ; we need to be careful not to return z-flag set!
@@ -254,7 +255,7 @@ skipWhitespace:
 
         ret
 
-getChar:
+readChar:
 ;===============================================================================
 ; reads the next character in the file.
 ; current row and column are maintained
@@ -262,13 +263,13 @@ getChar:
 ; TODO: handle tab (next 8th char boundary)
 ;
 ; out:  A                               ASCII code, 0 for end-of-file
-;       z                               zero-flag is set according to A
+;       zf                              zero-flag is set according to A
 ;       DE, HL                          (preserved)
 ;       BC                              (undefined)
 ;-------------------------------------------------------------------------------
 -       call    osGetChar               ; read a char from file
         ld      [char], A               ; retain returned character
-        ret     z                       ; return on null byte (end-of-file)
+        ret     z                       ; return on end-of-file
 
         ; check for end of line:
         ;-----------------------------------------------------------------------
@@ -327,7 +328,7 @@ readWord:
         ld      DE,     [word]          ; top of word-buffer, e.g $FC1F
         jr      +                       ; (first character already read)
         ;-----------------------------------------------------------------------
--       call    osGetChar               ; read char form input file
+-       call    readChar                ; read char form input file
         cp      ASCII_SPC+1             ; whitespace?
         jr      c,      @ok             ; (leave loop at whitespace)
 +       dec     E                       ; move to next space in buffer
@@ -510,7 +511,7 @@ pushLabel:
 ;       A, BC|DE        clobbered
 ;-------------------------------------------------------------------------------
         ; link this label to the previous one:
-        ; (note that these instructions don't change carry...)
+        ; (these instructions don't modify carry...)
         ;
         ld      DE,     [label]         ; read prev label addr
         dec     HL                      ; pre-decrement heap to empty byte
@@ -520,7 +521,7 @@ pushLabel:
         ld      [label],HL              ; update entry point with heap addr
 
         ; push the label name:
-        ; (note that these instructions don't change carry...)
+        ; (these instructions don't modify carry...)
         ;
         ld      DE,     [word]          ; get word-buffer addr
         ld      A,      [DE]            ; first byte is word-length
@@ -532,7 +533,7 @@ pushLabel:
         ; the heap is pre-decrement like the stack (decrement-then-copy)
         ; -- decrement HL once to adjust for this before the copy
         ;
-        ; (note that these instructions don't change carry...)
+        ; (these instructions don't modify carry...)
         ;
         dec     HL                      ; adjust heap for post-decrement copy
         lddr                            ; copy BC bytes from [DE] to [HL]!
@@ -602,7 +603,7 @@ tokenExpr:
 ; WARN: the first character of the expression is assumed to be read and
 ;       the first character of the next word following the expression
 ;       will be read but not used! this allows chaining of expressions,
-;       but you must avoid calling `getChar` without first using the
+;       but you must avoid calling `readChar` without first using the
 ;       character waiting in `[char]`
 ;
 ; TODO: return some flag for evaluable state. A? c? z?
@@ -831,7 +832,7 @@ parseHexNumber:
         ;
         ld      B,      5
         ld      DE,     [temp]          ; where to write the bytes
--       call    osGetChar               ; read a char from file
+-       call    readChar                ; read a char from file
         cp      33                      ; ASCII space or below?
         jr      c,      +               ; stop when reaching whitespace
         ld      [DE],   A               ; append byte

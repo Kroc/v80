@@ -41,7 +41,7 @@ parseInstruction:
 
         ; get character from input file:
         ;-----------------------------------------------------------------------
-@char:  call    getChar                 ; read from input file
+@char:  call    readChar                ; read from input file
         cp      ASCII_SPC+1             ; is it whitespace? (hold carry...)
 
         ; force lowercase, without also affecting
@@ -108,7 +108,7 @@ parseInstruction:
 @opcode and     A                       ; if the last char is already 0,
         jr      z,     +                ; then no further check is needed
 
-        call    getChar
+        call    readChar
         cp      ASCII_SPC+1             ; is it whitespace (or eof)?
         jp      c,      errOpcode       ; if not, invalid instruction!
 

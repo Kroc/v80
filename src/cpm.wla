@@ -194,10 +194,13 @@ osGetChar:
 ;===============================================================================
 ; read an ASCII character from an open file:
 ;
-; out:  A               character, 0 for end-of-file
-;       BC|DE|HL|IX/Y   (preserved)
+; out:  A               character
+;       zf              zero-flag is set *only* for end of file!
+;                       CP/M files are padded with $1A, do *not*
+;                       assume A=0 is end of file!
+;       BC, DE, HL      (preserved)
 ;
-; NOTE: this assumes no other file activity or line-input in between reads!
+; NOTE: this assumes no other file activity or user-input between reads!
 ; TODO: index byte will not be reset when changing file!
 ;       this routine will need to multi-task FCBs
 ;-------------------------------------------------------------------------------
@@ -215,22 +218,18 @@ osGetChar:
         ;-----------------------------------------------------------------------
         ld      C',     BDOS_READSEQ
         ld      DE',    command_fcb
-        call    BDOS                    ; (does this alter HL?)
-
-        ; if A is non-zero, the file has ended
-        cp      A,      $01             ; carry clear for A >= $01
-        jr      nc,     @eof            ; return for A > 0
+        call    BDOS
 
         ; reset record byte counter
         ld      HL',    @index+1        ; re-get index
-        ld      A,      <buffer         ; buffer is from $80 to $FF
-        ld      [HL'],  A               ; set address *in* instruction below
+        ld      [HL'],  <buffer         ; set addr *in* instruction below
 
-        ; fallthrough
-        ; ...
+        cp      $01                     ; if A is $01, the file has ended
+        jr      z,      @eof            ; for EOF, return zero-flag set
 
-        ; get byte:
         ;-----------------------------------------------------------------------
+        ; get byte:
+        ;
         ; the sector is read to the "DMA" address, which is $80 by default.
         ; the address "$0000" is assembled into the instruction and the code
         ; will replace the low-byte with $80 after a sector read
@@ -242,12 +241,8 @@ osGetChar:
         ; because all CP/M2 files are padded to 128 bytes sectors!
         ; <https://en.wikipedia.org/wiki/Substitute_character>
         ;
-        cp      ASCII_SUB               ; check for padding byte
-        jr      nz,     +               ; normal byte? skip over
-@eof:   xor     A                       ; return null for end-of-file
-
-+       exx                             ; restore register set
-        and     A                       ; return zero-flag for character
+        cp      ASCII_SUB               ; set zero-flag for sector padding byte
+@eof:   exx                             ; restore register set
         ret
 
 
