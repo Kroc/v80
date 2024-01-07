@@ -189,6 +189,8 @@ assemble:
 
         ; parse root scope:
         ;-----------------------------------------------------------------------
+        ; TODO: parse multiple lines
+        ;
 @word:  call    skipWhitespace          ; find first character
 -       ret     z                       ; stop at end-of-file
 
@@ -211,7 +213,7 @@ assemble:
         ; skip comments:
         ;=======================================================================
 @skip:  call    readChar                ; read next character (returns z-flag)
-        ret     z                       ; return on end-of-file
+        ret     z                       ; return on newline / end-of-file
         cp      ASCII_LF                ; is newline?
         jr      nz, @word               ; keep going until new line
         jr      @word                   ; try get next word
@@ -234,10 +236,11 @@ assemble:
 skipWhitespace:
 ;===============================================================================
 ; reads input until a visible character (ASCII >32),
-; or the end of the file is reached:
+; or a newline / end-of-file is reached:
 ; 
-; out:  A               ASCII code. 0 = end-of-file
-;       z               zero-flag is set only if end-of-file
+; out:  A               ASCII code
+;                       at end-of-file, this value is meanginless!
+;       zf              zero-flag is set at newline or end-of-file
 ;-------------------------------------------------------------------------------
 -       call    readChar                ; read a character (returns z-flag)
         ret     z                       ; return z-flag set if end-of-file
@@ -257,15 +260,18 @@ skipWhitespace:
 
 readChar:
 ;===============================================================================
-; reads the next character in the file.
+; reads the next character in the file:
 ; current row and column are maintained
 ;
 ; TODO: handle tab (next 8th char boundary)
 ;
-; out:  A                               ASCII code, 0 for end-of-file
-;       zf                              zero-flag is set according to A
-;       DE, HL                          (preserved)
-;       BC                              (undefined)
+; out:  A               ASCII code
+;                       for end-of-file, this value should not be relied upon!
+;       zf              zero-flag is set *both* for end-of-file and newline!
+;                       the end-of-file value of A is meaningless so you must
+;                       only check for newline ($0A) to differentiate!
+;       DE, HL          (preserved)
+;       BC              (undefined)
 ;-------------------------------------------------------------------------------
 -       call    osGetChar               ; read a char from file
         ld      [char], A               ; retain returned character
@@ -280,16 +286,7 @@ readChar:
         ld      HL',    col             ; prepare to increment column number
 
         cp      ASCII_LF                ; /n is newline
-        jr      nz,     @col            ; if not, skip to next column
-
-        ; increment line-number:
-        ;-----------------------------------------------------------------------
-        ; TODO: should we pin this to IY?
-        ;
-        ld      DE',    [row]           ; 16-bit load,
-        inc     DE'                     ;  and increment,
-        ld      [row],  DE'             ;  and write
-        ld      [HL'],  0               ; reset column number
+        jr      z,      @row            ; handle newline
 
         ; increment column number:
         ;-----------------------------------------------------------------------
@@ -303,8 +300,19 @@ readChar:
         dec     [HL']                   ;  instructions than read+add+write)
 
 +       exx                             ; restore HL/DE
-        and     A                       ; return z-flag
         ret
+
+        ;-----------------------------------------------------------------------
+        ; increment line-number:
+        ;
+        ; TODO: should we pin line-number to IY?
+@row:   ld      DE',    [row]           ; 16-bit load,
+        inc     DE'                     ;  and increment,
+        ld      [row],  DE'             ;  and write
+        ld      [HL'],  0               ; reset column number
+
+        exx                             ; restore HL/DE
+        ret                             ; return z-flag set for newline
 
 
 readWord:
@@ -627,7 +635,7 @@ tokenExpr:
         inc     HL                      ; move to next token space
 
         call    skipWhitespace          ; read first character of the next word
-        jp      z,      errExpr         ; unexpected end of file!
+        jp      z,      errExpr         ; unexpected end of expression!
 
         ; an expression must begin with either a value,
         ; or a unary operator and a value
@@ -652,7 +660,7 @@ tokenExpr:
         inc     HL                      ; move to next token space
 
         call    skipWhitespace          ; read first character of the next word
-        jp      z,      errEndOfFile    ; handle unexpected end of file!
+        jp      z,      errExpr         ; unexpected end of expression!
 
         ; hexadecimal literal?
         ;-----------------------------------------------------------------------
@@ -697,7 +705,7 @@ tokenExpr:
         ; if there's no operator, the expression ends here
 @operator:
         call    skipWhitespace          ; read first character of the next word
-        jr      z,      @end            ; if end-of-file, end the expression
+        jr      z,      @end            ; end expr at newline / end-of-file
 
         cp      CHAR_OP_ADD             ; add operator?
         jr      z,      -               ; push token to heap, find next operand
@@ -804,7 +812,7 @@ deferExpr:
         ; begin parsing the expression, packing it into bytecode:
         ;-----------------------------------------------------------------------
         call    skipWhitespace          ; read first character of the next word
-        jp      z,      errExpr         ; unexpected end of file!
+        jp      z,      errExpr         ; unexpected newline / end-of-file!
 
         call    parseExpr               ; -- addr to write is in expr header
 
@@ -833,7 +841,7 @@ parseHexNumber:
         ld      B,      5
         ld      DE,     [temp]          ; where to write the bytes
 -       call    readChar                ; read a char from file
-        cp      33                      ; ASCII space or below?
+        cp      ASCII_SPC+1             ; ASCII space or below?
         jr      c,      +               ; stop when reaching whitespace
         ld      [DE],   A               ; append byte
         inc     L                       ; space for next digit

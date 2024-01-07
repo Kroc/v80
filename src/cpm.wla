@@ -227,6 +227,9 @@ osGetChar:
         cp      $01                     ; if A is $01, the file has ended
         jr      z,      @eof            ; for EOF, return zero-flag set
 
+        ; TODO: non-zero indicates some other error;
+        ;       does BDOS terminate anyway or do we need to handle this?
+
         ;-----------------------------------------------------------------------
         ; get byte:
         ;
