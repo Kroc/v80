@@ -191,7 +191,7 @@ assemble:
         ;-----------------------------------------------------------------------
         ; TODO: parse multiple lines
         ;
-@word:  call    skipWhitespace          ; find first character
+@word:  call    skipSpace               ; find first character
 -       ret     z                       ; stop at end-of-file
 
         ; first character determines the word type:
@@ -233,17 +233,21 @@ assemble:
         jr      @word
 
 
-skipWhitespace:
+skipSpace:
 ;===============================================================================
 ; reads input until a visible character (ASCII >32),
 ; or a newline / end-of-file is reached:
 ; 
+; be aware that this will return on newline and that there may be more leading
+; whitespace on the next line -- if you want to skip to the next non-whitespace
+; character, call the routine again after newline
+;
 ; out:  A               ASCII code
 ;                       at end-of-file, this value is meanginless!
 ;       zf              zero-flag is set at newline or end-of-file
 ;-------------------------------------------------------------------------------
 -       call    readChar                ; read a character (returns z-flag)
-        ret     z                       ; return z-flag set if end-of-file
+        ret     z                       ; return z-flag set if newline/EOF
         
         ; we need to be careful not to return z-flag set!
         ;
@@ -634,8 +638,8 @@ tokenExpr:
 -       ld      [HL],   A               ; push token in A to expr
         inc     HL                      ; move to next token space
 
-        call    skipWhitespace          ; read first character of the next word
-        jp      z,      errExpr         ; unexpected end of expression!
+        call    skipSpace               ; read first character of the next word
+        jp      z,      errExpr         ; newline/EOF = unexpected expr end!
 
         ; an expression must begin with either a value,
         ; or a unary operator and a value
@@ -659,8 +663,8 @@ tokenExpr:
 +       ld      [HL],   A               ; push a unary operator token
         inc     HL                      ; move to next token space
 
-        call    skipWhitespace          ; read first character of the next word
-        jp      z,      errExpr         ; unexpected end of expression!
+        call    skipSpace               ; read first character of the next word
+        jp      z,      errExpr         ; newline/EOF = unexpected expr end!
 
         ; hexadecimal literal?
         ;-----------------------------------------------------------------------
@@ -704,7 +708,7 @@ tokenExpr:
         ; a value has been added, check for the presence of an operator:
         ; if there's no operator, the expression ends here
 @operator:
-        call    skipWhitespace          ; read first character of the next word
+        call    skipSpace               ; read first character of the next word
         jr      z,      @end            ; end expr at newline / end-of-file
 
         cp      CHAR_OP_ADD             ; add operator?
@@ -811,7 +815,7 @@ deferExpr:
 
         ; begin parsing the expression, packing it into bytecode:
         ;-----------------------------------------------------------------------
-        call    skipWhitespace          ; read first character of the next word
+        call    skipSpace               ; read first character of the next word
         jp      z,      errExpr         ; unexpected newline / end-of-file!
 
         call    parseExpr               ; -- addr to write is in expr header
