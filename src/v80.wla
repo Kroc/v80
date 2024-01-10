@@ -81,6 +81,7 @@ const:  .ADDR $000                      ; addr of last const dictionary-entry
 ;
 .DEF    CHAR_END         0              ; general terminator
 .DEF    CHAR_COMMENT    ';'             ; comment
+.DEF    CHAR_KEYWORD    '.'             ; keyword
 .DEF    CHAR_HEX        '$'             ; hexadecimal literal or PC
 .DEF    CHAR_LABEL      ':'             ; a label (16-bit)
 .DEF    CHAR_CONST      '#'             ; a constant (flexible size)
@@ -118,11 +119,17 @@ init:
         inc     HL                      ; immediately above that
         ld      [expr], HL              ;  is the expr tokens space
 
+        ; the virtual program counter is permanently pinned to IX since
+        ; it's a value that needs to be incremented often but not read
+        ; back too often. this avoids a bunch of HL/DE register swapping
+        ;
+        ld      IX,     $0100           ; virtual program-counter
+
         call    memStat                 ; print the memory status
 
         ; assemble the file
         ;-----------------------------------------------------------------------
-        call    assemble
+        call    assembleFile
         ;-----------------------------------------------------------------------
 
         ld      [heap], HL
@@ -174,49 +181,91 @@ memStat:
         .BYTE   "]\n$"
 
 
-assemble:
+assembleFile:
 ;===============================================================================
 ; assembles a file:
 ;
 ; TODO: do the file opening here so that we can do includes
 ;-------------------------------------------------------------------------------
-        ; the virtual program counter is permanently pinned to IX since
-        ; it's a value that needs to be incremented often but not read
-        ; back too often. this avoids a bunch of HL/DE register swapping
-        ;
-        ld      IX,     $0100           ; virtual program-counter
         ld      HL,     [heap]          ; where symbols / expressions go
+        
+        call    assemble
 
-        ; parse root scope:
+        ret
+
+assemble:
+;===============================================================================
+; NOTE: we avoid using calls here where possible because scopes are linear
+;       and we don't want to pressure the stack too much (it's small)
+;-------------------------------------------------------------------------------
+        ; begin at line context:
         ;-----------------------------------------------------------------------
-        ; TODO: parse multiple lines
+        ; at the beginning of the line labels and the PC
+        ; can be defined, but nowhere else
         ;
-@word:  call    skipSpace               ; find first character
--       ret     z                       ; stop at end-of-file
+@line:  call    skipSpace               ; find first character
+        jr      z,      @nleof          ; did we hit newline or end-of-file?
 
         ; first character determines the word type:
+        ;
         cp      CHAR_COMMENT            ; is comment?
         jr      z,      @skip           ; skip until end of line
         cp      CHAR_LABEL              ; is label?
         jr      z,      @label          ; define a label
 
+        ; any expression defines the virtual program-counter
+        ; (except labels, you can't set the virtual program-counter
+        ;  based on another label, set up a constant for that)
+        ;
+        cp      CHAR_HEX                ; hexadecimal literal or current PC?
+        jr      z,      @pc             ; redefine program-counter
+        cp      CHAR_CONST              ; likewise for a constant
+        jr      z,      @pc             ; redefine program-counter
+        ; (the unary operators can also start an expression)
+        cp      CHAR_OP_LO              ; lo operator?
+        jr      z,      @pc             ; redefine program-counter 
+        cp      CHAR_OP_HI              ; hi operator?
+        jr      z,      @pc             ; redefine program-counter 
+        cp      CHAR_OP_NOT             ; not operator?
+        jr      z,      @pc             ; redefine program-counter 
+
+        ; body context:
+        ;-----------------------------------------------------------------------
+        ; labels and the program-counter must be defined first on the line
+        ; after those, instructions and keywords are allowed. this is known
+        ; as the body context and multiple instructions / keywords can occur
+        ; until either a comment or the end of the line
+        ;
+@body:  cp      CHAR_KEYWORD            ; is this a keyword?
+        jr      z,      @key            ; handle keyword
+
         call    parseInstruction
 
-        ;///////////////////////////////////////////////////////////////////////
-        ld      A,      ASCII_LF
-        call    osPrintChar             ; DEBUG!
-        ;///////////////////////////////////////////////////////////////////////
-        
-        and     A
-        jr      -
+        jr      @body
+
+        ; modify the virtual program-counter:
+        ;=======================================================================
+@pc:    call    tokenExpr               ; capture the complete expression
+        halt
+        jr      @body
 
         ; skip comments:
         ;=======================================================================
-@skip:  call    readChar                ; read next character (returns z-flag)
-        ret     z                       ; return on newline / end-of-file
-        cp      ASCII_LF                ; is newline?
-        jr      nz, @word               ; keep going until new line
-        jr      @word                   ; try get next word
+@skip:  call    readChar                ; read to next character or newline
+        jr      nz,     @skip           ; loop until newline / end-of-file
+
+        ; fallthrough
+        ; ...
+
+        ; distinguish between newline and end-of-file:
+        ;-----------------------------------------------------------------------
+        ; the return code of end-of-file is inconsistent across systems,
+        ; so we can only tell end-of-file by eliminating newline first
+        ;
+@nleof: cp      ASCII_LF                ; check for newline
+        jr      z,      @line           ; if so, parse line
+
+        ret                             ; is end-of-file, end assembling
 
         ; define label:
         ;=======================================================================
@@ -230,7 +279,11 @@ assemble:
         call    pushLabel               ; define label on the heap
 
         pop     DE                      ; restore code-segment
-        jr      @word
+        jr      @body
+
+        ; handle keywords:
+        ;=======================================================================
+@key:   halt
 
 
 skipSpace:
@@ -340,7 +393,7 @@ readWord:
         ld      DE,     [word]          ; top of word-buffer, e.g $FC1F
         jr      +                       ; (first character already read)
         ;-----------------------------------------------------------------------
--       call    readChar                ; read char form input file
+-       call    readChar                ; read char from input file
         cp      ASCII_SPC+1             ; whitespace?
         jr      c,      @ok             ; (leave loop at whitespace)
 +       dec     E                       ; move to next space in buffer
@@ -411,12 +464,18 @@ findSymbol:
 ;       [word]          the label is assumed to be in the word-buffer,
 ;                       i.e. after calling `readWord`
 ;
-; out:  A               0 if symbol not found, non-zero if found
+; out:  A               non-zero if found. 0 if symbol not found, including
+;                       forward-references that don't have a valid value yet
 ;       zf              zero-flag is set according to the above
+;       cf              carry set indciates the symbol is a forward-reference
+;                       in this case, the value of BC should be ignored
 ;       BC              if symbol found, BC holds its value
-;                       if not found, **BC retains the name length**
-;       HL              if found, the addr of the symbol record,
-;                       pointing to the lo-byte of the link field
+;                       (value is meaningless for forward-references)
+;                       if symbol doesn't exit, **BC retains the name length**
+;       HL              $0000 if label doesn't exist. if the label exists,
+;                       inlcuding forward-references that would otherwise
+;                       behave as "not found", HL contains the addr of the
+;                       symbol record, pointing to the lo-byte of the link field
 ;       DE              (clobbered)
 ;-------------------------------------------------------------------------------
         ld      DE,     [word]          ; initialise addr of word-buffer
@@ -444,7 +503,8 @@ _findSymbol:
         ;          +-------+---+---+---+---+---+---+-----+------+
         ;
         ; follow this link, but exit if it's $0000
-        ; (also setting the zero-flag)
+        ; (also setting the zero-flag and clearing carry
+        ;  -- did you know that OR cleared carry!??)
         ;
         ld      A,      [HL]            ; read next symbol addr, lo-byte
         inc     HL                      ; move *up* to link addr hi-byte
@@ -476,28 +536,31 @@ _findSymbol:
 
         ; names match! read and return the symbol value:
         ;-----------------------------------------------------------------------
+        ; get the label's value:
+        ; (this value is meaningless for forward-references)
+        ; NOTE: CPD has already decremented HL for us!
+        ;
+        ld      B,      [HL]            ; symbol value hi-byte
+        dec     HL                      ; move to value lo-byte
+        ld      C,      [HL]            ; return BC = symbol value
+
         ; the flag byte is used to indicate a forward-reference on a label;
         ; the label name is known, but doesn't have a value yet. we return
         ; this flag in the carry flag by shifting it out of the byte
         ;
-        ; to indicate a found label (even if deferred), A must be non-zero
-        ; and the zero-flag must be clear. we do this by shifting a 1 into
-        ; bit 7 of A as we shift the forward-reference flag out
+        ; for a deferred value the byte is 0; the shift keeps this as zero,
+        ; sets zero-flag and CCF sets the carry flag accordingly. for a valid
+        ; value the byte is 1; the shift sets carry and bit 7 (=$80), clearing
+        ; zero flag and CCF clears carry
         ;
-        ; NOTE: CPD has already decremented HL to the flag byte
-        ;
-        ld      A,      [HL]            ; forward-reference flag byte
-        scf                             ; ensure A != 0 for return
-        rra                             ; shift bit 0 into carry
+        dec     HL                      ; move to flag byte
+        ld      A,      [HL]            ; read forward-reference flag byte
+        rrca                            ; shift bit 0 into bit 7 AND carry!
+        ccf                             ; flip carry so forward-reference = 1
 
-        dec     HL                      ; now move to symbol value
-        ld      B,      [HL]            ; symbol value hi-byte
-        dec     HL                      ; move to value lo-byte
-        ld      C,      [HL]            ; return BC = symbol value
-        
         ; return the address of the symbol:
         pop     HL                      ; snap back to the symbol-len field
-        inc     HL                      ; move *up* to link addr lo-byte   
+        inc     HL                      ; move *up* to link addr lo-byte
 
         ret
 
@@ -510,7 +573,8 @@ pushLabel:
 ; - the label name, written right-to-left -- the heap extends downwards!
 ; - a flag to indicate a forward-reference:
 ;   this happens when a label that does not exist is encountered in an expr,
-;   a placeholder label is added to the heap to be filled in later
+;   a placeholder label is added to the heap to be filled in later. this is
+;   necessary for the expr to be deferred until later to reference the label
 ; - the label value; the current virtual program-counter
 ;
 ; WARN: does not check if the label already exists!
@@ -520,7 +584,7 @@ pushLabel:
 ;       [word]          the label is assumed to be in the word-buffer,
 ;                       i.e. after calling `readWord`
 ; out:  HL              heap position is advanced (downwards!)
-;       A, BC|DE        clobbered
+;       A, BC|DE        (clobbered)
 ;-------------------------------------------------------------------------------
         ; link this label to the previous one:
         ; (these instructions don't modify carry...)
@@ -550,12 +614,6 @@ pushLabel:
         dec     HL                      ; adjust heap for post-decrement copy
         lddr                            ; copy BC bytes from [DE] to [HL]!
 
-        ; push flag to indicate a forward-reference
-        ; NOTE: LDDR has already decremented HL for us!
-        ;
-        rl      B                       ; shift carry flag into bit 0
-        ld      [HL],   B               ; (note that B will be 0 or 1)
-
         ; push the label value (virtual program-counter):
         ; if the label is a forward-reference, this value is ignored
         ;
@@ -563,12 +621,26 @@ pushLabel:
         ; as the value is only needed once a symbol name is matched and then
         ; the addr is in the right place
         ;
-        dec     HL                      ; pre-decrement heap to empty byte
         ld      A,      IXH
-        ld      [HL],   A
+        ld      [HL],   A               ; LDDR already decremented HL for us!
         dec     HL                      ; pre-decrement heap to empty byte
         ld      A,      IXL
         ld      [HL],   A
+
+        ; push flag to indicate a forward-reference:
+        ;
+        ; the flag byte is designed so that `findSymbol` will return zero-flag
+        ; set for forward-references, i.e. the label is considered undefined,
+        ; but carry is set to distinguish labels that exist in the dictionary
+        ; vs. those that don't (required for deferring expressions)
+        ;
+        ; the flag is flipped to allow some trickery on read out to return
+        ; A=0 and set both zero-flag AND carry-flag for forward-references
+        ;
+        ccf                             ; forward-reference = 0, otherwise 1
+        rl      B                       ; shift carry flag into bit 0
+        dec     HL                      ; pre-decrement heap to empty byte
+        ld      [HL],   B               ; B will be 0 or 1
 
         ret
 
@@ -728,11 +800,12 @@ tokenExpr:
         cp      CHAR_OP_MOD             ; modulo operator?
         jr      z,      -               ; ...
 
-        ;-----------------------------------------------------------------------
         ; whatever it is, it isn't an operator;
         ; fall through and terminate the expression
-        ;
+
+        ;-----------------------------------------------------------------------
 @end:   ld      [HL],   CHAR_END        ; terminate the expression (0)
+@eval   
         ret
 
 
