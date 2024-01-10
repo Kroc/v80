@@ -910,10 +910,10 @@ parseHexNumber:
         ld      C,      0               ; return value will go here
 
         ; try to read up to 4 digits; the 5th character
-        ; must be whitespace or end-of-file!
+        ; must be whitespace or newline / end-of-file!
         ;
         ; the bottom of the stack is used for temporary bytes (e.g. $FC00..)
-        ; as we know this is page-aligned and can use INC L instead of INC HL
+        ; as we know this is page-aligned and can use INC E instead of INC DE
         ;
         ld      B,      5
         ld      DE,     [temp]          ; where to write the bytes
@@ -921,7 +921,7 @@ parseHexNumber:
         cp      ASCII_SPC+1             ; ASCII space or below?
         jr      c,      +               ; stop when reaching whitespace
         ld      [DE],   A               ; append byte
-        inc     L                       ; space for next digit
+        inc     E                       ; space for next digit
         djnz    -                       ; decrement B, loop until 0
 
         ; if a 5th byte was read that wasn't whitespace,
@@ -958,7 +958,7 @@ parseHexNumber:
         add     A,      A               ; (shift lo-nybble to hi-nybble)
         add     A,      A               ;
         ld      B,      A               ; answer goes in B
-        inc     L                       ; move to 3rd digit
+        inc     E                       ; move to 3rd digit
         ;-----------------------------------------------------------------------
         ; a 3rd digit goes in the lower nybble of B:
         ;
@@ -966,7 +966,7 @@ parseHexNumber:
         call    @digit                  ; convert digit to number
         or      B                       ; combine with hi-nybble (if present)
         ld      B,      A               ; answer goes in B
-        inc     L                       ; move to 2nd digit
+        inc     E                       ; move to 2nd digit
         ;-----------------------------------------------------------------------
         ; a 2nd digit goes in the upper nybble of C:
         ;
@@ -977,7 +977,7 @@ parseHexNumber:
         add     A,      A               ; (shift lo-nybble to hi-nybble)
         add     A,      A               ;
         ld      C,      A               ; answer goes in C
-        inc     L                       ; move to 1st digit
+        inc     E                       ; move to 1st digit
         ;-----------------------------------------------------------------------
         ; 1st digit goes in the lower nybble of C:
         ;
