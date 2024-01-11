@@ -1,0 +1,26 @@
+Z80 Cheatsheet:
+
+Legend:
+--------------------------------------------------------------------------------
+xy      IX or IY
+$oo     IX or IY offset byte
+$nn     8-bit value
+$nnnn   16-bit value, e.g. label
+
+instructions                                cycles  flags
+v80                 z80                 #   =  !    c,z,n,h,v,s
+================================================================================
+adc $nn             adc A, $nn          1   7       v?
+--------------------------------------------------------------------------------
+ld  r   r                               1   4       preserved
+ld  r   $nn                             2   7       preserved
+ld  r   @HL                             1   7       preserved
+ld  r   @xy $oo                         2   19      preserved
+ld  @HL r                               1   7       preserved
+ld  @xy r   $oo                         3   19      preserved
+ld  @HL $nn                             2   10      preserved
+ld  @xy $oo $nn                         2   19      preserved
+ld  A   @BC                             1   7       preserved
+ld  A   @DE                             1   7       preserved
+ld  A   @ $nnnn     ld  A, [$nnnn]      3   13      preserved
+ld  @BC A           ld  [BC], A         1   7       preserved

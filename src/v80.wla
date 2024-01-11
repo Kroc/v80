@@ -269,16 +269,13 @@ assemble:
 
         ; define label:
         ;=======================================================================
-@label: push    DE                      ; code-segment is not used here...
-
-        ; TODO: fill in forward reference!
-        ;
-        call    readWord                ; read the label in
-        call    findLabel               ; does it already exist?
+@label: call    readWord                ; read the label in
+        ld      DE,     label           ; label dictionary entry point
+        call    findSymbol              ; does it already exist?
         jp      nz,     errLabel        ; cannot redefine labels!
+
         call    pushLabel               ; define label on the heap
 
-        pop     DE                      ; restore code-segment
         jr      @body
 
         ; handle keywords:
@@ -412,54 +409,15 @@ readWord:
 
         ret
 
-findLabel:
-;===============================================================================
-; search the dictionary for a label:
-;
-; out:  A               0 if symbol not found, non-zero if found
-;       zf              zero-flag is set according to the above
-;       BC              if label found, BC holds its value
-;                       if not found, BC retains the name length
-;       HL              (preserved)
-;       DE              (clobbered)
-;-------------------------------------------------------------------------------
-        push    HL                      ; preserve heap position
-
-        ld      HL,     label           ; label dictionary entry point
-        call    findSymbol
-
-        pop     HL                      ; restore heap position
-        and     A                       ; set z-flag according to result
-        ret
-
-findConstant:
-;===============================================================================
-; search the dictionary for a constant:
-;
-; out:  A               0 if symbol not found, non-zero if found
-;       zf              zero-flag is set according to the above
-;       BC              if constant found, BC holds its value
-;                       if not found, BC retains the name length
-;       HL              (preserved)
-;       DE              (clobbered)
-;-------------------------------------------------------------------------------
-        push    HL                      ; preserve heap position
-
-        ld      HL,     const           ; constants dictionary entry point
-        call    findSymbol
-
-        pop     HL                      ; restore heap position
-        and     A                       ; set z-flag according to result
-        ret
 
 findSymbol:
 ;===============================================================================
 ; search for a symbol (label / constant) in a dictionary:
 ;
-; in:   HL              dictionary entry point: an addr that contains the
+; in:   DE              dictionary entry point: an addr that contains the
 ;                       addr of the last symbol added to the dictionary,
-;                       e.g. `label` for labels & `const` for constants
-;       BC              length of symbol name; `readWord` provides this.
+;                       i.e. `label` for labels & `const` for constants
+;       BC              length of symbol name; `readWord` provides this --
 ;                       despite names being limited to 30 chars, B must be 0
 ;       [word]          the label is assumed to be in the word-buffer,
 ;                       i.e. after calling `readWord`
@@ -472,12 +430,14 @@ findSymbol:
 ;       BC              if symbol found, BC holds its value
 ;                       (value is meaningless for forward-references)
 ;                       if symbol doesn't exit, **BC retains the name length**
-;       HL              $0000 if label doesn't exist. if the label exists,
+;       DE              $0000 if label doesn't exist. if the label exists,
 ;                       inlcuding forward-references that would otherwise
 ;                       behave as "not found", HL contains the addr of the
 ;                       symbol record, pointing to the lo-byte of the link field
-;       DE              (clobbered)
+;       HL              (preserved)
 ;-------------------------------------------------------------------------------
+        push    HL                      ; preserve HL coming in
+        ex      DE,     HL              ; swap entry point to HL
         ld      DE,     [word]          ; initialise addr of word-buffer
         jr      _findSymbol             ; jump into the main loop
 
@@ -489,7 +449,7 @@ findSymbol:
 --      ld      E,      WORD_LEN+1      ; snap back to length byte in buffer
         pop     HL                      ; snap back to length byte in symbol
         ld      C,      [HL]            ; re-get word-length to check
--       inc     HL                      ; move *up* to link addr lo-byte        
+-       inc     HL                      ; move *up* to link addr lo-byte
 
 _findSymbol:
         ;-----------------------------------------------------------------------
@@ -511,7 +471,7 @@ _findSymbol:
         ld      H,      [HL]            ; read next symbol addr, hi-byte
         ld      L,      A               ; (complete the addr)
         or      H                       ; is the link addr $0000?
-        ret     z                       ; terminate at end of chain
+        jr      z,      +               ; terminate at end of chain
 
         ; (HL is now the next symbol addr in the heap)
 
@@ -550,8 +510,8 @@ _findSymbol:
         ;
         ; for a deferred value the byte is 0; the shift keeps this as zero,
         ; sets zero-flag and CCF sets the carry flag accordingly. for a valid
-        ; value the byte is 1; the shift sets carry and bit 7 (=$80), clearing
-        ; zero flag and CCF clears carry
+        ; value the byte is 1; the shift sets carry AND bit 7 (=$80), clearing
+        ; zero flag and CCF clears the carry
         ;
         dec     HL                      ; move to flag byte
         ld      A,      [HL]            ; read forward-reference flag byte
@@ -561,6 +521,8 @@ _findSymbol:
         ; return the address of the symbol:
         pop     HL                      ; snap back to the symbol-len field
         inc     HL                      ; move *up* to link addr lo-byte
++       ex      DE,     HL              ; swap symbol addr to DE,
+        pop     HL                      ;  and restore HL from caller
 
         ret
 
@@ -769,7 +731,8 @@ tokenExpr:
         jp      nz,     errExpr         ; expression has no value!!
 
         call    readWord                ; get the full label name
-        call    findLabel               ; try get the label's value
+        ld      DE,     label           ; label dictionary entry point
+        call    findSymbol              ; try get the label's value
 
         ; TODO: handle missing label
 
