@@ -88,7 +88,7 @@ const:  .ADDR $000                      ; addr of last const dictionary-entry
 .DEF    CHAR_OP_LO      '<'             ; lo-byte unary operator
 .DEF    CHAR_OP_HI      '>'             ; hi-byte unary operator
 .DEF    CHAR_OP_NOT     '!'             ; not unary operator
-.DEF    CHAR_OP_ADD     '+'             ; add operator 
+.DEF    CHAR_OP_ADD     '+'             ; add operator
 .DEF    CHAR_OP_SUB     '-'             ; subtract operator
 .DEF    CHAR_OP_MUL     '*'             ; multiply operator
 .DEF    CHAR_OP_DIV     '/'             ; divide operator
@@ -272,10 +272,28 @@ assemble:
 @label: call    readWord                ; read the label in
         ld      DE,     label           ; label dictionary entry point
         call    findSymbol              ; does it already exist?
+        jr      c,      +               ; does it exist as a forward-reference?
         jp      nz,     errLabel        ; cannot redefine labels!
 
         call    pushLabel               ; define label on the heap
 
+        jr      @body
+
+        ;-----------------------------------------------------------------------
+        ; when a label has been referred to in an expression in the past,
+        ; a placeholder is added to the dictionary awaiting definition --
+        ; now that time has come. `findSymbol` has returned the addr (BC)
+        ; in the heap where the flag byte and value is
+        ;
++       inc     A                       ; set flag byte to indicate true value
+        ld      [BC],   A               ; update symbol record
+        dec     BC                      ; move on to symbol value
+        ld      A,      IXH             ; virtual program-counter, hi-byte
+        ld      [BC],   A
+        dec     BC
+        ld      A,      IXL             ; virtual program-counter, lo-byte
+        ld      [BC],   A
+        
         jr      @body
 
         ; handle keywords:
@@ -426,10 +444,11 @@ findSymbol:
 ;                       forward-references that don't have a valid value yet
 ;       zf              zero-flag is set according to the above
 ;       cf              carry set indciates the symbol is a forward-reference
-;                       in this case, the value of BC should be ignored
 ;       BC              if symbol found, BC holds its value
-;                       (value is meaningless for forward-references)
-;                       if symbol doesn't exit, **BC retains the name length**
+;                       if symbol doesn't exist, **BC retains the name length**
+;                       if symbol is a forward-reference (carry-set), then BC
+;                       is the addr of the flag byte of the symbol record --
+;                       this is so that the symbol value can be updated
 ;       DE              $0000 if label doesn't exist. if the label exists,
 ;                       inlcuding forward-references that would otherwise
 ;                       behave as "not found", HL contains the addr of the
@@ -440,8 +459,6 @@ findSymbol:
         ex      DE,     HL              ; swap entry point to HL
         ld      DE,     [word]          ; initialise addr of word-buffer
         jr      _findSymbol             ; jump into the main loop
-
-        ; (this is a loop fall-through, see the label below for entry point)
 
         ;=======================================================================
         ; names do not match!
@@ -471,7 +488,7 @@ _findSymbol:
         ld      H,      [HL]            ; read next symbol addr, hi-byte
         ld      L,      A               ; (complete the addr)
         or      H                       ; is the link addr $0000?
-        jr      z,      +               ; terminate at end of chain
+        jr      z,      @end            ; terminate at end of chain
 
         ; (HL is now the next symbol addr in the heap)
 
@@ -496,14 +513,6 @@ _findSymbol:
 
         ; names match! read and return the symbol value:
         ;-----------------------------------------------------------------------
-        ; get the label's value:
-        ; (this value is meaningless for forward-references)
-        ; NOTE: CPD has already decremented HL for us!
-        ;
-        ld      B,      [HL]            ; symbol value hi-byte
-        dec     HL                      ; move to value lo-byte
-        ld      C,      [HL]            ; return BC = symbol value
-
         ; the flag byte is used to indicate a forward-reference on a label;
         ; the label name is known, but doesn't have a value yet. we return
         ; this flag in the carry flag by shifting it out of the byte
@@ -513,18 +522,36 @@ _findSymbol:
         ; value the byte is 1; the shift sets carry AND bit 7 (=$80), clearing
         ; zero flag and CCF clears the carry
         ;
-        dec     HL                      ; move to flag byte
+        ; NOTE: CPD has already decremented HL for us!
         ld      A,      [HL]            ; read forward-reference flag byte
         rrca                            ; shift bit 0 into bit 7 AND carry!
         ccf                             ; flip carry so forward-reference = 1
 
+        ; for a forward-reference, BC returns the address of
+        ; the flag-byte so that the label's true value can be set
+        ;
+        ; (it's faster to just do these two instructions
+        ;  in all cases and jump on the less-likely case)
+        ;
+        ld      B,      H               ; copy current heap addr
+        ld      C,      L               ;  to BC
+        jr      c,      +               ; skip value for forward-reference
+
+        ; get the label's value:
+        ;
+        dec     HL                      ; step past flag byte
+        ld      B,      [HL]            ; symbol value hi-byte
+        dec     HL                      ; move to value lo-byte
+        ld      C,      [HL]            ; return BC = symbol value
+
         ; return the address of the symbol:
-        pop     HL                      ; snap back to the symbol-len field
++       pop     HL                      ; snap back to the symbol-len field
         inc     HL                      ; move *up* to link addr lo-byte
-+       ex      DE,     HL              ; swap symbol addr to DE,
+@end    ex      DE,     HL              ; swap symbol addr to DE,
         pop     HL                      ;  and restore HL from caller
 
         ret
+
 
 pushLabel:
 ;===============================================================================
@@ -576,19 +603,6 @@ pushLabel:
         dec     HL                      ; adjust heap for post-decrement copy
         lddr                            ; copy BC bytes from [DE] to [HL]!
 
-        ; push the label value (virtual program-counter):
-        ; if the label is a forward-reference, this value is ignored
-        ;
-        ; the value comes after the label name to speed up symbol searching
-        ; as the value is only needed once a symbol name is matched and then
-        ; the addr is in the right place
-        ;
-        ld      A,      IXH
-        ld      [HL],   A               ; LDDR already decremented HL for us!
-        dec     HL                      ; pre-decrement heap to empty byte
-        ld      A,      IXL
-        ld      [HL],   A
-
         ; push flag to indicate a forward-reference:
         ;
         ; the flag byte is designed so that `findSymbol` will return zero-flag
@@ -603,6 +617,19 @@ pushLabel:
         rl      B                       ; shift carry flag into bit 0
         dec     HL                      ; pre-decrement heap to empty byte
         ld      [HL],   B               ; B will be 0 or 1
+
+        ; push the label value (virtual program-counter):
+        ; if the label is a forward-reference, this value is ignored
+        ;
+        ; the value comes after the label name to speed up symbol searching
+        ; as the value is only needed once a symbol name is matched and then
+        ; the addr is in the right place
+        ;
+        ld      A,      IXH
+        ld      [HL],   A               ; LDDR already decremented HL for us!
+        dec     HL                      ; pre-decrement heap to empty byte
+        ld      A,      IXL
+        ld      [HL],   A
 
         ret
 
