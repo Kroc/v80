@@ -895,26 +895,28 @@ parseHexNumber:
 ;===============================================================================
 ; parses an ASCII hexadecimal number and returns the value:
 ;
+; TODO: return PC for `$`
+;
 ; out:  BC              the value, 0 padded for numbers < 256
 ;       A, DE           (clobbered)
 ;-------------------------------------------------------------------------------
-        ld      C,      0               ; return value will go here
-
         ; try to read up to 4 digits; the 5th character
         ; must be whitespace or newline / end-of-file!
         ;
-        ; the bottom of the stack is used for temporary bytes (e.g. $FC00..)
-        ; as we know this is page-aligned and can use INC E instead of INC DE
+        ; the bottom of the word-buffer is used for temporary bytes
+        ; (e.g. $FC00..) as we know this is page-aligned and can use
+        ; INC E instead of INC DE
         ;
         ld      B,      5
         ld      DE,     [temp]          ; where to write the bytes
+        ;-----------------------------------------------------------------------
 -       call    readChar                ; read a char from file
         cp      ASCII_SPC+1             ; ASCII space or below?
         jr      c,      +               ; stop when reaching whitespace
         ld      [DE],   A               ; append byte
         inc     E                       ; space for next digit
         djnz    -                       ; decrement B, loop until 0
-
+        ;-----------------------------------------------------------------------
         ; if a 5th byte was read that wasn't whitespace,
         ; it's an error -- the number is too long!
         jp      errHex
@@ -942,8 +944,7 @@ parseHexNumber:
         ;-----------------------------------------------------------------------
         ; a 4th digit must go in the upper nybble of B:
         ;
-@four:  ld      A,      [DE]            ; get digit
-        call    @digit                  ; convert digit to number
+@four:  call    @digit                  ; convert digit to number
         add     A,      A               ;
         add     A,      A               ; left-shift (faster than `sla A`)
         add     A,      A               ; (shift lo-nybble to hi-nybble)
@@ -953,16 +954,14 @@ parseHexNumber:
         ;-----------------------------------------------------------------------
         ; a 3rd digit goes in the lower nybble of B:
         ;
-@three: ld      A,      [DE]            ; get digit
-        call    @digit                  ; convert digit to number
+@three: call    @digit                  ; convert digit to number
         or      B                       ; combine with hi-nybble (if present)
         ld      B,      A               ; answer goes in B
         inc     E                       ; move to 2nd digit
         ;-----------------------------------------------------------------------
         ; a 2nd digit goes in the upper nybble of C:
         ;
-@two:   ld      A,      [DE]            ; get digit
-        call    @digit                  ; convert digit to number
+@two:   call    @digit                  ; convert digit to number
         add     A,      A               ;
         add     A,      A               ; left-shift (faster than `sla A`)
         add     A,      A               ; (shift lo-nybble to hi-nybble)
@@ -972,8 +971,7 @@ parseHexNumber:
         ;-----------------------------------------------------------------------
         ; 1st digit goes in the lower nybble of C:
         ;
-@one:   ld      A,      [DE]            ; get digit
-        call    @digit                  ; convert digit to number
+@one:   call    @digit                  ; convert digit to number
         or      C                       ; combine with hi-nybble (if present)
         ld      C,      A               ; answer goes in C
 
@@ -990,7 +988,8 @@ parseHexNumber:
         ; side-effect of changing ASCII "0"-"9" (30-39) to codes 16-25!
         ; (this is why ASCII codes 0-32 must be precluded beforehand)
         ;
-@digit: res     5,      A               ; force upper-case for "a"-"f"
+@digit: ld      A,      [DE]            ; get digit
+        res     5,      A               ; force upper-case for "a"-"f"
         sub     '0'                     ; anything < "0" becomes >=128 (hi-bit)
         cp      10                      ; 0-9 ("0"-"9") is okay
         ret     c                       ; exit early for 0-9
