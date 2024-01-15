@@ -9,23 +9,23 @@
 ;===============================================================================
 ; memory map:
 ;
-;   +-----+----------------------------------------+------+----------------+
-;   | v80 | code->                          <-heap | word | expr-> <-stack |
-;   +-----+----------------------------------------+------+----------------+
-;
-; code:  source code is assembled here
-; heap:  symbols and other in-flight data goes here (builds downwards)
-; word:  a buffer for capturing words (symbols)
-; expr:  expression are tokenised here
-; stack: usual Z80 stack (builds downwards)
+;   +-----+-----------------------------------+--------+--------+---------+
+;   | v80 | code->                     <-heap | <-word | <-expr | <-stack |
+;   +-----+-----------------------------------+--------+--------+---------+
+;                                                 32       128      128
+;   code:  source code is assembled here
+;   heap:  symbols and other in-flight data goes here (builds downwards)
+;   word:  a buffer for capturing words (symbol names)
+;   expr:  expressions are tokenised here (builds downwards)
+;   stack: usual Z80 stack (builds downwards)
 ;
 .DEF    WORD_LEN        30              ; maximum symbol name length
 
-; the bottom of the stack, just above the heap, can be used as temporary space
-; for a few bytes. the word buffer is here too so their use can't overlap
+; the bottom of the word buffer, just above the heap, can be used
+; as temporary space for a few bytes (so their use can't overlap)
 ;
 ; (these addresses are set during initialisation,
-;  the values here are only examples)
+;  the values here are only examples based on RunCPM)
 ;
 temp:   .ADDR $fc00                     ; temp bytes at bottom of stack
 word:   .ADDR $fc1f                     ; word-buffer (works backwards)
@@ -97,13 +97,13 @@ const:  .ADDR $000                      ; addr of last const dictionary-entry
 .DEF    CHAR_OP_XOR     '^'             ; xor operator
 .DEF    CHAR_OP_MOD     '\'             ; modulo operator
 
-expr:   .ADDR $fc20                     ; expression token space
+expr:   .ADDR $fc7f                     ; expr token space (builds downwards)
 defer:  .ADDR $0000                     ; addr of last deferred expr
 
 
 init:
 ;===============================================================================
-        ; set heap position below stack:
+        ; set heap position:
         ;-----------------------------------------------------------------------
         ; this *assumes* we are at least 1 call deep on the stack,
         ; i.e. $FCFE rather than the unused stack top @ $FD00
@@ -116,8 +116,8 @@ init:
         ld      BC,     WORD_LEN+1      ; max word-length for word buffer,
         add     HL,     BC              ;  plus 1 byte to store word-length
         ld      [word], HL              ;  (word buffer works downwards)
-        inc     HL                      ; immediately above that
-        ld      [expr], HL              ;  is the expr tokens space
+        ld      L,      $7f             ; the expr token space starts in the
+        ld      [expr], HL              ;  middle of the page and works down
 
         ; the virtual program counter is permanently pinned to IX since
         ; it's a value that needs to be incremented often but not read
@@ -243,6 +243,10 @@ assemble:
 
         jr      @body
 
+        ; handle keywords:
+        ;=======================================================================
+@key:   halt
+
         ; modify the virtual program-counter:
         ;=======================================================================
 @pc:    call    tokenExpr               ; capture the complete expression
@@ -275,6 +279,10 @@ assemble:
         jr      c,      +               ; does it exist as a forward-reference?
         jp      nz,     errLabel        ; cannot redefine labels!
 
+        ; TODO: `readWord` always returns a whitespace/EOF
+        ; after defining a label, we need to call `skipSpace` again
+        ; before retutning to body context
+
         call    pushLabel               ; define label on the heap
 
         jr      @body
@@ -295,10 +303,6 @@ assemble:
         ld      [BC],   A
         
         jr      @body
-
-        ; handle keywords:
-        ;=======================================================================
-@key:   halt
 
 
 skipSpace:
@@ -384,7 +388,7 @@ readChar:
         ld      [HL'],  0               ; reset column number
 
         exx                             ; restore HL/DE
-        ret                             ; return z-flag set for newline
+        ret                             ; return z-flag set for newline/EOF
 
 
 readWord:
@@ -393,6 +397,9 @@ readWord:
 ;
 ; NOTE: an error occurs if a word is > WORD_LEN chars long.
 ;       this routine doesn't handle strings
+;
+; TODO: needs to return the state of the last char read,
+;       i.e. zero-flag for newline/EOF
 ;
 ; in:   A               first character of word already read
 ; out:  BC              length of word
@@ -684,21 +691,23 @@ tokenExpr:
 ;
 ; out:  A, BC|DE|HL     (clobbered)
 ;-------------------------------------------------------------------------------
-        ; expressions are tokenised into a temporary space at the bottom of
-        ; the stack, this is because any forward-references to labels will
-        ; need to be pushed to the heap so we can't have the expr on the
-        ; heap at the same time!
+        ; expressions are tokenised into a temporary space below the stack,
+        ; this is because any forward-references to labels will need to be
+        ; pushed to the heap so we can't have the expression on the heap
+        ; at the same time!
         ;
-        ; TODO: `ld HL, [expr]` can be patched with `ld HL, $xx20`
-        ;       to save 10 cycles here
+        ; TODO: `ld HL, [expr]` can be patched with `ld HL, $xx80`
+        ;       to save 10 cycles here?
         ;
         ld      HL,     [expr]          ; get addr of expr bytecode space
         ld      A,      [char]          ; get current unused input char
         jr      @unary                  ; jump into the parsing loop
 
         ;=======================================================================
--       ld      [HL],   A               ; push token in A to expr
-        inc     HL                      ; move to next token space
+        ; add an operator and fall-through to the next operand:
+        ;
+-       dec     HL                      ; move to next token space
+        ld      [HL],   A               ; push token in A to expr
 
         call    skipSpace               ; read first character of the next word
         jp      z,      errExpr         ; newline/EOF = unexpected expr end!
@@ -722,8 +731,8 @@ tokenExpr:
 
         ; a unary operator has been added,
         ; read the next character:
-+       ld      [HL],   A               ; push a unary operator token
-        inc     HL                      ; move to next token space
++       dec     HL                      ; move to next token space
+        ld      [HL],   A               ; push a unary operator token
 
         call    skipSpace               ; read first character of the next word
         jp      z,      errExpr         ; newline/EOF = unexpected expr end!
@@ -734,28 +743,28 @@ tokenExpr:
         ; from instruction names without look-ahead
         ;
 @value: cp      CHAR_HEX                ; hexadecimal sigil?
-        jr      nz,     +
+        jr      nz,     @const:
 
+        dec     HL                      ; move to next token space
         ld      [HL],   A               ; push a number token
-        inc     HL                      ; move to next token space
         call    parseHexNumber          ; parse the hex number into BC
+        dec     HL                      ; move to next token space
         ld      [HL],   B               ; push the number hi-byte
-        inc     HL                      ; move to next token space
+        dec     HL                      ; move to next token space
         ld      [HL],   C               ; push the number lo-byte
-        inc     HL                      ; move to next token space
 
-        jr      @operator               ; an operator can follow a value
+        jr      @op                     ; an operator can follow a value
 
         ; constant?
         ;-----------------------------------------------------------------------
-+       cp      CHAR_CONST              ; a constant?
-        jr      nz,     +
+@const: cp      CHAR_CONST              ; a constant?
+        jr      nz,     @label
 
         halt
 
         ; label?
         ;-----------------------------------------------------------------------
-+       cp      CHAR_LABEL              ; a label?
+@label: cp      CHAR_LABEL              ; a label?
         jp      nz,     errExpr         ; expression has no value!!
 
         call    readWord                ; get the full label name
@@ -770,8 +779,8 @@ tokenExpr:
         ;-----------------------------------------------------------------------
         ; a value has been added, check for the presence of an operator:
         ; if there's no operator, the expression ends here
-@operator:
-        call    skipSpace               ; read first character of the next word
+        ;
+@op:    call    skipSpace               ; read first character of the next word
         jr      z,      @end            ; end expr at newline / end-of-file
 
         cp      CHAR_OP_ADD             ; add operator?
@@ -795,8 +804,10 @@ tokenExpr:
         ; fall through and terminate the expression
 
         ;-----------------------------------------------------------------------
-@end:   ld      [HL],   CHAR_END        ; terminate the expression (0)
-@eval   
+        ; TODO: check for an overflow here
+        ;
+@end:   dec     HL                      ; move to next token space
+        ld      [HL],   CHAR_END        ; terminate the expression (0)
         ret
 
 
@@ -877,15 +888,7 @@ deferExpr:
         add     HL,     SP              ;  it's quicker to just add SP to 0!
         ld      SP,     [sp]            ; restore stack pointer!
 
-        ; begin parsing the expression, packing it into bytecode:
-        ;-----------------------------------------------------------------------
-        call    skipSpace               ; read first character of the next word
-        jp      z,      errExpr         ; unexpected newline / end-of-file!
-
-        call    parseExpr               ; -- addr to write is in expr header
-
-        ; attempt to evaluate the expression
-        ; ...
+        ; TODO: copy bytecode expr from below the stack
 
         ld      DE,     [code]
         ret
