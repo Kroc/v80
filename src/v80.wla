@@ -420,7 +420,8 @@ readWord:
         ;-----------------------------------------------------------------------
 @ok:    ld      A,      WORD_LEN        ; max size - characters remaining
         sub     E                       ;  = length of word
-        ld      [word], A               ; write word-length byte
+        ld      E,      WORD_LEN+1      ; snap back to length byte
+        ld      [DE],   A               ; write word-length byte
 
         ld      C,      A               ; return word-length in BC,
         ld      B,      0               ;  convenient for `findSymbol` etc.
