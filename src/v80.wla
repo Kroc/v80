@@ -243,15 +243,15 @@ assemble:
 
         jr      @body
 
-        ; handle keywords:
-        ;=======================================================================
-@key:   halt
-
         ; modify the virtual program-counter:
         ;=======================================================================
 @pc:    call    tokenExpr               ; capture the complete expression
         halt
         jr      @body
+
+        ; handle keywords:
+        ;=======================================================================
+@key:   halt
 
         ; skip comments:
         ;=======================================================================
@@ -269,29 +269,43 @@ assemble:
 @nleof: cp      ASCII_LF                ; check for newline
         jr      z,      @line           ; if so, parse line
 
-        ret                             ; is end-of-file, end assembling
+        ret                             ; end-of-file -- end assembling
 
         ; define label:
         ;=======================================================================
-@label: call    readWord                ; read the label in
-        ld      DE,     label           ; label dictionary entry point
-        call    findSymbol              ; does it already exist?
+        ; check if the label already exists:
+        ;
+@label: ld      DE,     label           ; label dictionary entry point
+        call    getSymbol               ; read label name and search for it
+        
+        ; if the label has been referenced in an expression, but not yet
+        ; defined, carry will be set. in this case we want to 'fill in the
+        ; blank' so that deferred expressions using this label can be evaluated
+        ;
         jr      c,      +               ; does it exist as a forward-reference?
+        
+        ; zero-flag will be set if the label either does not exist at all,
+        ; or was a forward-reference (we've eliminated forward-references
+        ; first). therefore if the label *does* exist, we're trying to
+        ; define a label twice!
+        ;
         jp      nz,     errLabel        ; cannot redefine labels!
 
-        ; TODO: `readWord` always returns a whitespace/EOF
-        ; after defining a label, we need to call `skipSpace` again
-        ; before retutning to body context
+        ; label does not exist -- forward-reference or otherwise
+        ;
+        call    pushLabel               ; define new label on the heap
 
-        call    pushLabel               ; define label on the heap
-
+        ; TODO: `readWord` always returns a whitespace/EOF after defining
+        ;       a label, we need to call `skipSpace` again before returning
+        ;       to body context
+        ;
         jr      @body
 
         ;-----------------------------------------------------------------------
         ; when a label has been referred to in an expression in the past,
         ; a placeholder is added to the dictionary awaiting definition --
-        ; now that time has come. `findSymbol` has returned the addr (BC)
-        ; in the heap where the flag byte and value is
+        ; now that time has come. `getSymbol` has returned the addr (BC)
+        ; in the heap where the label's flag byte and value is
         ;
 +       inc     A                       ; set flag byte to indicate true value
         ld      [BC],   A               ; update symbol record
@@ -302,6 +316,10 @@ assemble:
         ld      A,      IXL             ; virtual program-counter, lo-byte
         ld      [BC],   A
         
+        ; TODO: `readWord` always returns a whitespace/EOF after defining
+        ;       a label, we need to call `skipSpace` again before returning
+        ;       to body context
+        ;
         jr      @body
 
 
@@ -391,26 +409,41 @@ readChar:
         ret                             ; return z-flag set for newline/EOF
 
 
-readWord:
+getSymbol:
 ;===============================================================================
-; reads a word into a buffer:
+; reads a symbol name from input and searches for it in a dictionary:
 ;
-; NOTE: an error occurs if a word is > WORD_LEN chars long.
-;       this routine doesn't handle strings
+; in:   DE              dictionary entry point: an addr that contains the
+;                       addr of the last symbol added to the dictionary,
+;                       i.e. `label` for labels & `const` for constants
 ;
-; TODO: needs to return the state of the last char read,
-;       i.e. zero-flag for newline/EOF
-;
-; in:   A               first character of word already read
-; out:  BC              length of word
+; out:  A               non-zero if found. 0 if symbol not found, including
+;                       forward-references that don't have a valid value yet
+;       zf              zero-flag is set according to the above
+;       cf              carry set indciates the symbol is a forward-reference
+;       BC              if symbol found, BC holds its value
+;                       if symbol doesn't exist, **BC retains the name length**
+;                       if symbol is a forward-reference (carry-set), then BC
+;                       is the addr of the flag byte of the symbol record --
+;                       this is so that the symbol value can be updated
+;       DE              $0000 if label doesn't exist. if the label exists,
+;                       inlcuding forward-references that would otherwise
+;                       behave as "not found", DE contains the addr of the
+;                       symbol, pointing to the lo-byte of the link field
 ;       HL              (preserved)
-;       DE              (clobbered)
 ;-------------------------------------------------------------------------------
+        push    HL                      ; current heap position won't be used
+
+        ; swap dictionary entry point to HL as we will be replacing DE
+        ; with the word-buffer address to read the symbol name in
+        ex      DE,     HL
+
+        ; read symbol name:
+        ;=======================================================================
         ; note that the word is written *downwards* in RAM, to match how
         ; symbol names are written on the heap, for faster comparison --
-        ; we use the bottom of the stack to hold the incoming word;
-        ; because this is page-aligned we can get away with using
-        ; `DEC E` instead of `DEC DE`
+        ; we use the bottom of a page to hold the incoming word so that
+        ; we can get away with using `DEC E` instead of `DEC DE`
         ;
         ld      DE,     [word]          ; top of word-buffer, e.g $FC1F
         jr      +                       ; (first character already read)
@@ -430,45 +463,14 @@ readWord:
         ld      E,      WORD_LEN+1      ; snap back to length byte
         ld      [DE],   A               ; write word-length byte
 
-        ld      C,      A               ; return word-length in BC,
-        ld      B,      0               ;  convenient for `findSymbol` etc.
+        ld      C,      A
+        ld      B,      0
 
-        ret
-
-
-findSymbol:
-;===============================================================================
-; search for a symbol (label / constant) in a dictionary:
-;
-; in:   DE              dictionary entry point: an addr that contains the
-;                       addr of the last symbol added to the dictionary,
-;                       i.e. `label` for labels & `const` for constants
-;       BC              length of symbol name; `readWord` provides this --
-;                       despite names being limited to 30 chars, B must be 0
-;       [word]          the label is assumed to be in the word-buffer,
-;                       i.e. after calling `readWord`
-;
-; out:  A               non-zero if found. 0 if symbol not found, including
-;                       forward-references that don't have a valid value yet
-;       zf              zero-flag is set according to the above
-;       cf              carry set indciates the symbol is a forward-reference
-;       BC              if symbol found, BC holds its value
-;                       if symbol doesn't exist, **BC retains the name length**
-;                       if symbol is a forward-reference (carry-set), then BC
-;                       is the addr of the flag byte of the symbol record --
-;                       this is so that the symbol value can be updated
-;       DE              $0000 if label doesn't exist. if the label exists,
-;                       inlcuding forward-references that would otherwise
-;                       behave as "not found", HL contains the addr of the
-;                       symbol record, pointing to the lo-byte of the link field
-;       HL              (preserved)
-;-------------------------------------------------------------------------------
-        push    HL                      ; preserve HL coming in
-        ex      DE,     HL              ; swap entry point to HL
-        ld      DE,     [word]          ; initialise addr of word-buffer
-        jr      _findSymbol             ; jump into the main loop
-
+        ; find symbol in dictionary:
         ;=======================================================================
+        jr      @next                   ; jump into the loop
+
+        ;-----------------------------------------------------------------------
         ; names do not match!
         ;
 --      ld      E,      WORD_LEN+1      ; snap back to length byte in buffer
@@ -476,7 +478,6 @@ findSymbol:
         ld      C,      [HL]            ; re-get word-length to check
 -       inc     HL                      ; move *up* to link addr lo-byte
 
-_findSymbol:
         ;-----------------------------------------------------------------------
         ; the link field of a symbol points to      - - -+------+
         ; the lo-byte of the next symbol's link          | link |
@@ -491,7 +492,7 @@ _findSymbol:
         ; (also setting the zero-flag and clearing carry
         ;  -- did you know that OR cleared carry!??)
         ;
-        ld      A,      [HL]            ; read next symbol addr, lo-byte
+@next:  ld      A,      [HL]            ; read next symbol addr, lo-byte
         inc     HL                      ; move *up* to link addr hi-byte
         ld      H,      [HL]            ; read next symbol addr, hi-byte
         ld      L,      A               ; (complete the addr)
@@ -513,11 +514,11 @@ _findSymbol:
         push    HL
 
         dec     HL                      ; move down a character in the heap
-@loop:  dec     E                       ; move down a character in word-buffer
+@char:  dec     E                       ; move down a character in word-buffer
         ld      A,      [DE]            ; read char from word-buffer
         cpd                             ; = CP A, [HL]; DEC HL; DEC BC
         jr      nz,     --              ; stop looping if mismatch
-        jp      pe,     @loop           ; keep looping until chars run out
+        jp      pe,     @char           ; keep looping until chars run out
 
         ; names match! read and return the symbol value:
         ;-----------------------------------------------------------------------
@@ -539,7 +540,7 @@ _findSymbol:
         ; the flag-byte so that the label's true value can be set
         ;
         ; (it's faster to just do these two instructions
-        ;  in all cases and jump on the less-likely case)
+        ;  in all cases and branch on the less-likely case)
         ;
         ld      B,      H               ; copy current heap addr
         ld      C,      L               ;  to BC
@@ -555,9 +556,9 @@ _findSymbol:
         ; return the address of the symbol:
 +       pop     HL                      ; snap back to the symbol-len field
         inc     HL                      ; move *up* to link addr lo-byte
-@end    ex      DE,     HL              ; swap symbol addr to DE,
-        pop     HL                      ;  and restore HL from caller
+@end    ex      DE,     HL              ; swap symbol addr to DE
 
+        pop     HL                      ; restore heap position
         ret
 
 
@@ -578,8 +579,9 @@ pushLabel:
 ;
 ; in:   cf              carry-flag set indicates a forward-reference!
 ;       HL              heap position to write new label
+;       BC              word-length (set by `getSymbol`)
 ;       [word]          the label is assumed to be in the word-buffer,
-;                       i.e. after calling `readWord`
+;                       i.e. after calling `getSymbol`
 ; out:  HL              heap position is advanced (downwards!)
 ;       A, BC|DE        (clobbered)
 ;-------------------------------------------------------------------------------
@@ -597,10 +599,7 @@ pushLabel:
         ; (these instructions don't modify carry...)
         ;
         ld      DE,     [word]          ; get word-buffer addr
-        ld      A,      [DE]            ; first byte is word-length
-        ld      B,      0               ; loop count must be in BC
-        ld      C,      A               ; 
-        inc     C                       ; +1 to include the length-byte
+        inc     C                       ; length +1 to include the length-byte
 
         ; note that LDDR is post-decrement (copy-then-decrement), whereas
         ; the heap is pre-decrement like the stack (decrement-then-copy)
@@ -613,7 +612,7 @@ pushLabel:
 
         ; push flag to indicate a forward-reference:
         ;
-        ; the flag byte is designed so that `findSymbol` will return zero-flag
+        ; the flag byte is designed so that `getSymbol` will return zero-flag
         ; set for forward-references, i.e. the label is considered undefined,
         ; but carry is set to distinguish labels that exist in the dictionary
         ; vs. those that don't (required for deferring expressions)
@@ -621,9 +620,10 @@ pushLabel:
         ; the flag is flipped to allow some trickery on read out to return
         ; A=0 and set both zero-flag AND carry-flag for forward-references
         ;
+        ; NOTE: LDDR has already decremented HL for us
+        ;
         ccf                             ; forward-reference = 0, otherwise 1
         rl      B                       ; shift carry flag into bit 0
-        dec     HL                      ; pre-decrement heap to empty byte
         ld      [HL],   B               ; B will be 0 or 1
 
         ; push the label value (virtual program-counter):
@@ -633,8 +633,9 @@ pushLabel:
         ; as the value is only needed once a symbol name is matched and then
         ; the addr is in the right place
         ;
+        dec     HL                      ; pre-decrement heap to empty byte
         ld      A,      IXH
-        ld      [HL],   A               ; LDDR already decremented HL for us!
+        ld      [HL],   A
         dec     HL                      ; pre-decrement heap to empty byte
         ld      A,      IXL
         ld      [HL],   A
@@ -743,7 +744,7 @@ tokenExpr:
         ; from instruction names without look-ahead
         ;
 @value: cp      CHAR_HEX                ; hexadecimal sigil?
-        jr      nz,     @const:
+        jr      nz,     @const
 
         dec     HL                      ; move to next token space
         ld      [HL],   A               ; push a number token
@@ -760,6 +761,9 @@ tokenExpr:
 @const: cp      CHAR_CONST              ; a constant?
         jr      nz,     @label
 
+        ld      DE,     const           ; const dictionary entry point
+        call    getSymbol               ; try get the constant's value
+
         halt
 
         ; label?
@@ -767,14 +771,37 @@ tokenExpr:
 @label: cp      CHAR_LABEL              ; a label?
         jp      nz,     errExpr         ; expression has no value!!
 
-        call    readWord                ; get the full label name
         ld      DE,     label           ; label dictionary entry point
-        call    findSymbol              ; try get the label's value
+        call    getSymbol               ; try get the label's value
+        jr      c,      @defer
 
         ; TODO: handle missing label
 
 
         halt
+
+        ; any expression that contains a forward-reference to a label causes
+        ; the whole expression to be deferred. instead of the label value,
+        ; the label's address in the dictionary is tokenised
+        ;
+@defer: dec     HL                      ; move to next token space
+        ld      [HL],   CHAR_LABEL      ; push the label token
+        dec     HL                      ; move to next token space
+        ld      [HL],   D               ; push the label addr hi-byte
+        dec     HL                      ; move to next token space
+        ld      [HL],   E               ; push the label addr lo-byte
+
+        ; TODO: set the defer flag
+        
+
+        ; push a token with word/addr value:
+        ;-----------------------------------------------------------------------
+;@word:  dec     HL                      ; move to next token space
+;        ld      [HL],   A               ; push the value token
+;        dec     HL                      ; move to next token space
+;        ld      [HL],   B               ; push the number/addr hi-byte
+;        dec     HL                      ; move to next token space
+;        ld      [HL],   C               ; push the number/addr lo-byte
 
         ;-----------------------------------------------------------------------
         ; a value has been added, check for the presence of an operator:
@@ -1065,3 +1092,172 @@ code:
 __code: ; WARNING: ANYTHING PLACED AFTER HERE WILL BE OVERWRITTEN
 
 ;///////////////////////////////////////////////////////////////////////////////
+
+;readWord:
+;===============================================================================
+; reads a word into a buffer:
+;
+; NOTE: an error occurs if a word is > WORD_LEN chars long.
+;       this routine doesn't handle strings
+;
+; TODO: needs to return the state of the last char read,
+;       i.e. zero-flag for newline/EOF
+;
+; in:   A               first character of word already read
+; out:  BC              length of word
+;       HL              (preserved)
+;       DE              (clobbered)
+;-------------------------------------------------------------------------------
+;        ; note that the word is written *downwards* in RAM, to match how
+;        ; symbol names are written on the heap, for faster comparison --
+;        ; we use the bottom of the stack to hold the incoming word;
+;        ; because this is page-aligned we can get away with using
+;        ; `DEC E` instead of `DEC DE`
+;        ;
+;        ld      DE,     [word]          ; top of word-buffer, e.g $FC1F
+;        jr      +                       ; (first character already read)
+;        ;----------------------------------------------------------------------
+;-       call    readChar                ; read char from input file
+;        cp      ASCII_SPC+1             ; whitespace?
+;        jr      c,      @ok             ; (leave loop at whitespace)
+;+       dec     E                       ; move to next space in buffer
+;        ld      [DE],   A               ; add the character to the buffer
+;        jp      p,      -               ; keep going until buffer full
+;        ;----------------------------------------------------------------------
+;        jp      errWord                 ; word too long!
+;
+;        ;----------------------------------------------------------------------
+;@ok:    ld      A,      WORD_LEN        ; max size - characters remaining
+;        sub     E                       ;  = length of word
+;        ld      E,      WORD_LEN+1      ; snap back to length byte
+;        ld      [DE],   A               ; write word-length byte
+;
+;        ld      C,      A               ; return word-length in BC,
+;        ld      B,      0               ;  convenient for `findSymbol` etc.
+;
+;        ret
+
+;findSymbol:
+;===============================================================================
+; search for a symbol (label / constant) in a dictionary:
+;
+; in:   DE              dictionary entry point: an addr that contains the
+;                       addr of the last symbol added to the dictionary,
+;                       i.e. `label` for labels & `const` for constants
+;       BC              length of symbol name; `readWord` provides this --
+;                       despite names being limited to 30 chars, B must be 0
+;       [word]          the label is assumed to be in the word-buffer,
+;                       i.e. after calling `readWord`
+;
+; out:  A               non-zero if found. 0 if symbol not found, including
+;                       forward-references that don't have a valid value yet
+;       zf              zero-flag is set according to the above
+;       cf              carry set indciates the symbol is a forward-reference
+;       BC              if symbol found, BC holds its value
+;                       if symbol doesn't exist, **BC retains the name length**
+;                       if symbol is a forward-reference (carry-set), then BC
+;                       is the addr of the flag byte of the symbol record --
+;                       this is so that the symbol value can be updated
+;       DE              $0000 if label doesn't exist. if the label exists,
+;                       inlcuding forward-references that would otherwise
+;                       behave as "not found", HL contains the addr of the
+;                       symbol record, pointing to the lo-byte of the link field
+;       HL              (preserved)
+;-------------------------------------------------------------------------------
+;        push    HL                      ; preserve HL coming in
+;        ex      DE,     HL              ; swap entry point to HL
+;        ld      DE,     [word]          ; initialise addr of word-buffer
+;        call    _findSymbol             ; jump into the main loop
+;        pop     HL                      ; restore HL from caller
+;        ret
+;
+;        ;======================================================================
+;        ; names do not match!
+;        ;
+;--      ld      E,      WORD_LEN+1      ; snap back to length byte in buffer
+;        pop     HL                      ; snap back to length byte in symbol
+;        ld      C,      [HL]            ; re-get word-length to check
+;-       inc     HL                      ; move *up* to link addr lo-byte
+;
+;_findSymbol:
+;        ;----------------------------------------------------------------------
+;        ; the link field of a symbol points to      - - -+------+
+;        ; the lo-byte of the next symbol's link          | link |
+;        ; field in the chain, with the remaining    - - -+--|---+
+;        ; fields extending *downwards* in RAM            .--'
+;        ;                                                v
+;        ;          +-------+---+---+---+---+---+---+-----+------+
+;        ;  < heap  | value | l | e | b | a | l | : | len | link |
+;        ;          +-------+---+---+---+---+---+---+-----+------+
+;        ;
+;        ; follow this link, but exit if it's $0000
+;        ; (also setting the zero-flag and clearing carry
+;        ;  -- did you know that OR cleared carry!??)
+;        ;
+;        ld      A,      [HL]            ; read next symbol addr, lo-byte
+;        inc     HL                      ; move *up* to link addr hi-byte
+;        ld      H,      [HL]            ; read next symbol addr, hi-byte
+;        ld      L,      A               ; (complete the addr)
+;        or      H                       ; is the link addr $0000?
+;        jr      z,      @end            ; terminate at end of chain
+;
+;        ; (HL is now the next symbol addr in the heap)
+;
+;        dec     HL                      ; move down to length byte
+;        ld      A,      [HL]            ; get symbol name length
+;        cp      C                       ; compare with word-buffer length
+;        jr      nz,      -              ; different? return to link and follow
+;
+;        ;----------------------------------------------------------------------
+;        ; symbol length matches, check characters:
+;        ;
+;        ; remember this position to snap back to if the symbol doesn't
+;        ; match and we need to follow the link to the next symbol
+;        push    HL
+;
+;        dec     HL                      ; move down a character in the heap
+;@loop:  dec     E                       ; move down a character in word-buffer
+;        ld      A,      [DE]            ; read char from word-buffer
+;        cpd                             ; = CP A, [HL]; DEC HL; DEC BC
+;        jr      nz,     --              ; stop looping if mismatch
+;        jp      pe,     @loop           ; keep looping until chars run out
+;
+;        ; names match! read and return the symbol value:
+;        ;----------------------------------------------------------------------
+;        ; the flag byte is used to indicate a forward-reference on a label;
+;        ; the label name is known, but doesn't have a value yet. we return
+;        ; this flag in the carry flag by shifting it out of the byte
+;        ;
+;        ; for a deferred value the byte is 0; the shift keeps this as zero,
+;        ; sets zero-flag and CCF sets the carry flag accordingly. for a valid
+;        ; value the byte is 1; the shift sets carry AND bit 7 (=$80), clearing
+;        ; zero flag and CCF clears the carry
+;        ;
+;        ; NOTE: CPD has already decremented HL for us!
+;        ld      A,      [HL]            ; read forward-reference flag byte
+;        rrca                            ; shift bit 0 into bit 7 AND carry!
+;        ccf                             ; flip carry so forward-reference = 1
+;
+;        ; for a forward-reference, BC returns the address of
+;        ; the flag-byte so that the label's true value can be set
+;        ;
+;        ; (it's faster to just do these two instructions
+;        ;  in all cases and jump on the less-likely case)
+;        ;
+;        ld      B,      H               ; copy current heap addr
+;        ld      C,      L               ;  to BC
+;        jr      c,      +               ; skip value for forward-reference
+;
+;        ; get the label's value:
+;        ;
+;        dec     HL                      ; step past flag byte
+;        ld      B,      [HL]            ; symbol value hi-byte
+;        dec     HL                      ; move to value lo-byte
+;        ld      C,      [HL]            ; return BC = symbol value
+;
+;        ; return the address of the symbol:
+;+       pop     HL                      ; snap back to the symbol-len field
+;        inc     HL                      ; move *up* to link addr lo-byte
+;@end    ex      DE,     HL              ; swap symbol addr to DE
+;
+;        ret
