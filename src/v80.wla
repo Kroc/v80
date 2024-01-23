@@ -1,6 +1,8 @@
 ; v80, (C) Kroc Camen 2023-2024, MIT License
 ; a z80 assembler for Z80s
 ;
+.DEF    DEBUG
+
 .INC    "cpm.wla"                       ; CP/M interface
 .INC    "err.wla"                       ; error message handling
 .INC    "z80.wla"                       ; Z80 parser & opcode binary tree
@@ -185,10 +187,8 @@ assembleFile:
 ;===============================================================================
 ; assembles a file:
 ;
-; TODO: do the file opening here so that we can do includes
 ;-------------------------------------------------------------------------------
-        ld      HL,     [heap]          ; where symbols / expressions go
-        
+        ; TODO: do the file opening here so that we can do includes
         call    assemble
 
         ret
@@ -198,6 +198,26 @@ assemble:
 ; NOTE: we avoid using calls here where possible because scopes are linear
 ;       and we don't want to pressure the stack too much (it's small)
 ;-------------------------------------------------------------------------------
+        ld      HL,     [heap]          ; where symbols / expressions go
+        jr      @line                   ; jump into parsing loop
+
+        ; skip comments:
+        ;=======================================================================
+@skip:  call    readChar                ; read to next character or newline
+        jr      nz,     @skip           ; loop until newline / end-of-file
+
+        ; distinguish between newline and end-of-file:
+        ;-----------------------------------------------------------------------
+        ; the return code of end-of-file is inconsistent across systems,
+        ; so we can only tell end-of-file by eliminating newline first
+        ;
+@nleof: cp      ASCII_LF                ; check for newline
+        jr      nz,      @line          ; no? end-of-file -- end assembling
+
+        ; at newline fallthrough to
+        ; the line-staring context
+        ; ...
+
         ; begin at line context:
         ;-----------------------------------------------------------------------
         ; at the beginning of the line labels and the PC
@@ -208,8 +228,6 @@ assemble:
 
         ; first character determines the word type:
         ;
-        cp      CHAR_COMMENT            ; is comment?
-        jr      z,      @skip           ; skip until end of line
         cp      CHAR_LABEL              ; is label?
         jr      z,      @label          ; define a label
 
@@ -227,21 +245,7 @@ assemble:
         cp      CHAR_OP_HI              ; hi operator?
         jr      z,      @pc             ; redefine program-counter 
         cp      CHAR_OP_NOT             ; not operator?
-        jr      z,      @pc             ; redefine program-counter 
-
-        ; body context:
-        ;-----------------------------------------------------------------------
-        ; labels and the program-counter must be defined first on the line
-        ; after those, instructions and keywords are allowed. this is known
-        ; as the body context and multiple instructions / keywords can occur
-        ; until either a comment or the end of the line
-        ;
-@body:  cp      CHAR_KEYWORD            ; is this a keyword?
-        jr      z,      @key            ; handle keyword
-
-        call    parseInstruction
-
-        jr      @body
+        jr      nz,     @body           ; no expression -- skip to body context
 
         ; modify the virtual program-counter:
         ;=======================================================================
@@ -249,27 +253,36 @@ assemble:
         halt
         jr      @body
 
+        ; body context:
+        ;-----------------------------------------------------------------------
+        ; labels and the program-counter must be defined first on the line and
+        ; after those, instructions and keywords are allowed. this is known as
+        ; the body context and multiple instructions / keywords can occur until
+        ; either a comment or the end of the line
+        ;
+        ; after a keyword or instruction, parsing returns to the body context
+        ; unless a newline is encountered. in cases where the last-read char
+        ; is whitespace we need to pickup the next character
+        ;
+@next:  call    skipSpace               ; find next character (or newline)
+        jr      z,      @nleof          ; did we hit newline or end-of-file?
+
+@body:  cp      CHAR_COMMENT            ; is comment?
+        jr      z,      @skip           ; skip until end of line
+
+        cp      CHAR_KEYWORD            ; is this a keyword?
+        jr      z,      @key            ; handle keyword
+
+        ; this routine is in the CPU-specific module, e.g. z80.wla
+        call    parseInstruction
+
+        ; TODO: does parseInstruction (and by extension parseExpr)
+        ;       return the next character in A
+        jr      @next
+
         ; handle keywords:
         ;=======================================================================
 @key:   halt
-
-        ; skip comments:
-        ;=======================================================================
-@skip:  call    readChar                ; read to next character or newline
-        jr      nz,     @skip           ; loop until newline / end-of-file
-
-        ; fallthrough
-        ; ...
-
-        ; distinguish between newline and end-of-file:
-        ;-----------------------------------------------------------------------
-        ; the return code of end-of-file is inconsistent across systems,
-        ; so we can only tell end-of-file by eliminating newline first
-        ;
-@nleof: cp      ASCII_LF                ; check for newline
-        jr      z,      @line           ; if so, parse line
-
-        ret                             ; end-of-file -- end assembling
 
         ; define label:
         ;=======================================================================
@@ -295,7 +308,7 @@ assemble:
         ;
         call    pushLabel               ; define new label on the heap
 
-        ; TODO: `readWord` always returns a whitespace/EOF after defining
+        ; TODO: `getSymbol` always returns a whitespace/EOF after reading
         ;       a label, we need to call `skipSpace` again before returning
         ;       to body context
         ;
@@ -307,7 +320,7 @@ assemble:
         ; now that time has come. `getSymbol` has returned the addr (BC)
         ; in the heap where the label's flag byte and value is
         ;
-+       inc     A                       ; set flag byte to indicate true value
++       inc     A                       ; set flag byte to indicate valid value
         ld      [BC],   A               ; update symbol record
         dec     BC                      ; move on to symbol value
         ld      A,      IXH             ; virtual program-counter, hi-byte
@@ -316,7 +329,7 @@ assemble:
         ld      A,      IXL             ; virtual program-counter, lo-byte
         ld      [BC],   A
         
-        ; TODO: `readWord` always returns a whitespace/EOF after defining
+        ; TODO: `getSymbol` always returns a whitespace/EOF after reading
         ;       a label, we need to call `skipSpace` again before returning
         ;       to body context
         ;
@@ -369,6 +382,12 @@ readChar:
 ;-------------------------------------------------------------------------------
 -       call    osGetChar               ; read a char from file
         ld      [char], A               ; retain returned character
+.IFDEF  DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        push    AF
+        call    osPrintChar             ; print every character as we receive it
+        pop     AF                      ; (zero-flag must be preserved)
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
         ret     z                       ; return on end-of-file
 
         ; check for end of line:

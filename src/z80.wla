@@ -65,11 +65,12 @@ parseInstruction:
        
 +       ; compare with opcode tree:
         ;-----------------------------------------------------------------------
+.IFDEF  DEBUG
         ;///////////////////////////////////////////////////////////////////////
         push    AF
         call    osPrintChar
         pop     AF
-        ;///////////////////////////////////////////////////////////////////////
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
 
 -       cp      [HL]                    ; compare input char with tree char
         jr      z,      @match          ; characters match?
@@ -241,8 +242,8 @@ parseInstruction:
 ; types of opcodes:
 ;
 ;             op                ; implied
-;    ED       op                ; implied ED-extended
-;       CB    op                ; implied CB-extended
+;    ED       op                ; implied, ED-extended
+;       CB    op                ; implied, CB-extended
 ;             op nn             ; literal, 8-bit
 ;             op nn nn          ; literal, 16-bit
 ;    ED       op nn nn          ; literal, 16-bit, ED-extended
@@ -258,7 +259,7 @@ parseInstruction:
 ; the opcode tree indicates the end of a branch with an opcode-flags byte
 ; that describes the opcode prefixes and parameters used:
 ;
-; bit 7 is always set as that indicates an opcode, rather than a branch 
+; bit 7 is always set as that indicates an opcode, rather than a branch
 ;
 ; bit 6 on indicates that the opcode is IX ($DD) or IY ($FD) extended
 ;

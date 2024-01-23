@@ -1,4 +1,8 @@
-:23456789012345678901234567890
+;v80 test file
+;
+;labels can start with numbers and are
+;limited to 31 chars, including the sigil
+:234567890123456789012345678901
 	adc	$1
 	bit0*ix	$ee
 	adc.a
