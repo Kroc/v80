@@ -370,8 +370,6 @@ readChar:
 ; reads the next character in the file:
 ; current row and column are maintained
 ;
-; TODO: handle tab (next 8th char boundary)
-;
 ; out:  A               ASCII code
 ;                       for end-of-file, this value should not be relied upon!
 ;       zf              zero-flag is set *both* for end-of-file and newline!
@@ -400,19 +398,17 @@ readChar:
 
         cp      ASCII_LF                ; /n is newline
         jr      z,      @row            ; handle newline
+        cp      ASCII_TAB               ; /t is tab
+        jr      z,      @tab            ; handle tab
 
         ; increment column number:
         ;-----------------------------------------------------------------------
-        ; (capped at 255 even though lines can be longer)
-        ; TODO: don't even bother capping the length! lines should not
-        ; be longer than 80 and an incorrect number beyond 255 is not
-        ; a major issue
+        ; WARN: we do not cap the column number -- keep lines to 80 cols!
+        ;       when a line exceeds 255 chars, the 256th character will
+        ;       be treated as end-of-file!
         ;
 @col:   inc     [HL']
-        jr      nz,     +               ; if roll over, roll back (less
-        dec     [HL']                   ;  instructions than read+add+write)
-
-+       exx                             ; restore HL/DE
+        exx                             ; restore HL/DE
         ret
 
         ;-----------------------------------------------------------------------
@@ -426,6 +422,18 @@ readChar:
 
         exx                             ; restore HL/DE
         ret                             ; return z-flag set for newline/EOF
+
+        ;-----------------------------------------------------------------------
+        ; handle tab-character:
+        ;
+@tab:   dec     A                       ; \t = 9, so change to 8 (width of tab)
+        add     [HL']                   ; add 8 to current column
+        and     %11111000               ; clip to every 8th column
+        ld      [HL'],  A               ; update column number
+        ld      A,      ASCII_SPC       ; return a single space instead
+
+        exx                             ; restore HL/DE
+        ret
 
 
 getSymbol:
