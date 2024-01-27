@@ -208,11 +208,11 @@ assemble:
 
         ; distinguish between newline and end-of-file:
         ;-----------------------------------------------------------------------
-        ; the return code of end-of-file is inconsistent across systems,
-        ; so we can only tell end-of-file by eliminating newline first
+        ; readChar returns zero-flag set for both newline and end-of-file,
+        ; check the ASCII code to differntiate the two
         ;
 @nleof: cp      ASCII_LF                ; check for newline
-        jr      nz,      @line          ; no? end-of-file -- end assembling
+        ret     nz                      ; no? end-of-file -- end assembling
 
         ; at newline fallthrough to
         ; the line-staring context
@@ -220,8 +220,8 @@ assemble:
 
         ; begin at line context:
         ;-----------------------------------------------------------------------
-        ; at the beginning of the line labels and the PC
-        ; can be defined, but nowhere else
+        ; at the beginning of the line labels and the
+        ; program-counter can be defined, but nowhere else
         ;
 @line:  call    skipSpace               ; find first character
         jr      z,      @nleof          ; did we hit newline or end-of-file?
@@ -277,7 +277,8 @@ assemble:
         call    parseInstruction
 
         ; TODO: does parseInstruction (and by extension parseExpr)
-        ;       return the next character in A
+        ;       return the next character in A? must not skip a char
+        ;       but also handle EOF
         jr      @next
 
         ; handle keywords:
@@ -312,7 +313,7 @@ assemble:
         ;       a label, we need to call `skipSpace` again before returning
         ;       to body context
         ;
-        jr      @body
+        jr      @next
 
         ;-----------------------------------------------------------------------
         ; when a label has been referred to in an expression in the past,
@@ -345,8 +346,7 @@ skipSpace:
 ; whitespace on the next line -- if you want to skip to the next non-whitespace
 ; character, call the routine again after newline
 ;
-; out:  A               ASCII code
-;                       at end-of-file, this value is meanginless!
+; out:  A               ASCII code, 0 = end-of-file
 ;       zf              zero-flag is set at newline or end-of-file
 ;-------------------------------------------------------------------------------
 -       call    readChar                ; read a character (returns z-flag)
@@ -370,13 +370,10 @@ readChar:
 ; reads the next character in the file:
 ; current row and column are maintained
 ;
-; out:  A               ASCII code
-;                       for end-of-file, this value should not be relied upon!
+; out:  A               ASCII code. 0 = end-of-file
 ;       zf              zero-flag is set *both* for end-of-file and newline!
-;                       the end-of-file value of A is meaningless so you must
-;                       only check for newline ($0A) to differentiate!
+;       [char]          the character is also written to RAM
 ;       DE, HL          (preserved)
-;       BC              (undefined)
 ;-------------------------------------------------------------------------------
 -       call    osGetChar               ; read a char from file
         ld      [char], A               ; retain returned character
@@ -457,6 +454,8 @@ getSymbol:
 ;                       inlcuding forward-references that would otherwise
 ;                       behave as "not found", DE contains the addr of the
 ;                       symbol, pointing to the lo-byte of the link field
+;       [char]          the last character read will always be some kind
+;                       of whitespace -- space, newline or end-of-file
 ;       HL              (preserved)
 ;-------------------------------------------------------------------------------
         push    HL                      ; current heap position won't be used
@@ -583,7 +582,7 @@ getSymbol:
         ; return the address of the symbol:
 +       pop     HL                      ; snap back to the symbol-len field
         inc     HL                      ; move *up* to link addr lo-byte
-@end    ex      DE,     HL              ; swap symbol addr to DE
+@end:   ex      DE,     HL              ; swap symbol addr to DE
 
         pop     HL                      ; restore heap position
         ret
