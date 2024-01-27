@@ -264,9 +264,16 @@ assemble:
         ; unless a newline is encountered. in cases where the last-read char
         ; is whitespace we need to pickup the next character
         ;
-@next:  call    skipSpace               ; find next character (or newline)
+@next:  ld      A,      [char]          ; last read character
+        and     A                       ; (set CPU flags!)
+        ret     z                       ; 0 = end-of-file, end assemby
+        cp      ASCII_LF                ; newline?
+        jr      z,      @line           ; switch to line context
+        cp      ASCII_SPC               ; space?
+        call    z,      skipSpace       ; find next character (or newline)
         jr      z,      @nleof          ; did we hit newline or end-of-file?
 
+        ;-----------------------------------------------------------------------
 @body:  cp      CHAR_COMMENT            ; is comment?
         jr      z,      @skip           ; skip until end of line
 
@@ -300,20 +307,13 @@ assemble:
         
         ; zero-flag will be set if the label either does not exist at all,
         ; or was a forward-reference (we've eliminated forward-references
-        ; first). therefore if the label *does* exist, we're trying to
+        ; first), therefore if the label *does* exist we're trying to
         ; define a label twice!
         ;
         jp      nz,     errLabel        ; cannot redefine labels!
 
-        ; label does not exist -- forward-reference or otherwise
-        ;
         call    pushLabel               ; define new label on the heap
-
-        ; TODO: `getSymbol` always returns a whitespace/EOF after reading
-        ;       a label, we need to call `skipSpace` again before returning
-        ;       to body context
-        ;
-        jr      @next
+        jr      @next                   ; return to parsing
 
         ;-----------------------------------------------------------------------
         ; when a label has been referred to in an expression in the past,
@@ -330,11 +330,7 @@ assemble:
         ld      A,      IXL             ; virtual program-counter, lo-byte
         ld      [BC],   A
         
-        ; TODO: `getSymbol` always returns a whitespace/EOF after reading
-        ;       a label, we need to call `skipSpace` again before returning
-        ;       to body context
-        ;
-        jr      @body
+        jr      @next                   ; return to parsing
 
 
 skipSpace:
