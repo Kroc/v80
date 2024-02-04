@@ -276,16 +276,12 @@ assemble:
         ;-----------------------------------------------------------------------
 @body:  cp      CHAR_COMMENT            ; is comment?
         jr      z,      @skip           ; skip until end of line
-
         cp      CHAR_KEYWORD            ; is this a keyword?
         jr      z,      @key            ; handle keyword
 
         ; this routine is in the CPU-specific module, e.g. z80.wla
         call    parseInstruction
 
-        ; TODO: does parseInstruction (and by extension parseExpr)
-        ;       return the next character in A? must not skip a char
-        ;       but also handle EOF
         jr      @next
 
         ; handle keywords:
@@ -347,7 +343,7 @@ skipSpace:
 ;-------------------------------------------------------------------------------
 -       call    readChar                ; read a character (returns z-flag)
         ret     z                       ; return z-flag set if newline/EOF
-        
+
         ; we need to be careful not to return z-flag set!
         ;
         ; we cannot check for ASCII_SPC+1 ("!") as if this character appears,
@@ -664,6 +660,28 @@ pushLabel:
 
         ret
 
+
+skipToParseExpr:
+;===============================================================================
+; skip space before parsing an expression:
+; (see parseExpr below for parameters)
+;
+;-------------------------------------------------------------------------------
+        call    skipSpace
+
+.IFDEF  DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        push    AF
+        call    osPrintChar
+        pop     AF
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+
+        ; since the expression is expected/required,
+        ; newline or end-of-file is an error:
+        jp      z,      errParam
+
+        ; fallthrough
+        ; ...
 
 parseExpr:
 ;===============================================================================

@@ -68,6 +68,8 @@ parseInstruction:
 .IFDEF  DEBUG
         ;///////////////////////////////////////////////////////////////////////
         push    AF
+        ld      A,      [HL]
+        and     %01111111
         call    osPrintChar
         pop     AF
 .ENDIF  ;///////////////////////////////////////////////////////////////////////
@@ -132,9 +134,6 @@ parseInstruction:
         ;-----------------------------------------------------------------------
         ; opcode with extensions or parameters:
         ;
-        ; TODO: we may be able to optimise all these BIT instructions
-        ;       by switching to RLA / RLCA to pop bits off one-by-one
-        ;
 +       bit     6,      B               ; bit 6 indicates IX or IY
         jr      nz,     @ixy            ; go handle IX|IY madness...
 
@@ -160,20 +159,23 @@ parseInstruction:
 
         ; any parameters?
         ;
-        ; bit 1 indicates any kind of parameter for non IX|IY opcodes,
+        ; bit 2 indicates any kind of parameter for non IX|IY opcodes,
         ; i.e. 8 / 16 bit literal, or relative (bit 3)
         ;
-        bit     1,      B               ; if no parameters, extensions
+        bit     2,      B               ; if no parameters, extensions
         ret     z                       ;  have been done, finish now!
 
         ; a single, 1 or 2 byte parameter:
         ; TODO: where to handle relative jump?
         ;
 @stride xor     A                       ; set A to zero
-        rrc     B                       ; pop off bit 0 of opcode-flags
+        rrc     B                       ; pop bit 0 off of opcode-flags
         adc     1                       ; add that bit, if present
         ld      [stride],       A       ; set width of parameter
-        jp      parseExpr               ; parse a parameter expression
+
+        ; consume whitespace before parsing expression, since the parameter
+        ; is required, this will error on newline or end-of-file before expr
+        jp      skipToParseExpr
 
         ;=======================================================================
         ; handle IX|IY opcodes: (bit 5 chooses between IX & IY)
@@ -216,7 +218,9 @@ parseInstruction:
         adc     1                       ; add that bit, if present
         ld      [stride],       A       ; set width of parameter
 
-        jp      parseExpr
+        ; consume whitespace before parsing expression, since the parameter
+        ; is required, this will error on newline or end-of-file before expr
+        jp      skipToParseExpr
 
         ;-----------------------------------------------------------------------
         ; IX|IY + $CB is the edge-case that keeps on giving: at all other
@@ -229,7 +233,11 @@ parseInstruction:
 
         ; TODO: i hate everything about this
         push    BC                      ; keep opcode until emit time
-        call    parseExpr
+
+        ; consume whitespace before parsing expression, since the parameter
+        ; is required, this will error on newline or end-of-file before expr
+        call    skipToParseExpr
+
         pop     BC
         ld      A,      C
         ld      [DE],   A
