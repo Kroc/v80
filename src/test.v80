@@ -3,7 +3,7 @@
 ;labels can start with numbers and are
 ;limited to 31 chars, including the sigil
 :234567890123456789012345678901
-	adc	$1
+	adc	$aa
 	bit0*ix	$ee
 	adc.a
 	adc.b

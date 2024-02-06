@@ -669,13 +669,6 @@ skipToParseExpr:
 ;-------------------------------------------------------------------------------
         call    skipSpace
 
-.IFDEF  DEBUG
-        ;///////////////////////////////////////////////////////////////////////
-        push    AF
-        call    osPrintChar
-        pop     AF
-.ENDIF  ;///////////////////////////////////////////////////////////////////////
-
         ; since the expression is expected/required,
         ; newline or end-of-file is an error:
         jp      z,      errParam
@@ -878,89 +871,6 @@ tokenExpr:
         ret
 
 
-deferExpr:
-;===============================================================================
-; push an expression to the heap:
-;
-; - the link addr to the previous expression
-; - the current code-segment address
-; - the current virtual program-counter
-;   (in case of relative jump)
-; - the current line number in the input file
-; - the current column number in the input file
-;   (in case of error)
-; - the size of the output; 1 or 2 bytes
-; - the addr of the expr tokens
-;
-; in:   HL              current heap position
-;       IX              virtual program-counter
-;
-; out:  HL              updated heap position (defer record added to heap)
-;       DE              updated code-segment addr (expr result space reserved)
-;       IX              updated virtual program-counter (as with DE)
-;       A, BC           (clobbered)
-;-------------------------------------------------------------------------------
-        ld      DE,     [code]          ; retrieve current code-segment addr
-
-        ; we need to push a bunch of values to the heap and the fastest way
-        ; to write 16-bit values easily is... the stack! simply make the heap
-        ; into the stack and we can PUSH our stuff on to it!
-        ;
-        ; WE DO NOT NEED TO DISABLE INTERRUPTS!!! any interrupt is going to
-        ; push to our heap and then pop the address off when it returns,
-        ; which has no affect on the values we're pushing
-        ;
-        ld      [sp],   SP              ; backup stack pointer
-        ld      SP,     HL              ; move stack to heap!
-        ;-----------------------------------------------------------------------
-
-        ; link this expression to the previous one:
-        ; (since the heap address is in SP, we can reuse HL)
-        ;
-        ld      HL,     [defer]         ; get previous deferred expr address
-        push    HL                      ; write to heap
-        ld      [defer],SP              ; write heap addr to the entry point!
-
-        ; push the current code-segment position; this is where
-        ; the expression result will be filled in after evaluation
-        push    DE
-
-        ; push the current virtual program-counter
-        ; (for calculating relative jumps)
-        push    IX                      ; PC is always stored in IX, not RAM
-
-        ; push the source file line-number
-        ld      BC,     [row]
-        push    BC
-        ; push the source file column-number, plus the number of bytes
-        ; the result should occupy in the code-segment
-        ld      BC,     [stride_col]
-        push    BC
-
-        ; reserve bytes for the expr result:
-        ;
-        ; this routine is only called if there is a parameter, which assumes
-        ; a minimum of 1 byte, so check for a second byte
-        ;
-        dec     C                       ; is the stride 1 or 2?
-        jr      z,      +               ; if it is 1, skip the 2nd byte
-        inc     DE                      ; reserve a byte and increment
-        inc     IX                      ;  virtual program-counter
-+       inc     DE                      ; reserve an additional byte
-        inc     IX                      ;  and increment program-counter
-        ld      [code], DE              ; write back updated code-segment addr
-
-        ;-----------------------------------------------------------------------
-        ld      HL,     0               ; there is no `LD HL, SP` (!?), so
-        add     HL,     SP              ;  it's quicker to just add SP to 0!
-        ld      SP,     [sp]            ; restore stack pointer!
-
-        ; TODO: copy bytecode expr from below the stack
-
-        ld      DE,     [code]
-        ret
-
-
 parseHexNumber:
 ;===============================================================================
 ; parses an ASCII hexadecimal number and returns the value:
@@ -993,9 +903,9 @@ parseHexNumber:
 
         ;-----------------------------------------------------------------------
 +       ld      DE,     [temp]          ; go back to the start of the number
-        
+
         ; number of digits in hex number is reversed;
-        ; B=1 for 4 digits, B=2 for 3 digits, B=1 for 2 digits and B=0 for 1
+        ; B=1 for 4 digits, B=2 for 3 digits, B=3 for 2 digits and B=4 for 1
         ;
         dec     B                       ; 4 digits?
         jr      z,      @four
@@ -1003,7 +913,7 @@ parseHexNumber:
         jr      z,      @three
         dec     B                       ; 2 digits?
         jr      z,      @two
-        dec     B                       ; B=0 for 1-byte hex number in C
+        dec     B                       ; 1 digit?
         jr      z,      @one
 
         ; if there were _no_ digits after the hexadecimal
@@ -1053,25 +963,29 @@ parseHexNumber:
         ;
         ; valid hex digit?
         ;
-        ; if we unset bit 5 then ASCII "a"-"f" (97-102) becomes "A"-"F" (65-70)
+        ; if we unset bit 5 then ASCII "a"-"f" ($61-) becomes "A"-"F" ($41-)
         ; without also altering existing uppercase letters. This also has the
-        ; side-effect of changing ASCII "0"-"9" (30-39) to codes 16-25!
+        ; side-effect of changing ASCII "0"-"9" ($30-$39) to codes $10-$19!
         ; (this is why ASCII codes 0-32 must be precluded beforehand)
         ;
 @digit: ld      A,      [DE]            ; get digit
         res     5,      A               ; force upper-case for "a"-"f"
-        sub     '0'                     ; anything < "0" becomes >=128 (hi-bit)
-        cp      10                      ; 0-9 ("0"-"9") is okay
-        ret     c                       ; exit early for 0-9
 
-        ; between ASCII "9" and "A" is ":", ";", "<", "=", ">", "?" and "@";
-        ; if we subtract 17, "A" becomes 0 and any of those 7 become negative
-        ; (>=128, hi-bit set), therefore we only need to check 0-5 ("A"-"F")
-        sub     17
-        cp      6                       ; 0-5 ("A"-"F") are allowed
-        jp      nc,     errHex          ; error for anything above "F"
-        add     10                      ; rebase "A" to 10, "F" to 15
+        ; by subtracting $41 ("A"), "A" = 0 & "F" = 5 with everything else,
+        ; including "0"-"9", being 'above' this (negative is >=128)
+        ;
+        sub     $41                     ; rebase to "A"
+        cp      6                       ; check for "A"-"F"
+        jr      c,      +               ; if "A"-"F", exit
 
+        ; having eliminated characters above "F", shift the axis right
+        ; so that "0" is at 0. any character below "0" will be negative
+        add     $31
+        cp      10                      ; check for 0-9
+        ret     c                       ; (conditional RET first is slightly
+        jp      errHex                  ;  faster than conditional JP first)
+
++       add     10                      ; change "A"-"F" to 10-15
         ret
 
 
@@ -1300,4 +1214,86 @@ __code: ; WARNING: ANYTHING PLACED AFTER HERE WILL BE OVERWRITTEN
 ;        inc     HL                      ; move *up* to link addr lo-byte
 ;@end    ex      DE,     HL              ; swap symbol addr to DE
 ;
+;        ret
+
+;deferExpr:
+;===============================================================================
+; push an expression to the heap:
+;
+; - the link addr to the previous expression
+; - the current code-segment address
+; - the current virtual program-counter
+;   (in case of relative jump)
+; - the current line number in the input file
+; - the current column number in the input file
+;   (in case of error)
+; - the size of the output; 1 or 2 bytes
+; - the addr of the expr tokens
+;
+; in:   HL              current heap position
+;       IX              virtual program-counter
+;
+; out:  HL              updated heap position (defer record added to heap)
+;       DE              updated code-segment addr (expr result space reserved)
+;       IX              updated virtual program-counter (as with DE)
+;       A, BC           (clobbered)
+;-------------------------------------------------------------------------------
+;        ld      DE,     [code]          ; retrieve current code-segment addr
+;
+;        ; we need to push a bunch of values to the heap and the fastest way
+;        ; to write 16-bit values easily is... the stack! simply make the heap
+;        ; into the stack and we can PUSH our stuff on to it!
+;        ;
+;        ; WE DO NOT NEED TO DISABLE INTERRUPTS!!! any interrupt is going to
+;        ; push to our heap and then pop the address off when it returns,
+;        ; which has no affect on the values we're pushing
+;        ;
+;        ld      [sp],   SP              ; backup stack pointer
+;        ld      SP,     HL              ; move stack to heap!
+;        ;----------------------------------------------------------------------
+;
+;        ; link this expression to the previous one:
+;        ; (since the heap address is in SP, we can reuse HL)
+;        ;
+;        ld      HL,     [defer]         ; get previous deferred expr address
+;        push    HL                      ; write to heap
+;        ld      [defer],SP              ; write heap addr to the entry point!
+;
+;        ; push the current code-segment position; this is where
+;        ; the expression result will be filled in after evaluation
+;        push    DE
+;
+;        ; push the current virtual program-counter
+;        ; (for calculating relative jumps)
+;        push    IX                      ; PC is always stored in IX, not RAM
+;
+;        ; push the source file line-number
+;        ld      BC,     [row]
+;        push    BC
+;        ; push the source file column-number, plus the number of bytes
+;        ; the result should occupy in the code-segment
+;        ld      BC,     [stride_col]
+;        push    BC
+;
+;        ; reserve bytes for the expr result:
+;        ;
+;        ; this routine is only called if there is a parameter, which assumes
+;        ; a minimum of 1 byte, so check for a second byte
+;        ;
+;        dec     C                       ; is the stride 1 or 2?
+;        jr      z,      +               ; if it is 1, skip the 2nd byte
+;        inc     DE                      ; reserve a byte and increment
+;        inc     IX                      ;  virtual program-counter
+;+       inc     DE                      ; reserve an additional byte
+;        inc     IX                      ;  and increment program-counter
+;        ld      [code], DE              ; write back updated code-segment addr
+;
+;        ;----------------------------------------------------------------------
+;        ld      HL,     0               ; there is no `LD HL, SP` (!?), so
+;        add     HL,     SP              ;  it's quicker to just add SP to 0!
+;        ld      SP,     [sp]            ; restore stack pointer!
+;
+;        ; TODO: copy bytecode expr from below the stack
+;
+;        ld      DE,     [code]
 ;        ret
