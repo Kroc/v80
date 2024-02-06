@@ -113,7 +113,7 @@ parseInstruction:
 
         call    readChar
         cp      ASCII_SPC+1             ; is it whitespace (or eof)?
-        jp      c,      errOpcode       ; if not, invalid instruction!
+        jp      nc,     errOpcode       ; if not, invalid instruction!
 
 +       ld      HL,     [code]          ; retrieve code-segment address
 
