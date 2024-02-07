@@ -875,7 +875,8 @@ parseHexNumber:
 ;===============================================================================
 ; parses an ASCII hexadecimal number and returns the value:
 ;
-; TODO: return PC for `$`
+; a hexadecimal sigil without a number (`$`) is a special case
+; that always returns the current virtual program-counter
 ;
 ; out:  BC              the value, 0 padded for numbers < 256
 ;       A, DE           (clobbered)
@@ -905,7 +906,8 @@ parseHexNumber:
 +       ld      DE,     [temp]          ; go back to the start of the number
 
         ; number of digits in hex number is reversed;
-        ; B=1 for 4 digits, B=2 for 3 digits, B=3 for 2 digits and B=4 for 1
+        ; B=1 for 4 digits, B=2 for 3 digits, B=3 for 2 digits and B=4 for 1,
+        ; and lastly B=5 for 0 digits, i.e. `$`, the program-counter
         ;
         dec     B                       ; 4 digits?
         jr      z,      @four
@@ -916,12 +918,17 @@ parseHexNumber:
         dec     B                       ; 1 digit?
         jr      z,      @one
 
-        ; if there were _no_ digits after the hexadecimal
-        ; sigil ("$") then B was 5 and we error
-        jp      errHex
+        ; return virtual program counter:
+        ;-----------------------------------------------------------------------
+        ; a hex sigil without a number (i.e. `$`) is a special symbol
+        ; that always returns the current virtual program-counter
+        ;
+        push    IX                      ; transfer virtual program-counter
+        pop     BC                      ;  to return value
+        ret
 
         ; four-digit hex number:
-        ;-----------------------------------------------------------------------
+        ;=======================================================================
         ; a 4th digit must go in the upper nybble of B:
         ;
 @four:  call    @digit                  ; convert digit to number
@@ -960,8 +967,6 @@ parseHexNumber:
         ; convert a digit to a number:
         ;=======================================================================
         ; whitespace must already be precluded. err if not hex-digit
-        ;
-        ; valid hex digit?
         ;
         ; if we unset bit 5 then ASCII "a"-"f" ($61-) becomes "A"-"F" ($41-)
         ; without also altering existing uppercase letters. This also has the
