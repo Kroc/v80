@@ -67,11 +67,11 @@ parseInstruction:
         ;-----------------------------------------------------------------------
 .IFDEF  DEBUG
         ;///////////////////////////////////////////////////////////////////////
-        push    AF
-        ld      A,      [HL]
-        and     %01111111
-        call    osPrintChar
-        pop     AF
+;        push    AF
+;        ld      A,      [HL]
+;        and     %01111111
+;        call    osPrintChar
+;        pop     AF
 .ENDIF  ;///////////////////////////////////////////////////////////////////////
 
 -       cp      [HL]                    ; compare input char with tree char
@@ -299,8 +299,8 @@ OP_CB   = %10010000     ; bit 6=?, bit 4=1, bit 5&1=0: CB-extended (+/-IX|IY)
 OP_ED   = %10110010     ; bit 6=0, bit 4=1, bit 5&1=1: ED-extended
 OP_O    = %11001000     ; bit 6=1, bit 3=1, bit 2=?: IX|IY includes offset
 OP_R    = %10001100     ; bit 6=0, bit 3=1, bit 2=1: relative jump offset
-OP_8    = %10000100     ; bit 2=1: literal parameter, 8-bits
-OP_16   = %10000101     ; bit 2=1, bit 0=1: literal parameter, 16-bits
+OP_B    = %10000100     ; bit 2=1: literal parameter, 8-bits (byte)
+OP_W    = %10000101     ; bit 2=1, bit 0=1: literal parameter, 16-bits (word)
 
 OP_IMP  = OP            ; implied -- no parameter
 OP_IMPC = OP_CB         ; implied, extended ($CB)
@@ -309,14 +309,14 @@ OP_IMPX = OP_IX         ; implied, IX ($DD)
 OP_IMPY = OP_IY         ; implied, IY ($FD)
 OP_IMMX = OP_IX|OP_O    ; implied, IX ($DD) + offset
 OP_IMMY = OP_IY|OP_O    ; implied, IY ($FD) + offset
-OP_IMM8 = OP_8          ; immediate, 8-bit
-OP_IMMR = OP_8|OP_R     ; relative, 8-bit
+OP_IMM8 = OP_B          ; immediate, 8-bit
+OP_IMMR = OP_B|OP_R     ; relative, 8-bit
 OP_IMCX = OP_IX|OP_CB   ; extended ($CB), IX ($DD) + offset
 OP_IMCY = OP_IY|OP_CB   ; extended ($CB), IY ($FD) + offset
-OP_IM16 = OP_16         ; immediate, 16-bit
-OP_I16E = OP_16|OP_ED   ; immediate, extended ($ED), 16-bit!
-OP_I16X = OP_16|OP_IX   ; immediate, IX ($DD), 16-bit
-OP_I16Y = OP_16|OP_IY   ; immediate, IY ($FD), 16-bit
+OP_IM16 = OP_W          ; immediate, 16-bit
+OP_I16E = OP_W|OP_ED    ; immediate, extended ($ED), 16-bit!
+OP_I16X = OP_W|OP_IX    ; immediate, IX ($DD), 16-bit
+OP_I16Y = OP_W|OP_IY    ; immediate, IY ($FD), 16-bit
 
 opcodes:
 ;===============================================================================

@@ -201,8 +201,9 @@ assemble:
         ld      HL,     [heap]          ; where symbols / expressions go
         jr      @line                   ; jump into parsing loop
 
-        ; skip comments:
         ;=======================================================================
+        ; skip comments:
+        ;-----------------------------------------------------------------------
 @skip:  call    readChar                ; read to next character or newline
         jr      nz,     @skip           ; loop until newline / end-of-file
 
@@ -215,11 +216,11 @@ assemble:
         ret     nz                      ; no? end-of-file -- end assembling
 
         ; at newline fallthrough to
-        ; the line-staring context
+        ; the line-starting context
         ; ...
 
-        ; begin at line context:
-        ;-----------------------------------------------------------------------
+        ; line context:
+        ;=======================================================================
         ; at the beginning of the line labels and the
         ; program-counter can be defined, but nowhere else
         ;
@@ -248,13 +249,13 @@ assemble:
         jr      nz,     @body           ; no expression -- skip to body context
 
         ; modify the virtual program-counter:
-        ;=======================================================================
+        ;-----------------------------------------------------------------------
 @pc:    call    tokenExpr               ; capture the complete expression
         halt
         jr      @body
 
         ; body context:
-        ;-----------------------------------------------------------------------
+        ;=======================================================================
         ; labels and the program-counter must be defined first on the line and
         ; after those, instructions and keywords are allowed. this is known as
         ; the body context and multiple instructions / keywords can occur until
@@ -279,7 +280,7 @@ assemble:
         cp      CHAR_KEYWORD            ; is this a keyword?
         jr      z,      @key            ; handle keyword
 
-        ; this routine is in the CPU-specific module, e.g. z80.wla
+        ; (this routine is in the CPU-specific module, e.g. z80.wla)
         call    parseInstruction
 
         jr      @next
@@ -420,6 +421,7 @@ readChar:
         and     %11111000               ; clip to every 8th column
         ld      [HL'],  A               ; update column number
         ld      A,      ASCII_SPC       ; return a single space instead
+        ld      [char], A               ; update retained value to match
 
         exx                             ; restore HL/DE
         ret

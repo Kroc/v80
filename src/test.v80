@@ -3,16 +3,15 @@
 ;labels can start with numbers and are
 ;limited to 31 chars, including the sigil
 :234567890123456789012345678901
-	adc	$aa
-	bit0*ix	$ee
-	adc.a
-	adc.b
-	adc.c
-	adc.d
-	adc.e
-	adc.h
-	adc.l
-	adc.ixh
+	adc	$aa		; adc	$aa
+	adc.a			; adc	A
+	adc.b			; adc	B
+	adc.c			; adc	C
+	adc.d			; adc	D
+	adc.e			; adc	E
+	adc.h			; adc	H
+	adc.l			; adc	L
+	adc.ixh			; adc	IXH
 	adc.ixl
 	adc.iyh
 	adc.iyl
@@ -21,7 +20,8 @@
 	adc.hl+hl
 	adc.hl+sp
 	adc*hl
-	adc*ix
-	adc*iy
+	adc*ix	$aa
+	adc*iy	$aa
 	add
 	and
+	bit0*ix	$ee
