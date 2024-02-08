@@ -2,7 +2,10 @@
 ;
 ;labels can start with numbers and are
 ;limited to 31 chars, including the sigil
+;
 :234567890123456789012345678901
+	;
+	; v80			; z80
 	adc	$aa		; adc	$aa
 	adc.a			; adc	A
 	adc.b			; adc	B
@@ -11,17 +14,14 @@
 	adc.e			; adc	E
 	adc.h			; adc	H
 	adc.l			; adc	L
+	adc.ixl			; adc	IXY
 	adc.ixh			; adc	IXH
-	adc.ixl
-	adc.iyh
-	adc.iyl
-	adc.hl+bc
-	adc.hl+de
-	adc.hl+hl
-	adc.hl+sp
-	adc*hl
-	adc*ix	$aa
-	adc*iy	$aa
-	add
-	and
-	bit0*ix	$ee
+	adc.iyh			; adc	IYH
+	adc.iyl			; adc	IYL
+	adc.hl+bc		; adc	HL,	BC
+	adc.hl+de		; adc	HL,	DE
+	adc.hl+hl		; adc	HL,	HL
+	adc.hl+sp		; adc	HL,	SP
+	adc*hl			; adc	[HL]
+	adc*ix	$aa		; adc	[IX+$aa]
+	adc*iy	$aa		; adc	[IY+$aa]

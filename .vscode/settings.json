@@ -4,6 +4,8 @@
     "editor.insertSpaces": true,
     "editor.wordWrap": "wordWrapColumn",
     "editor.wordWrapColumn": 80,
+    "editor.tabSize": 8,
+    "editor.useTabStops": true,
     "editor.rulers": [
         80
     ],

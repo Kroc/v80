@@ -65,23 +65,25 @@ parseInstruction:
        
 +       ; compare with opcode tree:
         ;-----------------------------------------------------------------------
+-       
 .IFDEF  DEBUG
         ;///////////////////////////////////////////////////////////////////////
-;        push    AF
-;        ld      A,      [HL]
-;        and     %01111111
-;        call    osPrintChar
-;        pop     AF
+;;        push    AF
+;;        ld      A,      [HL]
+;;        and     %01111111
+;;        call    osPrintChar
+;;        pop     AF
 .ENDIF  ;///////////////////////////////////////////////////////////////////////
 
--       cp      [HL]                    ; compare input char with tree char
+        cp      [HL]                    ; compare input char with tree char
         jr      z,      @match          ; characters match?
 
         ; if the hi-bit of the character from the opcode tree is set, it's
         ; either a continuation character (>128) or the end of a branch (=128).
         ; in these cases, the result of the compare will always be negative!
         ;
-        jp      m,      @cont           ; handle continuation char / end
+        bit     7,      [HL]            ; check bit 7 of character
+        jr      nz,     @cont           ; handle continuation char / end
 
         ; no match; try the next character:
         ;-----------------------------------------------------------------------
@@ -463,6 +465,7 @@ opcodes:
         ;-----------------------------------------------------------------------
 @add_i  .DATA   'x', (@add_x-CADDR)-1
         .DATA   'y', (@add_y-CADDR)-1
+        .BYTE   ERR
         ;-----------------------------------------------------------------------
 @add_x  .BYTE   'h', $80+REG_IH,        OP_IMPX ; ADD.IXH       |    DD 84
         .BYTE   'l', $80+REG_IL,        OP_IMPX ; ADD.IXL       |    DD 84
@@ -471,6 +474,7 @@ opcodes:
         .DATA   'd', (@add_xd-CADDR)-1
         .DATA   'i', (@add_xi-CADDR)-1
         .DATA   's', (@add_xs-CADDR)-1
+        .BYTE   ERR
         ;-----------------------------------------------------------------------
 @add_xb .BYTE   'c', $09,               OP_IMPX ; ADD.IX+BC     |    DD 09
         .BYTE   ERR
@@ -491,6 +495,7 @@ opcodes:
         .DATA   'd', (@add_yd-CADDR)-1
         .DATA   'i', (@add_yi-CADDR)-1
         .DATA   's', (@add_ys-CADDR)-1
+        .BYTE   ERR
         ;-----------------------------------------------------------------------
 @add_yb .BYTE   'c', $09,               OP_IMPY ; ADD.IY+BC     |    FD 09
         .BYTE   ERR
