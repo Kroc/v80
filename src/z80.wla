@@ -445,10 +445,10 @@ opcodes:
 @add_h  .BYTE   END, $80+REG_H,         OP_IMP  ; ADD.H         |       84
         .BYTE   'l'|AND
         .BYTE   '+'|AND
-        .DATA   'b', (@adc_bc-CADDR)-1
-        .DATA   'd', (@adc_de-CADDR)-1
-        .DATA   'h', (@adc_hl-CADDR)-1
-        .DATA   's', (@adc_sp-CADDR)-1
+        .DATA   'b', (@add_bc-CADDR)-1
+        .DATA   'd', (@add_de-CADDR)-1
+        .DATA   'h', (@add_hl-CADDR)-1
+        .DATA   's', (@add_sp-CADDR)-1
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @add_bc .BYTE   'c', $09,               OP_IMP  ; ADD.HL+BC     |       09

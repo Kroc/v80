@@ -6,22 +6,41 @@
 :234567890123456789012345678901
 	;
 	; v80			; z80
-	adc	$aa		; adc	$aa
-	adc.a			; adc	A
-	adc.b			; adc	B
-	adc.c			; adc	C
-	adc.d			; adc	D
-	adc.e			; adc	E
-	adc.h			; adc	H
-	adc.l			; adc	L
-	adc.ixl			; adc	IXY
-	adc.ixh			; adc	IXH
-	adc.iyh			; adc	IYH
-	adc.iyl			; adc	IYL
+	adc*hl			; adc	A,	[HL]
+	adc*ix	$aa		; adc	A,	[IX+$aa]
+	adc*iy	$aa		; adc	A,	[IY+$aa]
+	adc	$aa		; adc	A,	$aa
+	adc.a			; adc	A,	A
+	adc.b			; adc	A,	B
+	adc.c			; adc	A,	C
+	adc.d			; adc	A,	D
+	adc.e			; adc	A,	E
+	adc.h			; adc	A,	H
+	adc.l			; adc	A,	L
+	adc.ixh			; adc	A,	IXH
+	adc.ixl			; adc	A,	IXY
+	adc.iyh			; adc	A,	IYH
+	adc.iyl			; adc	A,	IYL
 	adc.hl+bc		; adc	HL,	BC
 	adc.hl+de		; adc	HL,	DE
 	adc.hl+hl		; adc	HL,	HL
 	adc.hl+sp		; adc	HL,	SP
-	adc*hl			; adc	[HL]
-	adc*ix	$aa		; adc	[IX+$aa]
-	adc*iy	$aa		; adc	[IY+$aa]
+	add*hl			; add	A,	[HL]
+	add*ix	$aa		; add	A,	[IX+$aa]
+	add*iy	$aa		; add	A,	[IY+$aa]
+	add	$aa		; add	A,	$aa
+	add.a			; add	A,	A
+	add.b			; add	A,	B
+	add.c			; add	A,	C
+	add.d			; add	A,	D
+	add.e			; add	A,	E
+	add.h			; add	A,	H
+	add.l			; add	A,	L
+	add.ixh			; add	A,	IXH
+	add.ixl			; add	A,	IXY
+	add.iyh			; add	A,	IYH
+	add.iyl			; add	A,	IYL
+	add.hl+bc		; add	HL,	BC
+	add.hl+de		; add	HL,	DE
+	add.hl+hl		; add	HL,	HL
+	add.hl+sp		; add	HL,	SP
