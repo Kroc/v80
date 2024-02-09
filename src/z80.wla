@@ -768,7 +768,7 @@ opcodes:
         .BYTE   ERR
         ;=======================================================================
 @d      .DATA   'a', (@da-CADDR)-1
-        .DATA   'e', (@da-CADDR)-1
+        .DATA   'e', (@de-CADDR)-1
         .BYTE   'i', $f3,               OP_IMP  ; DI            |    F3
         .BYTE   'j'|AND
         .BYTE   'n'|AND

@@ -186,3 +186,30 @@
 	cpir			; cpir
 
 	cpl			; cpl
+
+	daa			; daa
+
+	dec*hl			; dec	[HL]
+	dec*ix	$aa		; dec	[IX+$aa]
+	dec*iy	$aa		; dec	[IY+$aa]
+	dec.a			; dec	A
+	dec.b			; dec	B
+	dec.c			; dec	C
+	dec.d			; dec	D
+	dec.e			; dec	E
+	dec.h			; dec	H
+	dec.l			; dec	L
+	dec.ixl			; dec	IXL
+	dec.ixh			; dec	IXH
+	dec.iyl			; dec	IYL
+	dec.iyh			; dec	IYH
+	dec.bc			; dec	BC
+	dec.de			; dec	DE
+	dec.hl			; dec	HL
+	dec.ix			; dec	IX
+	dec.iy			; dec	IY
+	dec.sp			; dec	SP
+
+	di			; di
+
+	djnz	$		; djnz	$1234
