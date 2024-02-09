@@ -17,10 +17,10 @@
 	adc.e			; adc	A,	E
 	adc.h			; adc	A,	H
 	adc.l			; adc	A,	L
-	adc.ixh			; adc	A,	IXH
 	adc.ixl			; adc	A,	IXY
-	adc.iyh			; adc	A,	IYH
+	adc.ixh			; adc	A,	IXH
 	adc.iyl			; adc	A,	IYL
+	adc.iyh			; adc	A,	IYH
 	adc.hl+bc		; adc	HL,	BC
 	adc.hl+de		; adc	HL,	DE
 	adc.hl+hl		; adc	HL,	HL
@@ -37,10 +37,10 @@
 	add.e			; add	A,	E
 	add.h			; add	A,	H
 	add.l			; add	A,	L
-	add.ixh			; add	A,	IXH
 	add.ixl			; add	A,	IXY
-	add.iyh			; add	A,	IYH
+	add.ixh			; add	A,	IXH
 	add.iyl			; add	A,	IYL
+	add.iyh			; add	A,	IYH
 	add.hl+bc		; add	HL,	BC
 	add.hl+de		; add	HL,	DE
 	add.hl+hl		; add	HL,	HL
@@ -53,3 +53,19 @@
 	add.iy+de		; add	IY,	DE
 	add.iy+iy		; add	IY,	IY
 	add.iy+sp		; add	IY,	SP
+
+	and*hl			; and	A,	[HL]
+	and*ix	$aa		; and	A,	[IX+$aa]
+	and*iy	$aa		; and	A,	[IY+$aa]
+	and	$aa		; and	A,	$aa
+	and.a			; and	A,	A
+	and.b			; and	A,	B
+	and.c			; and	A,	C
+	and.d			; and	A,	D
+	and.e			; and	A,	E
+	and.h			; and	A,	H
+	and.l			; and	A,	L
+	and.ixl			; and	A,	IXL
+	and.ixh			; and	A,	IXH
+	and.iyl			; and	A,	IYL
+	and.iyh			; and	A,	IYH

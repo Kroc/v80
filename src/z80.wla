@@ -496,19 +496,8 @@ opcodes:
         ;=======================================================================
 @and    .BYTE   END, $e6,               OP_IMM8 ; AND $nn       |       E6 nn
         .DATA   '*', (@and_m-CADDR)-1
-        .DATA   '.', (@and_r-CADDR)-1
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
-@and_m  .DATA   'h', (@and_mh-CADDR)-1
-        .BYTE   'i'|AND
-        .BYTE   'x', $a6,               OP_IMMX ; AND*IX $nn    |    DD A6 nn
-        .BYTE   'y', $a6,               OP_IMMY ; AND*IY $nn    |    FD A6 nn
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
-@and_mh .BYTE   'l', $a6,               OP_IMP  ; AND*HL        |       A6
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
-@and_r  .BYTE   'a', $a0+REG_A,         OP_IMP  ; AND.A         |       A7
+        .BYTE   '.'|AND
+        .BYTE   'a', $a0+REG_A,         OP_IMP  ; AND.A         |       A7
         .BYTE   'b', $a0+REG_B,         OP_IMP  ; AND.B         |       A0
         .BYTE   'c', $a0+REG_C,         OP_IMP  ; AND.C         |       A1
         .BYTE   'd', $a0+REG_D,         OP_IMP  ; AND.D         |       A2
@@ -528,6 +517,15 @@ opcodes:
         ;-----------------------------------------------------------------------
 @and_y  .BYTE   'h', $a0+REG_IH,        OP_IMPY ; AND.IXH       |    FD A4
         .BYTE   'l', $a0+REG_IL,        OP_IMPY ; AND.IXL       |    FD A5
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@and_m  .DATA   'h', (@and_mh-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $a6,               OP_IMMX ; AND*IX $nn    |    DD A6 nn
+        .BYTE   'y', $a6,               OP_IMMY ; AND*IY $nn    |    FD A6 nn
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@and_mh .BYTE   'l', $a6,               OP_IMP  ; AND*HL        |       A6
         .BYTE   ERR
         ;=======================================================================
 @b      .BYTE   'i'|AND
