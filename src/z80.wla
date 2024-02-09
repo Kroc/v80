@@ -733,14 +733,12 @@ opcodes:
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @cp_m   .DATA   'h', (@cp_mh-CADDR)-1
-        .DATA   'i', (@cp_mi-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $be,               OP_IMMX ; CP*IX $nn     | DD BE nn
+        .BYTE   'y', $be,               OP_IMMY ; CP*IY $nn     | FD BE nn
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @cp_mh  .BYTE   'l', $be,               OP_IMP  ; CP*HL         |    BE
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
-@cp_mi  .BYTE   'x', $be,               OP_IMMX ; CP*IX $nn     | DD BE nn
-        .BYTE   'y', $be,               OP_IMMY ; CP*IY $nn     | FD BE nn
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @cp_r   .BYTE   'a', $b8+REG_A,         OP_IMP  ; CP.A          |    BF
@@ -752,15 +750,13 @@ opcodes:
         .BYTE   'l', $b8+REG_L,         OP_IMP  ; CP.L          |    BD
         .BYTE   'i'|AND
         .DATA   'x', (@cp_ix-CADDR)-1
-        .DATA   'y', (@cp_iy-CADDR)-1
+        .BYTE   'y'|AND
+        .BYTE   'h', $b8+REG_IH,        OP_IMPY ; CP.IYH        | FD BC
+        .BYTE   'l', $b8+REG_IL,        OP_IMPY ; CP.IYL        | FD BD
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @cp_ix  .BYTE   'h', $b8+REG_IH,        OP_IMPX ; CP.IXH        | DD BC
         .BYTE   'l', $b8+REG_IL,        OP_IMPX ; CP.IXL        | DD BD
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
-@cp_iy  .BYTE   'h', $b8+REG_IH,        OP_IMPY ; CP.IYH        | FD BC
-        .BYTE   'l', $b8+REG_IL,        OP_IMPY ; CP.IYL        | FD BD
         .BYTE   ERR
         ;=======================================================================
 @cpd    .BYTE   END, $a9,               OP_IMPE ; CPD           | ED A9
@@ -774,10 +770,13 @@ opcodes:
 @d      .DATA   'a', (@da-CADDR)-1
         .DATA   'e', (@da-CADDR)-1
         .BYTE   'i', $f3,               OP_IMP  ; DI            |    F3
-        .DATA   'j', (@dj-CADDR)-1
+        .BYTE   'j'|AND
+        .BYTE   'n'|AND
+        .BYTE   'z', $10,               OP_IMMR ; DJNZ $nn      |    10 nn
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @da     .BYTE   'a', $27,               OP_IMP  ; DAA           |    27
+        .BYTE   ERR
         ;=======================================================================
 @de     .BYTE   'c'|AND
         .DATA   '*', (@dec_m-CADDR)-1
@@ -832,10 +831,6 @@ opcodes:
 @dec_iy .BYTE   END, $2b,               OP_IMPY ; DEC.IX        | FD 2B
         .BYTE   'h', $05+(8*REG_IH),    OP_IMPY ; DEC.IXH       | FD 25
         .BYTE   'l', $05+(8*REG_IL),    OP_IMPY ; DEC.IXL       | FD 2D
-        .BYTE   ERR
-        ;=======================================================================
-@dj     .BYTE   'n'|AND
-        .BYTE   'z', $10,               OP_IMMR ; DJNZ $nn      |    10 nn
         .BYTE   ERR
         ;=======================================================================
 @e      .BYTE   'i', $fb,               OP_IMP  ; EI            |    FB

@@ -150,3 +150,39 @@
 	bit7.e			; bit	7,	E
 	bit7.h			; bit	7,	H
 	bit7.l			; bit	7,	L
+
+	call	$		; call	$1234
+	call?z	$		; call	z,	$1234
+	call?c	$		; call	c,	$1234
+	call?m	$		; call	m,	$1234
+	call?p	$		; call	p,	$1234
+	call?po	$		; call	po,	$1234
+	call?pe	$		; call	pe,	$1234
+	call?nz	$		; call	nz,	$1234
+	call?nc	$		; call	nz,	$1234
+
+	ccf			; ccf
+
+	cp*hl			; cp	A,	[HL]
+	cp*ix	$aa		; cp	A,	[IX+$aa]
+	cp*iy	$aa		; cp	A,	[IY+$aa]
+	cp	$aa		; cp	A,	$aa
+	cp.a			; cp	A,	A
+	cp.b			; cp	A,	B
+	cp.c			; cp	A,	C
+	cp.d			; cp	A,	D
+	cp.e			; cp	A,	E
+	cp.h			; cp	A,	H
+	cp.l			; cp	A,	L
+	cp.ixl			; cp	A,	IXL
+	cp.ixh			; cp	A,	IXH
+	cp.iyl			; cp	A,	IYL
+	cp.iyh			; cp	A,	IYH
+
+	cpd			; cpd
+	cpdr			; cpdr
+
+	cpi			; cpi
+	cpir			; cpir
+
+	cpl			; cpl
