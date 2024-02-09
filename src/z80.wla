@@ -448,7 +448,8 @@ opcodes:
         .DATA   'b', (@add_bc-CADDR)-1
         .DATA   'd', (@add_de-CADDR)-1
         .DATA   'h', (@add_hl-CADDR)-1
-        .DATA   's', (@add_sp-CADDR)-1
+        .BYTE   's'|AND
+        .BYTE   'p', $39,               OP_IMP  ; ADD.HL+SP     |       39
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @add_bc .BYTE   'c', $09,               OP_IMP  ; ADD.HL+BC     |       09
@@ -458,9 +459,6 @@ opcodes:
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @add_hl .BYTE   'l', $29,               OP_IMP  ; ADD.HL+HL     |       29
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
-@add_sp .BYTE   'p', $39,               OP_IMP  ; ADD.HL+SP     |       39
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @add_i  .DATA   'x', (@add_x-CADDR)-1
@@ -473,7 +471,8 @@ opcodes:
         .DATA   'b', (@add_xb-CADDR)-1
         .DATA   'd', (@add_xd-CADDR)-1
         .DATA   'i', (@add_xi-CADDR)-1
-        .DATA   's', (@add_xs-CADDR)-1
+        .BYTE   's'|AND
+        .BYTE   'p', $39,               OP_IMPX ; ADD.IX+SP     |    DD 39
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @add_xb .BYTE   'c', $09,               OP_IMPX ; ADD.IX+BC     |    DD 09
@@ -485,16 +484,14 @@ opcodes:
 @add_xi .BYTE   'x', $29,               OP_IMPX ; ADD.IX+IX     |    DD 29
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@add_xs .BYTE   'p', $39,               OP_IMPX ; ADD.IX+SP     |    DD 39
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
 @add_y  .BYTE   'h', $80+REG_IH,        OP_IMPY ; ADD.IYH       |    FD 84
         .BYTE   'l', $80+REG_IL,        OP_IMPY ; ADD.IYL       |    FD 84
         .BYTE   '+'|AND
         .DATA   'b', (@add_yb-CADDR)-1
         .DATA   'd', (@add_yd-CADDR)-1
         .DATA   'i', (@add_yi-CADDR)-1
-        .DATA   's', (@add_ys-CADDR)-1
+        .BYTE   's'|AND
+        .BYTE   'p', $39,               OP_IMPY ; ADD.IY+SP     |    FD 39
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @add_yb .BYTE   'c', $09,               OP_IMPY ; ADD.IY+BC     |    FD 09
@@ -503,10 +500,7 @@ opcodes:
 @add_yd .BYTE   'e', $19,               OP_IMPY ; ADD.IY+DE     |    FD 19
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@add_yi .BYTE   'x', $29,               OP_IMPY ; ADD.IY+IX     |    FD 29
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
-@add_ys .BYTE   'p', $39,               OP_IMPY ; ADD.IY+SP     |    FD 39
+@add_yi .BYTE   'y', $29,               OP_IMPY ; ADD.IY+IY     |    FD 29
         .BYTE   ERR
         ;=======================================================================
 @and    .BYTE   END, $e6,               OP_IMM8 ; AND $nn       |       E6 nn

@@ -25,6 +25,7 @@
 	adc.hl+de		; adc	HL,	DE
 	adc.hl+hl		; adc	HL,	HL
 	adc.hl+sp		; adc	HL,	SP
+
 	add*hl			; add	A,	[HL]
 	add*ix	$aa		; add	A,	[IX+$aa]
 	add*iy	$aa		; add	A,	[IY+$aa]
@@ -44,3 +45,11 @@
 	add.hl+de		; add	HL,	DE
 	add.hl+hl		; add	HL,	HL
 	add.hl+sp		; add	HL,	SP
+	add.ix+bc		; add	IX,	BC
+	add.ix+de		; add	IX,	DE
+	add.ix+ix		; add	IX,	IX
+	add.ix+sp		; add	IX,	SP
+	add.iy+bc		; add	IY,	BC
+	add.iy+de		; add	IY,	DE
+	add.iy+iy		; add	IY,	IY
+	add.iy+sp		; add	IY,	SP
