@@ -373,7 +373,15 @@ opcodes:
         .BYTE   'e', $88+REG_E,         OP_IMP  ; ADC.E         |       8B
         .DATA   'h', (@adc_h-CADDR)-1
         .BYTE   'l', $88+REG_L,         OP_IMP  ; ADC.L         |       8D
-        .DATA   'i', (@adc_i-CADDR)-1
+        .BYTE   'i'|AND
+        .DATA   'x', (@adc_x-CADDR)-1
+        .BYTE   'y'|AND
+        .BYTE   'h', $88+REG_IH,        OP_IMPY ; ADC.IYH       |    FD 8C
+        .BYTE   'l', $88+REG_IL,        OP_IMPY ; ADC.IYL       |    FD 8D
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@adc_x  .BYTE   'h', $88+REG_IH,        OP_IMPX ; ADC.IXH       |    DD 8C
+        .BYTE   'l', $88+REG_IL,        OP_IMPX ; ADC.IXL       |    DD 8D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @adc_h  .BYTE   END, $88+REG_H,         OP_IMP  ; ADC.H         |       8C
@@ -382,7 +390,8 @@ opcodes:
         .DATA   'b', (@adc_bc-CADDR)-1
         .DATA   'd', (@adc_de-CADDR)-1
         .DATA   'h', (@adc_hl-CADDR)-1
-        .DATA   's', (@adc_sp-CADDR)-1
+        .BYTE   's'|AND
+        .BYTE   'p', $7a,               OP_IMPE ; ADC.HL+SP     |    ED 7A
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @adc_bc .BYTE   'c', $4a,               OP_IMPE ; ADC.HL+BC     |    ED 4A
@@ -392,21 +401,6 @@ opcodes:
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @adc_hl .BYTE   'l', $6a,               OP_IMPE ; ADC.HL+HL     |    ED 6A
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
-@adc_sp .BYTE   'p', $7a,               OP_IMPE ; ADC.HL+SP     |    ED 7A
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
-@adc_i  .DATA   'x', (@adc_x-CADDR)-1
-        .DATA   'y', (@adc_y-CADDR)-1
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
-@adc_x  .BYTE   'h', $88+REG_IH,        OP_IMPX ; ADC.IXH       |    DD 8C
-        .BYTE   'l', $88+REG_IL,        OP_IMPX ; ADC.IXL       |    DD 8D
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
-@adc_y  .BYTE   'h', $88+REG_IH,        OP_IMPY ; ADC.IXH       |    FD 8C
-        .BYTE   'l', $88+REG_IL,        OP_IMPY ; ADC.IXL       |    FD 8D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @adc_m  .DATA   'h', (@adc_mh-CADDR)-1
