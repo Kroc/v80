@@ -530,18 +530,23 @@ opcodes:
         ;=======================================================================
 @b      .BYTE   'i'|AND
         .BYTE   't'|AND
-        .DATA   '0', (@bit0-CADDR)-1
-        .DATA   '1', (@bit1-CADDR)-1
-        .DATA   '2', (@bit2-CADDR)-1
-        .DATA   '3', (@bit3-CADDR)-1
-        .DATA   '4', (@bit4-CADDR)-1
-        .DATA   '5', (@bit5-CADDR)-1
-        .DATA   '6', (@bit6-CADDR)-1
         .DATA   '7', (@bit7-CADDR)-1
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
-@bit0   .DATA   '*', (@bit0m-CADDR)-1
-        .DATA   '.', (@bit0r-CADDR)-1
+        .DATA   '6', (@bit6-CADDR)-1
+        .DATA   '5', (@bit5-CADDR)-1
+        .DATA   '4', (@bit4-CADDR)-1
+        .DATA   '3', (@bit3-CADDR)-1
+        .DATA   '2', (@bit2-CADDR)-1
+        .DATA   '1', (@bit1-CADDR)-1
+        .BYTE   '0'|AND
+        .DATA   '*', (@bit0m-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $40+(8*0)+REG_A,   OP_IMPC ; BIT0.A        |    CB 47
+        .BYTE   'b', $40+(8*0)+REG_B,   OP_IMPC ; BIT0.B        |    CB 40
+        .BYTE   'c', $40+(8*0)+REG_C,   OP_IMPC ; BIT0.C        |    CB 41
+        .BYTE   'd', $40+(8*0)+REG_D,   OP_IMPC ; BIT0.D        |    CB 42
+        .BYTE   'e', $40+(8*0)+REG_E,   OP_IMPC ; BIT0.E        |    CB 43
+        .BYTE   'h', $40+(8*0)+REG_H,   OP_IMPC ; BIT0.H        |    CB 44
+        .BYTE   'l', $40+(8*0)+REG_L,   OP_IMPC ; BIT0.L        |    CB 45
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @bit0m  .DATA   'h', (@bit0hl-CADDR)-1
@@ -553,17 +558,15 @@ opcodes:
 @bit0hl .BYTE   'l', $46+(8*0),         OP_IMPC ; BIT0*HL       |    CB 46
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@bit0r  .BYTE   'a', $40+(8*0)+REG_A,   OP_IMPC ; BIT0.A        |    CB 47
-        .BYTE   'b', $40+(8*0)+REG_B,   OP_IMPC ; BIT0.B        |    CB 40
-        .BYTE   'c', $40+(8*0)+REG_C,   OP_IMPC ; BIT0.C        |    CB 41
-        .BYTE   'd', $40+(8*0)+REG_D,   OP_IMPC ; BIT0.D        |    CB 42
-        .BYTE   'e', $40+(8*0)+REG_E,   OP_IMPC ; BIT0.E        |    CB 43
-        .BYTE   'h', $40+(8*0)+REG_H,   OP_IMPC ; BIT0.H        |    CB 44
-        .BYTE   'l', $40+(8*0)+REG_L,   OP_IMPC ; BIT0.L        |    CB 45
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
 @bit1   .DATA   '*', (@bit1m-CADDR)-1
-        .DATA   '.', (@bit1r-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $40+(8*1)+REG_A    OP_IMPC ; BIT1.A        |    CB 4F
+        .BYTE   'b', $40+(8*1)+REG_B    OP_IMPC ; BIT1.B        |    CB 48
+        .BYTE   'c', $40+(8*1)+REG_C    OP_IMPC ; BIT1.C        |    CB 49
+        .BYTE   'd', $40+(8*1)+REG_D    OP_IMPC ; BIT1.D        |    CB 4A
+        .BYTE   'e', $40+(8*1)+REG_E    OP_IMPC ; BIT1.E        |    CB 4B
+        .BYTE   'h', $40+(8*1)+REG_H    OP_IMPC ; BIT1.H        |    CB 4C
+        .BYTE   'l', $40+(8*1)+REG_L    OP_IMPC ; BIT1.L        |    CB 4D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @bit1m  .DATA   'h', (@bit1hl-CADDR)-1
@@ -575,17 +578,15 @@ opcodes:
 @bit1hl .BYTE   'l', $46+(8*1),         OP_IMPC ; BIT1*HL       |    CB 4E
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@bit1r  .BYTE   'a', $40+(8*1)+REG_A    OP_IMPC ; BIT1.A        |    CB 4F
-        .BYTE   'b', $40+(8*1)+REG_B    OP_IMPC ; BIT1.B        |    CB 48
-        .BYTE   'c', $40+(8*1)+REG_C    OP_IMPC ; BIT1.C        |    CB 49
-        .BYTE   'd', $40+(8*1)+REG_D    OP_IMPC ; BIT1.D        |    CB 4A
-        .BYTE   'e', $40+(8*1)+REG_E    OP_IMPC ; BIT1.E        |    CB 4B
-        .BYTE   'h', $40+(8*1)+REG_H    OP_IMPC ; BIT1.H        |    CB 4C
-        .BYTE   'l', $40+(8*1)+REG_L    OP_IMPC ; BIT1.L        |    CB 4D
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
 @bit2   .DATA   '*', (@bit2m-CADDR)-1
-        .DATA   '.', (@bit2r-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $40+(8*2)+REG_A,   OP_IMPC ; BIT2.A        |    CB 57
+        .BYTE   'b', $40+(8*2)+REG_B,   OP_IMPC ; BIT2.B        |    CB 50
+        .BYTE   'c', $40+(8*2)+REG_C,   OP_IMPC ; BIT2.C        |    CB 51
+        .BYTE   'd', $40+(8*2)+REG_D,   OP_IMPC ; BIT2.D        |    CB 52
+        .BYTE   'e', $40+(8*2)+REG_E,   OP_IMPC ; BIT2.E        |    CB 53
+        .BYTE   'h', $40+(8*2)+REG_H,   OP_IMPC ; BIT2.H        |    CB 54
+        .BYTE   'l', $40+(8*2)+REG_L,   OP_IMPC ; BIT2.L        |    CB 55
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @bit2m  .DATA   'h', (@bit2hl-CADDR)-1
@@ -597,17 +598,15 @@ opcodes:
 @bit2hl .BYTE   'l', $46+(8*2),         OP_IMPC ; BIT2*HL       |    CB 56
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@bit2r  .BYTE   'a', $40+(8*2)+REG_A,   OP_IMPC ; BIT2.A        |    CB 57
-        .BYTE   'b', $40+(8*2)+REG_B,   OP_IMPC ; BIT2.B        |    CB 50
-        .BYTE   'c', $40+(8*2)+REG_C,   OP_IMPC ; BIT2.C        |    CB 51
-        .BYTE   'd', $40+(8*2)+REG_D,   OP_IMPC ; BIT2.D        |    CB 52
-        .BYTE   'e', $40+(8*2)+REG_E,   OP_IMPC ; BIT2.E        |    CB 53
-        .BYTE   'h', $40+(8*2)+REG_H,   OP_IMPC ; BIT2.H        |    CB 54
-        .BYTE   'l', $40+(8*2)+REG_L,   OP_IMPC ; BIT2.L        |    CB 55
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
 @bit3   .DATA   '*', (@bit3m-CADDR)-1
-        .DATA   '.', (@bit3r-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $40+(8*3)+REG_A,   OP_IMPC ; BIT3.A        |    CB 5F
+        .BYTE   'b', $40+(8*3)+REG_B,   OP_IMPC ; BIT3.B        |    CB 58
+        .BYTE   'c', $40+(8*3)+REG_C,   OP_IMPC ; BIT3.C        |    CB 59
+        .BYTE   'd', $40+(8*3)+REG_D,   OP_IMPC ; BIT3.D        |    CB 5A
+        .BYTE   'e', $40+(8*3)+REG_E,   OP_IMPC ; BIT3.E        |    CB 5B
+        .BYTE   'h', $40+(8*3)+REG_H,   OP_IMPC ; BIT3.H        |    CB 5C
+        .BYTE   'l', $40+(8*3)+REG_L,   OP_IMPC ; BIT3.L        |    CB 5D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @bit3m  .DATA   'h', (@bit3hl-CADDR)-1
@@ -619,17 +618,15 @@ opcodes:
 @bit3hl .BYTE   'l', $46+(8*3),         OP_IMPC ; BIT3*HL       |    CB 5E
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@bit3r  .BYTE   'a', $40+(8*3)+REG_A,   OP_IMPC ; BIT3.A        |    CB 5F
-        .BYTE   'b', $40+(8*3)+REG_B,   OP_IMPC ; BIT3.B        |    CB 58
-        .BYTE   'c', $40+(8*3)+REG_C,   OP_IMPC ; BIT3.C        |    CB 59
-        .BYTE   'd', $40+(8*3)+REG_D,   OP_IMPC ; BIT3.D        |    CB 5A
-        .BYTE   'e', $40+(8*3)+REG_E,   OP_IMPC ; BIT3.E        |    CB 5B
-        .BYTE   'h', $40+(8*3)+REG_H,   OP_IMPC ; BIT3.H        |    CB 5C
-        .BYTE   'l', $40+(8*3)+REG_L,   OP_IMPC ; BIT3.L        |    CB 5D
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
 @bit4   .DATA   '*', (@bit4m-CADDR)-1
-        .DATA   '.', (@bit4r-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $40+(8*4)+REG_A,   OP_IMPC ; BIT4.A        |    CB 67
+        .BYTE   'b', $40+(8*4)+REG_B,   OP_IMPC ; BIT4.B        |    CB 60
+        .BYTE   'c', $40+(8*4)+REG_C,   OP_IMPC ; BIT4.C        |    CB 61
+        .BYTE   'd', $40+(8*4)+REG_D,   OP_IMPC ; BIT4.D        |    CB 62
+        .BYTE   'e', $40+(8*4)+REG_E,   OP_IMPC ; BIT4.E        |    CB 63
+        .BYTE   'h', $40+(8*4)+REG_H,   OP_IMPC ; BIT4.H        |    CB 64
+        .BYTE   'l', $40+(8*4)+REG_L,   OP_IMPC ; BIT4.L        |    CB 65
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @bit4m  .DATA   'h', (@bit4hl-CADDR)-1
@@ -641,17 +638,15 @@ opcodes:
 @bit4hl .BYTE   'l', $46+(8*4),         OP_IMPC ; BIT4*HL       |    CB 66
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@bit4r  .BYTE   'a', $40+(8*4)+REG_A,   OP_IMPC ; BIT4.A        |    CB 67
-        .BYTE   'b', $40+(8*4)+REG_B,   OP_IMPC ; BIT4.B        |    CB 60
-        .BYTE   'c', $40+(8*4)+REG_C,   OP_IMPC ; BIT4.C        |    CB 61
-        .BYTE   'd', $40+(8*4)+REG_D,   OP_IMPC ; BIT4.D        |    CB 62
-        .BYTE   'e', $40+(8*4)+REG_E,   OP_IMPC ; BIT4.E        |    CB 63
-        .BYTE   'h', $40+(8*4)+REG_H,   OP_IMPC ; BIT4.H        |    CB 64
-        .BYTE   'l', $40+(8*4)+REG_L,   OP_IMPC ; BIT4.L        |    CB 65
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
 @bit5   .DATA   '*', (@bit5m-CADDR)-1
-        .DATA   '.', (@bit5r-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $40+(8*5)+REG_A,   OP_IMPC ; BIT5.A        |    CB 6F
+        .BYTE   'b', $40+(8*5)+REG_B,   OP_IMPC ; BIT5.B        |    CB 68
+        .BYTE   'c', $40+(8*5)+REG_C,   OP_IMPC ; BIT5.C        |    CB 69
+        .BYTE   'd', $40+(8*5)+REG_D,   OP_IMPC ; BIT5.D        |    CB 6A
+        .BYTE   'e', $40+(8*5)+REG_E,   OP_IMPC ; BIT5.E        |    CB 6B
+        .BYTE   'h', $40+(8*5)+REG_H,   OP_IMPC ; BIT5.H        |    CB 6C
+        .BYTE   'l', $40+(8*5)+REG_L,   OP_IMPC ; BIT5.L        |    CB 6D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @bit5m  .DATA   'h', (@bit5hl-CADDR)-1
@@ -663,17 +658,15 @@ opcodes:
 @bit5hl .BYTE   'l', $46+(8*5),         OP_IMPC ; BIT5*HL       |    CB 6E
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@bit5r  .BYTE   'a', $40+(8*5)+REG_A,   OP_IMPC ; BIT5.A        |    CB 6F
-        .BYTE   'b', $40+(8*5)+REG_B,   OP_IMPC ; BIT5.B        |    CB 68
-        .BYTE   'c', $40+(8*5)+REG_C,   OP_IMPC ; BIT5.C        |    CB 69
-        .BYTE   'd', $40+(8*5)+REG_D,   OP_IMPC ; BIT5.D        |    CB 6A
-        .BYTE   'e', $40+(8*5)+REG_E,   OP_IMPC ; BIT5.E        |    CB 6B
-        .BYTE   'h', $40+(8*5)+REG_H,   OP_IMPC ; BIT5.H        |    CB 6C
-        .BYTE   'l', $40+(8*5)+REG_L,   OP_IMPC ; BIT5.L        |    CB 6D
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
 @bit6   .DATA   '*', (@bit6m-CADDR)-1
-        .DATA   '.', (@bit6r-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $40+(8*6)+REG_A,   OP_IMPC ; BIT6.A        |    CB 77
+        .BYTE   'b', $40+(8*6)+REG_B,   OP_IMPC ; BIT6.B        |    CB 70
+        .BYTE   'c', $40+(8*6)+REG_C,   OP_IMPC ; BIT6.C        |    CB 71
+        .BYTE   'd', $40+(8*6)+REG_D,   OP_IMPC ; BIT6.D        |    CB 72
+        .BYTE   'e', $40+(8*6)+REG_E,   OP_IMPC ; BIT6.E        |    CB 73
+        .BYTE   'h', $40+(8*6)+REG_H,   OP_IMPC ; BIT6.H        |    CB 74
+        .BYTE   'l', $40+(8*6)+REG_L,   OP_IMPC ; BIT6.L        |    CB 75
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @bit6m  .DATA   'h', (@bit6hl-CADDR)-1
@@ -685,17 +678,15 @@ opcodes:
 @bit6hl .BYTE   'l', $46+(8*6),         OP_IMPC ; BIT6*HL       |    CB 76
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@bit6r  .BYTE   'a', $40+(8*6)+REG_A,   OP_IMPC ; BIT6.A        |    CB 77
-        .BYTE   'b', $40+(8*6)+REG_B,   OP_IMPC ; BIT6.B        |    CB 70
-        .BYTE   'c', $40+(8*6)+REG_C,   OP_IMPC ; BIT6.C        |    CB 71
-        .BYTE   'd', $40+(8*6)+REG_D,   OP_IMPC ; BIT6.D        |    CB 72
-        .BYTE   'e', $40+(8*6)+REG_E,   OP_IMPC ; BIT6.E        |    CB 73
-        .BYTE   'h', $40+(8*6)+REG_H,   OP_IMPC ; BIT6.H        |    CB 74
-        .BYTE   'l', $40+(8*6)+REG_L,   OP_IMPC ; BIT6.L        |    CB 75
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
 @bit7   .DATA   '*', (@bit7m-CADDR)-1
-        .DATA   '.', (@bit7r-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $40+(8*7)+REG_A,   OP_IMPC ; BIT7.A        |    CB 7F
+        .BYTE   'b', $40+(8*7)+REG_B,   OP_IMPC ; BIT7.B        |    CB 78
+        .BYTE   'c', $40+(8*7)+REG_C,   OP_IMPC ; BIT7.C        |    CB 79
+        .BYTE   'd', $40+(8*7)+REG_D,   OP_IMPC ; BIT7.D        |    CB 7A
+        .BYTE   'e', $40+(8*7)+REG_E,   OP_IMPC ; BIT7.E        |    CB 7B
+        .BYTE   'h', $40+(8*7)+REG_H,   OP_IMPC ; BIT7.H        |    CB 7C
+        .BYTE   'l', $40+(8*7)+REG_L,   OP_IMPC ; BIT7.L        |    CB 7D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @bit7m  .DATA   'h', (@bit7hl-CADDR)-1
@@ -705,15 +696,6 @@ opcodes:
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @bit7hl .BYTE   'l', $46+(8*7),         OP_IMPC ; BIT7*HL       |    CB 7E
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
-@bit7r  .BYTE   'a', $40+(8*7)+REG_A,   OP_IMPC ; BIT7.A        |    CB 7F
-        .BYTE   'b', $40+(8*7)+REG_B,   OP_IMPC ; BIT7.B        |    CB 78
-        .BYTE   'c', $40+(8*7)+REG_C,   OP_IMPC ; BIT7.C        |    CB 79
-        .BYTE   'd', $40+(8*7)+REG_D,   OP_IMPC ; BIT7.D        |    CB 7A
-        .BYTE   'e', $40+(8*7)+REG_E,   OP_IMPC ; BIT7.E        |    CB 7B
-        .BYTE   'h', $40+(8*7)+REG_H,   OP_IMPC ; BIT7.H        |    CB 7C
-        .BYTE   'l', $40+(8*7)+REG_L,   OP_IMPC ; BIT7.L        |    CB 7D
         .BYTE   ERR
         ;=======================================================================
 @c      .DATA   'a', (@call-CADDR)-1
