@@ -222,3 +222,5 @@
 	ex.af.af		; ex	AF,	AF
 	ex.de.hl		; ex	DE,	HL
 	exx			; exx
+
+	halt			; halt
