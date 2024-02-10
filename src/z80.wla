@@ -870,27 +870,29 @@ opcodes:
         .BYTE   ERR
         ;=======================================================================
 @i      .DATA   'm', (@im-CADDR)-1
-        .DATA   'n', (@in-CADDR)-1
+        .BYTE   'n'|AND
+        .DATA   '.', (@in_r-CADDR)-1
+        .DATA   'c', (@inc-CADDR)-1
+        .DATA   'd', (@ind-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   END, $a2,               OP_IMPE ; INI           | ED A2
+        .BYTE   'r', $b2,               OP_IMPE ; INIR          | ED B2
         .BYTE   ERR
-        ;-----------------------------------------------------------------------
+        ;=======================================================================
 @im     .BYTE   '0', $46,               OP_IMPE ; IM0           | ED 46
         .BYTE   '1', $56,               OP_IMPE ; IM1           | ED 56
         .BYTE   '2', $5e,               OP_IMPE ; IM2           | ED 5E
         .BYTE   ERR
         ;=======================================================================
-@in     .DATA   '.', (@in_r-CADDR)-1
-        .DATA   'c', (@inc-CADDR)-1
-        .DATA   'd', (@ind-CADDR)-1
-        .DATA   'i', (@ini-CADDR)-1
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
 @in_r   .DATA   'a', (@in_a-CADDR)-1
         .DATA   'b', (@in_b-CADDR)-1
         .DATA   'c', (@in_c-CADDR)-1
         .DATA   'd', (@in_d-CADDR)-1
         .DATA   'e', (@in_e-CADDR)-1
         .DATA   'h', (@in_h-CADDR)-1
-        .DATA   'l', (@in_l-CADDR)-1
+        .BYTE   'l'|AND
+        .BYTE   '*'|AND
+        .BYTE   'c', $68,               OP_IMPE ; IN.L*C        | ED 68
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @in_a   .BYTE   '*'|AND
@@ -916,10 +918,6 @@ opcodes:
         ;-----------------------------------------------------------------------
 @in_h   .BYTE   '*'|AND
         .BYTE   'c', $60,               OP_IMPE ; IN.H*C        | ED 60
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
-@in_l   .BYTE   '*'|AND
-        .BYTE   'c', $68,               OP_IMPE ; IN.L*C        | ED 68
         .BYTE   ERR
         ;=======================================================================
 @inc    .DATA   '*', (@inc_m-CADDR)-1
@@ -978,10 +976,6 @@ opcodes:
         ;=======================================================================
 @ind    .BYTE   END, $aa,               OP_IMPE ; IND           | ED AA
         .BYTE   'r', $ba,               OP_IMPE ; INDR          | ED BA
-        .BYTE   ERR
-        ;=======================================================================
-@ini    .BYTE   END, $a2,               OP_IMPE ; INI           | ED A2
-        .BYTE   'r', $b2,               OP_IMPE ; INIR          | ED B2
         .BYTE   ERR
         ;=======================================================================
 @j      .DATA   'p', (@jp-CADDR)-1

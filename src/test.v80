@@ -224,3 +224,43 @@
 	exx			; exx
 
 	halt			; halt
+
+	im0			; im	0
+	im1			; im	1
+	im2			; im	2
+
+	in.a*	$aa		; in	A,	[$aa]
+	in.a*c			; in	A,	[C]
+	in.b*c			; in	B,	[C]
+	in.c*c			; in	C,	[C]
+	in.d*c			; in	D,	[C]
+	in.e*c			; in	E,	[C]
+	in.h*c			; in	H,	[C]
+	in.l*c			; in	L,	[C]
+
+	inc*hl			; inc	[HL]
+	inc*ix	$aa		; inc	[IX+$aa]
+	inc*iy	$aa		; inc	[IY+$aa]
+	inc.a			; inc	A
+	inc.b			; inc	B
+	inc.c			; inc	C
+	inc.d			; inc	D
+	inc.e			; inc	E
+	inc.h			; inc	H
+	inc.l			; inc	L
+	inc.ixl			; inc	IXL
+	inc.ixh			; inc	IXH
+	inc.iyl			; inc	IYL
+	inc.iyh			; inc	IYH
+	inc.bc			; inc	BC
+	inc.de			; inc	DE
+	inc.hl			; inc	HL
+	inc.sp			; inc	SP
+	inc.ix			; inc	IX
+	inc.iy			; inc	IY
+
+	ind			; ind
+	indr			; indr
+
+	ini			; ini
+	inir			; inir
