@@ -979,9 +979,16 @@ opcodes:
         .BYTE   ERR
         ;=======================================================================
 @j      .DATA   'p', (@jp-CADDR)-1
-        .DATA   'r', (@jr-CADDR)-1
+        .BYTE   'r'|AND
+        .BYTE   END, $18,               OP_IMMR ; JR $nnnn      |    18 nn
+        .BYTE   '?'|AND
+        .BYTE   'z', $28,               OP_IMMR ; JR?z $nnnn    |    28 nn
+        .BYTE   'c', $38,               OP_IMMR ; jr?c $nnnn    |    38 nn
+        .BYTE   'n'|AND
+        .BYTE   'z', $20,               OP_IMMR ; jr?nz $nnnn   |    20 nn
+        .BYTE   'c', $30,               OP_IMMR ; jr?nc $nnnn   |    30 nn
         .BYTE   ERR
-        ;-----------------------------------------------------------------------
+        ;=======================================================================
 @jp     .BYTE   END, $c3,               OP_IM16 ; JP $nnnn      |    C3 nn nn
         .DATA   '*', (@jp_m-CADDR)-1
         .BYTE   '?'|AND
@@ -1006,15 +1013,6 @@ opcodes:
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @jp_hl  .BYTE   'l', $e9,               OP_IMP  ; JP*HL         |    E9
-        .BYTE   ERR
-        ;=======================================================================
-@jr     .BYTE   END, $18,               OP_IMMR ; JR $nnnn      |    18 nn
-        .BYTE   '?'|AND
-        .BYTE   'z', $28,               OP_IMMR ; JR?z $nnnn    |    28 nn
-        .BYTE   'c', $38,               OP_IMMR ; jr?c $nnnn    |    38 nn
-        .BYTE   'n'|AND
-        .BYTE   'z', $20,               OP_IMMR ; jr?nz $nnnn   |    20 nn
-        .BYTE   'c', $30,               OP_IMMR ; jr?nc $nnnn   |    30 nn
         .BYTE   ERR
         ;=======================================================================
 @l      .DATA   'd', (@ld-CADDR)-1

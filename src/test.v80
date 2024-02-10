@@ -264,3 +264,22 @@
 
 	ini			; ini
 	inir			; inir
+
+	jp	$		; jp	$1234
+	jp*hl			; jp	[HL]
+	jp*ix			; jp	[IX]
+	jp*iy			; jp	[IY]
+	jp?c	$		; jp	c,	$
+	jp?m	$		; jp	m,	$
+	jp?nc	$		; jp	nc,	$
+	jp?nz	$		; jp	nz,	$
+	jp?p	$		; jp	p,	$
+	jp?pe	$		; jp	pe,	$
+	jp?po	$		; jp	po,	$
+	jp?z	$		; jp	z,	$
+
+	jr	$		; jr	$
+	jr?c	$		; jr	c,	$
+	jr?nc	$		; jr	nc,	$
+	jr?nz	$		; jr	nz,	$
+	jr?z	$		; jr	z,	$
