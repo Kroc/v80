@@ -834,10 +834,8 @@ opcodes:
         .BYTE   ERR
         ;=======================================================================
 @e      .BYTE   'i', $fb,               OP_IMP  ; EI            |    FB
-        .DATA   'x', (@ex-CADDR)-1
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
-@ex     .BYTE   'x', $d9,               OP_IMP  ; EXX           |    D9
+        .BYTE   'x'|AND
+        .BYTE   'x', $d9,               OP_IMP  ; EXX           |    D9
         .DATA   '*', (@ex_m-CADDR)-1
         .BYTE   '.'|AND
         .DATA   'a', (@ex_af-CADDR)-1

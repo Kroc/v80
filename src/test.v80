@@ -213,3 +213,12 @@
 	di			; di
 
 	djnz	$		; djnz	$1234
+
+	ei			; ei
+
+	ex*sp.hl		; ex	[SP],	HL
+	ex*sp.ix		; ex	[SP],	IX
+	ex*sp.iy		; ex	[SP],	IY
+	ex.af.af		; ex	AF,	AF
+	ex.de.hl		; ex	DE,	HL
+	exx			; exx
