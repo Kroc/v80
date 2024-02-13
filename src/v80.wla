@@ -845,6 +845,8 @@ tokenExpr:
 @op:    call    skipSpace               ; read first character of the next word
         jr      z,      @end            ; end expr at newline / end-of-file
 
+        ; TODO: unexpected comment!
+
         cp      CHAR_OP_ADD             ; add operator?
         jr      z,      -               ; push token to heap, find next operand
         cp      CHAR_OP_SUB             ; subtract operator?

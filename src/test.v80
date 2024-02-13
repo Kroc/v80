@@ -283,3 +283,16 @@
 	jr?nc	$		; jr	nc,	$
 	jr?nz	$		; jr	nz,	$
 	jr?z	$		; jr	z,	$
+
+	ld*bc.a			; ld	[BC],	A
+	ld*de.a			; ld	[DE],	A
+	ld*hl	$aa		; ld	[HL],	$aa
+	ld*hl.a			; ld	[HL],	A
+	ld*hl.b			; ld	[HL],	B
+	ld*hl.c			; ld	[HL],	C
+	ld*hl.d			; ld	[HL],	D
+	ld*hl.e			; ld	[HL],	E
+	ld*hl.h			; ld	[HL],	H
+	ld*hl.l			; ld	[HL],	L
+	ld*ix	$aa	$bb	; ld	[IX+$aa],	$bb
+	ld*iy	$aa	$bb	; ld	[IY+$aa],	$bb

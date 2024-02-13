@@ -106,9 +106,8 @@ parseInstruction:
 
         ;=======================================================================
         ; emit opcode(s):
-        ;
-        ; if a branch ends in an opcode,
-        ; then no more characters must follow!
+        ;=======================================================================
+        ; if a branch ends in an opcode, then no more characters must follow!
         ;
 @opcode and     A                       ; if the last char is already 0,
         jr      z,     +                ; then no further check is needed
@@ -142,8 +141,10 @@ parseInstruction:
         ; is it a $CB or $ED extended opcode?
         ;
         bit     4,      B               ; bit 4 indicates an extended opcode
-        jr      z,      +               ; not extended? skip ahead
+        jr      z,      +               ; not extended? skip over $CB/$ED
 
+        ; output $CB or $ED opcode extension byte:
+        ;
         and     %00100010               ; bit 5&1 = $22 ($ED) or $00 ($CB)
         add     $cb                     ; $CB+$00 = $CB or $CB+$22 = $ED
         ld      [HL],   A               ; emit $CB|$ED prefix byte
@@ -162,7 +163,10 @@ parseInstruction:
         ; any parameters?
         ;
         ; bit 2 indicates any kind of parameter for non IX|IY opcodes,
-        ; i.e. 8 / 16 bit literal, or relative (bit 3)
+        ; i.e. 8 / 16 bit immediate, or relative (bit 3). there are no
+        ; 2-parameter Z80 opcodes without IX|IY so 1 param can be assumed
+        ;
+        ; TODO: is this true for relative jumps?
         ;
         bit     2,      B               ; if no parameters, extensions
         ret     z                       ;  have been done, finish now!
@@ -204,16 +208,21 @@ parseInstruction:
         ex      DE,     HL              ; swap heap to HL, code to DE
         ;-----------------------------------------------------------------------
 
-        ; bit 3 (offset), bit 2 (8-bit), and
-        ; bit 0 (16-bit) indicate parameters
+        ; bit 3 (offset), bit 2 (8-bit immediate), and
+        ; bit 0 (16-bit immediate) indicate parameters
         ;
         ld      A,      B               ; opcode flags byte
         and     %00001101               ; filter out parameter flags
         ret     z                       ; if none, we are finished
 
-        ; the question now is whether we have 1 or 2 parameters:
-        ; TODO: we have to differentiate the type of each param
-        ; TODO: 2nd parameter
+        ; there are only two Z80 instructions that use 2 parameters
+        ; -- LD [IX+$aa], $bb and the matching IY-variant
+        ;
+        xor     %00001100               ; flip just the bits for 2 params
+        jr      z,      @two            ; divert for 2 params!
+
+        ; only one parameter
+        ; -- determine parameter width (byte or word)
         ;
         xor     A                       ; set A to zero
         rrc     B                       ; pop off bit 0 of opcode-flags
@@ -223,6 +232,32 @@ parseInstruction:
         ; consume whitespace before parsing expression, since the parameter
         ; is required, this will error on newline or end-of-file before expr
         jp      skipToParseExpr
+
+        ;-----------------------------------------------------------------------
+        ; handle two-parameter instruction special case:
+        ;
+@two:   inc     A
+        ld      [stride],       A       ; (set the parameter width to 1 byte)
+
+        ; TODO: must indicate offset vs. immediate parameter type somehow
+
+        ; consume whitespace before parsing expression, since the parameter
+        ; is required, this will error on newline or end-of-file before expr
+        call    skipToParseExpr
+
+        ; the first expression will read to the first character of the next
+        ; word following the expression, or a newline / end-of-file. since
+        ; a 2nd parameter is expected, newline or end-of-file is an error!
+        ;
+        ld      A,      [char]          ; last read character
+        and     A                       ; (set CPU flags!)
+        jp      z,      errParam        ; hard error if end-of-file!
+        cp      ASCII_LF                ; newline?
+        jp      z,      errParam        ; hard error if newline!
+
+        ; (the first character of the next expression
+        ;  has been read so no need to skip whitespace)
+        jp      parseExpr
 
         ;-----------------------------------------------------------------------
         ; IX|IY + $CB is the edge-case that keeps on giving: at all other
@@ -254,15 +289,15 @@ parseInstruction:
 ;             op                ; implied
 ;    ED       op                ; implied, ED-extended
 ;       CB    op                ; implied, CB-extended
-;             op nn             ; literal, 8-bit
-;             op nn nn          ; literal, 16-bit
-;    ED       op nn nn          ; literal, 16-bit, ED-extended
-;             op rr             ; relative
+;             op nn             ; immediate, 8-bit
+;             op nn nn          ; immediate, 16-bit
+;    ED       op nn nn          ; immedaite, 16-bit, ED-extended
+;             op rr             ; immediate, relative
 ; DD|FD       op                ; IXY implied
-; DD|FD       op ii             ; IXY offset
-; DD|FD CB ii op                ; IXY offset, CB-extended
-; DD|FD       op ii nn          ; IXY offset, literal
-; DD|FD       op nn nn          ; IXY implied, literal, 16-bit
+; DD|FD       op oo             ; IXY offset
+; DD|FD CB oo op                ; IXY offset, CB-extended
+; DD|FD       op oo nn          ; IXY offset, immediate -- 2 parameters!
+; DD|FD       op nn nn          ; IXY implied, immedaite, 16-bit
 ;
 ; opcode flags byte:
 ;-------------------------------------------------------------------------------
@@ -283,14 +318,16 @@ parseInstruction:
 ;
 ; bit 3 on indicates an offset is present. if bit 6 is on, then this is the
 ;       IX|IY offset byte. if bit 6 is off, then this indicates a relative
-;       jump offset (e.g. JR, DJNZ)
+;       jump offset (e.g. JR / DJNZ)
 ;
-; bit 2 on indicates a literal parameter
+; bit 2 on indicates an immediate parameter. this is separate from
+;       the offset parameter above as there can be two parameters!
 ;
 ; bit 1 is on for $ED extended opcodes
 ;
-; bit 0 on indicates a literal parameter is 16-bits instead of 8
-
+; bit 0 on indicates an immediate parameter is 16-bits instead of 8,
+;       this is always paired with bit 2, both must be on to be valid
+;
 OP      = %10000000     ; indicates an opcode
 OP_I    = %11000000     ; bit 6=1: IX or IY extended
 OP_X    = %11000000     ; bit 6=1, bit 5=0: IX
@@ -300,25 +337,29 @@ OP_IY   = OP_I|OP_Y
 OP_CB   = %10010000     ; bit 6=?, bit 4=1, bit 5&1=0: CB-extended (+/-IX|IY)
 OP_ED   = %10110010     ; bit 6=0, bit 4=1, bit 5&1=1: ED-extended
 OP_O    = %11001000     ; bit 6=1, bit 3=1, bit 2=?: IX|IY includes offset
+OP_IXO  = OP_IX|OP_O
+OP_IYO  = OP_IY|OP_O
 OP_R    = %10001100     ; bit 6=0, bit 3=1, bit 2=1: relative jump offset
-OP_B    = %10000100     ; bit 2=1: literal parameter, 8-bits (byte)
-OP_W    = %10000101     ; bit 2=1, bit 0=1: literal parameter, 16-bits (word)
+OP_B    = %10000100     ; bit 2=1: immediate parameter, 8-bits (byte)
+OP_W    = %10000101     ; bit 2=1, bit 0=1: immediate parameter, 16-bits (word)
 
 OP_IMP  = OP            ; implied -- no parameter
 OP_IMPC = OP_CB         ; implied, extended ($CB)
 OP_IMPE = OP_ED         ; implied, extended ($ED)
 OP_IMPX = OP_IX         ; implied, IX ($DD)
 OP_IMPY = OP_IY         ; implied, IY ($FD)
-OP_IMMX = OP_IX|OP_O    ; implied, IX ($DD) + offset
-OP_IMMY = OP_IY|OP_O    ; implied, IY ($FD) + offset
-OP_IMM8 = OP_B          ; immediate, 8-bit
+OP_IMMX = OP_IXO        ; implied, IX ($DD) + offset
+OP_IMMY = OP_IYO        ; implied, IY ($FD) + offset
+OP_IMMB = OP_B          ; immediate, 8-bit
 OP_IMMR = OP_B|OP_R     ; relative, 8-bit
 OP_IMCX = OP_IX|OP_CB   ; extended ($CB), IX ($DD) + offset
 OP_IMCY = OP_IY|OP_CB   ; extended ($CB), IY ($FD) + offset
-OP_IM16 = OP_W          ; immediate, 16-bit
-OP_I16E = OP_W|OP_ED    ; immediate, extended ($ED), 16-bit!
-OP_I16X = OP_W|OP_IX    ; immediate, IX ($DD), 16-bit
-OP_I16Y = OP_W|OP_IY    ; immediate, IY ($FD), 16-bit
+OP_IMXB = OP_B|OP_IXO   ; IX ($DD) + offset + immediate (2 parameters!)
+OP_IMYB = OP_B|OP_IYO   ; IY ($FD) + offset + immediate (2 parameters!)
+OP_IMMW = OP_W          ; immediate, 16-bit
+OP_IMEW = OP_W|OP_ED    ; immediate, extended ($ED), 16-bit!
+OP_IMXW = OP_W|OP_IX    ; immediate, IX ($DD), 16-bit
+OP_IMYW = OP_W|OP_IY    ; immediate, IY ($FD), 16-bit
 
 opcodes:
 ;===============================================================================
@@ -361,7 +402,7 @@ opcodes:
         .DATA   'd', (@add-CADDR)-1
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@adc    .BYTE   END, $ce,               OP_IMM8 ; ADC $nn       |       CE nn
+@adc    .BYTE   END, $ce,               OP_IMMB ; ADC $nn       |       CE nn
         .DATA   '.', (@adc_r-CADDR)-1
         .DATA   '*', (@adc_m-CADDR)-1
         .BYTE   ERR
@@ -412,7 +453,7 @@ opcodes:
 @adc_mh .BYTE   'l', $8e,               OP_IMP  ; ADC*HL        |       8E
         .BYTE   ERR
         ;=======================================================================
-@add    .BYTE   END, $c6,               OP_IMM8 ; ADD $nn       |       C6 nn
+@add    .BYTE   END, $c6,               OP_IMMB ; ADD $nn       |       C6 nn
         .DATA   '*', (@add_m-CADDR)-1
         .DATA   '.', (@add_r-CADDR)-1
         .BYTE   ERR
@@ -494,7 +535,7 @@ opcodes:
 @add_hl .BYTE   'l', $29,               OP_IMP  ; ADD.HL+HL     |       29
         .BYTE   ERR
         ;=======================================================================
-@and    .BYTE   END, $e6,               OP_IMM8 ; AND $nn       |       E6 nn
+@and    .BYTE   END, $e6,               OP_IMMB ; AND $nn       |       E6 nn
         .DATA   '*', (@and_m-CADDR)-1
         .BYTE   '.'|AND
         .BYTE   'a', $a0+REG_A,         OP_IMP  ; AND.A         |       A7
@@ -705,26 +746,26 @@ opcodes:
         ;-----------------------------------------------------------------------
 @call   .BYTE   'l'|AND
         .BYTE   'l'|AND
-        .BYTE   END, $cd,               OP_IM16 ; CALL $nnnn    |    CD nn nn
+        .BYTE   END, $cd,               OP_IMMW ; CALL $nnnn    |    CD nn nn
         .BYTE   '?'|AND
-        .BYTE   'z', $cc,               OP_IM16 ; CALL?z $nnnn  |    CC nn nn
-        .BYTE   'c', $dc,               OP_IM16 ; CALL?c $nnnn  |    DC nn nn
-        .BYTE   'm', $fc,               OP_IM16 ; CALL?m $nnnn  |    FC nn nn
+        .BYTE   'z', $cc,               OP_IMMW ; CALL?z $nnnn  |    CC nn nn
+        .BYTE   'c', $dc,               OP_IMMW ; CALL?c $nnnn  |    DC nn nn
+        .BYTE   'm', $fc,               OP_IMMW ; CALL?m $nnnn  |    FC nn nn
         .DATA   'p', (@callp-CADDR)-1
         .BYTE   'n'|AND
-        .BYTE   'z', $c4,               OP_IM16 ; CALL?nz $nnnn |    C4 nn nn
-        .BYTE   'c', $d4,               OP_IM16 ; CALL?nc $nnnn |    D4 nn nn
+        .BYTE   'z', $c4,               OP_IMMW ; CALL?nz $nnnn |    C4 nn nn
+        .BYTE   'c', $d4,               OP_IMMW ; CALL?nc $nnnn |    D4 nn nn
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@callp  .BYTE   END, $f4,               OP_IM16 ; CALL?p $nnnn  |    F4 nn nn
-        .BYTE   'o', $e4,               OP_IM16 ; CALL?po $nnnn |    E4 nn nn
-        .BYTE   'e', $ec,               OP_IM16 ; CALL?pe $nnnn |    EC nn nn
+@callp  .BYTE   END, $f4,               OP_IMMW ; CALL?p $nnnn  |    F4 nn nn
+        .BYTE   'o', $e4,               OP_IMMW ; CALL?po $nnnn |    E4 nn nn
+        .BYTE   'e', $ec,               OP_IMMW ; CALL?pe $nnnn |    EC nn nn
         .BYTE   ERR
         ;=======================================================================
 @ccf    .BYTE   'f', $3f,               OP_IMP  ; CCF           |    3F
         .BYTE   ERR
         ;=======================================================================
-@cp     .BYTE   END, $fe,               OP_IMM8 ; CP nn         |    FE nn
+@cp     .BYTE   END, $fe,               OP_IMMB ; CP nn         |    FE nn
         .DATA   '*', (@cp_m-CADDR)-1
         .DATA   '.', (@cp_r-CADDR)-1
         .DATA   'd', (@cpd-CADDR)-1
@@ -896,7 +937,7 @@ opcodes:
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @in_a   .BYTE   '*'|AND
-        .BYTE   END, $db,               OP_IMM8 ; IN.A* $nn     |    DB nn
+        .BYTE   END, $db,               OP_IMMB ; IN.A* $nn     |    DB nn
         .BYTE   'c', $78,               OP_IMPE ; IN.A*C        | ED 78
         .BYTE   ERR
         ;-----------------------------------------------------------------------
@@ -989,21 +1030,21 @@ opcodes:
         .BYTE   'c', $30,               OP_IMMR ; jr?nc $nnnn   |    30 nn
         .BYTE   ERR
         ;=======================================================================
-@jp     .BYTE   END, $c3,               OP_IM16 ; JP $nnnn      |    C3 nn nn
+@jp     .BYTE   END, $c3,               OP_IMMW ; JP $nnnn      |    C3 nn nn
         .DATA   '*', (@jp_m-CADDR)-1
         .BYTE   '?'|AND
-        .BYTE   'z', $ca,               OP_IM16 ; JP?z $nnnn    |    CA nn nn
-        .BYTE   'c', $da,               OP_IM16 ; JP?c $nnnn    |    DA nn nn
-        .BYTE   'm', $fa,               OP_IM16 ; JP?m $nnnn    |    FA nn nn
+        .BYTE   'z', $ca,               OP_IMMW ; JP?z $nnnn    |    CA nn nn
+        .BYTE   'c', $da,               OP_IMMW ; JP?c $nnnn    |    DA nn nn
+        .BYTE   'm', $fa,               OP_IMMW ; JP?m $nnnn    |    FA nn nn
         .DATA   'p', (@jp_p-CADDR)-1
         .BYTE   'n'|AND
-        .BYTE   'z', $c2,               OP_IM16 ; JP?nz $nnnn   |    C2 nn nn
-        .BYTE   'c', $d2,               OP_IM16 ; JP?nc $nnnn   |    D2 nn nn
+        .BYTE   'z', $c2,               OP_IMMW ; JP?nz $nnnn   |    C2 nn nn
+        .BYTE   'c', $d2,               OP_IMMW ; JP?nc $nnnn   |    D2 nn nn
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@jp_p   .BYTE   END, $f2,               OP_IM16 ; JP?p $nnnn    |    F2 nn nn
-        .BYTE   'o', $e2,               OP_IM16 ; JP?po $nnnn   |    E2 nn nn
-        .BYTE   'e', $ea,               OP_IM16 ; JP?pe $nnnn   |    EA nn nn
+@jp_p   .BYTE   END, $f2,               OP_IMMW ; JP?p $nnnn    |    F2 nn nn
+        .BYTE   'o', $e2,               OP_IMMW ; JP?po $nnnn   |    E2 nn nn
+        .BYTE   'e', $ea,               OP_IMMW ; JP?pe $nnnn   |    EA nn nn
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @jp_m   .DATA   'h', (@jp_hl-CADDR)-1
@@ -1015,50 +1056,39 @@ opcodes:
 @jp_hl  .BYTE   'l', $e9,               OP_IMP  ; JP*HL         |    E9
         .BYTE   ERR
         ;=======================================================================
-@l      .DATA   'd', (@ld-CADDR)-1
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
-@ld     .DATA   'd', (@ldd-CADDR)-1
+@l      .BYTE   'd'|AND
+        .DATA   'd', (@ldd-CADDR)-1
         .DATA   'i', (@ldi-CADDR)-1
         .DATA   '.', (@ld_r-CADDR)-1
-        .DATA   '*', (@ld_m-CADDR)-1
-        .BYTE   ERR
         ;-----------------------------------------------------------------------
-@ldd    .BYTE   END, $a8,               OP_IMPE ; LDD           | ED A8
-        .BYTE   'r', $b8,               OP_IMPE ; LDDR          | ED B8
-        .BYTE   ERR
-        ;=======================================================================
-@ldi    .BYTE   END, $a0,               OP_IMPE ; LDI           | ED A0
-        .BYTE   'r', $b0,               OP_IMPE ; LDIR          | ED B0
-        .BYTE   ERR
-        ;=======================================================================
-@ld_m   .DATA   'b', (@ld_bc-CADDR)-1
+        .BYTE   '*'|AND
+        .DATA   'b', (@ld_bc-CADDR)-1
         .DATA   'd', (@ld_de-CADDR)-1
         .DATA   'h', (@ld_hl-CADDR)-1
         .DATA   'i', (@ld_mi-CADDR)-1
         .BYTE   'n'|AND                         ; ld*nn.r
         .BYTE   'n'|AND                         ; (needs better syntax?)
         .BYTE   '.'|AND
-        .BYTE   'a', $32,               OP_IM16 ; LD*nn.A $nnnn |   32 nn nn
+        .BYTE   'a', $32,               OP_IMMW ; LD*nn.A $nnnn |   32 nn nn
         .DATA   'b', (@ld_mb-CADDR)-1
         .DATA   'd', (@ld_md-CADDR)-1
         .DATA   'h', (@ld_mh-CADDR)-1
         .DATA   'i', (@ld_xy-CADDR)-1
         .BYTE   's'|AND
-        .BYTE   'p', $73,               OP_I16E ; LD*nn.SP $nnnn| ED 73 nn nn
+        .BYTE   'p', $73,               OP_IMEW ; LD*nn.SP $nnnn| ED 73 nn nn
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@ld_mb  .BYTE   'c', $43,               OP_I16E ; LD*nn.BC $nnnn| ED 43 nn nn
+@ld_mb  .BYTE   'c', $43,               OP_IMEW ; LD*nn.BC $nnnn| ED 43 nn nn
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@ld_md  .BYTE   'e', $53,               OP_I16E ; LD*nn.DE $nnnn| ED 53 nn nn
+@ld_md  .BYTE   'e', $53,               OP_IMEW ; LD*nn.DE $nnnn| ED 53 nn nn
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@ld_mh  .BYTE   'l', $22,               OP_IM16 ; LD*nn.HL $nnnn|    22 nn nn
+@ld_mh  .BYTE   'l', $22,               OP_IMMW ; LD*nn.HL $nnnn|    22 nn nn
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@ld_xy  .BYTE   'x', $22,               OP_I16X ; LD*nn.IX $nnnn| DD 22 nn nn
-        .BYTE   'y', $22,               OP_I16Y ; LD*nn.IY $nnnn| FD 22 nn nn
+@ld_xy  .BYTE   'x', $22,               OP_IMXW ; LD*nn.IX $nnnn| DD 22 nn nn
+        .BYTE   'y', $22,               OP_IMYW ; LD*nn.IY $nnnn| FD 22 nn nn
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @ld_bc  .BYTE   'c'|AND
@@ -1072,7 +1102,7 @@ opcodes:
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @ld_hl  .BYTE   'l'|AND
-        .BYTE   END, $36,               OP_IMM8 ; LD*HL $nn     |    36 nn
+        .BYTE   END, $36,               OP_IMMB ; LD*HL $nn     |    36 nn
         .BYTE   '.'|AND
         .BYTE   'a', $70+REG_A,         OP_IMP  ; LD*HL.A       |    77
         .BYTE   'b', $70+REG_B,         OP_IMP  ; LD*HL.B       |    70
@@ -1083,9 +1113,20 @@ opcodes:
         .BYTE   'l', $70+REG_L,         OP_IMP  ; LD*HL.L       |    75
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@ld_mi  .DATA   'y', (@ld_my-CADDR)-1
-        .BYTE   'x'|AND
-@ld_mx  .BYTE   END, $36,               OP_IMMX ; LD*IX $nn     | DD 36 nn
+@ld_mi  .DATA   'x', (@ld_mx-CADDR)-1
+        .BYTE   'y'|AND
+        .BYTE   END, $36,               OP_IMYB ; LD*IY $oo $nn | FD 36 oo nn
+        .BYTE   '.'|AND
+        .BYTE   'a', $70+REG_A,         OP_IMMY ; LD*IY.A       | FD 77
+        .BYTE   'b', $70+REG_B,         OP_IMMY ; LD*IY.B       | FD 70
+        .BYTE   'c', $70+REG_C,         OP_IMMY ; LD*IY.C       | FD 71
+        .BYTE   'd', $70+REG_D,         OP_IMMY ; LD*IY.D       | FD 72
+        .BYTE   'e', $70+REG_E,         OP_IMMY ; LD*IY.E       | FD 73
+        .BYTE   'h', $70+REG_H,         OP_IMMY ; LD*IY.H       | FD 74
+        .BYTE   'l', $70+REG_L,         OP_IMMY ; LD*IY.L       | FD 75
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@ld_mx  .BYTE   END, $36,               OP_IMXB ; LD*IX $oo $nn | DD 36 oo nn
         .BYTE   '.'|AND
         .BYTE   'a', $70+REG_A,         OP_IMMX ; LD*IX.A       | DD 77
         .BYTE   'b', $70+REG_B,         OP_IMMX ; LD*IX.B       | DD 70
@@ -1095,16 +1136,13 @@ opcodes:
         .BYTE   'h', $70+REG_H,         OP_IMMX ; LD*IX.H       | DD 74
         .BYTE   'l', $70+REG_L,         OP_IMMX ; LD*IX.L       | DD 75
         .BYTE   ERR
-        ;-----------------------------------------------------------------------
-@ld_my  .BYTE   END, $36,               OP_IMMY ; LD*IY $nn     | FD 36 nn
-        .BYTE   '.'|AND
-        .BYTE   'a', $70+REG_A,         OP_IMMY ; LD*IY.A       | FD 77
-        .BYTE   'b', $70+REG_B,         OP_IMMY ; LD*IY.B       | FD 70
-        .BYTE   'c', $70+REG_C,         OP_IMMY ; LD*IY.C       | FD 71
-        .BYTE   'd', $70+REG_D,         OP_IMMY ; LD*IY.D       | FD 72
-        .BYTE   'e', $70+REG_E,         OP_IMMY ; LD*IY.E       | FD 73
-        .BYTE   'h', $70+REG_H,         OP_IMMY ; LD*IY.H       | FD 74
-        .BYTE   'l', $70+REG_L,         OP_IMMY ; LD*IY.L       | FD 75
+        ;=======================================================================
+@ldd    .BYTE   END, $a8,               OP_IMPE ; LDD           | ED A8
+        .BYTE   'r', $b8,               OP_IMPE ; LDDR          | ED B8
+        .BYTE   ERR
+        ;=======================================================================
+@ldi    .BYTE   END, $a0,               OP_IMPE ; LDI           | ED A0
+        .BYTE   'r', $b0,               OP_IMPE ; LDIR          | ED B0
         .BYTE   ERR
         ;=======================================================================
 @ld_r   .DATA   'a', (@ld_a-CADDR)-1
@@ -1122,8 +1160,8 @@ opcodes:
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @ld_s   .BYTE   'p'|AND
-        .BYTE   END, $31,               OP_IM16 ; LD.SP $nnnn   |    31 nn nn
-        .BYTE   '*', $7b,               OP_I16E ; LD.SP* $nnnn  | ED 7B nn nn
+        .BYTE   END, $31,               OP_IMMW ; LD.SP $nnnn   |    31 nn nn
+        .BYTE   '*', $7b,               OP_IMEW ; LD.SP* $nnnn  | ED 7B nn nn
         .BYTE   '.'|AND
         .DATA   'h', (@ldsp_h-CADDR)-1
         .BYTE   'i'|AND
@@ -1133,7 +1171,7 @@ opcodes:
         ;-----------------------------------------------------------------------
 @ldsp_h .BYTE   'l', $f9,               OP_IMP  ; LD.SP.HL      |    F9
         ;=======================================================================
-@ld_a   .BYTE   END, $3e,               OP_IMM8 ; LD.A $nn      |    3E nn
+@ld_a   .BYTE   END, $3e,               OP_IMMB ; LD.A $nn      |    3E nn
         .DATA   '*', (@lda_m-CADDR)-1
         .BYTE   '.'|AND
         .BYTE   'a', $78+REG_A,         OP_IMP  ; LD.A.A        |    7F
@@ -1158,7 +1196,7 @@ opcodes:
         .BYTE   'l', $78+REG_IL,        OP_IMPY ; LD.A.IYL      | FD 7D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@lda_m  .BYTE   END, $3a,               OP_IMM8 ; LD.A* $nnnn   |    3A nn nn
+@lda_m  .BYTE   END, $3a,               OP_IMMB ; LD.A* $nnnn   |    3A nn nn
         .DATA   'b', (@lda_bc-CADDR)-1
         .DATA   'd', (@lda_de-CADDR)-1
         .DATA   'h', (@lda_hl-CADDR)-1
@@ -1176,7 +1214,7 @@ opcodes:
 @lda_hl .BYTE   'l', $7a,               OP_IMP  ; LD.A*HL       |    7A
         .BYTE   ERR
         ;=======================================================================
-@ld_b   .BYTE   END, $06,               OP_IMM8 ; LD.B $nn      |    06 nn
+@ld_b   .BYTE   END, $06,               OP_IMMB ; LD.B $nn      |    06 nn
         .DATA   'c', (@ldbc-CADDR)-1
         .DATA   '*', (@ldb_m-CADDR)-1
         .BYTE   '.'|AND
@@ -1200,8 +1238,8 @@ opcodes:
         .BYTE   'l', $40+REG_IL,        OP_IMPY ; LD.B.IYL      | FD 45
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@ldbc   .BYTE   END, $01,               OP_IM16 ; LD.BC $nnnn   |    01 nn nn
-        .BYTE   '*', $4b,               OP_I16E ; LD.BC* $nnnn  | ED 4B nn nn
+@ldbc   .BYTE   END, $01,               OP_IMMW ; LD.BC $nnnn   |    01 nn nn
+        .BYTE   '*', $4b,               OP_IMEW ; LD.BC* $nnnn  | ED 4B nn nn
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @ldb_m  .DATA   'h', (@ldb_hl-CADDR)-1
@@ -1213,7 +1251,7 @@ opcodes:
 @ldb_hl .BYTE   'l', $46,               OP_IMP  ; LD.B*HL       |    46
         .BYTE   ERR
         ;=======================================================================
-@ld_c   .BYTE   END, $0e,               OP_IMM8 ; LD.C $nn      |    0E nn
+@ld_c   .BYTE   END, $0e,               OP_IMMB ; LD.C $nn      |    0E nn
         .DATA   '*', (@ldc_m-CADDR)-1
         .BYTE   '.'|AND
         .BYTE   'a', $48+REG_A,         OP_IMP  ; LD.B.A        |    4F
@@ -1245,7 +1283,7 @@ opcodes:
 @ldc_hl .BYTE   'l', $4e,               OP_IMP  ; LD.C*HL       |    4E
         .BYTE   ERR
         ;=======================================================================
-@ld_d   .BYTE   END, $16,               OP_IMM8 ; LD.D $nn      |    16 nn
+@ld_d   .BYTE   END, $16,               OP_IMMB ; LD.D $nn      |    16 nn
         .DATA   'e', (@ldde-CADDR)-1
         .DATA   '*', (@ldd_m-CADDR)-1
         .BYTE   '.'|AND
@@ -1269,8 +1307,8 @@ opcodes:
         .BYTE   'l', $50+REG_IL,        OP_IMPY ; LD.D.IYL      | FD 55
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@ldde   .BYTE   END, $11,               OP_IM16 ; LD.DE $nnnn   |    11 nn nn
-        .BYTE   '*', $5b,               OP_I16E ; LD.DE* $nnnn  | ED 5B nn nn
+@ldde   .BYTE   END, $11,               OP_IMMW ; LD.DE $nnnn   |    11 nn nn
+        .BYTE   '*', $5b,               OP_IMEW ; LD.DE* $nnnn  | ED 5B nn nn
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @ldd_m  .DATA   'h', (@ldd_hl-CADDR)-1
@@ -1282,7 +1320,7 @@ opcodes:
 @ldd_hl .BYTE   'l', $56,               OP_IMP  ; LD.D*HL       |    56
         .BYTE   ERR
         ;=======================================================================
-@ld_e   .BYTE   END, $1e,               OP_IMM8 ; LD.E $nn      |    1E nn
+@ld_e   .BYTE   END, $1e,               OP_IMMB ; LD.E $nn      |    1E nn
         .DATA   '*', (@lde_m-CADDR)-1
         .BYTE   '.'|AND
         .BYTE   'a', $58+REG_A,         OP_IMP  ; LD.E.A        |    5F
@@ -1314,7 +1352,7 @@ opcodes:
 @lde_hl .BYTE   'l', $5e,               OP_IMP  ; LD.E*HL       |    5E
         .BYTE   ERR
         ;=======================================================================
-@ld_h   .BYTE   END, $26,               OP_IMM8 ; LD.H $nn      |    26 nn
+@ld_h   .BYTE   END, $26,               OP_IMMB ; LD.H $nn      |    26 nn
         .DATA   'l', (@ldhl-CADDR)-1
         .DATA   '*', (@ldh_m-CADDR)-1
         .BYTE   '.'|AND
@@ -1338,8 +1376,8 @@ opcodes:
         .BYTE   'l', $60+REG_IL,        OP_IMPY ; LD.H.IYL      | FD 65
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@ldhl   .BYTE   END, $21,               OP_IM16 ; LD.HL $nnnn   |    21 nn nn
-        .BYTE   '*', $2a,               OP_I16E ; LD.HL* $nnnn  | ED 2A nn nn
+@ldhl   .BYTE   END, $21,               OP_IMMW ; LD.HL $nnnn   |    21 nn nn
+        .BYTE   '*', $2a,               OP_IMEW ; LD.HL* $nnnn  | ED 2A nn nn
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @ldh_m  .DATA   'h', (@ldh_hl-CADDR)-1
@@ -1351,7 +1389,7 @@ opcodes:
 @ldh_hl .BYTE   'l', $66,               OP_IMP  ; LD.H*HL       |    66
         .BYTE   ERR
         ;=======================================================================
-@ld_l   .BYTE   END, $2e,               OP_IMM8 ; LD.L $nn      |    2E nn
+@ld_l   .BYTE   END, $2e,               OP_IMMB ; LD.L $nn      |    2E nn
         .DATA   '*', (@ldl_m-CADDR)-1
         .BYTE   '.'|AND
         .BYTE   'a', $68+REG_A,         OP_IMP  ; LD.L.A        |    6F
