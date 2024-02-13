@@ -295,4 +295,4 @@
 	ld*hl.h			; ld	[HL],	H
 	ld*hl.l			; ld	[HL],	L
 	ld*ix	$aa	$bb	; ld	[IX+$aa],	$bb
-	ld*iy	$aa	$bb	; ld	[IY+$aa],	$bb
+	ld*iy	$aa		; ld	[IY+$aa],	$bb

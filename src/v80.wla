@@ -202,11 +202,6 @@ assemble:
         jr      @line                   ; jump into parsing loop
 
         ;=======================================================================
-        ; skip comments:
-        ;-----------------------------------------------------------------------
-@skip:  call    readChar                ; read to next character or newline
-        jr      nz,     @skip           ; loop until newline / end-of-file
-
         ; distinguish between newline and end-of-file:
         ;-----------------------------------------------------------------------
         ; readChar returns zero-flag set for both newline and end-of-file,
@@ -224,7 +219,7 @@ assemble:
         ; at the beginning of the line labels and the
         ; program-counter can be defined, but nowhere else
         ;
-@line:  call    skipSpace               ; find first character
+@line:  call    nextWord                ; find first character
         jr      z,      @nleof          ; did we hit newline or end-of-file?
 
         ; first character determines the word type:
@@ -271,13 +266,11 @@ assemble:
         cp      ASCII_LF                ; newline?
         jr      z,      @line           ; switch to line context
         cp      ASCII_SPC               ; space?
-        call    z,      skipSpace       ; find next character (or newline)
+        call    z,      nextWord        ; find next character (or newline)
         jr      z,      @nleof          ; did we hit newline or end-of-file?
 
         ;-----------------------------------------------------------------------
-@body:  cp      CHAR_COMMENT            ; is comment?
-        jr      z,      @skip           ; skip until end of line
-        cp      CHAR_KEYWORD            ; is this a keyword?
+@body:  cp      CHAR_KEYWORD            ; is this a keyword?
         jr      z,      @key            ; handle keyword
 
         ; (this routine is in the CPU-specific module, e.g. z80.wla)
@@ -330,22 +323,34 @@ assemble:
         jr      @next                   ; return to parsing
 
 
-skipSpace:
+nextWord:
 ;===============================================================================
-; reads input until a visible character (ASCII >32),
-; or a newline / end-of-file is reached:
-; 
-; be aware that this will return on newline and that there may be more leading
+; reads input and skips spaces until either:
+;
+; - the next non-terminating character
+; - a newline or end-of-line character
+; - a comment
+;
+; in the case of a comment, the comment text is skipped over and the next
+; newline / end-of-file is returned instead! therefore this routine MUST NOT
+; be used to skip over whitespace in string literals etc.
+;
+; WARN: this routine will return on newline and that there may be more leading
 ; whitespace on the next line -- if you want to skip to the next non-whitespace
-; character, call the routine again after newline
+; character, call the routine again after a newline!
 ;
 ; out:  A               ASCII code, 0 = end-of-file
-;       zf              zero-flag is set at newline or end-of-file
+;       zf              zero-flag is set for "no word", i.e. when the line
+;                       ends before another valid word. check A for newline
+;                       or end-of-file (0) to differentiate those
 ;-------------------------------------------------------------------------------
 -       call    readChar                ; read a character (returns z-flag)
         ret     z                       ; return z-flag set if newline/EOF
 
-        ; we need to be careful not to return z-flag set!
+        cp      CHAR_COMMENT            ; is this the start of a comment?
+        jr      z,      @skip           ; if so, skip chars until end
+
+        ; we need to be careful not to wrongly return z-flag set!
         ;
         ; we cannot check for ASCII_SPC+1 ("!") as if this character appears,
         ; the parser will think the file ended. instead look for space itself
@@ -356,6 +361,14 @@ skipSpace:
         jr      c,      -               ; keep reading if codes 1-31
         jr      z,      -               ; also, keep reading if space
 
+        ret
+
+        ;-----------------------------------------------------------------------
+        ; skip over a comment until the newline / end-of-line:
+        ;
+@skip:  call    readChar                ; read a character (returns z-flag)
+        jr      nz,     @skip           ; read until newline / end-of-file
+        
         ret
 
 readChar:
@@ -663,13 +676,13 @@ pushLabel:
         ret
 
 
-skipToParseExpr:
+nextExpr:
 ;===============================================================================
 ; skip space before parsing an expression:
 ; (see parseExpr below for parameters)
 ;
 ;-------------------------------------------------------------------------------
-        call    skipSpace
+        call    nextWord
 
         ; since the expression is expected/required,
         ; newline or end-of-file is an error:
@@ -745,7 +758,7 @@ tokenExpr:
 -       dec     HL                      ; move to next token space
         ld      [HL],   A               ; push token in A to expr
 
-        call    skipSpace               ; read first character of the next word
+        call    nextWord                ; read first character of the next word
         jp      z,      errExpr         ; newline/EOF = unexpected expr end!
 
         ; an expression must begin with either a value,
@@ -770,7 +783,7 @@ tokenExpr:
 +       dec     HL                      ; move to next token space
         ld      [HL],   A               ; push a unary operator token
 
-        call    skipSpace               ; read first character of the next word
+        call    nextWord                ; read first character of the next word
         jp      z,      errExpr         ; newline/EOF = unexpected expr end!
 
         ; hexadecimal literal?
@@ -842,10 +855,8 @@ tokenExpr:
         ; a value has been added, check for the presence of an operator:
         ; if there's no operator, the expression ends here
         ;
-@op:    call    skipSpace               ; read first character of the next word
+@op:    call    nextWord                ; read first character of the next word
         jr      z,      @end            ; end expr at newline / end-of-file
-
-        ; TODO: unexpected comment!
 
         cp      CHAR_OP_ADD             ; add operator?
         jr      z,      -               ; push token to heap, find next operand

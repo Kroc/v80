@@ -181,7 +181,7 @@ parseInstruction:
 
         ; consume whitespace before parsing expression, since the parameter
         ; is required, this will error on newline or end-of-file before expr
-        jp      skipToParseExpr
+        jp      nextExpr
 
         ;=======================================================================
         ; handle IX|IY opcodes: (bit 5 chooses between IX & IY)
@@ -231,7 +231,7 @@ parseInstruction:
 
         ; consume whitespace before parsing expression, since the parameter
         ; is required, this will error on newline or end-of-file before expr
-        jp      skipToParseExpr
+        jp      nextExpr
 
         ;-----------------------------------------------------------------------
         ; handle two-parameter instruction special case:
@@ -243,7 +243,7 @@ parseInstruction:
 
         ; consume whitespace before parsing expression, since the parameter
         ; is required, this will error on newline or end-of-file before expr
-        call    skipToParseExpr
+        call    nextExpr
 
         ; the first expression will read to the first character of the next
         ; word following the expression, or a newline / end-of-file. since
@@ -273,7 +273,7 @@ parseInstruction:
 
         ; consume whitespace before parsing expression, since the parameter
         ; is required, this will error on newline or end-of-file before expr
-        call    skipToParseExpr
+        call    nextExpr
 
         pop     BC
         ld      A,      C
