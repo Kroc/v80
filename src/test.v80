@@ -622,3 +622,15 @@
 	res7.e			; res	7,	E
 	res7.h			; res	7,	H
 	res7.l			; res	7,	L
+
+	ret			; ret
+	ret?c			; ret	c
+	ret?m			; ret	m
+	ret?nc			; ret	nc
+	ret?nz			; ret	nz
+	ret?p			; ret	p
+	ret?pe			; ret	pe
+	ret?po			; ret	po
+	ret?z			; ret	z
+	reti			; reti
+	retn			; retn

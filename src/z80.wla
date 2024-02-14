@@ -1588,6 +1588,7 @@ opcodes:
         ;=======================================================================
 @r      .BYTE   'e'|AND
         .DATA   's', (@res-CADDR)-1
+        .DATA   't', (@ret-CADDR)-1
         ; ...
         .BYTE   ERR
         ;=======================================================================
@@ -1757,6 +1758,24 @@ opcodes:
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @res7hl .BYTE   'l', $86+(8*7),         OP_CB   ; BIT7*HL       |    CB BE
+        .BYTE   ERR
+        ;=======================================================================
+@ret    .BYTE   END, $c9,               OP      ; RET           |    C9
+        .BYTE   'i', $4d,               OP_ED   ; RETI          | ED 4D
+        .BYTE   'n', $45,               OP_ED   ; RETN          | ED 45
+        .BYTE   '?'|AND
+        .BYTE   'c', $d8,               OP      ; RET?c         |    D8
+        .BYTE   'm', $f8,               OP      ; RET?m         |    F8
+        .BYTE   'z', $c8,               OP      ; RET?z         |    C8
+        .DATA   'p', (@ret_p-CADDR)-1
+        .BYTE   'n'|AND 
+        .BYTE   'z', $c0,               OP      ; RET?nz        |    C0
+        .BYTE   'c', $d0,               OP      ; RET?nc        |    D0
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@ret_p  .BYTE   END, $f0,               OP      ; RET?p         |    F0
+        .BYTE   'o', $e0,               OP      ; RET?po        |    E0
+        .BYTE   'e', $e8,               OP      ; RET?pe        |    E8
         .BYTE   ERR
         ;=======================================================================
 .ENDB
