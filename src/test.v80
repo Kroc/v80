@@ -634,3 +634,27 @@
 	ret?z			; ret	z
 	reti			; reti
 	retn			; retn
+
+	rl*hl			; rl	[HL]
+	rl*ix	$aa		; rl	[IX+$aa]
+	rl*iy	$aa		; rl	[IY+$aa]
+	rl.a			; rl.a
+	rl.b			; rl.b
+	rl.c			; rl.c
+	rl.d			; rl.d
+	rl.e			; rl.e
+	rl.h			; rl.h
+	rl.l			; rl.l
+	rla			; rla
+	rlc*hl			; rlc	[HL]
+	rlc*ix	$aa		; rlc	[IX+$aa]
+	rlc*iy	$aa		; rlc	[IY+$aa]
+	rlc.a			; rlc	A
+	rlc.b			; rlc	B
+	rlc.c			; rlc	C
+	rlc.d			; rlc	D
+	rlc.e			; rlc	E
+	rlc.h			; rlc	H
+	rlc.l			; rlc	L
+	rlca			; rlca
+	rld			; rld

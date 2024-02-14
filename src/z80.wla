@@ -1586,10 +1586,13 @@ opcodes:
 @pophl  .BYTE   'l', $e1,               OP      ; POP.HL        |    E1
         .BYTE   ERR
         ;=======================================================================
-@r      .BYTE   'e'|AND
-        .DATA   's', (@res-CADDR)-1
+@r      .DATA   'e', (@re-CADDR)-1
+        .DATA   'l', (@rl-CADDR)-1
+        ;...
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@re     .DATA   's', (@res-CADDR)-1
         .DATA   't', (@ret-CADDR)-1
-        ; ...
         .BYTE   ERR
         ;=======================================================================
 @res    .DATA   '7', (@res7-CADDR)-1
@@ -1768,7 +1771,7 @@ opcodes:
         .BYTE   'm', $f8,               OP      ; RET?m         |    F8
         .BYTE   'z', $c8,               OP      ; RET?z         |    C8
         .DATA   'p', (@ret_p-CADDR)-1
-        .BYTE   'n'|AND 
+        .BYTE   'n'|AND
         .BYTE   'z', $c0,               OP      ; RET?nz        |    C0
         .BYTE   'c', $d0,               OP      ; RET?nc        |    D0
         .BYTE   ERR
@@ -1776,6 +1779,52 @@ opcodes:
 @ret_p  .BYTE   END, $f0,               OP      ; RET?p         |    F0
         .BYTE   'o', $e0,               OP      ; RET?po        |    E0
         .BYTE   'e', $e8,               OP      ; RET?pe        |    E8
+        .BYTE   ERR
+        ;=======================================================================
+@rl     .BYTE   'a', $17,               OP      ; RLA           |    17
+        .DATA   '*', (@rl_m-CADDR)-1
+        .DATA   '.', (@rl_r-CADDR)-1
+        .DATA   'c', (@rlc-CADDR)-1
+        .BYTE   'd', $6f,               OP_ED   ; RLD           | ED 6F
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@rl_m   .DATA   'h', (@rl_hl-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $16,               OP_CBXO ; RL*IX $nn     | DD CB nn 16
+        .BYTE   'y', $16,               OP_CBYO ; RL*IY $nn     | FD CB nn 16
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@rl_hl  .BYTE   'l', $16,               OP_CB   ; RL*HL         | CB 16
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@rl_r   .BYTE   'a', $10+REG_A,         OP_CB   ; RL.A          | CB 17
+        .BYTE   'b', $10+REG_B,         OP_CB   ; RL.B          | CB 10
+        .BYTE   'c', $10+REG_C,         OP_CB   ; RL.C          | CB 11
+        .BYTE   'd', $10+REG_D,         OP_CB   ; RL.D          | CB 12
+        .BYTE   'e', $10+REG_E,         OP_CB   ; RL.E          | CB 13
+        .BYTE   'h', $10+REG_H,         OP_CB   ; RL.H          | CB 14
+        .BYTE   'l', $10+REG_L,         OP_CB   ; RL.L          | CB 15
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@rlc    .BYTE   'a', $07,               OP      ; RLC           |    07
+        .DATA   '*', (@rlc_m-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $00+REG_A,         OP_CB   ; RLC.A         | CB 07
+        .BYTE   'b', $00+REG_B,         OP_CB   ; RLC.B         | CB 00
+        .BYTE   'c', $00+REG_C,         OP_CB   ; RLC.C         | CB 01
+        .BYTE   'd', $00+REG_D,         OP_CB   ; RLC.D         | CB 02
+        .BYTE   'e', $00+REG_E,         OP_CB   ; RLC.E         | CB 03
+        .BYTE   'h', $00+REG_H,         OP_CB   ; RLC.H         | CB 04
+        .BYTE   'l', $00+REG_L,         OP_CB   ; RLC.L         | CB 05
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@rlc_m  .DATA   'h', (@rlc_hl-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $06,               OP_CBXO ; RLC*IX $aa    | DD CB $nn 06
+        .BYTE   'y', $06,               OP_CBYO ; RLC*IY $aa    | FD CB $nn 06
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@rlc_hl .BYTE   'l', $06,               OP_CB   ; RLC*HL        | CB 06
         .BYTE   ERR
         ;=======================================================================
 .ENDB
