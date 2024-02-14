@@ -295,4 +295,202 @@
 	ld*hl.h			; ld	[HL],	H
 	ld*hl.l			; ld	[HL],	L
 	ld*ix	$aa	$bb	; ld	[IX+$aa],	$bb
-	ld*iy	$aa		; ld	[IY+$aa],	$bb
+	ld*ix.a	$aa		; ld	[IX+$aa],	A
+	ld*ix.b	$aa		; ld	[IX+$aa],	B
+	ld*ix.c	$aa		; ld	[IX+$aa],	C
+	ld*ix.d	$aa		; ld	[IX+$aa],	D
+	ld*ix.e	$aa		; ld	[IX+$aa],	E
+	ld*ix.h	$aa		; ld	[IX+$aa],	H
+	ld*ix.l	$aa		; ld	[IX+$aa],	L
+	ld*iy	$aa	$bb	; ld	[IY+$aa],	$bb
+	ld*iy.a	$aa		; ld	[IY+$aa],	A
+	ld*iy.b	$aa		; ld	[IY+$aa],	B
+	ld*iy.c	$aa		; ld	[IY+$aa],	C
+	ld*iy.d	$aa		; ld	[IY+$aa],	D
+	ld*iy.e	$aa		; ld	[IY+$aa],	E
+	ld*iy.h	$aa		; ld	[IY+$aa],	H
+	ld*iy.l	$aa		; ld	[IY+$aa],	L
+	ld*.a	$		; ld	[$1234],	A
+	ld*.bc	$		; ld	[$1234],	BC
+	ld*.de	$		; ld	[$1234],	DE
+	ld*.hl	$		; ld	[$1234],	HL
+	ld*.ix	$		; ld	[$1234],	IX
+	ld*.iy	$		; ld	[$1234],	IY
+	ld*.sp	$		; ld	[$1234],	SP
+
+	ld.bc*	$		; ld	BC,	[$1234]
+	ld.bc	$		; ld	BC,	$1234
+	ld.de*	$		; ld	DE,	[$1234]
+	ld.de	$		; ld	DE,	$1234
+	ld.hl*	$		; ld	HL,	[$1234]
+	ld.hl	$		; ld	HL,	$1234
+	ld.ix*	$		; ld	IX,	[$1234]
+	ld.ix	$		; ld	IX,	$1234
+	ld.iy*	$		; ld	IY,	[$1234]
+	ld.iy	$		; ld	IY,	$1234
+	ld.sp*	$		; ld	SP,	[$1234]
+	ld.sp.hl		; ld	SP,	HL
+	ld.sp.ix		; ld	SP,	IX
+	ld.sp.iy		; ld	SP,	IY
+	ld.sp	$		; ld	SP,	$1234
+
+	ld.a*bc			; ld	A,	[BC]
+	ld.a*de			; ld	A,	[DE]
+	ld.a*hl			; ld	A,	[HL]
+	ld.a*ix	$aa		; ld	A,	[IX+$aa]
+	ld.a*iy	$aa		; ld	A,	[IY+$aa]
+	ld.a*	$		; ld	A,	[$1234]
+	ld.a	$aa		; ld	A,	$aa
+	ld.a.a			; ld	A,	A
+	ld.a.b			; ld	A,	B
+	ld.a.c			; ld	A,	C
+	ld.a.d			; ld	A,	D
+	ld.a.e			; ld	A,	E
+	ld.a.h			; ld	A,	H
+	ld.a.l			; ld	A,	L
+	ld.a.ixl		; ld	A,	IXL
+	ld.a.ixh		; ld	A,	IXH
+	ld.a.iyl		; ld	A,	IYL
+	ld.a.iyh		; ld	A,	IYH
+	ld.a.i			; ld	A,	I
+	ld.a.r			; ld	A,	R
+
+	ld.b*hl			; ld	B,	[HL]
+	ld.b*ix	$aa		; ld	B,	[IX+$aa]
+	ld.b*iy	$aa		; ld	B,	[IY+$aa]
+	ld.b	$aa		; ld	B,	$aa
+	ld.b.a			; ld	B,	A
+	ld.b.b			; ld	B,	B
+	ld.b.c			; ld	B,	C
+	ld.b.d			; ld	B,	D
+	ld.b.e			; ld	B,	E
+	ld.b.h			; ld	B,	H
+	ld.b.l			; ld	B,	L
+	ld.b.ixl		; ld	B,	IXL
+	ld.b.ixh		; ld	B,	IXH
+	ld.b.iyl		; ld	B,	IYL
+	ld.b.iyh		; ld	B,	IYH
+
+	ld.c*hl			; ld	C,	[HL]
+	ld.c*ix	$aa		; ld	C,	[IX+$aa]
+	ld.c*iy	$aa		; ld	C,	[IY+$aa]
+	ld.c	$aa		; ld	C,	$aa
+	ld.c.a			; ld	C,	A
+	ld.c.b			; ld	C,	B
+	ld.c.c			; ld	C,	C
+	ld.c.d			; ld	C,	D
+	ld.c.e			; ld	C,	E
+	ld.c.h			; ld	C,	H
+	ld.c.l			; ld	C,	L
+	ld.c.ixl		; ld	C,	IXL
+	ld.c.ixh		; ld	C,	IXH
+	ld.c.iyl		; ld	C,	IYL
+	ld.c.iyh		; ld	C,	IYH
+
+	ld.d*hl			; ld	D,	[HL]
+	ld.d*ix	$aa		; ld	D,	[IX+$aa]
+	ld.d*iy	$aa		; ld	D,	[IY+$aa]
+	ld.d	$aa		; ld	D,	$aa
+	ld.d.a			; ld	D,	A
+	ld.d.b			; ld	D,	B
+	ld.d.c			; ld	D,	C
+	ld.d.d			; ld	D,	D
+	ld.d.e			; ld	D,	E
+	ld.d.h			; ld	D,	H
+	ld.d.l			; ld	D,	L
+	ld.d.ixl		; ld	D,	IXL
+	ld.d.ixh		; ld	D,	IXH
+	ld.d.iyl		; ld	D,	IYL
+	ld.d.iyh		; ld	D,	IYH
+
+	ld.e*hl			; ld	E,	[HL]
+	ld.e*ix	$aa		; ld	E,	[IX+$aa]
+	ld.e*iy	$aa		; ld	E,	[IY+$aa]
+	ld.e	$aa		; ld	E,	$aa
+	ld.e.a			; ld	E,	A
+	ld.e.b			; ld	E,	B
+	ld.e.c			; ld	E,	C
+	ld.e.d			; ld	E,	D
+	ld.e.e			; ld	E,	E
+	ld.e.h			; ld	E,	H
+	ld.e.l			; ld	E,	L
+	ld.e.ixl		; ld	E,	IXL
+	ld.e.ixh		; ld	E,	IXH
+	ld.e.iyl		; ld	E,	IYL
+	ld.e.iyh		; ld	E,	IYH
+
+	ld.h*hl			; ld	H,	[HL]
+	ld.h*ix	$aa		; ld	H,	[IX+$aa]
+	ld.h*iy	$aa		; ld	H,	[IY+$aa]
+	ld.h	$aa		; ld	H,	$aa
+	ld.h.a			; ld	H,	A
+	ld.h.b			; ld	H,	B
+	ld.h.c			; ld	H,	C
+	ld.h.d			; ld	H,	D
+	ld.h.e			; ld	H,	E
+	ld.h.h			; ld	H,	H
+	ld.h.l			; ld	H,	L
+	ld.h.ixl		; ld	H,	IXL
+	ld.h.ixh		; ld	H,	IXH
+	ld.h.iyl		; ld	H,	IYL
+	ld.h.iyh		; ld	H,	IYH
+
+	ld.l*hl			; ld	L,	[HL]
+	ld.l*ix	$aa		; ld	L,	[IX+$aa]
+	ld.l*iy	$aa		; ld	L,	[IY+$aa]
+	ld.l	$aa		; ld	L,	$aa
+	ld.l.a			; ld	L,	A
+	ld.l.b			; ld	L,	B
+	ld.l.c			; ld	L,	C
+	ld.l.d			; ld	L,	D
+	ld.l.e			; ld	L,	E
+	ld.l.h			; ld	L,	H
+	ld.l.l			; ld	L,	L
+	ld.l.ixl		; ld	L,	IXL
+	ld.l.ixh		;@ld_ix ld	L,	IXH
+	ld.l.iyl		; ld	L,	IYL
+	ld.l.iyh		; ld	L,	IYH
+
+	ld.ixh	$aa		; ld	IXH,	$aa
+	ld.ixh.a		; ld	IXH,	A
+	ld.ixh.b		; ld	IXH,	B
+	ld.ixh.c		; ld	IXH,	C
+	ld.ixh.d		; ld	IXH,	D
+	ld.ixh.e		; ld	IXH,	E
+	ld.ixh.ixh		; ld	IXH,	IXH
+	ld.ixh.ixl		; ld	IXH,	IXL
+	ld.ixl	$aa		; ld	IXL,	$aa
+	ld.ixl.a		; ld	IXL,	A
+	ld.ixl.b		; ld	IXL,	B
+	ld.ixl.c		; ld	IXL,	C
+	ld.ixl.d		; ld	IXL,	D
+	ld.ixl.e		; ld	IXL,	E
+	ld.ixl.ixh		; ld	IXL,	IXH
+	ld.ixl.ixl		; ld	IXL,	IXL
+
+	ld.iyh	$aa		; ld	IYH,	$aa
+	ld.iyh.a		; ld	IYH,	A
+	ld.iyh.b		; ld	IYH,	B
+	ld.iyh.c		; ld	IYH,	C
+	ld.iyh.d		; ld	IYH,	D
+	ld.iyh.e		; ld	IYH,	E
+	ld.iyh.iyh		; ld	IYH,	IYH
+	ld.iyh.iyl		; ld	IYH,	IYL
+	ld.iyl	$aa		; ld	IYL,	$aa
+	ld.iyl.a		; ld	IYL,	A
+	ld.iyl.b		; ld	IYL,	B
+	ld.iyl.c		; ld	IYL,	C
+	ld.iyl.d		; ld	IYL,	D
+	ld.iyl.e		; ld	IYL,	E
+	ld.iyl.iyh		; ld	IYL,	IYH
+	ld.iyl.iyl		; ld	IYL,	IYL
+
+	ld.i.a			; ld	I,	A
+	ld.r.a			; ld	R,	A
+
+	ldd			; ldd
+	lddr			; lddr
+
+	ldi			; ldi
+	ldir			; ldir
+
