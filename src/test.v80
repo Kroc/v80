@@ -494,3 +494,7 @@
 	ldi			; ldi
 	ldir			; ldir
 
+	neg			; neg
+
+	nop			; nop
+
