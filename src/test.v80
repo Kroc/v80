@@ -658,3 +658,26 @@
 	rlc.l			; rlc	L
 	rlca			; rlca
 	rld			; rld
+
+	rr*hl			; rr	[HL]
+	rr*ix	$aa		; rr	[IX+$aa]
+	rr.a			; rr	A
+	rr.b			; rr	B
+	rr.c			; rr	C
+	rr.d			; rr	D
+	rr.e			; rr	E
+	rr.h			; rr	H
+	rr.l			; rr	L
+	rra			; rra
+	rrc*hl			; rrc	[HL]
+	rrc*ix	$aa		; rrc	[IX+$aa]
+	rrc*iy	$aa		; rrc	[IY+$aa]
+	rrc.a			; rrc	A
+	rrc.b			; rrc	B
+	rrc.c			; rrc	C
+	rrc.d			; rrc	D
+	rrc.e			; rrc	E
+	rrc.h			; rrc	H
+	rrc.l			; rrc	L
+	rrca			; rrca
+	rrd			; rrd
