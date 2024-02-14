@@ -498,3 +498,32 @@
 
 	nop			; nop
 
+	or*hl			; or	A,	[HL]
+	or*ix	$aa		; or	A,	[IX+$aa]
+	or*iy	$aa		; or	A,	[IX+$aa]
+	or	$aa		; or	A,	$aa
+	or.a			; or	A,	A
+	or.b			; or	A,	B
+	or.c			; or	A,	C
+	or.d			; or	A,	D
+	or.e			; or	A,	E
+	or.h			; or	A,	H
+	or.l			; or	A,	L
+	or.ixh			; or	A,	IXH
+	or.ixl			; or	A,	IXL
+	or.iyh			; or	A,	IYH
+	or.iyl			; or	A,	IYL
+
+	out*.a	$aa		; out	[$aa],	A
+	out*c.a			; out	[C],	A
+	out*c.b			; out	[C],	B
+	out*c.c			; out	[C],	C
+	out*c.d			; out	[C],	D
+	out*c.e			; out	[C],	E
+	out*c.h			; out	[C],	H
+	out*c.l			; out	[C],	L
+
+	outd			; outd
+	otdr			; otdr
+	outi			; outi
+	otir			; otir

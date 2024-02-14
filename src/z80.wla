@@ -384,6 +384,7 @@ opcodes:
         .DATA   'j', (@j-CADDR)-1               ; = J...?
         .DATA   'l', (@l-CADDR)-1               ; = L...?
         .DATA   'n', (@n-CADDR)-1               ; = N...?
+        .DATA   'o', (@o-CADDR)-1               ; = O...?
         ; ...
         .BYTE   ERR
         ;=======================================================================
@@ -1469,8 +1470,69 @@ opcodes:
 @n      .DATA   'e', (@ne-CADDR)-1
         .BYTE   'o'|AND
         .BYTE   'p', $00                OP      ; NOP           |    00
+        .BYTE   ERR
         ;-----------------------------------------------------------------------
 @ne     .BYTE   'g', $44                OP_ED   ; NEG           | ED 44
+        .BYTE   ERR
+        ;=======================================================================
+@o      .DATA   't', (@ot-CADDR)-1
+        .DATA   'u', (@out-CADDR)-1
+        .BYTE   'r'|AND
+        .BYTE   END, $f6                OP_B    ; OR $nn        |    F6 nn
+        .DATA   '.', (@or_r-CADDR)-1
+        .BYTE   '*'|AND
+        .DATA   'h', (@or_hl-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $b6,               OP_IXO  ; OR*IX $nn     | DD B6 nn
+        .BYTE   'y', $b6,               OP_IYO  ; OR*IY $nn     | FD B6 nn
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@or_hl  .BYTE   'l', $b6                OP      ; OR*HL         |    B6
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@or_r   .BYTE   'a', $b0+REG_A,         OP      ; OR.A          |    B7
+        .BYTE   'b', $b0+REG_B,         OP      ; OR.B          |    B0
+        .BYTE   'c', $b0+REG_C,         OP      ; OR.C          |    B1
+        .BYTE   'd', $b0+REG_D,         OP      ; OR.D          |    B2
+        .BYTE   'e', $b0+REG_E,         OP      ; OR.E          |    B3
+        .BYTE   'h', $b0+REG_H,         OP      ; OR.H          |    B4
+        .BYTE   'l', $b0+REG_L,         OP      ; OR.L          |    B5
+        .BYTE   'i'|AND
+        .DATA   'x', (@or_rx-CADDR)-1
+        .BYTE   'y'|AND
+        .BYTE   'h', $b0+REG_IH,        OP_IY   ; OR.IYH        | FD B4
+        .BYTE   'l', $b0+REG_IL,        OP_IY   ; OR.IYL        | FD B5
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@or_rx  .BYTE   'h', $b0+REG_IH,        OP_IX   ; OR.IXH        | DD B4
+        .BYTE   'l', $b0+REG_IL,        OP_IX   ; OR.IXL        | DD B5
+        .BYTE   ERR
+        ;=======================================================================
+@ot     .DATA   'd', (@otd-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'r', $b3,               OP_ED   ; OTIR          | ED B3
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@otd    .BYTE   'r', $bb,               OP_ED   ; OTDR          | ED BB
+        .BYTE   ERR
+        ;=======================================================================
+@out    .BYTE   't'|AND
+        .BYTE   'd', $ab,               OP_ED   ; OUTD          | ED AB
+        .BYTE   'i', $a3,               OP_ED   ; OUTI          | ED A3
+        .BYTE   '*'|AND
+        .DATA   '.', (@out_nn-CADDR)-1
+        .BYTE   'c'|AND
+        .BYTE   '.'|AND
+        .BYTE   'a', $79,               OP_ED   ; OUT*C.A       | ED 79
+        .BYTE   'b', $41,               OP_ED   ; OUT*C.B       | ED 41
+        .BYTE   'c', $49,               OP_ED   ; OUT*C.C       | ED 49
+        .BYTE   'd', $51,               OP_ED   ; OUT*C.D       | ED 51
+        .BYTE   'e', $59,               OP_ED   ; OUT*C.E       | ED 59
+        .BYTE   'h', $61,               OP_ED   ; OUT*C.H       | ED 61
+        .BYTE   'l', $69,               OP_ED   ; OUT*C.L       | ED 69
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@out_nn .BYTE   'a', $d3,               OP_B    ; OUT*.A $nn    |    D3 nn
         .BYTE   ERR
         ;=======================================================================
 .ENDB
