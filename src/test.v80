@@ -527,3 +527,17 @@
 	otdr			; otdr
 	outi			; outi
 	otir			; otir
+
+	push.af			; push	AF
+	push.bc			; push	BC
+	push.de			; push	DE
+	push.hl			; push	HL
+	push.ix			; push	IX
+	push.iy			; push	IY
+
+	pop.af			; pop	AF
+	pop.bc			; pop	BC
+	pop.de			; pop	DE
+	pop.hl			; pop	HL
+	pop.ix			; pop	IX
+	pop.iy			; pop	IY

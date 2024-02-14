@@ -385,6 +385,7 @@ opcodes:
         .DATA   'l', (@l-CADDR)-1               ; = L...?
         .DATA   'n', (@n-CADDR)-1               ; = N...?
         .DATA   'o', (@o-CADDR)-1               ; = O...?
+        .DATA   'p', (@p-CADDR)-1               ; = P...?
         ; ...
         .BYTE   ERR
         ;=======================================================================
@@ -1533,6 +1534,55 @@ opcodes:
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @out_nn .BYTE   'a', $d3,               OP_B    ; OUT*.A $nn    |    D3 nn
+        .BYTE   ERR
+        ;=======================================================================
+@p      .DATA   'o', (@pop-CADDR)-1
+        .BYTE   'u'|AND
+        .BYTE   's'|AND
+        .BYTE   'h'|AND
+        .BYTE   '.'|AND
+        .DATA   'a', (@pushaf-CADDR)-1
+        .DATA   'b', (@pushbc-CADDR)-1
+        .DATA   'd', (@pushde-CADDR)-1
+        .DATA   'h', (@pushhl-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $e5,               OP_IX   ; PUSH.IX       | DD E5
+        .BYTE   'y', $e5,               OP_IY   ; PUSH.IY       | FD E5
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@pushaf .BYTE   'f', $f5,               OP      ; PUSH.AF       |    F5
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@pushbc .BYTE   'c', $c5,               OP      ; PUSH.BC       |    C5
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@pushde .BYTE   'e', $d5,               OP      ; PUSH.DE       |    D5
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@pushhl .BYTE   'l', $e5,               OP      ; PUSH.HL       |    E5
+        .BYTE   ERR
+        ;=======================================================================
+@pop    .BYTE   'p'|AND
+        .BYTE   '.'|AND
+        .DATA   'a', (@popaf-CADDR)-1
+        .DATA   'b', (@popbc-CADDR)-1
+        .DATA   'd', (@popde-CADDR)-1
+        .DATA   'h', (@pophl-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $e1,               OP_IX   ; POP.IX        | DD E1
+        .BYTE   'y', $e1,               OP_IY   ; POP.IY        | FD E1
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@popaf  .BYTE   'f', $f1,               OP      ; POP.AF        |    F1
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@popbc  .BYTE   'c', $c1,               OP      ; POP.BC        |    C1
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@popde  .BYTE   'e', $d1,               OP      ; POP.DE        |    D1
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@pophl  .BYTE   'l', $e1,               OP      ; POP.HL        |    E1
         .BYTE   ERR
         ;=======================================================================
 .ENDB
