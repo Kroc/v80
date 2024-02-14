@@ -1589,11 +1589,45 @@ opcodes:
 @r      .DATA   'e', (@re-CADDR)-1
         .DATA   'l', (@rl-CADDR)-1
         .DATA   'r', (@rr-CADDR)-1
-        ;...
+        .BYTE   's'|AND
+        .BYTE   't'|AND
+        .BYTE   '0', $c7,               OP      ; RST0          |    C7
+        .DATA   '1', (@rst1-CADDR)-1
+        .DATA   '2', (@rst2-CADDR)-1
+        .DATA   '3', (@rst3-CADDR)-1
+        .BYTE   '8', $cf,               OP      ; RST8          |    CF
         .BYTE   ERR
         ;-----------------------------------------------------------------------
+@rst1   .BYTE   '0', $d7,               OP      ; RST10         |    D7
+        .BYTE   '8', $df,               OP      ; RST18         |    DF
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@rst2   .BYTE   '0', $e7,               OP      ; RST20         |    E7
+        .BYTE   '8', $ef,               OP      ; RST28         |    EF
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@rst3   .BYTE   '0', $f7,               OP      ; RST30         |    F7
+        .BYTE   '8', $ff,               OP      ; RST38         |    FF
+        .BYTE   ERR
+        ;=======================================================================
 @re     .DATA   's', (@res-CADDR)-1
-        .DATA   't', (@ret-CADDR)-1
+        .BYTE   't'|AND
+        .BYTE   END, $c9,               OP      ; RET           |    C9
+        .BYTE   'i', $4d,               OP_ED   ; RETI          | ED 4D
+        .BYTE   'n', $45,               OP_ED   ; RETN          | ED 45
+        .BYTE   '?'|AND
+        .BYTE   'c', $d8,               OP      ; RET?c         |    D8
+        .BYTE   'm', $f8,               OP      ; RET?m         |    F8
+        .BYTE   'z', $c8,               OP      ; RET?z         |    C8
+        .DATA   'p', (@ret_p-CADDR)-1
+        .BYTE   'n'|AND
+        .BYTE   'z', $c0,               OP      ; RET?nz        |    C0
+        .BYTE   'c', $d0,               OP      ; RET?nc        |    D0
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@ret_p  .BYTE   END, $f0,               OP      ; RET?p         |    F0
+        .BYTE   'o', $e0,               OP      ; RET?po        |    E0
+        .BYTE   'e', $e8,               OP      ; RET?pe        |    E8
         .BYTE   ERR
         ;=======================================================================
 @res    .DATA   '7', (@res7-CADDR)-1
@@ -1764,24 +1798,6 @@ opcodes:
 @res7hl .BYTE   'l', $86+(8*7),         OP_CB   ; BIT7*HL       |    CB BE
         .BYTE   ERR
         ;=======================================================================
-@ret    .BYTE   END, $c9,               OP      ; RET           |    C9
-        .BYTE   'i', $4d,               OP_ED   ; RETI          | ED 4D
-        .BYTE   'n', $45,               OP_ED   ; RETN          | ED 45
-        .BYTE   '?'|AND
-        .BYTE   'c', $d8,               OP      ; RET?c         |    D8
-        .BYTE   'm', $f8,               OP      ; RET?m         |    F8
-        .BYTE   'z', $c8,               OP      ; RET?z         |    C8
-        .DATA   'p', (@ret_p-CADDR)-1
-        .BYTE   'n'|AND
-        .BYTE   'z', $c0,               OP      ; RET?nz        |    C0
-        .BYTE   'c', $d0,               OP      ; RET?nc        |    D0
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
-@ret_p  .BYTE   END, $f0,               OP      ; RET?p         |    F0
-        .BYTE   'o', $e0,               OP      ; RET?po        |    E0
-        .BYTE   'e', $e8,               OP      ; RET?pe        |    E8
-        .BYTE   ERR
-        ;=======================================================================
 @rl     .BYTE   'a', $17,               OP      ; RLA           |    17
         .DATA   '*', (@rl_m-CADDR)-1
         .DATA   '.', (@rl_r-CADDR)-1
@@ -1873,4 +1889,5 @@ opcodes:
         ;-----------------------------------------------------------------------
 @rrc_hl .BYTE   'l', $0e,               OP_CB   ; RRC*HL        | CB 0e
         .BYTE   ERR
+        ;=======================================================================
 .ENDB
