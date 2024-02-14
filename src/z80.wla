@@ -386,6 +386,7 @@ opcodes:
         .DATA   'n', (@n-CADDR)-1               ; = N...?
         .DATA   'o', (@o-CADDR)-1               ; = O...?
         .DATA   'p', (@p-CADDR)-1               ; = P...?
+        .DATA   'r', (@r-CADDR)-1               ; = R...?
         ; ...
         .BYTE   ERR
         ;=======================================================================
@@ -1583,6 +1584,179 @@ opcodes:
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @pophl  .BYTE   'l', $e1,               OP      ; POP.HL        |    E1
+        .BYTE   ERR
+        ;=======================================================================
+@r      .BYTE   'e'|AND
+        .DATA   's', (@res-CADDR)-1
+        ; ...
+        .BYTE   ERR
+        ;=======================================================================
+@res    .DATA   '7', (@res7-CADDR)-1
+        .DATA   '6', (@res6-CADDR)-1
+        .DATA   '5', (@res5-CADDR)-1
+        .DATA   '4', (@res4-CADDR)-1
+        .DATA   '3', (@res3-CADDR)-1
+        .DATA   '2', (@res2-CADDR)-1
+        .DATA   '1', (@res1-CADDR)-1
+        .BYTE   '0'|AND
+        .DATA   '*', (@res0m-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $80+(8*0)+REG_A,   OP_CB   ; RES0.A        |    CB 87
+        .BYTE   'b', $80+(8*0)+REG_B,   OP_CB   ; RES0.B        |    CB 80
+        .BYTE   'c', $80+(8*0)+REG_C,   OP_CB   ; RES0.C        |    CB 81
+        .BYTE   'd', $80+(8*0)+REG_D,   OP_CB   ; RES0.D        |    CB 82
+        .BYTE   'e', $80+(8*0)+REG_E,   OP_CB   ; RES0.E        |    CB 83
+        .BYTE   'h', $80+(8*0)+REG_H,   OP_CB   ; RES0.H        |    CB 84
+        .BYTE   'l', $80+(8*0)+REG_L,   OP_CB   ; RES0.L        |    CB 85
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@res0m  .DATA   'h', (@res0hl-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $86+(8*0),         OP_CBXO ; RES0*IX $nn   | DD CB nn 86
+        .BYTE   'y', $86+(8*0),         OP_CBYO ; RES0*IY $nn   | FD CB nn 86
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@res0hl .BYTE   'l', $86+(8*0),         OP_CB   ; RES0*HL       |    CB 86
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@res1   .DATA   '*', (@res1m-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $80+(8*1)+REG_A    OP_CB   ; RES1.A        |    CB 8F
+        .BYTE   'b', $80+(8*1)+REG_B    OP_CB   ; RES1.B        |    CB 88
+        .BYTE   'c', $80+(8*1)+REG_C    OP_CB   ; RES1.C        |    CB 89
+        .BYTE   'd', $80+(8*1)+REG_D    OP_CB   ; RES1.D        |    CB 8A
+        .BYTE   'e', $80+(8*1)+REG_E    OP_CB   ; RES1.E        |    CB 8B
+        .BYTE   'h', $80+(8*1)+REG_H    OP_CB   ; RES1.H        |    CB 8C
+        .BYTE   'l', $80+(8*1)+REG_L    OP_CB   ; RES1.L        |    CB 8D
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@res1m  .DATA   'h', (@res1hl-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $86+(8*1),         OP_CBXO ; RES1*IX $nn   | DD CB nn 8E
+        .BYTE   'y', $86+(8*1),         OP_CBYO ; RES1*IY $nn   | FD CB nn 8E
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@res1hl .BYTE   'l', $86+(8*1),         OP_CB   ; RES1*HL       |    CB 8E
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@res2   .DATA   '*', (@res2m-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $80+(8*2)+REG_A,   OP_CB   ; RES2.A        |    CB 97
+        .BYTE   'b', $80+(8*2)+REG_B,   OP_CB   ; RES2.B        |    CB 90
+        .BYTE   'c', $80+(8*2)+REG_C,   OP_CB   ; RES2.C        |    CB 91
+        .BYTE   'd', $80+(8*2)+REG_D,   OP_CB   ; RES2.D        |    CB 92
+        .BYTE   'e', $80+(8*2)+REG_E,   OP_CB   ; RES2.E        |    CB 93
+        .BYTE   'h', $80+(8*2)+REG_H,   OP_CB   ; RES2.H        |    CB 94
+        .BYTE   'l', $80+(8*2)+REG_L,   OP_CB   ; RES2.L        |    CB 95
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@res2m  .DATA   'h', (@res2hl-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $86+(8*2),         OP_CBXO ; RES2*IX $nn   | DD CB nn 96
+        .BYTE   'y', $86+(8*2),         OP_CBYO ; RES2*IY $nn   | FD CB nn 96
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@res2hl .BYTE   'l', $86+(8*2),         OP_CB   ; RES2*HL       |    CB 96
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@res3   .DATA   '*', (@res3m-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $80+(8*3)+REG_A,   OP_CB   ; RES3.A        |    CB 9F
+        .BYTE   'b', $80+(8*3)+REG_B,   OP_CB   ; RES3.B        |    CB 98
+        .BYTE   'c', $80+(8*3)+REG_C,   OP_CB   ; RES3.C        |    CB 99
+        .BYTE   'd', $80+(8*3)+REG_D,   OP_CB   ; RES3.D        |    CB 9A
+        .BYTE   'e', $80+(8*3)+REG_E,   OP_CB   ; RES3.E        |    CB 9B
+        .BYTE   'h', $80+(8*3)+REG_H,   OP_CB   ; RES3.H        |    CB 9C
+        .BYTE   'l', $80+(8*3)+REG_L,   OP_CB   ; RES3.L        |    CB 9D
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@res3m  .DATA   'h', (@res3hl-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $86+(8*3),         OP_CBXO ; RES3*IX $nn   | DD CB nn 9E
+        .BYTE   'y', $86+(8*3),         OP_CBYO ; RES3*IY $nn   | FD CB nn 9E
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@res3hl .BYTE   'l', $86+(8*3),         OP_CB   ; RES3*HL       |    CB 9E
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@res4   .DATA   '*', (@res4m-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $80+(8*4)+REG_A,   OP_CB   ; RES4.A        |    CB A7
+        .BYTE   'b', $80+(8*4)+REG_B,   OP_CB   ; RES4.B        |    CB A0
+        .BYTE   'c', $80+(8*4)+REG_C,   OP_CB   ; RES4.C        |    CB A1
+        .BYTE   'd', $80+(8*4)+REG_D,   OP_CB   ; RES4.D        |    CB A2
+        .BYTE   'e', $80+(8*4)+REG_E,   OP_CB   ; RES4.E        |    CB A3
+        .BYTE   'h', $80+(8*4)+REG_H,   OP_CB   ; RES4.H        |    CB A4
+        .BYTE   'l', $80+(8*4)+REG_L,   OP_CB   ; RES4.L        |    CB A5
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@res4m  .DATA   'h', (@res4hl-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $86+(8*4),         OP_CBXO ; RES4*IX $nn   | DD CB nn A6
+        .BYTE   'y', $86+(8*4),         OP_CBYO ; RES4*IY $nn   | FD CB nn A6
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@res4hl .BYTE   'l', $86+(8*4),         OP_CB   ; RES4*HL       |    CB A6
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@res5   .DATA   '*', (@res5m-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $80+(8*5)+REG_A,   OP_CB   ; RES5.A        |    CB AF
+        .BYTE   'b', $80+(8*5)+REG_B,   OP_CB   ; RES5.B        |    CB A8
+        .BYTE   'c', $80+(8*5)+REG_C,   OP_CB   ; RES5.C        |    CB A9
+        .BYTE   'd', $80+(8*5)+REG_D,   OP_CB   ; RES5.D        |    CB AA
+        .BYTE   'e', $80+(8*5)+REG_E,   OP_CB   ; RES5.E        |    CB AB
+        .BYTE   'h', $80+(8*5)+REG_H,   OP_CB   ; RES5.H        |    CB AC
+        .BYTE   'l', $80+(8*5)+REG_L,   OP_CB   ; RES5.L        |    CB AD
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@res5m  .DATA   'h', (@res5hl-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $86+(8*5),         OP_CBXO ; RES5*IX $nn   | DD CB nn AE
+        .BYTE   'y', $86+(8*5),         OP_CBYO ; RES5*IY $nn   | FD CB nn AE
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@res5hl .BYTE   'l', $86+(8*5),         OP_CB   ; RES5*HL       |    CB AE
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@res6   .DATA   '*', (@res6m-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $80+(8*6)+REG_A,   OP_CB   ; RES6.A        |    CB B7
+        .BYTE   'b', $80+(8*6)+REG_B,   OP_CB   ; RES6.B        |    CB B0
+        .BYTE   'c', $80+(8*6)+REG_C,   OP_CB   ; RES6.C        |    CB B1
+        .BYTE   'd', $80+(8*6)+REG_D,   OP_CB   ; RES6.D        |    CB B2
+        .BYTE   'e', $80+(8*6)+REG_E,   OP_CB   ; RES6.E        |    CB B3
+        .BYTE   'h', $80+(8*6)+REG_H,   OP_CB   ; RES6.H        |    CB B4
+        .BYTE   'l', $80+(8*6)+REG_L,   OP_CB   ; RES6.L        |    CB B5
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@res6m  .DATA   'h', (@res6hl-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $86+(8*6),         OP_CBXO ; RES6*IX $nn   | DD CB nn B6
+        .BYTE   'y', $86+(8*6),         OP_CBYO ; RES6*IY $nn   | FD CB nn B6
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@res6hl .BYTE   'l', $86+(8*6),         OP_CB   ; RES6*HL       |    CB B6
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@res7   .DATA   '*', (@res7m-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $80+(8*7)+REG_A,   OP_CB   ; RES7.A        |    CB BF
+        .BYTE   'b', $80+(8*7)+REG_B,   OP_CB   ; RES7.B        |    CB B8
+        .BYTE   'c', $80+(8*7)+REG_C,   OP_CB   ; RES7.C        |    CB B9
+        .BYTE   'd', $80+(8*7)+REG_D,   OP_CB   ; RES7.D        |    CB BA
+        .BYTE   'e', $80+(8*7)+REG_E,   OP_CB   ; RES7.E        |    CB BB
+        .BYTE   'h', $80+(8*7)+REG_H,   OP_CB   ; RES7.H        |    CB BC
+        .BYTE   'l', $80+(8*7)+REG_L,   OP_CB   ; RES7.L        |    CB BD
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@res7m  .DATA   'h', (@res7hl-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $86+(8*7),         OP_CBXO ; RES7*IX $nn   | DD CB nn BE
+        .BYTE   'y', $86+(8*7),         OP_CBYO ; RES7*IY $nn   | FD CB nn BE
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@res7hl .BYTE   'l', $86+(8*7),         OP_CB   ; BIT7*HL       |    CB BE
         .BYTE   ERR
         ;=======================================================================
 .ENDB

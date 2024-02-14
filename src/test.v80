@@ -541,3 +541,84 @@
 	pop.hl			; pop	HL
 	pop.ix			; pop	IX
 	pop.iy			; pop	IY
+
+	res0*hl			; res	0,	[HL]
+	res0*ix	$aa		; res	0,	[IX+$aa]
+	res0*iy	$aa		; res	0,	[IY+$aa]
+	res0.a			; res	0,	A
+	res0.b			; res	0,	B
+	res0.c			; res	0,	C
+	res0.d			; res	0,	D
+	res0.e			; res	0,	E
+	res0.h			; res	0,	H
+	res0.l			; res	0,	L
+	res1*hl			; res	1,	[HL]
+	res1*ix	$aa		; res	1,	[IX+$aa]
+	res1*iy	$aa		; res	1,	[IY+$aa]
+	res1.a			; res	1,	A
+	res1.b			; res	1,	B
+	res1.c			; res	1,	C
+	res1.d			; res	1,	D
+	res1.e			; res	1,	E
+	res1.h			; res	1,	H
+	res1.l			; res	1,	L
+	res2*hl			; res	2,	[HL]
+	res2*ix	$aa		; res	2,	[IX+$aa]
+	res2*iy	$aa		; res	2,	[IY+$aa]
+	res2.a			; res	2,	A
+	res2.b			; res	2,	B
+	res2.c			; res	2,	C
+	res2.d			; res	2,	D
+	res2.e			; res	2,	E
+	res2.h			; res	2,	H
+	res2.l			; res	2,	L
+	res3*hl			; res	3,	[HL]
+	res3*ix	$aa		; res	3,	[IX+$aa]
+	res3*iy	$aa		; res	3,	[IY+$aa]
+	res3.a			; res	3,	A
+	res3.b			; res	3,	B
+	res3.c			; res	3,	C
+	res3.d			; res	3,	D
+	res3.e			; res	3,	E
+	res3.h			; res	3,	H
+	res3.l			; res	3,	L
+	res4*hl			; res	4,	[HL]
+	res4*ix	$aa		; res	4,	[IX+$aa]
+	res4*iy	$aa		; res	4,	[IY+$aa]
+	res4.a			; res	4,	A
+	res4.b			; res	4,	B
+	res4.c			; res	4,	C
+	res4.d			; res	4,	D
+	res4.e			; res	4,	E
+	res4.h			; res	4,	H
+	res4.l			; res	4,	L
+	res5*hl			; res	5,	[HL]
+	res5*ix	$aa		; res	5,	[IX+$aa]
+	res5*iy	$aa		; res	5,	[IY+$aa]
+	res5.a			; res	5,	A
+	res5.b			; res	5,	B
+	res5.c			; res	5,	C
+	res5.d			; res	5,	D
+	res5.e			; res	5,	E
+	res5.h			; res	5,	H
+	res5.l			; res	5,	L
+	res6*hl			; res	6,	[HL]
+	res6*ix	$aa		; res	6,	[IX+$aa]
+	res6*iy	$aa		; res	6,	[IY+$aa]
+	res6.a			; res	6,	A
+	res6.b			; res	6,	B
+	res6.c			; res	6,	C
+	res6.d			; res	6,	D
+	res6.e			; res	6,	E
+	res6.h			; res	6,	H
+	res6.l			; res	6,	L
+	res7*hl			; res	7,	[HL]
+	res7*ix	$aa		; res	7,	[IX+$aa]
+	res7*iy	$aa		; res	7,	[IY+$aa]
+	res7.a			; res	7,	A
+	res7.b			; res	7,	B
+	res7.c			; res	7,	C
+	res7.d			; res	7,	D
+	res7.e			; res	7,	E
+	res7.h			; res	7,	H
+	res7.l			; res	7,	L
