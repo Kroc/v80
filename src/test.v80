@@ -841,3 +841,19 @@
 	sub.ixl			; sub	A,	IXL
 	sub.iyh			; sub	A,	IYH
 	sub.iyl			; sub	A,	IYL
+
+	xor*hl			; xor	A, 	[HL]
+	xor*ix	$aa		; xor	A,	[IX+$aa]
+	xor*iy	$aa		; xor	A,	[IY+$aa]
+	xor	$aa		; xor	A,	$aa
+	xor.a			; xor	A,	A
+	xor.b			; xor	A,	B
+	xor.c			; xor	A,	C
+	xor.d			; xor	A,	D
+	xor.e			; xor	A,	E
+	xor.h			; xor	A,	H
+	xor.l			; xor	A,	L
+	xor.ixh			; xor	A,	IXH
+	xor.ixl			; xor	A,	IXL
+	xor.iyh			; xor	A,	IYH
+	xor.iyl			; xor	A,	IYL

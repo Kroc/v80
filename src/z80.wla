@@ -388,7 +388,37 @@ opcodes:
         .DATA   'p', (@p-CADDR)-1               ; = P...?
         .DATA   'r', (@r-CADDR)-1               ; = R...?
         .DATA   's', (@s-CADDR)-1               ; = S...?
-        ; ...
+        .BYTE   'x'|AND
+        .BYTE   'o'|AND
+        .BYTE   'r'|AND
+        .BYTE   END, $ee,               OP_B    ; XOR $nn       |    EE nn
+        .DATA   '*', (@xor_m-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $a8+REG_A,         OP      ; XOR.A         |    AF
+        .BYTE   'b', $a8+REG_B,         OP      ; XOR.B         |    A8
+        .BYTE   'c', $a8+REG_C,         OP      ; XOR.C         |    A9
+        .BYTE   'd', $a8+REG_D,         OP      ; XOR.D         |    AA
+        .BYTE   'e', $a8+REG_E,         OP      ; XOR.E         |    AB
+        .BYTE   'h', $a8+REG_H,         OP      ; XOR.H         |    AC
+        .BYTE   'l', $a8+REG_L,         OP      ; XOR.L         |    AD
+        .BYTE   'i'|AND
+        .DATA   'x', (@xor_rx-CADDR-1)
+        .BYTE   'y'|AND
+        .BYTE   'h', $a8+REG_IH,        OP_IY   ; XOR.IYH       | DD AC
+        .BYTE   'l', $a8+REG_IL,        OP_IY   ; XOR.IYL       | DD AD
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@xor_rx .BYTE   'h', $a8+REG_IH,        OP_IX   ; XOR.IXH       | FD AC
+        .BYTE   'l', $a8+REG_IL,        OP_IX   ; XOR.IXL       | FD AD
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@xor_m  .DATA   'h', (@xor_mh-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $ae,               OP_IXO  ; XOR*IX $nn    | DD AE nn
+        .BYTE   'y', $ae,               OP_IYO  ; XOR*IY $nn    | FD AE nn
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@xor_mh .BYTE   'l', $ae,               OP      ; XOR*HL        |    AE
         .BYTE   ERR
         ;=======================================================================
 @a      .DATA   'd', (@ad-CADDR)-1
