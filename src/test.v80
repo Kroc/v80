@@ -690,3 +690,24 @@
 	rst28			; rst	$28
 	rst30			; rst	$30
 	rst38			; rst	$38
+
+	sbc*hl			; sbc	A,	[HL]
+	sbc*ix	$aa		; sbc	A,	[iX+$aa]
+	sbc	$aa		; sbc	A,	$aa
+	sbc.a			; sbc	A,	A
+	sbc.b			; sbc	A,	B
+	sbc.c			; sbc	A,	C
+	sbc.d			; sbc	A,	D
+	sbc.e			; sbc	A,	E
+	sbc.h			; sbc	A,	H
+	sbc.l			; sbc	A,	L
+	sbc.ixh			; sbc	A,	IXH
+	sbc.ixl			; sbc	A,	IXL
+	sbc.iyh			; sbc	A,	IYH
+	sbc.iyl			; sbc	A,	IYL
+	sbc.hl.bc		; sbc	HL,	BC
+	sbc.hl.de		; sbc	HL,	DE
+	sbc.hl.hl		; sbc	HL,	HL
+	sbc.hl.sp		; sbc	HL,	SP
+
+	scf			; scf

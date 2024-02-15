@@ -387,6 +387,7 @@ opcodes:
         .DATA   'o', (@o-CADDR)-1               ; = O...?
         .DATA   'p', (@p-CADDR)-1               ; = P...?
         .DATA   'r', (@r-CADDR)-1               ; = R...?
+        .DATA   's', (@s-CADDR)-1               ; = S...?
         ; ...
         .BYTE   ERR
         ;=======================================================================
@@ -1888,6 +1889,64 @@ opcodes:
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @rrc_hl .BYTE   'l', $0e,               OP_CB   ; RRC*HL        | CB 0e
+        .BYTE   ERR
+        ;=======================================================================
+@s      .DATA   'b', (@sbc-CADDR)-1
+        .DATA   'c', (@scf-CADDR)-1
+        ;...
+        .BYTE   ERR
+        ;=======================================================================
+@sbc    .BYTE   'c'|AND
+        .BYTE   END, $de,               OP_B    ; SBC $nn       |    DE nn
+        .DATA   '*', (@sbc_m-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $98+REG_A,         OP      ; SBC.A         |    9F
+        .BYTE   'b', $98+REG_B,         OP      ; SBC.B         |    98
+        .BYTE   'c', $98+REG_C,         OP      ; SBC.C         |    99
+        .BYTE   'd', $98+REG_D,         OP      ; SBC.D         |    9A
+        .BYTE   'e', $98+REG_E,         OP      ; SBC.E         |    9B
+        .DATA   'h', (@sbc_h-CADDR)-1
+        .BYTE   'l', $98+REG_L,         OP      ; SBC.L         |    9D
+        .BYTE   'i'|AND
+        .DATA   'x', (@sbc_rx-CADDR)-1
+        .BYTE   'y'|AND
+        .BYTE   'h', $98+REG_IH,        OP_IY   ; SBC.IYH       | FD 9C
+        .BYTE   'l', $98+REG_IL,        OP_IY   ; SBC.IYL       | FD 9D
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@sbc_rx .BYTE   'h', $98+REG_IH,        OP_IX   ; SBC.IXH       | DD 9C
+        .BYTE   'l', $98+REG_IL,        OP_IX   ; SBC.IXL       | DD 9D
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@sbc_h  .BYTE   END, $98+REG_H,         OP      ; SBC.H         |    9C
+        .BYTE   'l'|AND
+        .BYTE   '.'|AND
+        .DATA   'b', (@sbc_bc-CADDR)-1
+        .DATA   'd', (@sbc_de-CADDR)-1
+        .DATA   'h', (@sbc_hl-CADDR)-1
+        .BYTE   's'|AND
+        .BYTE   'p', $72,               OP_ED   ; SBC.HL.SP     | ED 72
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@sbc_bc .BYTE   'c', $42,               OP_ED   ; SBC.HL.BC     | ED 42
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@sbc_de .BYTE   'e', $52,               OP_ED   ; SBC.HL.DE     | ED 52
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@sbc_hl .BYTE   'l', $62,               OP_ED   ; SBC.HL.HL     | ED 62
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@sbc_m  .DATA   'h', (@sbc_mh-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $9e,               OP_IXO  ; SBC*IX $nn    | DD 9E nn
+        .BYTE   'y', $9e,               OP_IYO  ; SBC*IY $nn    | FD 9E nn
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@sbc_mh .BYTE   'l', $9e,               OP      ; SBC*HL        |    9E
+        .BYTE   ERR
+        ;=======================================================================
+@scf    .BYTE   'f', $37,               OP      ; SCF           |    37
         .BYTE   ERR
         ;=======================================================================
 .ENDB
