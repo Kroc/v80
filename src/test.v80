@@ -711,3 +711,84 @@
 	sbc.hl.sp		; sbc	HL,	SP
 
 	scf			; scf
+
+	set0*hl			; set	0,	[HL]
+	set0*ix	$aa		; set	0,	[IX+$aa]
+	set0*iy	$aa		; set	0,	[IY+$aa]
+	set0.a			; set	0,	A
+	set0.b			; set	0,	B
+	set0.c			; set	0,	C
+	set0.d			; set	0,	D
+	set0.e			; set	0,	E
+	set0.h			; set	0,	H
+	set0.l			; set	0,	L
+	set1*hl			; set	1,	[HL]
+	set1*ix	$aa		; set	1,	[IX+$aa]
+	set1*iy	$aa		; set	1,	[IY+$aa]
+	set1.a			; set	1,	A
+	set1.b			; set	1,	B
+	set1.c			; set	1,	C
+	set1.d			; set	1,	D
+	set1.e			; set	1,	E
+	set1.h			; set	1,	H
+	set1.l			; set	1,	L
+	set2*hl			; set	2,	[HL]
+	set2*ix	$aa		; set	2,	[IX+$aa]
+	set2*iy	$aa		; set	2,	[IY+$aa]
+	set2.a			; set	2,	A
+	set2.b			; set	2,	B
+	set2.c			; set	2,	C
+	set2.d			; set	2,	D
+	set2.e			; set	2,	E
+	set2.h			; set	2,	H
+	set2.l			; set	2,	L
+	set3*hl			; set	3,	[HL]
+	set3*ix	$aa		; set	3,	[IX+$aa]
+	set3*iy	$aa		; set	3,	[IY+$aa]
+	set3.a			; set	3,	A
+	set3.b			; set	3,	B
+	set3.c			; set	3,	C
+	set3.d			; set	3,	D
+	set3.e			; set	3,	E
+	set3.h			; set	3,	H
+	set3.l			; set	3,	L
+	set4*hl			; set	4,	[HL]
+	set4*ix	$aa		; set	4,	[IX+$aa]
+	set4*iy	$aa		; set	4,	[IY+$aa]
+	set4.a			; set	4,	A
+	set4.b			; set	4,	B
+	set4.c			; set	4,	C
+	set4.d			; set	4,	D
+	set4.e			; set	4,	E
+	set4.h			; set	4,	H
+	set4.l			; set	4,	L
+	set5*hl			; set	5,	[HL]
+	set5*ix	$aa		; set	5,	[IX+$aa]
+	set5*iy	$aa		; set	5,	[IY+$aa]
+	set5.a			; set	5,	A
+	set5.b			; set	5,	B
+	set5.c			; set	5,	C
+	set5.d			; set	5,	D
+	set5.e			; set	5,	E
+	set5.h			; set	5,	H
+	set5.l			; set	5,	L
+	set6*hl			; set	6,	[HL]
+	set6*ix	$aa		; set	6,	[IX+$aa]
+	set6*iy	$aa		; set	6,	[IY+$aa]
+	set6.a			; set	6,	A
+	set6.b			; set	6,	B
+	set6.c			; set	6,	C
+	set6.d			; set	6,	D
+	set6.e			; set	6,	E
+	set6.h			; set	6,	H
+	set6.l			; set	6,	L
+	set7*hl			; set	7,	[HL]
+	set7*ix	$aa		; set	7,	[IX+$aa]
+	set7*iy	$aa		; set	7,	[IY+$aa]
+	set7.a			; set	7,	A
+	set7.b			; set	7,	B
+	set7.c			; set	7,	C
+	set7.d			; set	7,	D
+	set7.e			; set	7,	E
+	set7.h			; set	7,	H
+	set7.l			; set	7,	L

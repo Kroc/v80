@@ -1796,7 +1796,7 @@ opcodes:
         .BYTE   'y', $86+(8*7),         OP_CBYO ; RES7*IY $nn   | FD CB nn BE
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@res7hl .BYTE   'l', $86+(8*7),         OP_CB   ; BIT7*HL       |    CB BE
+@res7hl .BYTE   'l', $86+(8*7),         OP_CB   ; RES7*HL       |    CB BE
         .BYTE   ERR
         ;=======================================================================
 @rl     .BYTE   'a', $17,               OP      ; RLA           |    17
@@ -1812,28 +1812,28 @@ opcodes:
         .BYTE   'y', $16,               OP_CBYO ; RL*IY $nn     | FD CB nn 16
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@rl_hl  .BYTE   'l', $16,               OP_CB   ; RL*HL         | CB 16
+@rl_hl  .BYTE   'l', $16,               OP_CB   ; RL*HL         |    CB 16
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@rl_r   .BYTE   'a', $10+REG_A,         OP_CB   ; RL.A          | CB 17
-        .BYTE   'b', $10+REG_B,         OP_CB   ; RL.B          | CB 10
-        .BYTE   'c', $10+REG_C,         OP_CB   ; RL.C          | CB 11
-        .BYTE   'd', $10+REG_D,         OP_CB   ; RL.D          | CB 12
-        .BYTE   'e', $10+REG_E,         OP_CB   ; RL.E          | CB 13
-        .BYTE   'h', $10+REG_H,         OP_CB   ; RL.H          | CB 14
-        .BYTE   'l', $10+REG_L,         OP_CB   ; RL.L          | CB 15
+@rl_r   .BYTE   'a', $10+REG_A,         OP_CB   ; RL.A          |    CB 17
+        .BYTE   'b', $10+REG_B,         OP_CB   ; RL.B          |    CB 10
+        .BYTE   'c', $10+REG_C,         OP_CB   ; RL.C          |    CB 11
+        .BYTE   'd', $10+REG_D,         OP_CB   ; RL.D          |    CB 12
+        .BYTE   'e', $10+REG_E,         OP_CB   ; RL.E          |    CB 13
+        .BYTE   'h', $10+REG_H,         OP_CB   ; RL.H          |    CB 14
+        .BYTE   'l', $10+REG_L,         OP_CB   ; RL.L          |    CB 15
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @rlc    .BYTE   'a', $07,               OP      ; RLCA          |    07
         .DATA   '*', (@rlc_m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $00+REG_A,         OP_CB   ; RLC.A         | CB 07
-        .BYTE   'b', $00+REG_B,         OP_CB   ; RLC.B         | CB 00
-        .BYTE   'c', $00+REG_C,         OP_CB   ; RLC.C         | CB 01
-        .BYTE   'd', $00+REG_D,         OP_CB   ; RLC.D         | CB 02
-        .BYTE   'e', $00+REG_E,         OP_CB   ; RLC.E         | CB 03
-        .BYTE   'h', $00+REG_H,         OP_CB   ; RLC.H         | CB 04
-        .BYTE   'l', $00+REG_L,         OP_CB   ; RLC.L         | CB 05
+        .BYTE   'a', $00+REG_A,         OP_CB   ; RLC.A         |    CB 07
+        .BYTE   'b', $00+REG_B,         OP_CB   ; RLC.B         |    CB 00
+        .BYTE   'c', $00+REG_C,         OP_CB   ; RLC.C         |    CB 01
+        .BYTE   'd', $00+REG_D,         OP_CB   ; RLC.D         |    CB 02
+        .BYTE   'e', $00+REG_E,         OP_CB   ; RLC.E         |    CB 03
+        .BYTE   'h', $00+REG_H,         OP_CB   ; RLC.H         |    CB 04
+        .BYTE   'l', $00+REG_L,         OP_CB   ; RLC.L         |    CB 05
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @rlc_m  .DATA   'h', (@rlc_hl-CADDR)-1
@@ -1842,7 +1842,7 @@ opcodes:
         .BYTE   'y', $06,               OP_CBYO ; RLC*IY $aa    | FD CB $nn 06
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@rlc_hl .BYTE   'l', $06,               OP_CB   ; RLC*HL        | CB 06
+@rlc_hl .BYTE   'l', $06,               OP_CB   ; RLC*HL        |    CB 06
         .BYTE   ERR
         ;=======================================================================
 @rr     .BYTE   'a', $1f,               OP      ; RRA           |    1F
@@ -1858,28 +1858,28 @@ opcodes:
         .BYTE   'y', $1e,               OP_CBYO ; RR*IY $nn     | FD CB nn 1E
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@rr_hl  .BYTE   'l', $1e,               OP_CB   ; RR*HL         | CB 1E
+@rr_hl  .BYTE   'l', $1e,               OP_CB   ; RR*HL         |    CB 1E
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@rr_r   .BYTE   'a', $18+REG_A,         OP_CB   ; RR.A          | CB 1F
-        .BYTE   'b', $18+REG_B,         OP_CB   ; RR.B          | CB 18
-        .BYTE   'c', $18+REG_C,         OP_CB   ; RR.C          | CB 19
-        .BYTE   'd', $18+REG_D,         OP_CB   ; RR.D          | CB 1A
-        .BYTE   'e', $18+REG_E,         OP_CB   ; RR.E          | CB 1B
-        .BYTE   'h', $18+REG_H,         OP_CB   ; RR.H          | CB 1C
-        .BYTE   'l', $18+REG_L,         OP_CB   ; RR.L          | CB 1D
+@rr_r   .BYTE   'a', $18+REG_A,         OP_CB   ; RR.A          |    CB 1F
+        .BYTE   'b', $18+REG_B,         OP_CB   ; RR.B          |    CB 18
+        .BYTE   'c', $18+REG_C,         OP_CB   ; RR.C          |    CB 19
+        .BYTE   'd', $18+REG_D,         OP_CB   ; RR.D          |    CB 1A
+        .BYTE   'e', $18+REG_E,         OP_CB   ; RR.E          |    CB 1B
+        .BYTE   'h', $18+REG_H,         OP_CB   ; RR.H          |    CB 1C
+        .BYTE   'l', $18+REG_L,         OP_CB   ; RR.L          |    CB 1D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @rrc    .BYTE   'a', $0f,               OP      ; RRCA          |    0F
         .DATA   '*', (@rrc_m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $08+REG_A,         OP_CB   ; RRC.A         | CB 0F
-        .BYTE   'b', $08+REG_B,         OP_CB   ; RRC.B         | CB 08
-        .BYTE   'c', $08+REG_C,         OP_CB   ; RRC.C         | CB 09
-        .BYTE   'd', $08+REG_D,         OP_CB   ; RRC.D         | CB 0A
-        .BYTE   'e', $08+REG_E,         OP_CB   ; RRC.E         | CB 0B
-        .BYTE   'h', $08+REG_H,         OP_CB   ; RRC.H         | CB 0C
-        .BYTE   'l', $08+REG_L,         OP_CB   ; RRC.L         | CB 0D
+        .BYTE   'a', $08+REG_A,         OP_CB   ; RRC.A         |    CB 0F
+        .BYTE   'b', $08+REG_B,         OP_CB   ; RRC.B         |    CB 08
+        .BYTE   'c', $08+REG_C,         OP_CB   ; RRC.C         |    CB 09
+        .BYTE   'd', $08+REG_D,         OP_CB   ; RRC.D         |    CB 0A
+        .BYTE   'e', $08+REG_E,         OP_CB   ; RRC.E         |    CB 0B
+        .BYTE   'h', $08+REG_H,         OP_CB   ; RRC.H         |    CB 0C
+        .BYTE   'l', $08+REG_L,         OP_CB   ; RRC.L         |    CB 0D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @rrc_m  .DATA   'h', (@rrc_hl-CADDR)-1
@@ -1888,11 +1888,12 @@ opcodes:
         .BYTE   'y', $0e,               OP_CBYO ; RRC*IY $aa    | FD CB $nn 0e
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@rrc_hl .BYTE   'l', $0e,               OP_CB   ; RRC*HL        | CB 0e
+@rrc_hl .BYTE   'l', $0e,               OP_CB   ; RRC*HL        |    CB 0e
         .BYTE   ERR
         ;=======================================================================
 @s      .DATA   'b', (@sbc-CADDR)-1
         .DATA   'c', (@scf-CADDR)-1
+        .DATA   'e', (@set-CADDR)-1
         ;...
         .BYTE   ERR
         ;=======================================================================
@@ -1947,6 +1948,175 @@ opcodes:
         .BYTE   ERR
         ;=======================================================================
 @scf    .BYTE   'f', $37,               OP      ; SCF           |    37
+        .BYTE   ERR
+        ;=======================================================================
+@set    .BYTE   't'|AND
+        .DATA   '7', (@set7-CADDR)-1
+        .DATA   '6', (@set6-CADDR)-1
+        .DATA   '5', (@set5-CADDR)-1
+        .DATA   '4', (@set4-CADDR)-1
+        .DATA   '3', (@set3-CADDR)-1
+        .DATA   '2', (@set2-CADDR)-1
+        .DATA   '1', (@set1-CADDR)-1
+        .BYTE   '0'|AND
+        .DATA   '*', (@set0m-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $80+(8*0)+REG_A,   OP_CB   ; SET0.A        |    CB 87
+        .BYTE   'b', $80+(8*0)+REG_B,   OP_CB   ; SET0.B        |    CB 80
+        .BYTE   'c', $80+(8*0)+REG_C,   OP_CB   ; SET0.C        |    CB 81
+        .BYTE   'd', $80+(8*0)+REG_D,   OP_CB   ; SET0.D        |    CB 82
+        .BYTE   'e', $80+(8*0)+REG_E,   OP_CB   ; SET0.E        |    CB 83
+        .BYTE   'h', $80+(8*0)+REG_H,   OP_CB   ; SET0.H        |    CB 84
+        .BYTE   'l', $80+(8*0)+REG_L,   OP_CB   ; SET0.L        |    CB 85
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@set0m  .DATA   'h', (@set0hl-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $86+(8*0),         OP_CBXO ; SET0*IX $nn   | DD CB nn 86
+        .BYTE   'y', $86+(8*0),         OP_CBYO ; SET0*IY $nn   | FD CB nn 86
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@set0hl .BYTE   'l', $86+(8*0),         OP_CB   ; SET0*HL       |    CB 86
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@set1   .DATA   '*', (@set1m-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $80+(8*1)+REG_A    OP_CB   ; SET1.A        |    CB 8F
+        .BYTE   'b', $80+(8*1)+REG_B    OP_CB   ; SET1.B        |    CB 88
+        .BYTE   'c', $80+(8*1)+REG_C    OP_CB   ; SET1.C        |    CB 89
+        .BYTE   'd', $80+(8*1)+REG_D    OP_CB   ; SET1.D        |    CB 8A
+        .BYTE   'e', $80+(8*1)+REG_E    OP_CB   ; SET1.E        |    CB 8B
+        .BYTE   'h', $80+(8*1)+REG_H    OP_CB   ; SET1.H        |    CB 8C
+        .BYTE   'l', $80+(8*1)+REG_L    OP_CB   ; SET1.L        |    CB 8D
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@set1m  .DATA   'h', (@set1hl-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $86+(8*1),         OP_CBXO ; SET1*IX $nn   | DD CB nn 8E
+        .BYTE   'y', $86+(8*1),         OP_CBYO ; SET1*IY $nn   | FD CB nn 8E
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@set1hl .BYTE   'l', $86+(8*1),         OP_CB   ; SET1*HL       |    CB 8E
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@set2   .DATA   '*', (@set2m-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $80+(8*2)+REG_A,   OP_CB   ; SET2.A        |    CB 97
+        .BYTE   'b', $80+(8*2)+REG_B,   OP_CB   ; SET2.B        |    CB 90
+        .BYTE   'c', $80+(8*2)+REG_C,   OP_CB   ; SET2.C        |    CB 91
+        .BYTE   'd', $80+(8*2)+REG_D,   OP_CB   ; SET2.D        |    CB 92
+        .BYTE   'e', $80+(8*2)+REG_E,   OP_CB   ; SET2.E        |    CB 93
+        .BYTE   'h', $80+(8*2)+REG_H,   OP_CB   ; SET2.H        |    CB 94
+        .BYTE   'l', $80+(8*2)+REG_L,   OP_CB   ; SET2.L        |    CB 95
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@set2m  .DATA   'h', (@set2hl-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $86+(8*2),         OP_CBXO ; SET2*IX $nn   | DD CB nn 96
+        .BYTE   'y', $86+(8*2),         OP_CBYO ; SET2*IY $nn   | FD CB nn 96
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@set2hl .BYTE   'l', $86+(8*2),         OP_CB   ; SET2*HL       |    CB 96
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@set3   .DATA   '*', (@set3m-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $80+(8*3)+REG_A,   OP_CB   ; SET3.A        |    CB 9F
+        .BYTE   'b', $80+(8*3)+REG_B,   OP_CB   ; SET3.B        |    CB 98
+        .BYTE   'c', $80+(8*3)+REG_C,   OP_CB   ; SET3.C        |    CB 99
+        .BYTE   'd', $80+(8*3)+REG_D,   OP_CB   ; SET3.D        |    CB 9A
+        .BYTE   'e', $80+(8*3)+REG_E,   OP_CB   ; SET3.E        |    CB 9B
+        .BYTE   'h', $80+(8*3)+REG_H,   OP_CB   ; SET3.H        |    CB 9C
+        .BYTE   'l', $80+(8*3)+REG_L,   OP_CB   ; SET3.L        |    CB 9D
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@set3m  .DATA   'h', (@set3hl-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $86+(8*3),         OP_CBXO ; SET3*IX $nn   | DD CB nn 9E
+        .BYTE   'y', $86+(8*3),         OP_CBYO ; SET3*IY $nn   | FD CB nn 9E
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@set3hl .BYTE   'l', $86+(8*3),         OP_CB   ; SET3*HL       |    CB 9E
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@set4   .DATA   '*', (@set4m-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $80+(8*4)+REG_A,   OP_CB   ; SET4.A        |    CB A7
+        .BYTE   'b', $80+(8*4)+REG_B,   OP_CB   ; SET4.B        |    CB A0
+        .BYTE   'c', $80+(8*4)+REG_C,   OP_CB   ; SET4.C        |    CB A1
+        .BYTE   'd', $80+(8*4)+REG_D,   OP_CB   ; SET4.D        |    CB A2
+        .BYTE   'e', $80+(8*4)+REG_E,   OP_CB   ; SET4.E        |    CB A3
+        .BYTE   'h', $80+(8*4)+REG_H,   OP_CB   ; SET4.H        |    CB A4
+        .BYTE   'l', $80+(8*4)+REG_L,   OP_CB   ; SET4.L        |    CB A5
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@set4m  .DATA   'h', (@set4hl-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $86+(8*4),         OP_CBXO ; SET4*IX $nn   | DD CB nn A6
+        .BYTE   'y', $86+(8*4),         OP_CBYO ; SET4*IY $nn   | FD CB nn A6
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@set4hl .BYTE   'l', $86+(8*4),         OP_CB   ; SET4*HL       |    CB A6
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@set5   .DATA   '*', (@set5m-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $80+(8*5)+REG_A,   OP_CB   ; SET5.A        |    CB AF
+        .BYTE   'b', $80+(8*5)+REG_B,   OP_CB   ; SET5.B        |    CB A8
+        .BYTE   'c', $80+(8*5)+REG_C,   OP_CB   ; SET5.C        |    CB A9
+        .BYTE   'd', $80+(8*5)+REG_D,   OP_CB   ; SET5.D        |    CB AA
+        .BYTE   'e', $80+(8*5)+REG_E,   OP_CB   ; SET5.E        |    CB AB
+        .BYTE   'h', $80+(8*5)+REG_H,   OP_CB   ; SET5.H        |    CB AC
+        .BYTE   'l', $80+(8*5)+REG_L,   OP_CB   ; SET5.L        |    CB AD
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@set5m  .DATA   'h', (@set5hl-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $86+(8*5),         OP_CBXO ; SET5*IX $nn   | DD CB nn AE
+        .BYTE   'y', $86+(8*5),         OP_CBYO ; SET5*IY $nn   | FD CB nn AE
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@set5hl .BYTE   'l', $86+(8*5),         OP_CB   ; SET5*HL       |    CB AE
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@set6   .DATA   '*', (@set6m-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $80+(8*6)+REG_A,   OP_CB   ; SET6.A        |    CB B7
+        .BYTE   'b', $80+(8*6)+REG_B,   OP_CB   ; SET6.B        |    CB B0
+        .BYTE   'c', $80+(8*6)+REG_C,   OP_CB   ; SET6.C        |    CB B1
+        .BYTE   'd', $80+(8*6)+REG_D,   OP_CB   ; SET6.D        |    CB B2
+        .BYTE   'e', $80+(8*6)+REG_E,   OP_CB   ; SET6.E        |    CB B3
+        .BYTE   'h', $80+(8*6)+REG_H,   OP_CB   ; SET6.H        |    CB B4
+        .BYTE   'l', $80+(8*6)+REG_L,   OP_CB   ; SET6.L        |    CB B5
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@set6m  .DATA   'h', (@set6hl-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $86+(8*6),         OP_CBXO ; SET6*IX $nn   | DD CB nn B6
+        .BYTE   'y', $86+(8*6),         OP_CBYO ; SET6*IY $nn   | FD CB nn B6
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@set6hl .BYTE   'l', $86+(8*6),         OP_CB   ; SET6*HL       |    CB B6
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@set7   .DATA   '*', (@set7m-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $80+(8*7)+REG_A,   OP_CB   ; SET7.A        |    CB BF
+        .BYTE   'b', $80+(8*7)+REG_B,   OP_CB   ; SET7.B        |    CB B8
+        .BYTE   'c', $80+(8*7)+REG_C,   OP_CB   ; SET7.C        |    CB B9
+        .BYTE   'd', $80+(8*7)+REG_D,   OP_CB   ; SET7.D        |    CB BA
+        .BYTE   'e', $80+(8*7)+REG_E,   OP_CB   ; SET7.E        |    CB BB
+        .BYTE   'h', $80+(8*7)+REG_H,   OP_CB   ; SET7.H        |    CB BC
+        .BYTE   'l', $80+(8*7)+REG_L,   OP_CB   ; SET7.L        |    CB BD
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@set7m  .DATA   'h', (@set7hl-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $86+(8*7),         OP_CBXO ; SET7*IX $nn   | DD CB nn BE
+        .BYTE   'y', $86+(8*7),         OP_CBYO ; SET7*IY $nn   | FD CB nn BE
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@set7hl .BYTE   'l', $86+(8*7),         OP_CB   ; SET7*HL       |    CB BE
         .BYTE   ERR
         ;=======================================================================
 .ENDB
