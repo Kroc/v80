@@ -1892,9 +1892,12 @@ opcodes:
         .BYTE   ERR
         ;=======================================================================
 @s      .DATA   'b', (@sbc-CADDR)-1
-        .DATA   'c', (@scf-CADDR)-1
         .DATA   'e', (@set-CADDR)-1
+        .DATA   'l', (@sla-CADDR)-1
+        .DATA   'r', (@sr-CADDR)-1
         ;...
+        .BYTE   'c'|AND
+        .BYTE   'f', $37,               OP      ; SCF           |    37
         .BYTE   ERR
         ;=======================================================================
 @sbc    .BYTE   'c'|AND
@@ -1945,9 +1948,6 @@ opcodes:
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @sbc_mh .BYTE   'l', $9e,               OP      ; SBC*HL        |    9E
-        .BYTE   ERR
-        ;=======================================================================
-@scf    .BYTE   'f', $37,               OP      ; SCF           |    37
         .BYTE   ERR
         ;=======================================================================
 @set    .BYTE   't'|AND
@@ -2117,6 +2117,69 @@ opcodes:
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @set7hl .BYTE   'l', $86+(8*7),         OP_CB   ; SET7*HL       |    CB BE
+        .BYTE   ERR
+        ;=======================================================================
+@sla    .BYTE   'a'|AND
+        .DATA   '*', (@sla_m-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $20+REG_A,         OP_CB   ; SLA.A         |    CB 27
+        .BYTE   'b', $20+REG_B,         OP_CB   ; SLA.B         |    CB 20
+        .BYTE   'c', $20+REG_C,         OP_CB   ; SLA.C         |    CB 21
+        .BYTE   'd', $20+REG_D,         OP_CB   ; SLA.D         |    CB 22
+        .BYTE   'e', $20+REG_E,         OP_CB   ; SLA.E         |    CB 23
+        .BYTE   'h', $20+REG_H,         OP_CB   ; SLA.H         |    CB 24
+        .BYTE   'l', $20+REG_L,         OP_CB   ; SLA.L         |    CB 25
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@sla_m  .DATA   'h', (@sla_mh-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $26,               OP_CBXO ; SLA*IX $nn    | DD CB nn 26
+        .BYTE   'y', $26,               OP_CBYO ; SLA*IY $nn    | FD CB nn 26
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@sla_mh .BYTE   'l', $26,               OP_CB   ; SLA*HL        |    CB 26
+        .BYTE   ERR
+        ;=======================================================================
+@sr     .DATA   'a', (@sra-CADDR)-1
+        .BYTE   'l'|AND
+        .DATA   '*', (@srl_m-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $38+REG_A,         OP_CB   ; SRL.A         |    CB 3F
+        .BYTE   'b', $38+REG_B,         OP_CB   ; SRL.B         |    CB 38
+        .BYTE   'c', $38+REG_C,         OP_CB   ; SRL.C         |    CB 39
+        .BYTE   'd', $38+REG_D,         OP_CB   ; SRL.D         |    CB 3A
+        .BYTE   'e', $38+REG_E,         OP_CB   ; SRL.E         |    CB 3B
+        .BYTE   'h', $38+REG_H,         OP_CB   ; SRL.H         |    CB 3C
+        .BYTE   'l', $38+REG_L,         OP_CB   ; SRL.L         |    CB 3D
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@srl_m  .DATA   'h', (@srl_mh-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $3e,               OP_CBXO ; SRL*IX $nn    | DD CB nn 3E
+        .BYTE   'y', $3e,               OP_CBYO ; SRL*IY $nn    | FD CB nn 3E
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@srl_mh .BYTE   'l', $3e,               OP_CB   ; SRL*HL        |    CB 3E
+        .BYTE   ERR
+        ;=======================================================================
+@sra    .DATA   '*', (@sra_m-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $28+REG_A,         OP_CB   ; SRL.A         |    CB 2F
+        .BYTE   'b', $28+REG_B,         OP_CB   ; SRL.B         |    CB 28
+        .BYTE   'c', $28+REG_C,         OP_CB   ; SRL.C         |    CB 29
+        .BYTE   'd', $28+REG_D,         OP_CB   ; SRL.D         |    CB 2A
+        .BYTE   'e', $28+REG_E,         OP_CB   ; SRL.E         |    CB 2B
+        .BYTE   'h', $28+REG_H,         OP_CB   ; SRL.H         |    CB 2C
+        .BYTE   'l', $28+REG_L,         OP_CB   ; SRL.L         |    CB 2D
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@sra_m  .DATA   'h', (@sra_mh-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $2e,               OP_CBXO ; SRA*IX $nn    | DD CB nn 2E
+        .BYTE   'y', $2e,               OP_CBYO ; SRA*IY $nn    | FD CB nn 2E
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@sra_mh .BYTE   'l', $2e,               OP_CB   ; SRA*HL        |    CB 2E
         .BYTE   ERR
         ;=======================================================================
 .ENDB

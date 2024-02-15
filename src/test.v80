@@ -792,3 +792,36 @@
 	set7.e			; set	7,	E
 	set7.h			; set	7,	H
 	set7.l			; set	7,	L
+
+	sla*hl			; sla	[HL]
+	sla*ix	$aa		; sla	[IX+$aa]
+	sla*iy	$aa		; sla	[IY+$aa]
+	sla.a			; sla	A
+	sla.b			; sla	B
+	sla.c			; sla	C
+	sla.d			; sla	D
+	sla.e			; sla	E
+	sla.h			; sla	H
+	sla.l			; sla	L
+
+	sra*hl			; sra	[HL]
+	sra*ix	$aa		; sra	[IX+$aa]
+	sra*iy	$aa		; sra	[IY+$aa]
+	sra.a			; sra	A
+	sra.b			; sra	B
+	sra.c			; sra	C
+	sra.d			; sra	D
+	sra.e			; sra	E
+	sra.h			; sra	H
+	sra.l			; sra	L
+
+	srl*hl			; srl	[HL]
+	srl*ix	$aa		; srl	[IX+$aa]
+	srl*iy	$aa		; srl	[IY+$aa]
+	srl.a			; srl	A
+	srl.b			; srl	B
+	srl.c			; srl	C
+	srl.d			; srl	D
+	srl.e			; srl	E
+	srl.h			; srl	H
+	srl.l			; srl	L
