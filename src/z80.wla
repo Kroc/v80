@@ -1895,7 +1895,7 @@ opcodes:
         .DATA   'e', (@set-CADDR)-1
         .DATA   'l', (@sla-CADDR)-1
         .DATA   'r', (@sr-CADDR)-1
-        ;...
+        .DATA   'u', (@sub-CADDR)-1
         .BYTE   'c'|AND
         .BYTE   'f', $37,               OP      ; SCF           |    37
         .BYTE   ERR
@@ -2181,5 +2181,35 @@ opcodes:
         ;-----------------------------------------------------------------------
 @sra_mh .BYTE   'l', $2e,               OP_CB   ; SRA*HL        |    CB 2E
         .BYTE   ERR
+        ;=======================================================================
+@sub    .BYTE   'b'|AND
+        .BYTE   END, $d6,               OP_B    ; SUB $nn       |    D6 nn
+        .DATA   '*', (@sub_m-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $90+REG_A,         OP      ; SUB.A         |    97
+        .BYTE   'b', $90+REG_B,         OP      ; SUB.B         |    90
+        .BYTE   'c', $90+REG_C,         OP      ; SUB.C         |    91
+        .BYTE   'd', $90+REG_D,         OP      ; SUB.D         |    92
+        .BYTE   'e', $90+REG_E,         OP      ; SUB.E         |    93
+        .BYTE   'h', $90+REG_H,         OP      ; SUB.H         |    94
+        .BYTE   'l', $90+REG_L,         OP      ; SUB.L         |    95
+        .BYTE   'i'|AND
+        .DATA   'x', (@sub_rx-CADDR-1)
+        .BYTE   'y'|AND
+        .BYTE   'h', $90+REG_IH,        OP_IY   ; SUB.IYH       | DD 94
+        .BYTE   'l', $90+REG_IL,        OP_IY   ; SUB.IYL       | DD 95
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@sub_rx .BYTE   'h', $90+REG_IH,        OP_IX   ; SUB.IXH       | FD 94
+        .BYTE   'l', $90+REG_IL,        OP_IX   ; SUB.IXL       | FD 95
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@sub_m  .DATA   'h', (@sub_mh-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $96,               OP_IXO  ; SUB*IX $nn    | DD 96 nn
+        .BYTE   'y', $96,               OP_IYO  ; SUB*IY $nn    | FD 96 nn
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@sub_mh .BYTE   'l', $96,               OP      ; SUB*HL        |    96
         ;=======================================================================
 .ENDB

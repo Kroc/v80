@@ -825,3 +825,19 @@
 	srl.e			; srl	E
 	srl.h			; srl	H
 	srl.l			; srl	L
+
+	sub*hl			; sub	A, 	[HL]
+	sub*ix	$aa		; sub	A,	[IX+$aa]
+	sub*iy	$aa		; sub	A,	[IY+$aa]
+	sub	$aa		; sub	A,	$aa
+	sub.a			; sub	A,	A
+	sub.b			; sub	A,	B
+	sub.c			; sub	A,	C
+	sub.d			; sub	A,	D
+	sub.e			; sub	A,	E
+	sub.h			; sub	A,	H
+	sub.l			; sub	A,	L
+	sub.ixh			; sub	A,	IXH
+	sub.ixl			; sub	A,	IXL
+	sub.iyh			; sub	A,	IYH
+	sub.iyl			; sub	A,	IYL
