@@ -121,11 +121,18 @@ init:
         ld      L,      $7f             ; the expr token space starts in the
         ld      [expr], HL              ;  middle of the page and works down
 
-        ; the virtual program counter is permanently pinned to IX since
+        ; the virtual program-counter is permanently pinned to IX since
         ; it's a value that needs to be incremented often but not read
         ; back too often. this avoids a bunch of HL/DE register swapping
         ;
         ld      IX,     $0100           ; virtual program-counter
+
+        ; the code-segement address (where assembled binary code goes)
+        ; is pinned to IY. as with the virtual program-counter, depsite
+        ; the IY register being slower to utilise, it is used sparingly
+        ; and avoids costly register swapping
+        ;
+        ld      IY,     code            ; code-segement address
 
         call    memStat                 ; print the memory status
 
@@ -153,7 +160,8 @@ memStat:
         ld      HL,     @heap           ; heap addr position in string
         call    @hex                    ; convert and insert
 
-        ld      DE,     [code]
+        ld      D,      IYH
+        ld      E,      IYL
         ld      HL,     @code           ; code addr position in string
         call    @hex                    ; convert and insert
 
@@ -416,7 +424,6 @@ readChar:
         ;-----------------------------------------------------------------------
         ; increment line-number:
         ;
-        ; TODO: should we pin line-number to IY?
 @row:   ld      DE',    [row]           ; 16-bit load,
         inc     DE'                     ;  and increment,
         ld      [row],  DE'             ;  and write
@@ -686,7 +693,8 @@ parseInstruction:
 ; in:   A               first character of word to parse
 ;       HL              heap addr
 ; out:  HL              heap addr is advanced for any expressions deferred
-;       [code]          binary code is appended to the code-segement
+;       IY              binary code is appended to the code-segement,
+;       IX              and the virtual program-counter is advanced
 ;       A, BC|DE        (clobbered)
 ;-------------------------------------------------------------------------------
         ex      DE,     HL              ; swap heap to DE for now
@@ -1175,9 +1183,7 @@ getHexByte:
 ;
 code:
 ;-------------------------------------------------------------------------------
-        .ADDR __code                    ; pointer to current position
-
-__code: ; WARNING: ANYTHING PLACED AFTER HERE WILL BE OVERWRITTEN
+; WARNING: ANYTHING PLACED AFTER HERE WILL BE OVERWRITTEN
 
 ;///////////////////////////////////////////////////////////////////////////////
 
@@ -1368,12 +1374,10 @@ __code: ; WARNING: ANYTHING PLACED AFTER HERE WILL BE OVERWRITTEN
 ;       IX              virtual program-counter
 ;
 ; out:  HL              updated heap position (defer record added to heap)
-;       DE              updated code-segment addr (expr result space reserved)
-;       IX              updated virtual program-counter (as with DE)
+;       IY              updated code-segment addr (expr result space reserved)
+;       IX              updated virtual program-counter (as with IY)
 ;       A, BC           (clobbered)
 ;-------------------------------------------------------------------------------
-;        ld      DE,     [code]          ; retrieve current code-segment addr
-;
 ;        ; we need to push a bunch of values to the heap and the fastest way
 ;        ; to write 16-bit values easily is... the stack! simply make the heap
 ;        ; into the stack and we can PUSH our stuff on to it!
@@ -1416,11 +1420,10 @@ __code: ; WARNING: ANYTHING PLACED AFTER HERE WILL BE OVERWRITTEN
 ;        ;
 ;        dec     C                       ; is the stride 1 or 2?
 ;        jr      z,      +               ; if it is 1, skip the 2nd byte
-;        inc     DE                      ; reserve a byte and increment
+;        inc     IY                      ; reserve a byte and increment
 ;        inc     IX                      ;  virtual program-counter
-;+       inc     DE                      ; reserve an additional byte
+;+       inc     IY                      ; reserve an additional byte
 ;        inc     IX                      ;  and increment program-counter
-;        ld      [code], DE              ; write back updated code-segment addr
 ;
 ;        ;----------------------------------------------------------------------
 ;        ld      HL,     0               ; there is no `LD HL, SP` (!?), so
@@ -1429,5 +1432,4 @@ __code: ; WARNING: ANYTHING PLACED AFTER HERE WILL BE OVERWRITTEN
 ;
 ;        ; TODO: copy bytecode expr from below the stack
 ;
-;        ld      DE,     [code]
 ;        ret
