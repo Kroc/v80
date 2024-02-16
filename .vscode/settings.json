@@ -26,6 +26,11 @@
     "files.exclude": {
         "**/__*" : true
     },
+    "search.exclude": {
+        "**/*.code-search": true,
+        "bin/" : true,
+        "build/" : true,
+    },
     "files.readonlyInclude": {
         "bin/wla-dx/*" : true,
         "bin/RunCPM/*.exe" : true

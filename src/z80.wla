@@ -1,123 +1,17 @@
 ; v80, (C) Kroc Camen 2023-2024, MIT License
 ; z80 parsing / opcode tree
 
-.BLOCK  "code-parser"
+.BLOCK  "code-emit"
 
-parseInstruction:
+emitOpcode:
 ;===============================================================================
-; parse a Z80 instruction into opcodes:
+; write CPU opcode bytes, parsing any required parameters:
 ;
-; in:   A               first character of word to parse
-;       HL              heap addr
-; out:  HL              heap addr is advanced for any expressions deferred
-;       A, BC|DE        (clobbered)
-;-------------------------------------------------------------------------------
-        ex      DE,     HL              ; swap heap to DE for now
-        ld      HL,     opcodes         ; start at beginning of opcode tree
-
-        ; the first character is already in A
-        set     5,      A               ; force lowercase (see desc. below)
-        jr      +                       ; jump into the parsing loop
-
-        ;=======================================================================
-        ; match; follow the branch:
-        ;-----------------------------------------------------------------------
-        ; once a character matches, the next two bytes are either
-        ; an offset to the next branch to follow, or an opcode pair
-        ;
-@match: inc     HL                      ; step over the matched character
-        ld      C,      [HL]            ; read the offset lo-byte / opcode-byte
-        inc     HL                      ; move to next byte in tree
-        ld      B,      [HL]            ; read the offset hi-byte / opcode-flags
-
-        bit     7,      B               ; is hi-bit of hi-byte set?
-        jr      nz,     @opcode         ; if so, this is an opcode
-
-        ; add the offset to the current position to jump to the new branch:
-        ; NOTE: the offset in the binary tree is reduced by 1 to compensate
-        ; for adding from the hi-byte addr, rather than the lo-byte addr
-        ;
-        add     HL,     BC
-
-        ; get character from input file:
-        ;-----------------------------------------------------------------------
-@char:  call    readChar                ; read from input file
-        cp      ASCII_SPC+1             ; is it whitespace? (hold carry...)
-
-        ; force lowercase, without also affecting
-        ; numbers / [most] punctuation:
-        ;
-        ; this essentially forces ASCII codes 64-95 (@A-Z[\]^_) to codes
-        ; 96-127 (`a-z{|}~) which makes A-Z lowercase with the caveat that
-        ; some punctuation cannot be differentiated "@"<->"`", "[]"<->"{}"",
-        ; "\"<->"|" and "^"<->"~" but we aren't using any of those in the
-        ; instruction names anyway
-        ;
-        ; it also means that ASCII codes 0-31 (non-visible) are promoted
-        ; to 32-64 (visible), but we have already checked for ASCII codes
-        ; 32 (space) or below and this is signalled by the carry flag; so
-        ; even though the below instruction would change tab into ")", we
-        ; will undo this afterwards
-        ;
-        set     5,      A               ; force partial lowercase
-        jr      nc,     +               ; was this a non-visible char before?
-        xor     A                       ; any whitespace = end-of-word (0)
-       
-+       ; compare with opcode tree:
-        ;-----------------------------------------------------------------------
--       
-.IFDEF  DEBUG
-        ;///////////////////////////////////////////////////////////////////////
-;;        push    AF
-;;        ld      A,      [HL]
-;;        and     %01111111
-;;        call    osPrintChar
-;;        pop     AF
-.ENDIF  ;///////////////////////////////////////////////////////////////////////
-
-        cp      [HL]                    ; compare input char with tree char
-        jr      z,      @match          ; characters match?
-
-        ; if the hi-bit of the character from the opcode tree is set, it's
-        ; either a continuation character (>128) or the end of a branch (=128).
-        ; in these cases, the result of the compare will always be negative!
-        ;
-        bit     7,      [HL]            ; check bit 7 of character
-        jr      nz,     @cont           ; handle continuation char / end
-
-        ; no match; try the next character:
-        ;-----------------------------------------------------------------------
-        inc     HL
-        inc     HL
-        inc     HL
-        jr      -
-
-        ;-----------------------------------------------------------------------
-        ; handle continuation character / end-of-branch:
-        ;
-        ; a continuation character has no branch -- one character has to
-        ; immediately follow another -- any mismatch is an unknown opcode
-        ;
-@cont:  or      %10000000               ; *add* top bit to input char
-        cp      [HL]                    ; redo comparison with tree
-        jp      nz,     errOpcode       ; any mismatch is an error!
-        inc     HL                      ; match -- move to next char in tree
-        jr      @char
-
-        ;=======================================================================
-        ; emit opcode(s):
-        ;=======================================================================
-        ; if a branch ends in an opcode, then no more characters must follow!
-        ;
-@opcode and     A                       ; if the last char is already 0,
-        jr      z,     +                ; then no further check is needed
-
-        call    readChar
-        cp      ASCII_SPC+1             ; is it whitespace (or eof)?
-        jp      nc,     errOpcode       ; if not, invalid instruction!
-
-+       ld      HL,     [code]          ; retrieve code-segment address
-
+; in:   B               opcode flags byte from the opcode table
+;       C               opcode byte
+;       HL              heap address for any deferred expressions
+; out:  *               (clobbered)
+;===============================================================================
         ; the flags byte is a set of flags for Z80-specifics
         ; and what, if any, kind of parameter is required
         ;-----------------------------------------------------------------------
@@ -125,17 +19,21 @@ parseInstruction:
         and     %01111111               ; remove the top bit
         jr      nz,     +               ; if 0, no extension or params
 
-        ld      [HL],   C               ; emit opcode byte
-        inc     HL                      ; move to next byte in code-segment
+        ; single opcode, no params:
+        ;-----------------------------------------------------------------------
+        ld      DE,     [code]          ; retrieve code-segment address
+        ld      A,      C
+        ld      [DE],   A               ; emit opcode byte
+        inc     DE                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
-        ex      DE,     HL              ; swap heap to HL, code to DE
+        ld      [code], DE              ; save modified code-segment addr
 
         ret
 
-        ;-----------------------------------------------------------------------
         ; opcode with extensions or parameters:
-        ;
-+       bit     6,      B               ; bit 6 indicates IX or IY
+        ;=======================================================================
++       ld      DE,     [code]          ; retrieve code-segment address
+        bit     6,      B               ; bit 6 indicates IX or IY
         jr      nz,     @ixy            ; go handle IX|IY madness...
 
         ; is it a $CB or $ED extended opcode?
@@ -147,17 +45,18 @@ parseInstruction:
         ;
         and     %00100010               ; bit 5&1 = $22 ($ED) or $00 ($CB)
         add     $cb                     ; $CB+$00 = $CB or $CB+$22 = $ED
-        ld      [HL],   A               ; emit $CB|$ED prefix byte
-        inc     HL                      ; move to next byte in code-segment
+        ld      [DE],   A               ; emit $CB|$ED prefix byte
+        inc     DE                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
 
         ; at this point, all parameters (if any) follow the opcode,
         ; so we can output the opcode now and forget it
         ;-----------------------------------------------------------------------
-+       ld      [HL],   C               ; emit opcode byte
-        inc     HL                      ; move to next byte in code-segment
++       ld      A,      C
+        ld      [DE],   A               ; emit opcode byte
+        inc     DE                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
-        ex      DE,     HL              ; swap heap to HL, code to DE
+        ld      [code], DE              ; save modified code-segment addr
         ;-----------------------------------------------------------------------
 
         ; any parameters?
@@ -187,8 +86,8 @@ parseInstruction:
         ;
 @ixy:   and     %00100000               ; isolate bit 5
         or      %11011101               ; map to $DD (IX) or $FD (IY)
-        ld      [HL],   A               ; emit IX|IY prefix byte
-        inc     HL                      ; move to next byte in code-segment
+        ld      [DE],   A               ; emit IX|IY prefix byte
+        inc     DE                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
 
         ; on the Z80, a combination of $DD|$FB (IX|IY) + $CB opcodes place
@@ -201,10 +100,11 @@ parseInstruction:
         ; at this point, all parameters (if any) follow the opcode,
         ; so we can output the opcode now and forget it
         ;-----------------------------------------------------------------------
-        ld      [HL],   C               ; emit opcode byte
-        inc     HL                      ; move to next byte in code-segment
+        ld      A,      C
+        ld      [DE],   A               ; emit opcode byte
+        inc     DE                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
-        ex      DE,     HL              ; swap heap to HL, code to DE
+        ld      [code], DE              ; save modified code-segment addr
         ;-----------------------------------------------------------------------
 
         ; bit 3 (offset), bit 2 (8-bit immediate), and
@@ -262,10 +162,11 @@ parseInstruction:
         ; IX|IY + $CB is the edge-case that keeps on giving: at all other
         ; times the IX|IY offset byte follows the opcode, but not here!
         ;
-@cb:    ld      [HL],   $cb             ; emit $CB prefix byte
-        inc     HL                      ; move to next byte in code-segment
+@cb:    ld      A,      $cb
+        ld      [DE],   A               ; emit $CB prefix byte
+        inc     DE                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
-        ex      DE,     HL              ; swap heap back to HL
+        ld      [code], DE              ; save modified code-segment addr
 
         ; TODO: i hate everything about this
         push    BC                      ; keep opcode until emit time
@@ -273,15 +174,21 @@ parseInstruction:
         ; consume whitespace before parsing expression. since the parameter
         ; is required, this will error on newline or end-of-file before expr
         ;
-        ; TODO: DE / HL need to be valid after this call
+        ; TODO: HL needs to be valid after this call
         call    nextExpr
 
+        ld      DE,     [code]          ; retrieve code-segment address
         pop     BC
         ld      A,      C
-        ld      [DE],   A
+        ld      [DE],   A               ; emit (delayed) opcode byte
+        inc     DE                      ; move to next byte in code-segment
+        inc     IX                      ; increment virtual program-counter
+        ld      [code], DE              ; save modified code-segment addr
+
         ret
 
 .ENDB
+.BLOCK  "opcodes"
 
 ; Z80 opcode table:
 ;===============================================================================
@@ -356,7 +263,6 @@ OP_IYW  = OP_W|OP_IY    ; immediate, IY ($FD), 16-bit
 
 opcodes:
 ;===============================================================================
-.BLOCK  "opcodes"
         AND     = 128
         END     = 0
         ERR     = $ff
@@ -430,149 +336,149 @@ opcodes:
         .DATA   'd', (@add-CADDR)-1
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@adc    .BYTE   END, $ce,               OP_B    ; ADC $nn       |       CE nn
+@adc    .BYTE   END, $ce,               OP_B    ; ADC $nn       |    CE nn
         .DATA   '.', (@adc_r-CADDR)-1
         .DATA   '*', (@adc_m-CADDR)-1
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@adc_r  .BYTE   'a', $88+REG_A,         OP      ; ADC.A         |       8F
-        .BYTE   'b', $88+REG_B,         OP      ; ADC.B         |       88
-        .BYTE   'c', $88+REG_C,         OP      ; ADC.C         |       89
-        .BYTE   'd', $88+REG_D,         OP      ; ADC.D         |       8A
-        .BYTE   'e', $88+REG_E,         OP      ; ADC.E         |       8B
+@adc_r  .BYTE   'a', $88+REG_A,         OP      ; ADC.A         |    8F
+        .BYTE   'b', $88+REG_B,         OP      ; ADC.B         |    88
+        .BYTE   'c', $88+REG_C,         OP      ; ADC.C         |    89
+        .BYTE   'd', $88+REG_D,         OP      ; ADC.D         |    8A
+        .BYTE   'e', $88+REG_E,         OP      ; ADC.E         |    8B
         .DATA   'h', (@adc_h-CADDR)-1
-        .BYTE   'l', $88+REG_L,         OP      ; ADC.L         |       8D
+        .BYTE   'l', $88+REG_L,         OP      ; ADC.L         |    8D
         .BYTE   'i'|AND
         .DATA   'x', (@adc_x-CADDR)-1
         .BYTE   'y'|AND
-        .BYTE   'h', $88+REG_IH,        OP_IY   ; ADC.IYH       |    FD 8C
-        .BYTE   'l', $88+REG_IL,        OP_IY   ; ADC.IYL       |    FD 8D
+        .BYTE   'h', $88+REG_IH,        OP_IY   ; ADC.IYH       | FD 8C
+        .BYTE   'l', $88+REG_IL,        OP_IY   ; ADC.IYL       | FD 8D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@adc_x  .BYTE   'h', $88+REG_IH,        OP_IX   ; ADC.IXH       |    DD 8C
-        .BYTE   'l', $88+REG_IL,        OP_IX   ; ADC.IXL       |    DD 8D
+@adc_x  .BYTE   'h', $88+REG_IH,        OP_IX   ; ADC.IXH       | DD 8C
+        .BYTE   'l', $88+REG_IL,        OP_IX   ; ADC.IXL       | DD 8D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@adc_h  .BYTE   END, $88+REG_H,         OP      ; ADC.H         |       8C
+@adc_h  .BYTE   END, $88+REG_H,         OP      ; ADC.H         |    8C
         .BYTE   'l'|AND,
         .BYTE   '+'|AND
         .DATA   'b', (@adc_bc-CADDR)-1
         .DATA   'd', (@adc_de-CADDR)-1
         .DATA   'h', (@adc_hl-CADDR)-1
         .BYTE   's'|AND
-        .BYTE   'p', $7a,               OP_ED   ; ADC.HL+SP     |    ED 7A
+        .BYTE   'p', $7a,               OP_ED   ; ADC.HL+SP     | ED 7A
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@adc_bc .BYTE   'c', $4a,               OP_ED   ; ADC.HL+BC     |    ED 4A
+@adc_bc .BYTE   'c', $4a,               OP_ED   ; ADC.HL+BC     | ED 4A
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@adc_de .BYTE   'e', $5a,               OP_ED   ; ADC.HL+DE     |    ED 5A
+@adc_de .BYTE   'e', $5a,               OP_ED   ; ADC.HL+DE     | ED 5A
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@adc_hl .BYTE   'l', $6a,               OP_ED   ; ADC.HL+HL     |    ED 6A
+@adc_hl .BYTE   'l', $6a,               OP_ED   ; ADC.HL+HL     | ED 6A
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @adc_m  .DATA   'h', (@adc_mh-CADDR)-1
         .BYTE   'i'|AND
-        .BYTE   'x', $8e,               OP_IXO  ; ADC*IX $nn    |    DD 8E nn
-        .BYTE   'y', $8e,               OP_IYO  ; ADC*IY $nn    |    FD 8E nn
+        .BYTE   'x', $8e,               OP_IXO  ; ADC*IX $nn    | DD 8E nn
+        .BYTE   'y', $8e,               OP_IYO  ; ADC*IY $nn    | FD 8E nn
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@adc_mh .BYTE   'l', $8e,               OP      ; ADC*HL        |       8E
+@adc_mh .BYTE   'l', $8e,               OP      ; ADC*HL        |    8E
         .BYTE   ERR
         ;=======================================================================
-@add    .BYTE   END, $c6,               OP_B    ; ADD $nn       |       C6 nn
+@add    .BYTE   END, $c6,               OP_B    ; ADD $nn       |    C6 nn
         .DATA   '*', (@add_m-CADDR)-1
         .DATA   '.', (@add_r-CADDR)-1
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @add_m  .DATA   'h', (@add_mh-CADDR)-1
         .BYTE   'i'|AND
-        .BYTE   'x', $86,               OP_IXO  ; ADD*IX $nn    |    DD 86 nn
-        .BYTE   'y', $86,               OP_IYO  ; ADD*IY $nn    |    FD 86 nn
+        .BYTE   'x', $86,               OP_IXO  ; ADD*IX $nn    | DD 86 nn
+        .BYTE   'y', $86,               OP_IYO  ; ADD*IY $nn    | FD 86 nn
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@add_mh .BYTE   'l', $86,               OP      ; ADD*HL        |       86
+@add_mh .BYTE   'l', $86,               OP      ; ADD*HL        |    86
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@add_r  .BYTE   'a', $80+REG_A,         OP      ; ADD.A         |       87
-        .BYTE   'b', $80+REG_B,         OP      ; ADD.B         |       80
-        .BYTE   'c', $80+REG_C,         OP      ; ADD.C         |       81
-        .BYTE   'd', $80+REG_D,         OP      ; ADD.D         |       82
-        .BYTE   'e', $80+REG_E,         OP      ; ADD.E         |       83
+@add_r  .BYTE   'a', $80+REG_A,         OP      ; ADD.A         |    87
+        .BYTE   'b', $80+REG_B,         OP      ; ADD.B         |    80
+        .BYTE   'c', $80+REG_C,         OP      ; ADD.C         |    81
+        .BYTE   'd', $80+REG_D,         OP      ; ADD.D         |    82
+        .BYTE   'e', $80+REG_E,         OP      ; ADD.E         |    83
         .DATA   'h', (@add_h-CADDR)-1
-        .BYTE   'l', $80+REG_L,         OP      ; ADD.L         |       85
+        .BYTE   'l', $80+REG_L,         OP      ; ADD.L         |    85
         .BYTE   'i'|AND
         .DATA   'x', (@add_x-CADDR)-1
         .BYTE   'y'|AND
-        .BYTE   'h', $80+REG_IH,        OP_IY   ; ADD.IYH       |    FD 84
-        .BYTE   'l', $80+REG_IL,        OP_IY   ; ADD.IYL       |    FD 84
+        .BYTE   'h', $80+REG_IH,        OP_IY   ; ADD.IYH       | FD 84
+        .BYTE   'l', $80+REG_IL,        OP_IY   ; ADD.IYL       | FD 84
         .BYTE   '+'|AND
         .DATA   'b', (@add_yb-CADDR)-1
         .DATA   'd', (@add_yd-CADDR)-1
         .DATA   'i', (@add_yi-CADDR)-1
         .BYTE   's'|AND
-        .BYTE   'p', $39,               OP_IY   ; ADD.IY+SP     |    FD 39
+        .BYTE   'p', $39,               OP_IY   ; ADD.IY+SP     | FD 39
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@add_yb .BYTE   'c', $09,               OP_IY   ; ADD.IY+BC     |    FD 09
+@add_yb .BYTE   'c', $09,               OP_IY   ; ADD.IY+BC     | FD 09
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@add_yd .BYTE   'e', $19,               OP_IY   ; ADD.IY+DE     |    FD 19
+@add_yd .BYTE   'e', $19,               OP_IY   ; ADD.IY+DE     | FD 19
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@add_yi .BYTE   'y', $29,               OP_IY   ; ADD.IY+IY     |    FD 29
+@add_yi .BYTE   'y', $29,               OP_IY   ; ADD.IY+IY     | FD 29
         .BYTE   ERR
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@add_x  .BYTE   'h', $80+REG_IH,        OP_IX   ; ADD.IXH       |    DD 84
-        .BYTE   'l', $80+REG_IL,        OP_IX   ; ADD.IXL       |    DD 84
+@add_x  .BYTE   'h', $80+REG_IH,        OP_IX   ; ADD.IXH       | DD 84
+        .BYTE   'l', $80+REG_IL,        OP_IX   ; ADD.IXL       | DD 84
         .BYTE   '+'|AND
         .DATA   'b', (@add_xb-CADDR)-1
         .DATA   'd', (@add_xd-CADDR)-1
         .DATA   'i', (@add_xi-CADDR)-1
         .BYTE   's'|AND
-        .BYTE   'p', $39,               OP_IX   ; ADD.IX+SP     |    DD 39
+        .BYTE   'p', $39,               OP_IX   ; ADD.IX+SP     | DD 39
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@add_xb .BYTE   'c', $09,               OP_IX   ; ADD.IX+BC     |    DD 09
+@add_xb .BYTE   'c', $09,               OP_IX   ; ADD.IX+BC     | DD 09
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@add_xd .BYTE   'e', $19,               OP_IX   ; ADD.IX+DE     |    DD 19
+@add_xd .BYTE   'e', $19,               OP_IX   ; ADD.IX+DE     | DD 19
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@add_xi .BYTE   'x', $29,               OP_IX   ; ADD.IX+IX     |    DD 29
+@add_xi .BYTE   'x', $29,               OP_IX   ; ADD.IX+IX     | DD 29
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@add_h  .BYTE   END, $80+REG_H,         OP      ; ADD.H         |       84
+@add_h  .BYTE   END, $80+REG_H,         OP      ; ADD.H         |    84
         .BYTE   'l'|AND
         .BYTE   '+'|AND
         .DATA   'b', (@add_bc-CADDR)-1
         .DATA   'd', (@add_de-CADDR)-1
         .DATA   'h', (@add_hl-CADDR)-1
         .BYTE   's'|AND
-        .BYTE   'p', $39,               OP      ; ADD.HL+SP     |       39
+        .BYTE   'p', $39,               OP      ; ADD.HL+SP     |    39
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@add_bc .BYTE   'c', $09,               OP      ; ADD.HL+BC     |       09
+@add_bc .BYTE   'c', $09,               OP      ; ADD.HL+BC     |    09
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@add_de .BYTE   'e', $19,               OP      ; ADD.HL+DE     |       19
+@add_de .BYTE   'e', $19,               OP      ; ADD.HL+DE     |    19
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@add_hl .BYTE   'l', $29,               OP      ; ADD.HL+HL     |       29
+@add_hl .BYTE   'l', $29,               OP      ; ADD.HL+HL     |    29
         .BYTE   ERR
         ;=======================================================================
-@and    .BYTE   END, $e6,               OP_B    ; AND $nn       |       E6 nn
+@and    .BYTE   END, $e6,               OP_B    ; AND $nn       |    E6 nn
         .DATA   '*', (@and_m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $a0+REG_A,         OP      ; AND.A         |       A7
-        .BYTE   'b', $a0+REG_B,         OP      ; AND.B         |       A0
-        .BYTE   'c', $a0+REG_C,         OP      ; AND.C         |       A1
-        .BYTE   'd', $a0+REG_D,         OP      ; AND.D         |       A2
-        .BYTE   'e', $a0+REG_E,         OP      ; AND.E         |       A3
-        .BYTE   'h', $a0+REG_E,         OP      ; AND.H         |       A4
-        .BYTE   'l', $88+REG_L,         OP      ; AND.L         |       A5
+        .BYTE   'a', $a0+REG_A,         OP      ; AND.A         |    A7
+        .BYTE   'b', $a0+REG_B,         OP      ; AND.B         |    A0
+        .BYTE   'c', $a0+REG_C,         OP      ; AND.C         |    A1
+        .BYTE   'd', $a0+REG_D,         OP      ; AND.D         |    A2
+        .BYTE   'e', $a0+REG_E,         OP      ; AND.E         |    A3
+        .BYTE   'h', $a0+REG_E,         OP      ; AND.H         |    A4
+        .BYTE   'l', $88+REG_L,         OP      ; AND.L         |    A5
         .DATA   'i', (@and_i-CADDR)-1
         .BYTE   ERR
         ;-----------------------------------------------------------------------
@@ -580,21 +486,21 @@ opcodes:
         .DATA   'y', (@and_y-CADDR)-1
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@and_x  .BYTE   'h', $a0+REG_IH,        OP_IX   ; AND.IXH       |    DD A4
-        .BYTE   'l', $a0+REG_IL,        OP_IX   ; AND.IXL       |    DD A5
+@and_x  .BYTE   'h', $a0+REG_IH,        OP_IX   ; AND.IXH       | DD A4
+        .BYTE   'l', $a0+REG_IL,        OP_IX   ; AND.IXL       | DD A5
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@and_y  .BYTE   'h', $a0+REG_IH,        OP_IY   ; AND.IXH       |    FD A4
-        .BYTE   'l', $a0+REG_IL,        OP_IY   ; AND.IXL       |    FD A5
+@and_y  .BYTE   'h', $a0+REG_IH,        OP_IY   ; AND.IXH       | FD A4
+        .BYTE   'l', $a0+REG_IL,        OP_IY   ; AND.IXL       | FD A5
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @and_m  .DATA   'h', (@and_mh-CADDR)-1
         .BYTE   'i'|AND
-        .BYTE   'x', $a6,               OP_IXO  ; AND*IX $nn    |    DD A6 nn
-        .BYTE   'y', $a6,               OP_IYO  ; AND*IY $nn    |    FD A6 nn
+        .BYTE   'x', $a6,               OP_IXO  ; AND*IX $nn    | DD A6 nn
+        .BYTE   'y', $a6,               OP_IYO  ; AND*IY $nn    | FD A6 nn
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@and_mh .BYTE   'l', $a6,               OP      ; AND*HL        |       A6
+@and_mh .BYTE   'l', $a6,               OP      ; AND*HL        |    A6
         .BYTE   ERR
         ;=======================================================================
 @b      .BYTE   'i'|AND

@@ -273,7 +273,6 @@ assemble:
 @body:  cp      CHAR_KEYWORD            ; is this a keyword?
         jr      z,      @key            ; handle keyword
 
-        ; (this routine is in the CPU-specific module, e.g. z80.wla)
         call    parseInstruction
 
         jr      @next
@@ -674,6 +673,121 @@ pushLabel:
         ld      [HL],   A
 
         ret
+
+
+parseInstruction:
+;===============================================================================
+; parse an instruction into opcodes:
+;
+; the CPU-specific module (e.g. "z80.wla") provides a binary tree, `opcodes`,
+; that this routine walks to match instruction names to opcodes and a CPU-
+; specific set of flags that determines which parameters are required
+;
+; in:   A               first character of word to parse
+;       HL              heap addr
+; out:  HL              heap addr is advanced for any expressions deferred
+;       [code]          binary code is appended to the code-segement
+;       A, BC|DE        (clobbered)
+;-------------------------------------------------------------------------------
+        ex      DE,     HL              ; swap heap to DE for now
+        ld      HL,     opcodes         ; start at beginning of opcode tree
+
+        ; the first character is already in A
+        set     5,      A               ; force lowercase (see desc. below)
+        jr      +                       ; jump into the parsing loop
+
+        ;=======================================================================
+        ; match; follow the branch:
+        ;-----------------------------------------------------------------------
+        ; once a character matches, the next two bytes are either
+        ; an offset to the next branch to follow, or an opcode pair
+        ;
+@match: inc     HL                      ; step over the matched character
+        ld      C,      [HL]            ; read the offset lo-byte / opcode-byte
+        inc     HL                      ; move to next byte in tree
+        ld      B,      [HL]            ; read the offset hi-byte / opcode-flags
+
+        bit     7,      B               ; is hi-bit of hi-byte set?
+        jr      nz,     @opcode         ; if so, this is an opcode
+
+        ; add the offset to the current position to jump to the new branch:
+        ; NOTE: the offset in the binary tree is reduced by 1 to compensate
+        ; for adding from the hi-byte addr, rather than the lo-byte addr
+        ;
+        add     HL,     BC
+
+        ; get character from input file:
+        ;-----------------------------------------------------------------------
+@char:  call    readChar                ; read from input file
+        cp      ASCII_SPC+1             ; is it whitespace? (hold carry...)
+
+        ; force lowercase, without also affecting
+        ; numbers / [most] punctuation:
+        ;
+        ; this essentially forces ASCII codes 64-95 (@A-Z[\]^_) to codes
+        ; 96-127 (`a-z{|}~) which makes A-Z lowercase with the caveat that
+        ; some punctuation cannot be differentiated "@"<->"`", "[]"<->"{}"",
+        ; "\"<->"|" and "^"<->"~" but we aren't using any of those in the
+        ; instruction names anyway
+        ;
+        ; it also means that ASCII codes 0-31 (non-visible) are promoted
+        ; to 32-64 (visible), but we have already checked for ASCII codes
+        ; 32 (space) or below and this is signalled by the carry flag; so
+        ; even though the below instruction would change tab into ")", we
+        ; will undo this afterwards
+        ;
+        set     5,      A               ; force partial lowercase
+        jr      nc,     +               ; was this a non-visible char before?
+        xor     A                       ; any whitespace = end-of-word (0)
+       
++       ; compare with opcode tree:
+        ;-----------------------------------------------------------------------
+-       cp      [HL]                    ; compare input char with tree char
+        jr      z,      @match          ; characters match?
+
+        ; if the hi-bit of the character from the opcode tree is set, it's
+        ; either a continuation character (>128) or the end of a branch (=128).
+        ; in these cases, the result of the compare will always be negative!
+        ;
+        bit     7,      [HL]            ; check bit 7 of character
+        jr      nz,     @cont           ; handle continuation char / end
+
+        ; no match; try the next character:
+        ;-----------------------------------------------------------------------
+        inc     HL
+        inc     HL
+        inc     HL
+        jr      -
+
+        ;-----------------------------------------------------------------------
+        ; handle continuation character / end-of-branch:
+        ;
+        ; a continuation character has no branch -- one character has to
+        ; immediately follow another -- any mismatch is an unknown opcode
+        ;
+@cont:  or      %10000000               ; *add* top bit to input char
+        cp      [HL]                    ; redo comparison with tree
+        jp      nz,     errOpcode       ; any mismatch is an error!
+        inc     HL                      ; match -- move to next char in tree
+        jr      @char
+
+        ;=======================================================================
+        ; emit opcode(s):
+        ;=======================================================================
+        ; if a branch ends in an opcode, then no more characters must follow!
+        ;
+@opcode and     A                       ; if the last char is already 0,
+        jr      z,     +                ; then no further check is needed
+
+        call    readChar
+        cp      ASCII_SPC+1             ; is it whitespace (or eof)?
+        jp      nc,     errOpcode       ; if not, invalid instruction!
+
++       ex      DE,     HL              ; swap heap back to HL
+
+        ; emit the opcode and parse any necessary parameters
+        ; (this routine is in the CPU-specific module, e.g. z80.wla)
+        jp      emitOpcode
 
 
 nextExpr:
