@@ -96,7 +96,7 @@ boot:
         jp      osQuit
 
         ;-----------------------------------------------------------------------
-@banner .BYTE   "v80 CP/M v0, Kroc Camen 2023\n$"
+@banner .BYTE   "v80 CP/M v0, Kroc Camen 2034-2024\n$"
 
         ;=======================================================================
 @err:   ld      DE,     @@str           ; exit with a version error

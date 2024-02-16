@@ -10,13 +10,13 @@ It currently runs on CP/M with plans to make it self-hosting (can assemble itsel
 ## ~~Features~~
 
 - No Macros! Copy + Paste is your friend
-- No linker. You don't need one
+- No linker, includes can do it
 - No decimal numbers. Let's face it, you think in hexadecimal anyway
 - No floating point numbers. Have you _tried_ coding floats on an 8-bit CPU??
 - No negative numbers. It's all 1s in 2s compliment
-- No shift operators. Multiply/divide by powers of 2  
-  (honestly the reason for this is just because the parser is limited to single-character operators)
-- true = 0, like how a CPU _actually_ works
+- No shift operators. Multiply/divide by powers of 2
+- true = 0, like how a CPU _actually_ works.  
+  search your heart, you know it to be true
 
 ## Syntax
 
@@ -24,17 +24,52 @@ v80 uses a non-standard syntax designed for parsing simplicity / speed, not comp
 
 The basic principle is that v80 can only recognise a word by the first character, so everything must be prefixed with a sigil type or otherwise be easily categorizable, e.g. `a`-`z` = instruction.
 
-    v80: ................ zilog:
+    ; v80: ................ zilog:
+    ;
+    adc   $ff               ; adc $ff
+    adc.a                   ; adc A,      A
+    adc.hl.bc               ; adc HL,     BC
+    adc*hl                  ; adc A,      [HL]
+    adc*ix  $00             ; adc [IX+$00]
+    bit7.a                  ; bit 7,      A
+    bit7*hl                 ; bit 7,      [HL]
+    call    $FFFF           ; call        $FFFF
+    call?nz $FFFF           ; call nz,    $FFFF
+    ; ...
+    ; (see "src/test.v80" for full list)
 
-    adc                   adc
-    adc.a                 adc A
-    adc.hl+bc             adc HL, BC
-    adc*hl                adc [HL]      ; "*" like a pointer
-    adc*ix  $FF           adc [IX+$FF]
-    bit7.a                bit 7,  A
-    bit7*hl               bit 7,  [HL]
-    call    $FFFF         call    $FFFF
-    call?nz $FFFF         call nz $FFFF
+    :label                  ; label define
+
+    #true   $1              ; constant define
+
+    ; constants can be redefined, but the value
+    ; must be constant (no forward-references)
+    #true   $0
+
+    ; keywords begin with `.`
+    .b <bytes>
+    .w <words>
+
+    ; in expressions, `$` returns curernt program-counter
+    .b :label - $
+
+    ; file includes
+    .inc "file.v80"
+    .bin "file.bin" <size> <skip>
+
+    ; no comparison operators!
+    ; expression must evaluate to 0 (true)
+    .if <expr> {
+        ; ...
+    }
+
+    ; signed if -- positive passes, negative fails
+    .is <expr> {
+        ; ...
+    }
+
+    ; no string escapes, just use numbers
+    .b "line 1" $0a "line 2"
 
 ### Labels:
 
