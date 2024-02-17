@@ -224,8 +224,8 @@ assemble:
 
         ; line context:
         ;=======================================================================
-        ; at the beginning of the line labels and the
-        ; program-counter can be defined, but nowhere else
+        ; at the beginning of the line labels, constants and
+        ; the program-counter can be defined, but nowhere else
         ;
 @line:  call    nextWord                ; find first character
         jr      z,      @nleof          ; did we hit newline or end-of-file?
@@ -234,14 +234,14 @@ assemble:
         ;
         cp      CHAR_LABEL              ; is label?
         jr      z,      @label          ; define a label
+        cp      CHAR_CONST              ; is constant?
+        jr      z,      @const          ; define a constant
 
         ; any expression defines the virtual program-counter
         ; (except labels, you can't set the virtual program-counter
         ;  based on another label, set up a constant for that)
         ;
         cp      CHAR_HEX                ; hexadecimal literal or current PC?
-        jr      z,      @pc             ; redefine program-counter
-        cp      CHAR_CONST              ; likewise for a constant
         jr      z,      @pc             ; redefine program-counter
         ; (the unary operators can also start an expression)
         cp      CHAR_OP_LO              ; lo operator?
@@ -328,6 +328,17 @@ assemble:
         ld      [BC],   A
         
         jr      @next                   ; return to parsing
+
+        ; define constant:
+        ;=======================================================================
+        ; because constants can be modified we don't search for the symbol yet
+        ; -- we need the new value first! we get only the constant name
+        ;
+@const: call    _readWord               ; read symbol name
+        call    nextExpr                ; try evaluate the following expression
+        
+        halt
+        jr      @next
 
 
 nextWord:
@@ -464,7 +475,7 @@ getSymbol:
 ;                       is the addr of the flag byte of the symbol record --
 ;                       this is so that the symbol value can be updated
 ;       DE              $0000 if label doesn't exist. if the label exists,
-;                       inlcuding forward-references that would otherwise
+;                       including forward-references that would otherwise
 ;                       behave as "not found", DE contains the addr of the
 ;                       symbol, pointing to the lo-byte of the link field
 ;       [char]          the last character read will always be some kind
@@ -477,36 +488,9 @@ getSymbol:
         ; with the word-buffer address to read the symbol name in
         ex      DE,     HL
 
-        ; read symbol name:
-        ;=======================================================================
-        ; note that the word is written *downwards* in RAM, to match how
-        ; symbol names are written on the heap, for faster comparison --
-        ; we use the bottom of a page to hold the incoming word so that
-        ; we can get away with using `DEC E` instead of `DEC DE`
-        ;
-        ld      DE,     [word]          ; top of word-buffer, e.g $FC1F
-        jr      +                       ; (first character already read)
-        ;-----------------------------------------------------------------------
--       call    readChar                ; read char from input file
-        cp      ASCII_SPC+1             ; whitespace?
-        jr      c,      @ok             ; (leave loop at whitespace)
-+       dec     E                       ; move to next space in buffer
-        ld      [DE],   A               ; add the character to the buffer
-        jp      p,      -               ; keep going until buffer full
-        ;-----------------------------------------------------------------------
-        jp      errWord                 ; word too long!
-
-        ;-----------------------------------------------------------------------
-@ok:    ld      A,      WORD_LEN        ; max size - characters remaining
-        sub     E                       ;  = length of word
-        ld      E,      WORD_LEN+1      ; snap back to length byte
-        ld      [DE],   A               ; write word-length byte
-
-        ld      C,      A
-        ld      B,      0
-
         ; find symbol in dictionary:
         ;=======================================================================
+        call    _readWord               ; read symbol name
         jr      @next                   ; jump into the loop
 
         ;-----------------------------------------------------------------------
@@ -598,6 +582,38 @@ getSymbol:
 @end:   ex      DE,     HL              ; swap symbol addr to DE
 
         pop     HL                      ; restore heap position
+        ret
+
+        ; read symbol name:
+        ;=======================================================================
+        ; note that the word is written *downwards* in RAM, to match how
+        ; symbol names are written on the heap, for faster comparison --
+        ; we use the bottom of a page to hold the incoming word so that
+        ; we can get away with using `DEC E` instead of `DEC DE`
+        ;
+_readWord:
+        ;-----------------------------------------------------------------------
+        ld      DE,     [word]          ; top of word-buffer, e.g $FC1F
+        jr      +                       ; (first character already read)
+        ;-----------------------------------------------------------------------
+-       call    readChar                ; read char from input file
+        cp      ASCII_SPC+1             ; whitespace?
+        jr      c,      @ok             ; (leave loop at whitespace)
++       dec     E                       ; move to next space in buffer
+        ld      [DE],   A               ; add the character to the buffer
+        jp      p,      -               ; keep going until buffer full
+        ;-----------------------------------------------------------------------
+        jp      errWord                 ; word too long!
+
+        ;-----------------------------------------------------------------------
+@ok:    ld      A,      WORD_LEN        ; max size - characters remaining
+        sub     E                       ;  = length of word
+        ld      E,      WORD_LEN+1      ; snap back to length byte
+        ld      [DE],   A               ; write word-length byte
+
+        ld      C,      A
+        ld      B,      0
+
         ret
 
 
@@ -816,13 +832,11 @@ nextExpr:
 parseExpr:
 ;===============================================================================
 ; parse an expression from the input file, tokenise it and evaluate it,
-; writing the result to the code-segment. if the expression has forward-
-; references, it'll be deferred
+; returning the result. if the expression has forward-references,
+; it'll be deferred on the heap
 ;
 ; in:   HL              current heap addr; if the expr has to be deferred
 ;                       it'll be pushed to the heap
-;       [stride]        the stride (parameter width) needs to be set as this
-;                       determines the number of bytes the result fits in
 ;-------------------------------------------------------------------------------
         call    tokenExpr               ; read expr and tokenise
 
@@ -830,7 +844,7 @@ parseExpr:
         ; contain the *end* of the expression. if we can't evaluate the
         ; expression, we need to keep it and append a defer record
         ;
-
+        
 
         ; evaluate the expression and return its value:
         ; (fallthrough...)
