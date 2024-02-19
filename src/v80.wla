@@ -332,11 +332,13 @@ assemble:
         ; define constant:
         ;=======================================================================
         ; because constants can be modified we don't search for the symbol yet
-        ; -- we need the new value first! we get only the constant name
+        ; -- we need the new value first! get only the constant name first
         ;
 @const: call    _readWord               ; read symbol name
         call    nextExpr                ; try evaluate the following expression
         
+        ; ...
+
         halt
         jr      @next
 
@@ -837,21 +839,130 @@ parseExpr:
 ; returning the result. if the expression has forward-references,
 ; it'll be deferred on the heap
 ;
-; in:   HL              current heap addr; if the expr has to be deferred
-;                       it'll be pushed to the heap
+; in:   HL              current heap addr
 ;-------------------------------------------------------------------------------
         call    tokenExpr               ; read expr and tokenise
 
-        ; evaluate the expression and return its value:
-        ; (fallthrough...)
+        ; if the expression cannot be evaluated (contains forward
+        ; references), the hi-bit of the return value will be set
+        ;
+        rla                             ; pop the hi-bit off into carry
+        jr      nc,     evalExpr        ; if 0, evaluate expression!
+
+        ; the expression cannot be evalulated, copy it to the heap
+        ; to be re-evaluated after parsing is complete
+        ;
+        ; (fallthrough)
+        ; ...
+
+deferExpr:
+;===============================================================================
+; push an expression to the heap:
+;
+; - the link addr to the previous expression
+; - the current code-segment address
+; - the current virtual program-counter
+;   (in case of relative jump)
+; - the size of the output; 1 or 2 bytes
+; - the expr tokens
+;
+; in:   HL              current heap position
+;       IX              virtual program-counter
+;       IY              code-segement addr to reserve result bytes
+;
+; out:  HL              updated heap position (defer record added to heap)
+;       IY              updated code-segment addr (expr result space reserved)
+;       IX              updated virtual program-counter (as with IY)
+;       A, BC|DE        (clobbered)
+;-------------------------------------------------------------------------------
+        ; we need to push a bunch of values to the heap and the fastest way
+        ; to write 16-bit values easily is... the stack! simply make the heap
+        ; into the stack and we can PUSH our stuff on to it!
+        ;
+        ; WE DO NOT NEED TO DISABLE INTERRUPTS!!! any interrupt is going to
+        ; push to our heap and then pop the address off when it returns,
+        ; which has no affect on the values we're pushing
+        ;
+        ld      [sp],   SP              ; backup stack pointer
+        ld      SP,     HL              ; move stack to heap!
+        ;-----------------------------------------------------------------------
+
+        ; link this expression to the previous one:
+        ; (since the heap address is in SP, we can reuse HL)
+        ;
+        ld      HL,     [defer]         ; get previous deferred expr address
+        push    HL                      ; write to heap
+        ld      [defer],SP              ; write heap addr to the entry point!
+
+        ; push the current code-segment position; this is where
+        ; the expression result will be filled in after evaluation
+        push    IY
+
+        ; push the current virtual program-counter
+        ; (for calculating relative jumps)
+        push    IX                      ; PC is always stored in IX, not RAM
+
+        ; push the source file line-number
+        ld      BC,     [row]
+        push    BC
+        ; push the source file column-number, plus the number
+        ; of bytes the result should occupy in the code-segment
+        ld      BC,     [stride_col]
+        push    BC
+
+        ;-----------------------------------------------------------------------
+        ld      HL,     0               ; there is no `LD HL, SP` (!?), so
+        add     HL,     SP              ;  it's quicker to just add SP to 0!
+        ld      SP,     [sp]            ; restore stack pointer!
+
+        ; reserve bytes for the expr result:
+        ;
+        ; this routine is only called if there is an instruction parameter
+        ; (constant defines and if-statements cannot be deferred!) which
+        ; assumes a minimum of 1 byte, so check for a second byte
+        ;
+        dec     C                       ; is the stride 1 or 2?
+        jr      z,      +               ; if it is 1, skip the 2nd byte
+        inc     IY                      ; reserve a byte and increment
+        inc     IX                      ;  virtual program-counter
++       inc     IY                      ; reserve an additional byte
+        inc     IX                      ;  and increment program-counter
+
+        ; copy expression bytecode to the heap:
+        ;
+        ; note that LDDR is post-decrement (copy-then-decrement), whereas
+        ; the heap is pre-decrement like the stack (decrement-then-copy)
+        ;
+        dec     HL                      ; fix heap addr for copy-then-DEC
+        ex      DE,     HL              ; LDDR requires DE to be destination
+        ld      HL,     [expr]          ; get the addr of the expr-bytecode
+        ld      C,      [HL]            ; first byte is length / defer flag
+        res     7,      C               ; stip hi-bit (defer flag)
+        ld      B,      0               ; LDDR uses full BC count
+        ;ld      A,      [stride]        ; before copy, ue the first byte
+        ;ld      [HL],   A               ;  to record the parameter size
+        lddr                            ; copy BC bytes from [DE] to [HL]!
+        ex      DE,     HL              ; swap updated heap addr back to HL
+        inc     HL                      ; fix heap addr after copy
+
+        ; TODO: is the heap address on a used or unused addr? (LDDR)
+        ; TODO: must return the same as evalExpr
+
+        ret
+
 
 evalExpr:
 ;===============================================================================
 ; evaluates an expr:
 ;
-; in:   HL      addr of the expr tokens on the heap
-; out:  BC      result value
+; out:  HL      addr of expr (could be [`expr`] or heap!)
+;       BC      result value
+;       cf      carry-flag is set if the expression cannot be evaluated!
+;               (contains forward-references)
 ;-------------------------------------------------------------------------------
+        ld      A,      [HL]            ; first byte is length / defer flag
+        
+        
         ret
 
 
@@ -971,17 +1082,8 @@ tokenExpr:
         dec     HL                      ; move to next token space
         ld      [HL],   E               ; push the label addr lo-byte
 
-        ld      A,      %10000000
+        ld      A,      %10000000       ; set the deferred flag
         ld      [@flag],A
-
-        ; push a token with word/addr value:
-        ;-----------------------------------------------------------------------
-;@word:  dec     HL                      ; move to next token space
-;        ld      [HL],   A               ; push the value token
-;        dec     HL                      ; move to next token space
-;        ld      [HL],   B               ; push the number/addr hi-byte
-;        dec     HL                      ; move to next token space
-;        ld      [HL],   C               ; push the number/addr lo-byte
 
         ;-----------------------------------------------------------------------
         ; a value has been added, check for the presence of an operator:
@@ -1018,6 +1120,8 @@ tokenExpr:
         ;
         ; TODO: check for an overflow here
 @end:   xor     A                       ; (clear carry flag!)
+        dec     HL                      ; a null terminator is appended to
+        ld      [HL],   A               ;  avoid counting during evaluation
         ex      DE,     HL              ; (only HL can do subtract)
         ld      HL,     [expr]          ; get starting addr of expr
         sbc     HL,     DE              ; subtract end-addr from start-addr
@@ -1211,250 +1315,3 @@ code:
 ; WARNING: ANYTHING PLACED AFTER HERE WILL BE OVERWRITTEN
 
 ;///////////////////////////////////////////////////////////////////////////////
-
-;readWord:
-;===============================================================================
-; reads a word into a buffer:
-;
-; NOTE: an error occurs if a word is > WORD_LEN chars long.
-;       this routine doesn't handle strings
-;
-; TODO: needs to return the state of the last char read,
-;       i.e. zero-flag for newline/EOF
-;
-; in:   A               first character of word already read
-; out:  BC              length of word
-;       HL              (preserved)
-;       DE              (clobbered)
-;-------------------------------------------------------------------------------
-;        ; note that the word is written *downwards* in RAM, to match how
-;        ; symbol names are written on the heap, for faster comparison --
-;        ; we use the bottom of the stack to hold the incoming word;
-;        ; because this is page-aligned we can get away with using
-;        ; `DEC E` instead of `DEC DE`
-;        ;
-;        ld      DE,     [word]          ; top of word-buffer, e.g $FC1F
-;        jr      +                       ; (first character already read)
-;        ;----------------------------------------------------------------------
-;-       call    readChar                ; read char from input file
-;        cp      ASCII_SPC+1             ; whitespace?
-;        jr      c,      @ok             ; (leave loop at whitespace)
-;+       dec     E                       ; move to next space in buffer
-;        ld      [DE],   A               ; add the character to the buffer
-;        jp      p,      -               ; keep going until buffer full
-;        ;----------------------------------------------------------------------
-;        jp      errWord                 ; word too long!
-;
-;        ;----------------------------------------------------------------------
-;@ok:    ld      A,      WORD_LEN        ; max size - characters remaining
-;        sub     E                       ;  = length of word
-;        ld      E,      WORD_LEN+1      ; snap back to length byte
-;        ld      [DE],   A               ; write word-length byte
-;
-;        ld      C,      A               ; return word-length in BC,
-;        ld      B,      0               ;  convenient for `findSymbol` etc.
-;
-;        ret
-
-;findSymbol:
-;===============================================================================
-; search for a symbol (label / constant) in a dictionary:
-;
-; in:   DE              dictionary entry point: an addr that contains the
-;                       addr of the last symbol added to the dictionary,
-;                       i.e. `label` for labels & `const` for constants
-;       BC              length of symbol name; `readWord` provides this --
-;                       despite names being limited to 30 chars, B must be 0
-;       [word]          the label is assumed to be in the word-buffer,
-;                       i.e. after calling `readWord`
-;
-; out:  A               non-zero if found. 0 if symbol not found, including
-;                       forward-references that don't have a valid value yet
-;       zf              zero-flag is set according to the above
-;       cf              carry set indciates the symbol is a forward-reference
-;       BC              if symbol found, BC holds its value
-;                       if symbol doesn't exist, **BC retains the name length**
-;                       if symbol is a forward-reference (carry-set), then BC
-;                       is the addr of the flag byte of the symbol record --
-;                       this is so that the symbol value can be updated
-;       DE              $0000 if label doesn't exist. if the label exists,
-;                       inlcuding forward-references that would otherwise
-;                       behave as "not found", HL contains the addr of the
-;                       symbol record, pointing to the lo-byte of the link field
-;       HL              (preserved)
-;-------------------------------------------------------------------------------
-;        push    HL                      ; preserve HL coming in
-;        ex      DE,     HL              ; swap entry point to HL
-;        ld      DE,     [word]          ; initialise addr of word-buffer
-;        call    _findSymbol             ; jump into the main loop
-;        pop     HL                      ; restore HL from caller
-;        ret
-;
-;        ;======================================================================
-;        ; names do not match!
-;        ;
-;--      ld      E,      WORD_LEN+1      ; snap back to length byte in buffer
-;        pop     HL                      ; snap back to length byte in symbol
-;        ld      C,      [HL]            ; re-get word-length to check
-;-       inc     HL                      ; move *up* to link addr lo-byte
-;
-;_findSymbol:
-;        ;----------------------------------------------------------------------
-;        ; the link field of a symbol points to      - - -+------+
-;        ; the lo-byte of the next symbol's link          | link |
-;        ; field in the chain, with the remaining    - - -+--|---+
-;        ; fields extending *downwards* in RAM            .--'
-;        ;                                                v
-;        ;          +-------+---+---+---+---+---+---+-----+------+
-;        ;  < heap  | value | l | e | b | a | l | : | len | link |
-;        ;          +-------+---+---+---+---+---+---+-----+------+
-;        ;
-;        ; follow this link, but exit if it's $0000
-;        ; (also setting the zero-flag and clearing carry
-;        ;  -- did you know that OR cleared carry!??)
-;        ;
-;        ld      A,      [HL]            ; read next symbol addr, lo-byte
-;        inc     HL                      ; move *up* to link addr hi-byte
-;        ld      H,      [HL]            ; read next symbol addr, hi-byte
-;        ld      L,      A               ; (complete the addr)
-;        or      H                       ; is the link addr $0000?
-;        jr      z,      @end            ; terminate at end of chain
-;
-;        ; (HL is now the next symbol addr in the heap)
-;
-;        dec     HL                      ; move down to length byte
-;        ld      A,      [HL]            ; get symbol name length
-;        cp      C                       ; compare with word-buffer length
-;        jr      nz,      -              ; different? return to link and follow
-;
-;        ;----------------------------------------------------------------------
-;        ; symbol length matches, check characters:
-;        ;
-;        ; remember this position to snap back to if the symbol doesn't
-;        ; match and we need to follow the link to the next symbol
-;        push    HL
-;
-;        dec     HL                      ; move down a character in the heap
-;@loop:  dec     E                       ; move down a character in word-buffer
-;        ld      A,      [DE]            ; read char from word-buffer
-;        cpd                             ; = CP A, [HL]; DEC HL; DEC BC
-;        jr      nz,     --              ; stop looping if mismatch
-;        jp      pe,     @loop           ; keep looping until chars run out
-;
-;        ; names match! read and return the symbol value:
-;        ;----------------------------------------------------------------------
-;        ; the flag byte is used to indicate a forward-reference on a label;
-;        ; the label name is known, but doesn't have a value yet. we return
-;        ; this flag in the carry flag by shifting it out of the byte
-;        ;
-;        ; for a deferred value the byte is 0; the shift keeps this as zero,
-;        ; sets zero-flag and CCF sets the carry flag accordingly. for a valid
-;        ; value the byte is 1; the shift sets carry AND bit 7 (=$80), clearing
-;        ; zero flag and CCF clears the carry
-;        ;
-;        ; NOTE: CPD has already decremented HL for us!
-;        ld      A,      [HL]            ; read forward-reference flag byte
-;        rrca                            ; shift bit 0 into bit 7 AND carry!
-;        ccf                             ; flip carry so forward-reference = 1
-;
-;        ; for a forward-reference, BC returns the address of
-;        ; the flag-byte so that the label's true value can be set
-;        ;
-;        ; (it's faster to just do these two instructions
-;        ;  in all cases and jump on the less-likely case)
-;        ;
-;        ld      B,      H               ; copy current heap addr
-;        ld      C,      L               ;  to BC
-;        jr      c,      +               ; skip value for forward-reference
-;
-;        ; get the label's value:
-;        ;
-;        dec     HL                      ; step past flag byte
-;        ld      B,      [HL]            ; symbol value hi-byte
-;        dec     HL                      ; move to value lo-byte
-;        ld      C,      [HL]            ; return BC = symbol value
-;
-;        ; return the address of the symbol:
-;+       pop     HL                      ; snap back to the symbol-len field
-;        inc     HL                      ; move *up* to link addr lo-byte
-;@end    ex      DE,     HL              ; swap symbol addr to DE
-;
-;        ret
-
-;deferExpr:
-;===============================================================================
-; push an expression to the heap:
-;
-; - the link addr to the previous expression
-; - the current code-segment address
-; - the current virtual program-counter
-;   (in case of relative jump)
-; - the current line number in the input file
-; - the current column number in the input file
-;   (in case of error)
-; - the size of the output; 1 or 2 bytes
-; - the addr of the expr tokens
-;
-; in:   HL              current heap position
-;       IX              virtual program-counter
-;
-; out:  HL              updated heap position (defer record added to heap)
-;       IY              updated code-segment addr (expr result space reserved)
-;       IX              updated virtual program-counter (as with IY)
-;       A, BC           (clobbered)
-;-------------------------------------------------------------------------------
-;        ; we need to push a bunch of values to the heap and the fastest way
-;        ; to write 16-bit values easily is... the stack! simply make the heap
-;        ; into the stack and we can PUSH our stuff on to it!
-;        ;
-;        ; WE DO NOT NEED TO DISABLE INTERRUPTS!!! any interrupt is going to
-;        ; push to our heap and then pop the address off when it returns,
-;        ; which has no affect on the values we're pushing
-;        ;
-;        ld      [sp],   SP              ; backup stack pointer
-;        ld      SP,     HL              ; move stack to heap!
-;        ;----------------------------------------------------------------------
-;
-;        ; link this expression to the previous one:
-;        ; (since the heap address is in SP, we can reuse HL)
-;        ;
-;        ld      HL,     [defer]         ; get previous deferred expr address
-;        push    HL                      ; write to heap
-;        ld      [defer],SP              ; write heap addr to the entry point!
-;
-;        ; push the current code-segment position; this is where
-;        ; the expression result will be filled in after evaluation
-;        push    DE
-;
-;        ; push the current virtual program-counter
-;        ; (for calculating relative jumps)
-;        push    IX                      ; PC is always stored in IX, not RAM
-;
-;        ; push the source file line-number
-;        ld      BC,     [row]
-;        push    BC
-;        ; push the source file column-number, plus the number of bytes
-;        ; the result should occupy in the code-segment
-;        ld      BC,     [stride_col]
-;        push    BC
-;
-;        ; reserve bytes for the expr result:
-;        ;
-;        ; this routine is only called if there is a parameter, which assumes
-;        ; a minimum of 1 byte, so check for a second byte
-;        ;
-;        dec     C                       ; is the stride 1 or 2?
-;        jr      z,      +               ; if it is 1, skip the 2nd byte
-;        inc     IY                      ; reserve a byte and increment
-;        inc     IX                      ;  virtual program-counter
-;+       inc     IY                      ; reserve an additional byte
-;        inc     IX                      ;  and increment program-counter
-;
-;        ;----------------------------------------------------------------------
-;        ld      HL,     0               ; there is no `LD HL, SP` (!?), so
-;        add     HL,     SP              ;  it's quicker to just add SP to 0!
-;        ld      SP,     [sp]            ; restore stack pointer!
-;
-;        ; TODO: copy bytecode expr from below the stack
-;
-;        ret

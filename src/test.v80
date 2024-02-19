@@ -1,6 +1,7 @@
 ;v80 test file
 ;
-#true	$1
+#true	$1			; define constant
+#true	$0			; redefine constant
 
 ;labels can start with numbers and are
 ;limited to 31 chars, including the sigil
