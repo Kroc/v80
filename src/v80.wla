@@ -814,6 +814,8 @@ parseInstruction:
         jp      emitOpcode
 
 
+; TODO: must preserve HL=stack whilst expression parsing
+
 nextExpr:
 ;===============================================================================
 ; skip space before parsing an expression:
@@ -840,12 +842,6 @@ parseExpr:
 ;-------------------------------------------------------------------------------
         call    tokenExpr               ; read expr and tokenise
 
-        ; HL, the start of the expression will be returned as-is. DE will
-        ; contain the *end* of the expression. if we can't evaluate the
-        ; expression, we need to keep it and append a defer record
-        ;
-        
-
         ; evaluate the expression and return its value:
         ; (fallthrough...)
 
@@ -863,28 +859,28 @@ tokenExpr:
 ;===============================================================================
 ; read an expression from the input file into tokens:
 ;
-; words are read and converted into tokens.
-; if the expression contains forward references a flag is returned
-;
 ; WARN: the first character of the expression is assumed to be read and
 ;       the first character of the next word following the expression
 ;       will be read but not used! this allows chaining of expressions,
 ;       but you must avoid calling `readChar` without first using the
 ;       character waiting in `[char]`
 ;
-; TODO: return some flag for evaluable state. A? c? z?
-;
-; out:  A, BC|DE|HL     (clobbered)
+; out:  [expr]          the first byte is the length of the expr
+;       HL              forward-references to labels are pushed to the heap
+;       A               length of expr. the hi-bit is set if the expression
+;                       has forward-references that cannot be evaluated!
+;       BC|DE           (clobbered)
 ;-------------------------------------------------------------------------------
         ; expressions are tokenised into a temporary space below the stack,
         ; this is because any forward-references to labels will need to be
         ; pushed to the heap so we can't have the expression on the heap
         ; at the same time!
         ;
-        ; TODO: `ld HL, [expr]` can be patched with `ld HL, $xx80`
-        ;       to save 10 cycles here?
-        ;
-        ld      HL,     [expr]          ; get addr of expr bytecode space
+        push    HL                      ; preserve heap addr
+        ld      HL,     [expr]          ; addr of expr bytecode space
+        xor     A                       ; set A to zero
+        ld      [@flag],A               ; clear 'defer' flag
+        dec     HL                      ; next byte down is start of bytecode
         ld      A,      [char]          ; get current unused input char
         jr      @unary                  ; jump into the parsing loop
 
@@ -975,8 +971,8 @@ tokenExpr:
         dec     HL                      ; move to next token space
         ld      [HL],   E               ; push the label addr lo-byte
 
-        ; TODO: set the defer flag
-        
+        ld      A,      %10000000
+        ld      [@flag],A
 
         ; push a token with word/addr value:
         ;-----------------------------------------------------------------------
@@ -1015,11 +1011,25 @@ tokenExpr:
         ; fall through and terminate the expression
 
         ;-----------------------------------------------------------------------
-        ; TODO: check for an overflow here
+        ; calculate length of expression:
         ;
-@end:   dec     HL                      ; move to next token space
-        ld      [HL],   CHAR_END        ; terminate the expression (0)
+        ; the expr bytecode is ordered *downwards* in memory, so the difference
+        ; from the last address to the starting adress is the length
+        ;
+        ; TODO: check for an overflow here
+@end:   xor     A                       ; (clear carry flag!)
+        ex      DE,     HL              ; (only HL can do subtract)
+        ld      HL,     [expr]          ; get starting addr of expr
+        sbc     HL,     DE              ; subtract end-addr from start-addr
+        ld      A,      [@flag]         ; get the defer flag and merge
+        or      A,      L               ;  with length of expr in L
+        ld      [DE],   A               ; write to first byte of expr
+
+        pop     HL                      ; restore heap addr to HL
         ret
+
+        ;-----------------------------------------------------------------------
+@flag   .BYTE   $00
 
 
 parseHexNumber:
@@ -1030,6 +1040,7 @@ parseHexNumber:
 ; that always returns the current virtual program-counter
 ;
 ; out:  BC              the value, 0 padded for numbers < 256
+;       HL              (preserved)
 ;       A, DE           (clobbered)
 ;-------------------------------------------------------------------------------
         ; try to read up to 4 digits; the 5th character
