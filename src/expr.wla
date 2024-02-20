@@ -19,10 +19,18 @@ nextExpr:
 parseExpr:
 ;===============================================================================
 ; parse an expression from the input file, tokenise it and evaluate it,
-; returning the result. if the expression has forward-references,
-; it'll be deferred on the heap
+; returning the result. if the expression contains forward-references
+; it'll be deferred on the heap and carry-flag is returned set
 ;
 ; in:   HL              current heap addr
+; out:  BC              the result of the expression evaluation
+;       cf              carry clear indicates success
+;                       carry set indicates the expression includes forward-
+;                       references and couldn't be evaluated; the value of BC
+;                       is invalid and the expression was pushed to the heap
+;       HL              any forward-references to labels will be added to the
+;                       heap along with the whole expression
+;       A, DE           (clobbered)
 ;-------------------------------------------------------------------------------
         call    tokenExpr               ; read expr and tokenise
 
@@ -30,123 +38,87 @@ parseExpr:
         ; references), the hi-bit of the return value will be set
         ;
         rla                             ; pop the hi-bit off into carry
-        jr      nc,     evalExpr        ; if 0, evaluate expression!
+        jp      c,      deferExpr       ; cannot be evaluated -- defer expr!
 
-        ; the expression cannot be evalulated, copy it to the heap
-        ; to be re-evaluated after parsing is complete
-        ;
-        ; (fallthrough)
+        ; fallthrough to evaluate expr
         ; ...
-
-deferExpr:
-;===============================================================================
-; push an expression to the heap:
-;
-; - the link addr to the previous expression
-; - the current code-segment address
-; - the current virtual program-counter
-;   (in case of relative jump)
-; - the size of the output; 1 or 2 bytes
-; - the expr tokens
-;
-; in:   HL              current heap position
-;       IX              virtual program-counter
-;       IY              code-segement addr to reserve result bytes
-;
-; out:  HL              updated heap position (defer record added to heap)
-;       IY              updated code-segment addr (expr result space reserved)
-;       IX              updated virtual program-counter (as with IY)
-;       A, BC|DE        (clobbered)
-;-------------------------------------------------------------------------------
-        ; we need to push a bunch of values to the heap and the fastest way
-        ; to write 16-bit values easily is... the stack! simply make the heap
-        ; into the stack and we can PUSH our stuff on to it!
-        ;
-        ; WE DO NOT NEED TO DISABLE INTERRUPTS!!! any interrupt is going to
-        ; push to our heap and then pop the address off when it returns,
-        ; which has no affect on the values we're pushing
-        ;
-        ld      [sp],   SP              ; backup stack pointer
-        ld      SP,     HL              ; move stack to heap!
-        ;-----------------------------------------------------------------------
-
-        ; link this expression to the previous one:
-        ; (since the heap address is in SP, we can reuse HL)
-        ;
-        ld      HL,     [defer]         ; get previous deferred expr address
-        push    HL                      ; write to heap
-        ld      [defer],SP              ; write heap addr to the entry point!
-
-        ; push the current code-segment position; this is where
-        ; the expression result will be filled in after evaluation
-        push    IY
-
-        ; push the current virtual program-counter
-        ; (for calculating relative jumps)
-        push    IX                      ; PC is always stored in IX, not RAM
-
-        ; push the source file line-number
-        ld      BC,     [row]
-        push    BC
-        ; push the source file column-number, plus the number
-        ; of bytes the result should occupy in the code-segment
-        ld      BC,     [stride_col]
-        push    BC
-
-        ;-----------------------------------------------------------------------
-        ld      HL,     0               ; there is no `LD HL, SP` (!?), so
-        add     HL,     SP              ;  it's quicker to just add SP to 0!
-        ld      SP,     [sp]            ; restore stack pointer!
-
-        ; reserve bytes for the expr result:
-        ;
-        ; this routine is only called if there is an instruction parameter
-        ; (constant defines and if-statements cannot be deferred!) which
-        ; assumes a minimum of 1 byte, so check for a second byte
-        ;
-        dec     C                       ; is the stride 1 or 2?
-        jr      z,      +               ; if it is 1, skip the 2nd byte
-        inc     IY                      ; reserve a byte and increment
-        inc     IX                      ;  virtual program-counter
-+       inc     IY                      ; reserve an additional byte
-        inc     IX                      ;  and increment program-counter
-
-        ; copy expression bytecode to the heap:
-        ;
-        ; note that LDDR is post-decrement (copy-then-decrement), whereas
-        ; the heap is pre-decrement like the stack (decrement-then-copy)
-        ;
-        dec     HL                      ; fix heap addr for copy-then-DEC
-        ex      DE,     HL              ; LDDR requires DE to be destination
-        ld      HL,     [expr]          ; get the addr of the expr-bytecode
-        ld      C,      [HL]            ; first byte is length / defer flag
-        res     7,      C               ; stip hi-bit (defer flag)
-        ld      B,      0               ; LDDR uses full BC count
-        ;ld      A,      [stride]        ; before copy, ue the first byte
-        ;ld      [HL],   A               ;  to record the parameter size
-        lddr                            ; copy BC bytes from [DE] to [HL]!
-        ex      DE,     HL              ; swap updated heap addr back to HL
-        inc     HL                      ; fix heap addr after copy
-
-        ; TODO: is the heap address on a used or unused addr? (LDDR)
-        ; TODO: must return the same as evalExpr
-
-        ret
-
 
 evalExpr:
 ;===============================================================================
 ; evaluates an expr:
 ;
-; out:  HL      addr of expr (could be [`expr`] or heap!)
-;       BC      result value
-;       cf      carry-flag is set if the expression cannot be evaluated!
-;               (contains forward-references)
+; WARN: this routine DOES NOT CHECK if the expression is deferred!
+;       expressions are deferred when parsed from source code; it is assumed
+;       once all code is parsed that all labels will have been defined and
+;       evaluation will now succeed
+;
+; in:   DE      addr of expr (could be [`expr`] or heap!)
+; out:  BC      result value
+;       HL      (preserved)
 ;-------------------------------------------------------------------------------
-        ld      A,      [HL]            ; first byte is length / defer flag
-        
-        
+        ; we won't need to push anything new to the heap so preserve
+        ; the current heap position. DE will be a pointer to an expr
+        ; that could be located on the heap
+        push    HL
+
+        ; we do not use the length byte because we don't want to maintain a
+        ; counter register. we can just rely on the null terminator to stop
+        ;
+        dec     DE                      ; skip length byte
+
+@eval:  ld      A,      [DE]            ; read token type
+        and     A                       ; (set flags)
+        jr      z,      @end            ; terminator?
+
+        ; during parsing, constants and defined labels are resolved to number
+        ; literals meaning that we will never see a "constant" token here
+        ; and "label" tokens *always* imply a forward-reference
+        ;
+        cp      CHAR_HEX                ; a literal number?
+        jr      z,      @hex
+        cp      CHAR_LABEL              ; a label (that was deferred)
+        jr      z,      @label
+        cp      CHAR_OP_LO              ; the lo-byte unary operator
+        jr      z,      @lo
+        cp      CHAR_OP_HI              ; the hi-byte unary operator
+        jr      z,      @hi
+        cp      CHAR_OP_NOT             ; the not unary operator
+        jr      z,      @not
+        cp      CHAR_OP_ADD             ; the add operator
+        jr      z,      @add
+        cp      CHAR_OP_SUB             ; the subtract operator
+        jr      z,      @sub
+        cp      CHAR_OP_MUL             ; the multiply operator
+        jr      z,      @mul
+        cp      CHAR_OP_DIV             ; the divide operator
+        jr      z,      @div
+        cp      CHAR_OP_AND             ; the bitwise AND operator
+        jr      z,      @and
+        cp      CHAR_OP_OR              ; the bitwise OR operator
+        jr      z,      @or
+        cp      CHAR_OP_XOR             ; the bitwise XOR operator
+        jr      z,      @xor
+        cp      CHAR_OP_MOD             ; the modulo operator
+        jr      z,      @mod
+
+        xor     A                       ; return carry-clear for success
+@end:   pop     HL                      ; restore heap position
         ret
+
+@hex:   jr      @eval
+@label: jr      @eval
+@lo:    jr      @eval
+@hi:    jr      @eval
+@not:   jr      @eval
+@add:   jr      @eval
+@sub:   jr      @eval
+@mul:   jr      @eval
+@div:   jr      @eval
+@and:   jr      @eval
+@or:    jr      @eval
+@xor:   jr      @eval
+@mod:   jr      @eval
+
 
 
 tokenExpr:
@@ -161,9 +133,11 @@ tokenExpr:
 ;
 ; out:  [expr]          the first byte is the length of the expr
 ;       HL              forward-references to labels are pushed to the heap
+;       DE              starting addr of expr: this will always be `[expr]`,
+;                       remember that this extends *downwards* in RAM
 ;       A               length of expr. the hi-bit is set if the expression
 ;                       has forward-references that cannot be evaluated!
-;       BC|DE           (clobbered)
+;       BC              (clobbered)
 ;-------------------------------------------------------------------------------
         ; expressions are tokenised into a temporary space below the stack,
         ; this is because any forward-references to labels will need to be
@@ -313,7 +287,103 @@ tokenExpr:
         ld      [DE],   A               ; write to first byte of expr
 
         pop     HL                      ; restore heap addr to HL
-        ret
+        ret                             ; note that DE, expr addr, is returned
 
         ;-----------------------------------------------------------------------
 @flag   .BYTE   $00
+
+
+deferExpr:
+;===============================================================================
+; copy the expression to the heap:
+;
+; - the link addr to the previous expression
+; - the current code-segment address
+; - the current virtual program-counter
+;   (in case of relative jump)
+; - the size of the output; 1 or 2 bytes
+; - the expr tokens
+;
+; in:   HL              current heap position
+;       DE              starting addr of expr: this will always be `[expr]`
+;       IX              virtual program-counter
+;       IY              code-segement addr to reserve result bytes
+;
+; out:  HL              updated heap position (defer record added to heap)
+;       IY              updated code-segment addr (expr result space reserved)
+;       IX              updated virtual program-counter (as with IY)
+;       A, BC|DE        (clobbered)
+;-------------------------------------------------------------------------------
+        ; we need to push a bunch of values to the heap and the fastest way
+        ; to write 16-bit values easily is... the stack! simply make the heap
+        ; into the stack and we can PUSH our stuff on to it!
+        ;
+        ; WE DO NOT NEED TO DISABLE INTERRUPTS!!! any interrupt is going to
+        ; push to our heap and then pop the address off when it returns,
+        ; which has no affect on the values we're pushing
+        ;
+        ld      [sp],   SP              ; backup stack pointer
+        ld      SP,     HL              ; move stack to heap!
+        ;-----------------------------------------------------------------------
+
+        ; link this expression to the previous one:
+        ; (since the heap address is in SP, we can reuse HL)
+        ;
+        ld      HL,     [defer]         ; get previous deferred expr address
+        push    HL                      ; write to heap
+        ld      [defer],SP              ; write heap addr to the entry point!
+
+        ; push the current code-segment position; this is where
+        ; the expression result will be filled in after evaluation
+        push    IY
+
+        ; push the current virtual program-counter
+        ; (for calculating relative jumps)
+        push    IX                      ; PC is always stored in IX, not RAM
+
+        ; push the source file line-number
+        ld      BC,     [row]
+        push    BC
+        ; push the source file column-number, plus the number
+        ; of bytes the result should occupy in the code-segment
+        ld      BC,     [stride_col]
+        push    BC
+
+        ;-----------------------------------------------------------------------
+        ld      HL,     0               ; there is no `LD HL, SP` (!?), so
+        add     HL,     SP              ;  it's quicker to just add SP to 0!
+        ld      SP,     [sp]            ; restore stack pointer!
+
+        ; reserve bytes for the expr result:
+        ;
+        ; this routine is only called if there is an instruction parameter
+        ; (constant defines and if-statements cannot be deferred!) which
+        ; assumes a minimum of 1 byte, so check for a second byte
+        ;
+        dec     C                       ; is the stride 1 or 2?
+        jr      z,      +               ; if it is 1, skip the 2nd byte
+        inc     IY                      ; reserve a byte and increment
+        inc     IX                      ;  virtual program-counter
++       inc     IY                      ; reserve an additional byte
+        inc     IX                      ;  and increment program-counter
+
+        ; copy expression bytecode to the heap:
+        ;
+        ; note that LDDR is post-decrement (copy-then-decrement), whereas
+        ; the heap is pre-decrement like the stack (decrement-then-copy)
+        ;
+        dec     HL                      ; fix heap addr for copy-then-DEC
+        ex      DE,     HL              ; LDDR requires DE to be destination
+        ld      C,      [HL]            ; first byte is length / defer flag
+        res     7,      C               ; stip hi-bit (defer flag)
+        ld      B,      0               ; LDDR uses full BC count
+        ;ld      A,      [stride]        ; before copy, ue the first byte
+        ;ld      [HL],   A               ;  to record the parameter size
+        lddr                            ; copy BC bytes from [DE] to [HL]!
+        ex      DE,     HL              ; swap updated heap addr back to HL
+        inc     HL                      ; fix heap addr after copy
+
+        ; because the expression could not be evaluated
+        ; we must return carry-flag set to indicate no-value
+        scf
+        ret

@@ -7,6 +7,7 @@
 .INC    "err.wla"                       ; error message handling
 .INC    "z80.wla"                       ; Z80 parser & opcode binary tree
 
+
 .BLOCK  "code"
 ;===============================================================================
 ; memory map:
@@ -22,6 +23,26 @@
 ;   stack: usual Z80 stack (builds downwards)
 ;
 .DEF    WORD_LEN        30              ; maximum symbol name length
+
+; syntax:
+;
+.DEF    CHAR_END         0              ; general terminator
+.DEF    CHAR_COMMENT    ';'             ; comment
+.DEF    CHAR_KEYWORD    '.'             ; keyword
+.DEF    CHAR_HEX        '$'             ; hexadecimal literal or PC
+.DEF    CHAR_LABEL      ':'             ; a label (16-bit)
+.DEF    CHAR_CONST      '#'             ; a constant (flexible size)
+.DEF    CHAR_OP_LO      '<'             ; lo-byte unary operator
+.DEF    CHAR_OP_HI      '>'             ; hi-byte unary operator
+.DEF    CHAR_OP_NOT     '!'             ; not unary operator
+.DEF    CHAR_OP_ADD     '+'             ; add operator
+.DEF    CHAR_OP_SUB     '-'             ; subtract operator
+.DEF    CHAR_OP_MUL     '*'             ; multiply operator
+.DEF    CHAR_OP_DIV     '/'             ; divide operator
+.DEF    CHAR_OP_AND     '&'             ; and operator
+.DEF    CHAR_OP_OR      '|'             ; or operator
+.DEF    CHAR_OP_XOR     '^'             ; xor operator
+.DEF    CHAR_OP_MOD     '\'             ; modulo operator
 
 ; the bottom of the word buffer, just above the heap, can be used
 ; as temporary space for a few bytes (so their use can't overlap)
@@ -81,24 +102,6 @@ const:  .ADDR $000                      ; addr of last const dictionary-entry
 ; calculations are compiled into bytecode to allow for later evaluation,
 ; i.e. for deferred calculations where a symbol is not yet known
 ;
-.DEF    CHAR_END         0              ; general terminator
-.DEF    CHAR_COMMENT    ';'             ; comment
-.DEF    CHAR_KEYWORD    '.'             ; keyword
-.DEF    CHAR_HEX        '$'             ; hexadecimal literal or PC
-.DEF    CHAR_LABEL      ':'             ; a label (16-bit)
-.DEF    CHAR_CONST      '#'             ; a constant (flexible size)
-.DEF    CHAR_OP_LO      '<'             ; lo-byte unary operator
-.DEF    CHAR_OP_HI      '>'             ; hi-byte unary operator
-.DEF    CHAR_OP_NOT     '!'             ; not unary operator
-.DEF    CHAR_OP_ADD     '+'             ; add operator
-.DEF    CHAR_OP_SUB     '-'             ; subtract operator
-.DEF    CHAR_OP_MUL     '*'             ; multiply operator
-.DEF    CHAR_OP_DIV     '/'             ; divide operator
-.DEF    CHAR_OP_AND     '&'             ; and operator
-.DEF    CHAR_OP_OR      '|'             ; or operator
-.DEF    CHAR_OP_XOR     '^'             ; xor operator
-.DEF    CHAR_OP_MOD     '\'             ; modulo operator
-
 expr:   .ADDR $fc7f                     ; expr token space (builds downwards)
 defer:  .ADDR $0000                     ; addr of last deferred expr
 
@@ -254,7 +257,7 @@ assemble:
 
         ; modify the virtual program-counter:
         ;-----------------------------------------------------------------------
-@pc:    call    tokenExpr               ; capture the complete expression
+@pc:    call    parseExpr               ; capture the complete expression
         halt
         jr      @body
 
