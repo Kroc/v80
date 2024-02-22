@@ -59,7 +59,7 @@ parseExpr:
         ;=======================================================================
         ; add an operator and fall-through to the next operand:
         ;
--       dec     HL                      ; move to next token space
+@next:  dec     HL                      ; move to next token space
         ld      [HL],   A               ; push token in A to expr
 
         call    nextWord                ; read first character of the next word
@@ -87,7 +87,6 @@ parseExpr:
         ; read the next character:
 +       dec     HL                      ; move to next token space
         ld      [HL],   A               ; push a unary operator token
-
         call    nextWord                ; read first character of the next word
         jp      z,      errExpr         ; newline/EOF = unexpected expr end!
 
@@ -103,15 +102,31 @@ parseExpr:
         jr      nz,     @const          ; not a label? try constants
         ld      DE,     label           ; label dictionary entry point
         call    getSymbol               ; try get the label's value
+
+        ; if the expression contains a forward-reference to a label we won't
+        ; be able to evaluate the expression now and it needs to be deferred
+        ;
+        ; NOTE: it is very imporant to be aware that in the case of carry-set,
+        ;       `getSymbol` has returned the label-length in BC and the address
+        ;       of the symbol on the heap in DE
+        ;
         jr      c,      @defer
 
-        ; TODO: handle missing label
+        ; if the label is known, push a number literal token of its address
+        ; and fall through to looking for a following operator token
+        jr      nz,     @num
 
-        halt
+        ; this label has not been seen before but because it's in an expression
+        ; this is a forward-reference -- we need to add a placeholder for the
+        ; label on the heap before we can defer the whole expression
+        ;
+        scf                             ; flag to indicate a forward-reference
+        call    pushLabel               ; define the label name on the heap
 
         ; any expression that contains a forward-reference to a label causes
         ; the whole expression to be deferred. instead of the label value,
-        ; the label's address in the dictionary is tokenised
+        ; the label's address in the dictionary is tokenised (`getSymbol`
+        ; & `pushLabel` return the symbol addr in DE)
         ;
 @defer: dec     HL                      ; move to next token space
         ld      [HL],   CHAR_LABEL      ; push the label token
@@ -169,21 +184,21 @@ parseExpr:
         jr      z,      @end            ; end expr at newline / end-of-file
 
         cp      CHAR_OP_ADD             ; add operator?
-        jr      z,      -               ; push token to heap, find next operand
+        jr      z,      @next           ; push token to heap, find next operand
         cp      CHAR_OP_SUB             ; subtract operator?
-        jr      z,      -               ; ...
+        jr      z,      @next           ; ...
         cp      CHAR_OP_MUL             ; multiply operator?
-        jr      z,      -               ; ...
+        jr      z,      @next           ; ...
         cp      CHAR_OP_DIV             ; divide operator?
-        jr      z,      -               ; ...
+        jr      z,      @next           ; ...
         cp      CHAR_OP_AND             ; and operator?
-        jr      z,      -               ; ...
+        jr      z,      @next           ; ...
         cp      CHAR_OP_OR              ; or operator?
-        jr      z,      -               ; ...
+        jr      z,      @next           ; ...
         cp      CHAR_OP_XOR             ; xor operator?
-        jr      z,      -               ; ...
+        jr      z,      @next           ; ...
         cp      CHAR_OP_MOD             ; modulo operator?
-        jr      z,      -               ; ...
+        jr      z,      @next           ; ...
 
         ; whatever it is, it isn't an operator;
         ; fall through and terminate the expression

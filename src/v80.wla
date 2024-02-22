@@ -650,7 +650,9 @@ pushLabel:
 ;       [word]          the label is assumed to be in the word-buffer,
 ;                       i.e. after calling `getSymbol`
 ; out:  HL              heap position is advanced (downwards!)
-;       A, BC|DE        (clobbered)
+;       DE              addr of symbol on heap, pointing to
+;                       the lo-byte of the link field
+;       A, BC           (clobbered)
 ;-------------------------------------------------------------------------------
         ; link this label to the previous one:
         ; (these instructions don't modify carry...)
@@ -707,6 +709,7 @@ pushLabel:
         ld      A,      IXL
         ld      [HL],   A
 
+        ld      DE,     [label]         ; return new symbol addr
         ret
 
 
