@@ -7,6 +7,8 @@ nextExpr:
 ; (see parseExpr below for parameters)
 ;
 ;-------------------------------------------------------------------------------
+        ; skip whitespace and return on either the next non-space character,
+        ; or a newline/end-of-file (where a comment is taken as a newline)
         call    nextWord
 
         ; since the expression is expected/required,
@@ -63,11 +65,12 @@ parseExpr:
         call    nextWord                ; read first character of the next word
         jp      z,      errExpr         ; newline/EOF = unexpected expr end!
 
+        ;-----------------------------------------------------------------------
+        ; unary operators:
+        ;=======================================================================
         ; an expression must begin with either a value,
         ; or a unary operator and a value
         ;
-        ; unary operator?
-        ;-----------------------------------------------------------------------
         ; unary operators can always precede values,
         ; even after an operator, e.g. `$10 + <:label`
         ;
@@ -78,7 +81,7 @@ parseExpr:
         jr      z,      +               ; a value must follow a unary operator
         ;-----------------------------------------------------------------------
         cp      CHAR_OP_NOT             ; not operator?
-        jr      nz,     @value          ; no unary operators, check for values
+        jr      nz,     @label          ; no unary operators, check for values
 
         ; a unary operator has been added,
         ; read the next character:
@@ -88,45 +91,21 @@ parseExpr:
         call    nextWord                ; read first character of the next word
         jp      z,      errExpr         ; newline/EOF = unexpected expr end!
 
-        ; hexadecimal literal?
+        ; after a unary operator, a value must follow
+        ; ...
+
         ;-----------------------------------------------------------------------
-        ; a sigil is required because A-F can't be separated
-        ; from instruction names without look-ahead
-        ;
-@value: cp      CHAR_HEX                ; hexadecimal sigil?
-        jr      nz,     @const
-
-        dec     HL                      ; move to next token space
-        ld      [HL],   A               ; push a number token
-        call    parseHexNumber          ; parse the hex number into BC
-        dec     HL                      ; move to next token space
-        ld      [HL],   B               ; push the number hi-byte
-        dec     HL                      ; move to next token space
-        ld      [HL],   C               ; push the number lo-byte
-
-        jr      @op                     ; an operator can follow a value
-
-        ; constant?
-        ;-----------------------------------------------------------------------
-@const: cp      CHAR_CONST              ; a constant?
-        jr      nz,     @label
-
-        ld      DE,     const           ; const dictionary entry point
-        call    getSymbol               ; try get the constant's value
-
-        halt
-
+        ; values:
+        ;=======================================================================
         ; label?
         ;-----------------------------------------------------------------------
 @label: cp      CHAR_LABEL              ; a label?
-        jp      nz,     errExpr         ; expression has no value!!
-
+        jr      nz,     @const          ; not a label? try constants
         ld      DE,     label           ; label dictionary entry point
         call    getSymbol               ; try get the label's value
         jr      c,      @defer
 
         ; TODO: handle missing label
-
 
         halt
 
@@ -144,7 +123,45 @@ parseExpr:
         ld      A,      %10000000       ; set the deferred flag
         ld      [@flag],A
 
+        jr      @op                     ; an operator can follow a value
+
+        ; constant?
         ;-----------------------------------------------------------------------
+@const: cp      CHAR_CONST              ; a constant?
+        jr      nz,     @hex            ; not a constant? try hex literal
+
+        ld      DE,     const           ; const dictionary entry point
+        call    getSymbol               ; try get the constant's value
+        jp      z,      errExpr         ; exprssion contains undefined const!
+
+        ; push a number literal token and fallthrough to
+        ; looking for a following operator token
+        jr      @num
+
+        ; hexadecimal literal?
+        ;-----------------------------------------------------------------------
+        ; a sigil is required because A-F can't be separated
+        ; from instruction names without look-ahead
+        ;
+@hex:   cp      CHAR_HEX                ; hexadecimal sigil?
+        jp      nz,     errExpr         ; expression has no value!!
+        call    parseHexNumber          ; parse the hex number into BC
+
+        ; push a literal number token:
+        ;
+@num:   dec     HL                      ; move to next token space
+        ld      [HL],   CHAR_HEX        ; push a number token
+        dec     HL                      ; move to next token space
+        ld      [HL],   B               ; push the number hi-byte
+        dec     HL                      ; move to next token space
+        ld      [HL],   C               ; push the number lo-byte
+
+        ; an operator can follow a value
+        ; ...
+
+        ;-----------------------------------------------------------------------
+        ; operators:
+        ;=======================================================================
         ; a value has been added, check for the presence of an operator:
         ; if there's no operator, the expression ends here
         ;
@@ -172,7 +189,8 @@ parseExpr:
         ; fall through and terminate the expression
         ; ...
 
-        ;-----------------------------------------------------------------------
+        ; end of expr:
+        ;=======================================================================
         ; TODO: check for an overflow here
 @end:   xor     A                       ; (clear carry flag!)
         dec     HL                      ; a null terminator is appended to
@@ -184,7 +202,10 @@ parseExpr:
         rla                             ; pop the hi-bit off into carry
         jr      nc,     evalExpr        ; if clear, evaluate the expression
 
-        ; calculate length of expression:
+        ; defer the expression
+        ;=======================================================================
+        ; calculate length of expression; this is needed
+        ; to copy the expr to the heap using LDDR
         ;
         ; the expr bytecode is ordered *downwards* in memory, so the difference
         ; from the last address to the starting adress is the length
@@ -197,8 +218,6 @@ parseExpr:
         sub     A,      L               ; subtract lowest addr (expr-end)
         ld      C,      A               ; this is the expr length
 
-        ; defer the expression
-        ;=======================================================================
         ; we need to push a bunch of values to the heap and the fastest way
         ; to write 16-bit values easily is... the stack! simply make the heap
         ; into the stack and we can PUSH our stuff on to it!

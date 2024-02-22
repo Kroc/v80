@@ -340,11 +340,17 @@ assemble:
         ;
 @const: call    _readWord               ; read symbol name
         call    nextExpr                ; try evaluate the following expression
-        
+
+        ; constants cannot be defined using forward-references!
+        jp      c,      errConst
+
+        ; the result of the constant is in BC
         ; ...
 
-        halt
-        jr      @next
+        ; TODO: define the constant
+
+        ; only one constant can be defined per line
+        jr      @line
 
 
 nextWord:
