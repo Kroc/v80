@@ -15,7 +15,7 @@
 ;   +-----+-----------------------------------+--------+--------+---------+
 ;   | v80 | code->                     <-heap | <-word | <-expr | <-stack |
 ;   +-----+-----------------------------------+--------+--------+---------+
-;                                                 32       128      128
+;                                                 32        96      128
 ;   code:  source code is assembled here
 ;   heap:  symbols and other in-flight data goes here (builds downwards)
 ;   word:  a buffer for capturing words (symbol names)
@@ -311,7 +311,7 @@ assemble:
         ; first), therefore if the label *does* exist we're trying to
         ; define a label twice!
         ;
-        jp      nz,     errLabel        ; cannot redefine labels!
+        jp      nz,     errLabelRedef   ; cannot redefine labels!
 
         call    pushLabel               ; define new label on the heap
         jr      @next                   ; return to parsing
@@ -558,13 +558,13 @@ getSymbol:
         ; names match! read and return the symbol value:
         ;-----------------------------------------------------------------------
         ; the flag byte is used to indicate a forward-reference on a label;
-        ; the label name is known, but doesn't have a value yet. we return
-        ; this flag in the carry flag by shifting it out of the byte
+        ; i.e. the label name is known, but doesn't have a value yet. we return
+        ; this flag in the carry-flag by shifting it out of the byte
         ;
         ; for a deferred value the byte is 0; the shift keeps this as zero,
-        ; sets zero-flag and CCF sets the carry flag accordingly. for a valid
+        ; sets zero-flag and CCF sets the carry-flag accordingly. for a valid
         ; value the byte is 1; the shift sets carry AND bit 7 (=$80), clearing
-        ; zero flag and CCF clears the carry
+        ; zero-flag and CCF clears the carry
         ;
         ; NOTE: CPD has already decremented HL for us!
         ld      A,      [HL]            ; read forward-reference flag byte

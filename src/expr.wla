@@ -1,5 +1,7 @@
 ; v80, (C) Kroc Camen 2023-2024, MIT License
 ; expression parsing / evaulation
+;
+.BLOCK  "code-expr"
 
 nextExpr:
 ;===============================================================================
@@ -225,10 +227,10 @@ parseExpr:
         ; the expr bytecode is ordered *downwards* in memory, so the difference
         ; from the last address to the starting adress is the length
         ;
-        ; the expr buffer runs from $xx08 downwards to $xx20
+        ; the expr buffer runs from $xx7F downwards to $xx20
         ; so an 8-bit subtraction is sufficient
         ;
-        ld      B,      A               ; B must be 0
+        ld      B,      A               ; B must be 0 (LDDR uses BC)
         ld      A,      E               ; start with highest addr (expr-start)
         sub     A,      L               ; subtract lowest addr (expr-end)
         ld      C,      A               ; this is the expr length
@@ -239,7 +241,7 @@ parseExpr:
         ;
         ; WE DO NOT NEED TO DISABLE INTERRUPTS!!! any interrupt is going to
         ; push to our heap and then pop the address off when it returns,
-        ; which has no affect on the values we're pushing
+        ; which has no effect on the values we're pushing
         ;
         ld      [sp],   SP              ; backup stack pointer
         ld      SP,     HL              ; move stack to heap!
@@ -315,66 +317,135 @@ evalExpr:
 ; WARN: this routine DOES NOT CHECK if the expression is deferred!
 ;       expressions are deferred when parsed from source code; it is assumed
 ;       once all code is parsed that all labels will have been defined and
-;       evaluation will now succeed
+;       evaluation will now succeed -- any label that is still deferred is
+;       a hard error
 ;
 ; in:   DE      addr of expr (could be [`expr`] or heap!)
 ; out:  BC      result value
 ;       HL      (preserved)
+;       A, DE   (clobbered)
 ;-------------------------------------------------------------------------------
-        ; we won't need to push anything new to the heap so preserve
-        ; the current heap position. DE will be a pointer to an expr
-        ; that could be located on the heap
-        ;;push    HL
+        ; we won't need to push anything new to the heap
+        ; so we preserve the current heap position
+        push    HL
+        ex      DE,     HL              ; use HL for reading tokens for now
+        ld      DE,     0               ; initialise running total
 
+_evalExpr:
         ; we do not use the length byte because we don't want to maintain a
         ; counter register. we can just rely on the null terminator to stop
         ;
-        dec     DE                      ; skip length byte
+        dec     HL                      ; skip length byte
 
-@eval:  ld      A,      [DE]            ; read token type
-        and     A                       ; (set flags)
-        jr      z,      @end            ; terminator?
+        ;-----------------------------------------------------------------------
+@eval:  ld      A,      [HL]            ; read token type
+        dec     HL                      ; move to next token space
 
-        ; during parsing, constants and defined labels are resolved to number
-        ; literals meaning that we will never see a "constant" token here
-        ; and "label" tokens *always* imply a forward-reference
+        ; check for optional unary operator:
         ;
-        cp      CHAR_HEX                ; a literal number?
-        jr      z,      @hex
-        cp      CHAR_LABEL              ; a label (that was deferred)
-        jr      z,      @label
-        cp      CHAR_OP_LO              ; the lo-byte unary operator
+@unary: cp      CHAR_OP_LO              ; the lo-byte unary operator
         jr      z,      @lo
         cp      CHAR_OP_HI              ; the hi-byte unary operator
         jr      z,      @hi
         cp      CHAR_OP_NOT             ; the not unary operator
         jr      z,      @not
-        cp      CHAR_OP_ADD             ; the add operator
-        jr      z,      @add
-        cp      CHAR_OP_SUB             ; the subtract operator
-        jr      z,      @sub
-        cp      CHAR_OP_MUL             ; the multiply operator
-        jr      z,      @mul
-        cp      CHAR_OP_DIV             ; the divide operator
-        jr      z,      @div
-        cp      CHAR_OP_AND             ; the bitwise AND operator
-        jr      z,      @and
-        cp      CHAR_OP_OR              ; the bitwise OR operator
-        jr      z,      @or
-        cp      CHAR_OP_XOR             ; the bitwise XOR operator
-        jr      z,      @xor
-        cp      CHAR_OP_MOD             ; the modulo operator
-        jr      z,      @mod
 
+        ; if there's no unary operator, fetch the value:
+        ; note that if any of the unary operators match, they will
+        ; read the value and skip ahead to checking for operators
+        call    @value
+
+        ; check for an operator
+@op:    ld      A,      [HL]            ; read token type
+        dec     HL                      ; move to next token space
+
+        ; ...
+
+        ; all others having been covered, the only
+        ; possible token remaining is the terminator
+        ;
         xor     A                       ; return carry-clear for success
-@end:   ;;pop     HL                      ; restore heap position
+@end:   pop     HL                      ; restore heap position
+
         ret
 
-@hex:   jr      @eval
-@label: jr      @eval
-@lo:    jr      @eval
-@hi:    jr      @eval
-@not:   jr      @eval
+        ; unary operators:
+        ;=======================================================================
+        ; lo-byte unary operator:
+        ;-----------------------------------------------------------------------
+@lo:    call    @value                  ; read the next value into BC
+        ld      B,      0               ; clear the hi-byte
+        jr      @op                     ; check for next operator
+
+        ; hi-byte unary operator:
+        ;-----------------------------------------------------------------------
+@hi:    call    @value                  ; read the next value into BC
+        ld      C,      B               ; swap the hi-byte into the lo-byte
+        ld      B,      0               ;  and clear the hi-byte
+        jr      @op                     ; check for next operator
+
+        ; not unary operator:
+        ;-----------------------------------------------------------------------
+@not:   call    @value                  ; read the next value into BC
+        ld      A,      B               ; 
+        cpl                             ; invert bits in B
+        ld      B,      A               ; 
+        ld      A,      C               ; 
+        cpl                             ; invert bits in C
+        ld      C,      A               ; 
+        jr      @op                     ; check for next operator
+
+        ; read a value:
+        ;=======================================================================
+@value: ld      A,      [HL]            ; read token type
+        dec     HL                      ; move to next token space
+        cp      CHAR_LABEL              ; a label? (that was deferred)
+        jr      z,      @label
+
+        ; the only other possible value type is the
+        ; number literal so fall through to that
+        ; ...
+
+        ; read a number literal:
+        ;-----------------------------------------------------------------------
+@hex:   ld      C,      [HL]
+        dec     HL
+        ld      B,      [HL]
+        dec     HL
+
+        ret
+
+        ; read a label addr:
+        ;-----------------------------------------------------------------------
+        ; known labels are always resolved to number literals during parsing,
+        ; so the only labels that remain for evaluation are forward-references:
+        ; the token value contains the address of the symbol in the dictionary,
+        ; but we have to skip over the label name to get to the value
+        ;
+@label: push    DE                      ; preserve running total
+
+        xor     A                       ; (set A to zero, clear carry-flag)
+        ld      E,      [HL]            ; read the symbol address into DE
+        dec     HL                      ; ...
+        ld      D,      [HL]            ; ..
+        dec     HL                      ; .
+        dec     DE                      ; decrement symbol addr to length-byte
+        ex      DE,     HL              ; switch symbol addr to HL to read regs
+        ld      C,      [HL]            ; read symbol-name length
+        ld      B,      A               ;  and put in BC (set B to zero)
+        sbc     HL,     BC              ; skip over the symbol name
+        or      A,      [HL]            ; is the flag byte 0? (=fwd-ref!)
+        jp      z,      errLabelUndef   ; label was never defined!
+        dec     HL                      ; skip over flag byte
+        ld      C,      [HL]            ;
+        dec     HL                      ; read label addr value
+        ld      B,      [HL]            ;
+        dec     HL                      ;
+
+        ex      DE,     HL              ; switch back to expr addr in HL
+        pop     DE                      ; restore running total
+        ret
+
 @add:   jr      @eval
 @sub:   jr      @eval
 @mul:   jr      @eval
@@ -383,3 +454,5 @@ evalExpr:
 @or:    jr      @eval
 @xor:   jr      @eval
 @mod:   jr      @eval
+
+.ENDB

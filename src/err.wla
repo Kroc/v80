@@ -11,7 +11,8 @@ _strOpcode:     .BYTE "Invalid Z80 instruction!$"
 _strParam:      .BYTE "Expected instruction parameter!$"
 _strExpr:       .BYTE "Invalid expression!$"
 _strHex:        .BYTE "Invalid hexadecimal number!$"
-_strLabel:      .BYTE "Labels cannot be redefined!$"
+_strLabelRedef: .BYTE "Labels cannot be redefined!$"
+_strLabelUndef: .BYTE "Label is undefined!$"
 _strConst:      .BYTE "Forward-reference in constant define!$"
 
 _printQuit:
@@ -70,12 +71,20 @@ errHex:
         ld      DE,     _strHex
         jr      _printQuit
 
-errLabel:
+errLabelRedef:
 ;===============================================================================
 ; labels cannot be redefined!
 ;-------------------------------------------------------------------------------
-        ld      DE,     _strLabel
+        ld      DE,     _strLabelRedef
         jr      _printQuit
+
+errLabelUndef:
+;===============================================================================
+; label is undefined! (forward-reference remains)
+;-------------------------------------------------------------------------------
+        ld      DE,     _strLabelUndef
+        jr      _printQuit
+
 
 errConst:
 ;===============================================================================
