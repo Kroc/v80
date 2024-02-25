@@ -1,6 +1,9 @@
 ; v80, (C) Kroc Camen 2023-2024, MIT License
 ; expression parsing / evaulation
 ;
+; TODO: support combined unary operators (e.g. `!<`)
+;       will work in eval but needs parser support
+;
 .BLOCK  "code-expr"
 
 nextExpr:
@@ -317,8 +320,8 @@ evalExpr:
 ; WARN: this routine DOES NOT CHECK if the expression is deferred!
 ;       expressions are deferred when parsed from source code; it is assumed
 ;       once all code is parsed that all labels will have been defined and
-;       evaluation will now succeed -- any label that is still deferred is
-;       a hard error
+;       evaluation will now succeed -- any label that is still deferred at
+;       evaluation time is a hard error
 ;
 ; in:   DE      addr of expr (could be [`expr`] or heap!)
 ; out:  BC      result value
@@ -328,61 +331,56 @@ evalExpr:
         ; we won't need to push anything new to the heap
         ; so we preserve the current heap position
         push    HL
-        ex      DE,     HL              ; use HL for reading tokens for now
-        ld      DE,     0               ; initialise running total
 
 _evalExpr:
+        ;-----------------------------------------------------------------------
+        ex      DE,     HL              ; use HL for reading tokens for now
+
         ; we do not use the length byte because we don't want to maintain a
         ; counter register. we can just rely on the null terminator to stop
         ;
         dec     HL                      ; skip length byte
 
-        ;-----------------------------------------------------------------------
-@eval:  ld      A,      [HL]            ; read token type
+        ; evaluation consists of a running total (in DE), an operator,
+        ; and the next value (in BC). we need to start the expression
+        ; with the first value, before any operator
+        ;
+        call    @value                  ; read first value
+        ld      E,      C               ; initialise running total
+        ld      D,      B               ; 
+
+@eval:  halt
+
+        ; read a value:
+        ;=======================================================================
+        ; read the next value and returns it in BC:
+        ; - if present, a unary operator is applied to the value before return
+        ; - parentheses are evaluated recursively
+        ; 
+@value: ld      A,      [HL]            ; read token type
         dec     HL                      ; move to next token space
 
-        ; check for optional unary operator:
+        ; take fast-path for values without a unary operator
         ;
-@unary: cp      CHAR_OP_LO              ; the lo-byte unary operator
-        jr      z,      @lo
-        cp      CHAR_OP_HI              ; the hi-byte unary operator
-        jr      z,      @hi
-        cp      CHAR_OP_NOT             ; the not unary operator
-        jr      z,      @not
+        cp      CHAR_HEX                ; number literal?
+        jr      z,      @hex            ;
+        cp      CHAR_LABEL              ; a label? (that was deferred)
+        jr      z,      @label          ;
 
-        ; if there's no unary operator, fetch the value:
-        ; note that if any of the unary operators match, they will
-        ; read the value and skip ahead to checking for operators
+        ; we don't care what unary operator is present, we'll need
+        ; the value first, so store the unary operator until later
+        push    AF
+
+        ; recurse, fetching the following value --
+        ; this allows for multiple unary operators per value
         call    @value
 
-        ; check for an operator
-@op:    ld      A,      [HL]            ; read token type
-        dec     HL                      ; move to next token space
-
+        pop     AF                      ; restore the unary operator
+        cp      CHAR_OP_LO              ; lo-byte unary operator?
+        jr      z,      @lo             ;
+        cp      CHAR_OP_HI              ; hi-byte unary operator?
+        jr      z,      @hi             ;
         ; ...
-
-        ; all others having been covered, the only
-        ; possible token remaining is the terminator
-        ;
-        xor     A                       ; return carry-clear for success
-@end:   pop     HL                      ; restore heap position
-
-        ret
-
-        ; unary operators:
-        ;=======================================================================
-        ; lo-byte unary operator:
-        ;-----------------------------------------------------------------------
-@lo:    call    @value                  ; read the next value into BC
-        ld      B,      0               ; clear the hi-byte
-        jr      @op                     ; check for next operator
-
-        ; hi-byte unary operator:
-        ;-----------------------------------------------------------------------
-@hi:    call    @value                  ; read the next value into BC
-        ld      C,      B               ; swap the hi-byte into the lo-byte
-        ld      B,      0               ;  and clear the hi-byte
-        jr      @op                     ; check for next operator
 
         ; not unary operator:
         ;-----------------------------------------------------------------------
@@ -393,19 +391,22 @@ _evalExpr:
         ld      A,      C               ; 
         cpl                             ; invert bits in C
         ld      C,      A               ; 
-        jr      @op                     ; check for next operator
+        ret
 
-        ; read a value:
+        ; lo-byte unary operator:
+        ;-----------------------------------------------------------------------
+@lo:    call    @value                  ; read the next value into BC
+        ld      B,      0               ; clear the hi-byte
+        ret
+
+        ; hi-byte unary operator:
+        ;-----------------------------------------------------------------------
+@hi:    call    @value                  ; read the next value into BC
+        ld      C,      B               ; swap the hi-byte into the lo-byte
+        ld      B,      0               ;  and clear the hi-byte
+        ret
+
         ;=======================================================================
-@value: ld      A,      [HL]            ; read token type
-        dec     HL                      ; move to next token space
-        cp      CHAR_LABEL              ; a label? (that was deferred)
-        jr      z,      @label
-
-        ; the only other possible value type is the
-        ; number literal so fall through to that
-        ; ...
-
         ; read a number literal:
         ;-----------------------------------------------------------------------
 @hex:   ld      C,      [HL]
@@ -418,7 +419,7 @@ _evalExpr:
         ; read a label addr:
         ;-----------------------------------------------------------------------
         ; known labels are always resolved to number literals during parsing,
-        ; so the only labels that remain for evaluation are forward-references:
+        ; so the only labels that remain at evaluation are forward-references:
         ; the token value contains the address of the symbol in the dictionary,
         ; but we have to skip over the label name to get to the value
         ;
@@ -444,15 +445,6 @@ _evalExpr:
 
         ex      DE,     HL              ; switch back to expr addr in HL
         pop     DE                      ; restore running total
+
         ret
-
-@add:   jr      @eval
-@sub:   jr      @eval
-@mul:   jr      @eval
-@div:   jr      @eval
-@and:   jr      @eval
-@or:    jr      @eval
-@xor:   jr      @eval
-@mod:   jr      @eval
-
 .ENDB

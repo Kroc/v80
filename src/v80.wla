@@ -15,7 +15,7 @@
 ;   +-----+-----------------------------------+--------+--------+---------+
 ;   | v80 | code->                     <-heap | <-word | <-expr | <-stack |
 ;   +-----+-----------------------------------+--------+--------+---------+
-;                                                 32        96      128
+;                                                 32       96       128
 ;   code:  source code is assembled here
 ;   heap:  symbols and other in-flight data goes here (builds downwards)
 ;   word:  a buffer for capturing words (symbol names)
@@ -88,10 +88,10 @@ heap:   .ADDR $fc00                     ; current position on the heap
 ; the lo-byte of the entry's link field which is technically the 2nd byte
 ; of the record
 ;                     +------+
-;          .--------->| addr |  (entry point)
-;       2. |          +--|---+
-; - - -----+------+      | 1.
-;  ...data | addr | <----'      (heap extends downwards)
+;          .----------+ addr |  (entry point)
+;          V          +------+
+; - - -----+------+
+;  ...data | addr |             (heap extends downwards)
 ; - - -----+------+
 ;
 label:  .ADDR $000                      ; addr of last label dictionary-entry
