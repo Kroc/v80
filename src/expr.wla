@@ -97,6 +97,15 @@ parseExpr:
         jp      z,      errExpr         ; newline/EOF = unexpected expr end!
 
         ; after a unary operator, a value must follow
+        ;
+        cp      CHAR_HEX                ; hexadecimal sigil?
+        jr      z,      @hex
+        cp      CHAR_CONST              ; a constant?
+        jr      z,      @const
+        cp      CHAR_LABEL              ; a label?
+        jp      nz,     errExpr         ; no? expression has no value!!
+
+        ; fallthrough to label-handling
         ; ...
 
         ;-----------------------------------------------------------------------
@@ -104,9 +113,7 @@ parseExpr:
         ;=======================================================================
         ; label?
         ;-----------------------------------------------------------------------
-@label: cp      CHAR_LABEL              ; a label?
-        jr      nz,     @const          ; not a label? try constants
-        ld      DE,     label           ; label dictionary entry point
+@label: ld      DE,     label           ; label dictionary entry point
         call    getSymbol               ; try get the label's value
 
         ; if the expression contains a forward-reference to a label we won't
@@ -146,12 +153,10 @@ parseExpr:
 
         jr      @op                     ; an operator can follow a value
 
+        ;-----------------------------------------------------------------------
         ; constant?
         ;-----------------------------------------------------------------------
-@const: cp      CHAR_CONST              ; a constant?
-        jr      nz,     @hex            ; not a constant? try hex literal
-
-        ld      DE,     const           ; const dictionary entry point
+@const: ld      DE,     const           ; const dictionary entry point
         call    getSymbol               ; try get the constant's value
         jp      z,      errConstUndef   ; exprssion contains undefined const!
 
@@ -159,14 +164,13 @@ parseExpr:
         ; looking for a following operator token
         jr      @num
 
+        ;-----------------------------------------------------------------------
         ; hexadecimal literal?
         ;-----------------------------------------------------------------------
         ; a sigil is required because A-F can't be separated
         ; from instruction names without look-ahead
         ;
-@hex:   cp      CHAR_HEX                ; hexadecimal sigil?
-        jp      nz,     errExpr         ; expression has no value!!
-        call    parseHexNumber          ; parse the hex number into BC
+@hex:   call    parseHexNumber          ; parse the hex number into BC
 
         ; push a literal number token:
         ;
