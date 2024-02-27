@@ -3,6 +3,7 @@
 ;
 ; TODO: support combined unary operators (e.g. `!<`)
 ;       will work in eval but needs parser support
+; TODO: parentheses
 ;
 .BLOCK  "code-expr"
 
@@ -152,7 +153,7 @@ parseExpr:
 
         ld      DE,     const           ; const dictionary entry point
         call    getSymbol               ; try get the constant's value
-        jp      z,      errExpr         ; exprssion contains undefined const!
+        jp      z,      errConstUndef   ; exprssion contains undefined const!
 
         ; push a number literal token and fallthrough to
         ; looking for a following operator token
@@ -323,7 +324,7 @@ evalExpr:
 ;       evaluation will now succeed -- any label that is still deferred at
 ;       evaluation time is a hard error
 ;
-; in:   DE      addr of expr (could be [`expr`] or heap!)
+; in:   DE      addr of expr (could be [`expr`] or on the heap!)
 ; out:  BC      result value
 ;       HL      (preserved)
 ;       A, DE   (clobbered)
@@ -331,10 +332,7 @@ evalExpr:
         ; we won't need to push anything new to the heap
         ; so we preserve the current heap position
         push    HL
-
-_evalExpr:
-        ;-----------------------------------------------------------------------
-        ex      DE,     HL              ; use HL for reading tokens for now
+@expr:  ex      DE,     HL              ; use HL for reading tokens for now
 
         ; we do not use the length byte because we don't want to maintain a
         ; counter register. we can just rely on the null terminator to stop
@@ -343,21 +341,70 @@ _evalExpr:
 
         ; evaluation consists of a running total (in DE), an operator,
         ; and the next value (in BC). we need to start the expression
-        ; with the first value, before any operator
+        ; with the first value, before any (non-unary) operator
         ;
-        call    @value                  ; read first value
+        call    _value                  ; read first value
         ld      E,      C               ; initialise running total
         ld      D,      B               ; 
 
-@eval:  halt
+        ;-----------------------------------------------------------------------
+@eval:  ld      A,      [HL]            ; read token type
+        and     A                       ; (set CPU flags!)
+        jr      z,      @end            ; end on expr terminator
+        
+        dec     HL                      ; move to next token space
+        call    _value                  ; get value before applying operator
 
-        ; read a value:
+        cp      CHAR_OP_ADD
+        jr      z,      @add
+        cp      CHAR_OP_SUB
+        jr      z,      @sub
+        cp      CHAR_OP_MUL
+        cp      CHAR_OP_DIV
+        cp      CHAR_OP_AND
+        cp      CHAR_OP_OR
+        cp      CHAR_OP_XOR
+        cp      CHAR_OP_MOD
+
+        halt                            ; unimplemented operator!
+
+        ;-----------------------------------------------------------------------
+@end:   ld      C,      E               ; copy the final total to BC
+        ld      B,      D               ; 
+        xor     A                       ; return carry-clear for success
+        pop     HL                      ; restore heap position
+
+        ret
+
+        ; operators:
         ;=======================================================================
-        ; read the next value and returns it in BC:
-        ; - if present, a unary operator is applied to the value before return
-        ; - parentheses are evaluated recursively
-        ; 
-@value: ld      A,      [HL]            ; read token type
+        ; add operator:
+        ;-----------------------------------------------------------------------
+        ; TODO: err on overflow?
+@add:   ex      DE,     HL              ; switch running total to HL
+        add     HL,     BC              ; add value to total
+        ex      DE,     HL              ; swap expr addr back to HL
+        jr      @eval                   ; continue evaluating
+        ;-----------------------------------------------------------------------
+        ; subtract operator:
+        ;-----------------------------------------------------------------------
+        ; TODO: err on underflow?
+@sub:   ex      DE,     HL              ; switch running total to HL
+        xor     A                       ; clear carry!
+        sbc     HL,     BC              ; subtract value from total
+        ex      DE,     HL              ; swap expr addr back to HL
+        jr      @eval                   ; continue evaluating
+
+
+_value:
+;===============================================================================
+; read a value:
+;-------------------------------------------------------------------------------
+; read the next value and returns it in BC:
+; - if present, unary operator(s) are applied before return
+; - TODO: parentheses are evaluated recursively
+;-------------------------------------------------------------------------------
+        ld      A,      [HL]            ; read token type
         dec     HL                      ; move to next token space
 
         ; take fast-path for values without a unary operator
@@ -371,39 +418,40 @@ _evalExpr:
         ; the value first, so store the unary operator until later
         push    AF
 
-        ; recurse, fetching the following value --
+        ; recurse, fetching the value that follows --
         ; this allows for multiple unary operators per value
-        call    @value
+        call    _value
 
         pop     AF                      ; restore the unary operator
         cp      CHAR_OP_LO              ; lo-byte unary operator?
         jr      z,      @lo             ;
         cp      CHAR_OP_HI              ; hi-byte unary operator?
         jr      z,      @hi             ;
+
         ; ...
 
-        ; not unary operator:
+        ; NOT unary operator:
         ;-----------------------------------------------------------------------
-@not:   call    @value                  ; read the next value into BC
-        ld      A,      B               ; 
+@not:   ld      A,      B               ; 
         cpl                             ; invert bits in B
         ld      B,      A               ; 
         ld      A,      C               ; 
         cpl                             ; invert bits in C
         ld      C,      A               ; 
+        
         ret
-
-        ; lo-byte unary operator:
         ;-----------------------------------------------------------------------
-@lo:    call    @value                  ; read the next value into BC
-        ld      B,      0               ; clear the hi-byte
+        ; LO-byte unary operator:
+        ;-----------------------------------------------------------------------
+@lo:    ld      B,      0               ; clear the hi-byte
+        
         ret
-
-        ; hi-byte unary operator:
         ;-----------------------------------------------------------------------
-@hi:    call    @value                  ; read the next value into BC
-        ld      C,      B               ; swap the hi-byte into the lo-byte
+        ; HI-byte unary operator:
+        ;-----------------------------------------------------------------------
+@hi:    ld      C,      B               ; swap the hi-byte into the lo-byte
         ld      B,      0               ;  and clear the hi-byte
+        
         ret
 
         ;=======================================================================
@@ -416,6 +464,7 @@ _evalExpr:
 
         ret
 
+        ;-----------------------------------------------------------------------
         ; read a label addr:
         ;-----------------------------------------------------------------------
         ; known labels are always resolved to number literals during parsing,
@@ -447,4 +496,5 @@ _evalExpr:
         pop     DE                      ; restore running total
 
         ret
+
 .ENDB

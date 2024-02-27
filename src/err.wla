@@ -14,6 +14,7 @@ _strHex:        .BYTE "Invalid hexadecimal number!$"
 _strLabelRedef: .BYTE "Labels cannot be redefined!$"
 _strLabelUndef: .BYTE "Label is undefined!$"
 _strConst:      .BYTE "Forward-reference in constant define!$"
+_strConstUndef: .BYTE "Undefined constant!$"
 
 _printQuit:
 ;===============================================================================
@@ -91,6 +92,13 @@ errConst:
 ; constants cannot be defined using forward-references!
 ;-------------------------------------------------------------------------------
         ld      DE,     _strConst
+        jr      _printQuit
+
+errConstUndef:
+;===============================================================================
+; use of undefined constant in expr!
+;-------------------------------------------------------------------------------
+        ld      DE,     _strConstUndef
         jr      _printQuit
 
 
