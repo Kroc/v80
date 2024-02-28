@@ -13,7 +13,7 @@ _strExpr:       .BYTE "Invalid expression!$"
 _strHex:        .BYTE "Invalid hexadecimal number!$"
 _strLabelRedef: .BYTE "Labels cannot be redefined!$"
 _strLabelUndef: .BYTE "Label is undefined!$"
-_strConst:      .BYTE "Forward-reference in constant define!$"
+_strConst:      .BYTE "Forward-reference to label in constant define!$"
 _strConstUndef: .BYTE "Undefined constant!$"
 
 _printQuit:
@@ -131,6 +131,25 @@ errConstUndef:
         ;///////////////////////////////////////////////////////////////////////
         push    AF
         push    BC
+        .printChar '$'
+        call    printHexByte
+        pop     BC
+        pop     AF
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+.ENDM
+
+.MACRO  .printHexWord
+;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+.IFDEF  DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        push    AF
+        push    BC
+        ld      A,      '$'
+        call    osPrintChar
+        ld      A,      B
+        call    printHexByte
+        ld      A,      C
         call    printHexByte
         pop     BC
         pop     AF

@@ -4,6 +4,7 @@
 ; TODO: support combined unary operators (e.g. `!<`)
 ;       will work in eval but needs parser support
 ; TODO: parentheses
+; TODO: we can store the stride byte in the reserved byte(s)
 ;
 .BLOCK  "code-expr"
 
@@ -87,18 +88,20 @@ parseExpr:
         jr      z,      +               ; a value must follow a unary operator
         ;-----------------------------------------------------------------------
         cp      CHAR_OP_NOT             ; not operator?
-        jr      nz,     @label          ; no unary operators, check for values
+        jr      nz,     @value          ; no unary operators, check for values
 
         ; a unary operator has been added,
         ; read the next character:
 +       dec     HL                      ; move to next token space
         ld      [HL],   A               ; push a unary operator token
+
+        ; TODO: support multiple unary operators without separating space
         call    nextWord                ; read first character of the next word
         jp      z,      errExpr         ; newline/EOF = unexpected expr end!
 
         ; after a unary operator, a value must follow
         ;
-        cp      CHAR_HEX                ; hexadecimal sigil?
+@value: cp      CHAR_HEX                ; hexadecimal sigil?
         jr      z,      @hex
         cp      CHAR_CONST              ; a constant?
         jr      z,      @const
@@ -113,17 +116,17 @@ parseExpr:
         ;=======================================================================
         ; label?
         ;-----------------------------------------------------------------------
-@label: ld      DE,     label           ; label dictionary entry point
+@label: ld      DE,     label           ; use label dictionary entry point
         call    getSymbol               ; try get the label's value
 
         ; if the expression contains a forward-reference to a label we won't
         ; be able to evaluate the expression now and it needs to be deferred
         ;
         ; NOTE: it is very imporant to be aware that in the case of carry-set,
-        ;       `getSymbol` has returned the label-length in BC and the address
-        ;       of the symbol on the heap in DE
+        ;       `findSymbol` has returned the label-length in BC and the
+        ;       address of the symbol on the heap in DE
         ;
-        jr      c,      @defer
+        jr      c,      +
 
         ; if the label is known, push a number literal token of its address
         ; and fall through to looking for a following operator token
@@ -138,10 +141,10 @@ parseExpr:
 
         ; any expression that contains a forward-reference to a label causes
         ; the whole expression to be deferred. instead of the label value,
-        ; the label's address in the dictionary is tokenised (`getSymbol`
+        ; the label's address in the dictionary is tokenised (`findSymbol`
         ; & `pushLabel` return the symbol addr in DE)
         ;
-@defer: dec     HL                      ; move to next token space
++       dec     HL                      ; move to next token space
         ld      [HL],   CHAR_LABEL      ; push the label token
         dec     HL                      ; move to next token space
         ld      [HL],   D               ; push the label addr hi-byte
@@ -238,7 +241,7 @@ parseExpr:
         ; the expr buffer runs from $xx7F downwards to $xx20
         ; so an 8-bit subtraction is sufficient
         ;
-        ld      B,      A               ; B must be 0 (LDDR uses BC)
+@defer: ld      B,      A               ; B must be 0 (LDDR uses BC)
         ld      A,      E               ; start with highest addr (expr-start)
         sub     A,      L               ; subtract lowest addr (expr-end)
         ld      C,      A               ; this is the expr length
@@ -370,6 +373,7 @@ evalExpr:
         cp      CHAR_OP_XOR
         cp      CHAR_OP_MOD
 
+        .printChar '!'
         halt                            ; unimplemented operator!
 
         ;-----------------------------------------------------------------------
@@ -461,11 +465,11 @@ _value:
         ;=======================================================================
         ; read a number literal:
         ;-----------------------------------------------------------------------
-@hex:   ld      C,      [HL]
+@hex:   ld      B,      [HL]
         dec     HL
-        ld      B,      [HL]
+        ld      C,      [HL]
         dec     HL
-
+        .printHexWord
         ret
 
         ;-----------------------------------------------------------------------
