@@ -4,6 +4,8 @@
 ; TODO: use an error number to deduplicate these calls
 ; TODO: with any error, print out file name, line & col number
 ;
+.BLOCK  "code-err"
+
 _strFile:       .BYTE "File not found!$"
 _strEndOfFile:  .BYTE "Unexpected end of file!$"
 _strWord:       .BYTE "Word too long! (max 32 chars)$"
@@ -101,6 +103,7 @@ errConstUndef:
         ld      DE,     _strConstUndef
         jr      _printQuit
 
+.ENDB
 
 .MACRO .printCharA
 ;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>

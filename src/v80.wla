@@ -847,7 +847,7 @@ parseInstruction:
 
         ;=======================================================================
         ; emit opcode(s):
-        ;=======================================================================
+        ;-----------------------------------------------------------------------
         ; if a branch ends in an opcode, then no more characters must follow!
         ;
 @opcode and     A                       ; if the last char is already 0,
@@ -862,130 +862,6 @@ parseInstruction:
         ; emit the opcode and parse any necessary parameters
         ; (this routine is in the CPU-specific module, e.g. z80.wla)
         jp      emitOpcode
-
-
-parseHexNumber:
-;===============================================================================
-; parses an ASCII hexadecimal number and returns the value:
-;
-; a hexadecimal sigil without a number (`$`) is a special case
-; that always returns the current virtual program-counter
-;
-; out:  BC              the value, 0 padded for numbers < 256
-;       HL              (preserved)
-;       A, DE           (clobbered)
-;-------------------------------------------------------------------------------
-        ; try to read up to 4 digits; the 5th character
-        ; must be whitespace or newline / end-of-file!
-        ;
-        ; the bottom of the word-buffer is used for temporary bytes
-        ; (e.g. $FC00..) as we know this is page-aligned and can use
-        ; INC E instead of INC DE
-        ;
-        ld      BC,     5<<8            ; B=5, C=0
-        ld      DE,     [temp]          ; where to write the bytes
-        ;-----------------------------------------------------------------------
--       call    readChar                ; read a char from file
-        cp      ASCII_SPC+1             ; ASCII space or below?
-        jr      c,      +               ; stop when reaching whitespace
-        ld      [DE],   A               ; append byte
-        inc     E                       ; space for next digit
-        djnz    -                       ; decrement B, loop until 0
-        ;-----------------------------------------------------------------------
-        ; if a 5th byte was read that wasn't whitespace,
-        ; it's an error -- the number is too long!
-        jp      errHex
-
-        ;-----------------------------------------------------------------------
-+       ld      DE,     [temp]          ; go back to the start of the number
-
-        ; number of digits in hex number is reversed;
-        ; B=1 for 4 digits, B=2 for 3 digits, B=3 for 2 digits and B=4 for 1,
-        ; and lastly B=5 for 0 digits, i.e. `$`, the program-counter
-        ;
-        dec     B                       ; 4 digits?
-        jr      z,      @four
-        dec     B                       ; 3 digits?
-        jr      z,      @three
-        dec     B                       ; 2 digits?
-        jr      z,      @two
-        dec     B                       ; 1 digit?
-        jr      z,      @one
-
-        ; return virtual program counter:
-        ;-----------------------------------------------------------------------
-        ; a hex sigil without a number (i.e. `$`) is a special symbol
-        ; that always returns the current virtual program-counter
-        ;
-        push    IX                      ; transfer virtual program-counter
-        pop     BC                      ;  to return value
-        ret
-
-        ; four-digit hex number:
-        ;=======================================================================
-        ; a 4th digit must go in the upper nybble of B:
-        ;
-@four:  call    @digit                  ; convert digit to number
-        add     A,      A               ;
-        add     A,      A               ; left-shift (faster than `sla A`)
-        add     A,      A               ; (shift lo-nybble to hi-nybble)
-        add     A,      A               ;
-        ld      B,      A               ; answer goes in B
-        inc     E                       ; move to 3rd digit
-        ;-----------------------------------------------------------------------
-        ; a 3rd digit goes in the lower nybble of B:
-        ;
-@three: call    @digit                  ; convert digit to number
-        or      B                       ; combine with hi-nybble (if present)
-        ld      B,      A               ; answer goes in B
-        inc     E                       ; move to 2nd digit
-        ;-----------------------------------------------------------------------
-        ; a 2nd digit goes in the upper nybble of C:
-        ;
-@two:   call    @digit                  ; convert digit to number
-        add     A,      A               ;
-        add     A,      A               ; left-shift (faster than `sla A`)
-        add     A,      A               ; (shift lo-nybble to hi-nybble)
-        add     A,      A               ;
-        ld      C,      A               ; answer goes in C
-        inc     E                       ; move to 1st digit
-        ;-----------------------------------------------------------------------
-        ; 1st digit goes in the lower nybble of C:
-        ;
-@one:   call    @digit                  ; convert digit to number
-        or      C                       ; combine with hi-nybble (if present)
-        ld      C,      A               ; answer goes in C
-
-        ret                             ; ship it!
-
-        ; convert a digit to a number:
-        ;=======================================================================
-        ; whitespace must already be precluded. err if not hex-digit
-        ;
-        ; if we unset bit 5 then ASCII "a"-"f" ($61-) becomes "A"-"F" ($41-)
-        ; without also altering existing uppercase letters. This also has the
-        ; side-effect of changing ASCII "0"-"9" ($30-$39) to codes $10-$19!
-        ; (this is why ASCII codes 0-32 must be precluded beforehand)
-        ;
-@digit: ld      A,      [DE]            ; get digit
-        res     5,      A               ; force upper-case for "a"-"f"
-
-        ; by subtracting $41 ("A"), "A" = 0 & "F" = 5 with everything else,
-        ; including "0"-"9", being 'above' this (negative is >=128)
-        ;
-        sub     $41                     ; rebase to "A"
-        cp      6                       ; check for "A"-"F"
-        jr      c,      +               ; if "A"-"F", exit
-
-        ; having eliminated characters above "F", shift the axis right
-        ; so that "0" is at 0. any character below "0" will be negative
-        add     $31
-        cp      10                      ; check for 0-9
-        ret     c                       ; (conditional RET first is slightly
-        jp      errHex                  ;  faster than conditional JP first)
-
-+       add     10                      ; change "A"-"F" to 10-15
-        ret
 
 
 printHexByte:
