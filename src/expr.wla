@@ -4,13 +4,13 @@
 ; TODO: support combined unary operators (e.g. `!<`)
 ;       will work in eval but needs parser support
 ; TODO: parentheses
-; TODO: we can store the stride byte in the reserved byte(s)
+; TODO: we can store the stride size in the reserved byte(s)
 ;
 .BLOCK  "code-expr"
 
 nextExpr:
 ;===============================================================================
-; skip space before parsing an expression:
+; skip spaces before parsing an expression:
 ; (see parseExpr below for parameters)
 ;
 ;-------------------------------------------------------------------------------
@@ -28,8 +28,10 @@ nextExpr:
 parseExpr:
 ;===============================================================================
 ; parse an expression from the input file, tokenise it and evaluate it,
-; returning the result. if the expression contains forward-references
-; it'll be deferred on the heap and carry-flag is returned set
+; returning the result:
+;
+; if the expression contains forward-references it'll be
+; deferred on the heap and carry-flag is returned set
 ;
 ; WARN: the first character of the expression is assumed to be read and
 ;       the first character of the next word following the expression
@@ -56,7 +58,6 @@ parseExpr:
         ld      HL,     [expr]          ; addr of expr bytecode space
         xor     A                       ; set A to zero
         ld      [@flag],A               ; clear 'defer' flag
-        dec     HL                      ; next byte down is start of bytecode
         ld      A,      [char]          ; get current unused input char
         jr      @unary                  ; jump into the parsing loop
 
@@ -116,15 +117,14 @@ parseExpr:
         ;=======================================================================
         ; label?
         ;-----------------------------------------------------------------------
-@label: ld      DE,     label           ; use label dictionary entry point
-        call    getSymbol               ; try get the label's value
+@label: call    getLabel                ; try get the label's value
 
         ; if the expression contains a forward-reference to a label we won't
         ; be able to evaluate the expression now and it needs to be deferred
         ;
         ; NOTE: it is very imporant to be aware that in the case of carry-set,
-        ;       `findSymbol` has returned the label-length in BC and the
-        ;       address of the symbol on the heap in DE
+        ;       `getLabel` has returned the label-length in BC and the
+        ;       address of the label's flag byte in DE
         ;
         jr      c,      +
 
@@ -136,20 +136,34 @@ parseExpr:
         ; this is a forward-reference -- we need to add a placeholder for the
         ; label on the heap before we can defer the whole expression
         ;
-        scf                             ; flag to indicate a forward-reference
+        ; swap our current position within the token space with the heap
+        ; position preserved at the beginning of the routine!
+        ex      [SP],   HL
+
+        ; WARN: `pushLabel` requires the name length in BC which is returned
+        ;       by `getLabel` when a label is a forward-reference / not-found
+        ;
+        scf                             ; set flag indicating forward-reference
         call    pushLabel               ; define the label name on the heap
+        ld      D,      H               ; HL = last byte of label record
+        ld      E,      L               ; copy HL to DE
+        inc     DE                      ; step up to value hi-byte addr
+        inc     DE                      ; step up to flag-byte addr
+
+        ; save updated heap position for return and
+        ; swap back to our position in token space
+        ex      [SP],   HL
 
         ; any expression that contains a forward-reference to a label causes
         ; the whole expression to be deferred. instead of the label value,
-        ; the label's address in the dictionary is tokenised (`findSymbol`
-        ; & `pushLabel` return the symbol addr in DE)
+        ; the address of the label's flag-byte in the dictionary is tokenised
         ;
 +       dec     HL                      ; move to next token space
         ld      [HL],   CHAR_LABEL      ; push the label token
         dec     HL                      ; move to next token space
-        ld      [HL],   D               ; push the label addr hi-byte
+        ld      [HL],   D               ; push the label value hi-byte
         dec     HL                      ; move to next token space
-        ld      [HL],   E               ; push the label addr lo-byte
+        ld      [HL],   E               ; push the label value lo-byte
 
         ld      A,      %10000000       ; set the deferred flag
         ld      [@flag],A
@@ -159,8 +173,7 @@ parseExpr:
         ;-----------------------------------------------------------------------
         ; constant?
         ;-----------------------------------------------------------------------
-@const: ld      DE,     const           ; const dictionary entry point
-        call    getSymbol               ; try get the constant's value
+@const: call    getConst                ; try get the constant's value
         jp      z,      errConstUndef   ; exprssion contains undefined const!
 
         ; push a number literal token and fallthrough to
@@ -176,7 +189,7 @@ parseExpr:
 @hex:   call    parseHexNumber          ; parse the hex number into BC
 
         ; push a literal number token:
-        ;
+        ;-----------------------------------------------------------------------
 @num:   dec     HL                      ; move to next token space
         ld      [HL],   CHAR_HEX        ; push a number token
         dec     HL                      ; move to next token space
@@ -219,7 +232,7 @@ parseExpr:
 
         ; end of expr:
         ;=======================================================================
-        ; TODO: check for an overflow here
+        ; TODO: check for heap spill here
 @end:   xor     A                       ; (clear carry flag!)
         dec     HL                      ; a null terminator is appended to
         ld      [HL],   A               ;  avoid counting during evaluation
@@ -307,11 +320,8 @@ parseExpr:
         dec     HL                      ; fix heap addr for copy-then-DEC
         ex      DE,     HL              ; LDDR requires DE to be destination
         ld      C,      [HL]            ; first byte is length / defer flag
-        res     7,      C               ; stip hi-bit (defer flag)
         ld      B,      0               ; LDDR uses full BC count
-        ;ld      A,      [stride]        ; before copy, ue the first byte
-        ;ld      [HL],   A               ;  to record the parameter size
-        lddr                            ; copy BC bytes from [DE] to [HL]!
+        lddr                            ; copy BC bytes *from* [HL] *to* [DE]!
         ex      DE,     HL              ; swap updated heap addr back to HL
         inc     HL                      ; fix heap addr after copy
 
@@ -469,7 +479,6 @@ _value:
         dec     HL
         ld      C,      [HL]
         dec     HL
-        .printHexWord
         ret
 
         ;-----------------------------------------------------------------------
@@ -477,29 +486,22 @@ _value:
         ;-----------------------------------------------------------------------
         ; known labels are always resolved to number literals during parsing,
         ; so the only labels that remain at evaluation are forward-references:
-        ; the token value contains the address of the symbol in the dictionary,
-        ; but we have to skip over the label name to get to the value
+        ; the token value contains the address of the label's flag-byte
         ;
 @label: push    DE                      ; preserve running total
 
         xor     A                       ; (set A to zero, clear carry-flag)
-        ld      E,      [HL]            ; read the symbol address into DE
+        ld      E,      [HL]            ; read label flag-byte addr into DE
         dec     HL                      ; ...
         ld      D,      [HL]            ; ..
         dec     HL                      ; .
-        dec     DE                      ; decrement symbol addr to length-byte
-        ex      DE,     HL              ; switch symbol addr to HL to read regs
-        ld      C,      [HL]            ; read symbol-name length
-        ld      B,      A               ;  and put in BC (set B to zero)
-        sbc     HL,     BC              ; skip over the symbol name
+        ex      DE,     HL              ; switch flag-byte addr to HL
         or      A,      [HL]            ; is the flag byte 0? (=fwd-ref!)
         jp      z,      errLabelUndef   ; label was never defined!
         dec     HL                      ; skip over flag byte
-        ld      C,      [HL]            ;
-        dec     HL                      ; read label addr value
-        ld      B,      [HL]            ;
-        dec     HL                      ;
-
+        ld      C,      [HL]            ; read label value into BC
+        dec     HL                      ; ..
+        ld      B,      [HL]            ; .
         ex      DE,     HL              ; switch back to expr addr in HL
         pop     DE                      ; restore running total
 

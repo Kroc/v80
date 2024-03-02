@@ -261,13 +261,15 @@ osPrintChar:
 ;
 ; in:   A               input character
 ; out:  BC|DE|HL|IX/Y   (preserved)
-;       A               (clobbered)
+;       A               (preserved) -- TODO: should this be kept? +8 cycles!
 ;-------------------------------------------------------------------------------
         exx                             ; swap to shadow registers
 
         ld      C',     BDOS_CONOUT
         ld      E',     A
+        ex      AF,     AF'
         call    BDOS
+        ex      AF',    AF
 
         exx                             ; restore register set
         ret
