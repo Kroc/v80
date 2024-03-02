@@ -5,24 +5,6 @@
 
 .INC    "cpm.wla"                       ; CP/M interface
 .INC    "err.wla"                       ; error message handling
-.INC    "z80.wla"                       ; Z80 parser & opcode binary tree
-
-
-.BLOCK  "code"
-;===============================================================================
-; memory map:
-;
-;   +-----+-----------------------------------+--------+--------+---------+
-;   | v80 | code->                     <-heap | <-word | <-expr | <-stack |
-;   +-----+-----------------------------------+--------+--------+---------+
-;                                                 32       96       128
-;   code:  source code is assembled here
-;   heap:  symbols and other in-flight data goes here (builds downwards)
-;   word:  a buffer for capturing words (symbol names)
-;   expr:  expressions are tokenised here (builds downwards)
-;   stack: usual Z80 stack (builds downwards)
-;
-.DEF    WORD_LEN        30              ; maximum symbol name length
 
 ; syntax:
 ;
@@ -43,6 +25,25 @@
 .DEF    CHAR_OP_OR      '|'             ; or operator
 .DEF    CHAR_OP_XOR     '^'             ; xor operator
 .DEF    CHAR_OP_MOD     '\'             ; modulo operator
+
+.INC    "expr.wla"                      ; expression parsing and evaluation
+.INC    "z80.wla"                       ; Z80 parser & opcode binary tree
+
+.BLOCK  "code"
+;===============================================================================
+; memory map:
+;
+;   +-----+-----------------------------------+--------+--------+---------+
+;   | v80 | code->                     <-heap | <-word | <-expr | <-stack |
+;   +-----+-----------------------------------+--------+--------+---------+
+;                                                 32       96       128
+;   code:  source code is assembled here
+;   heap:  symbols and other in-flight data goes here (builds downwards)
+;   word:  a buffer for capturing words (symbol names)
+;   expr:  expressions are tokenised here (builds downwards)
+;   stack: usual Z80 stack (builds downwards)
+;
+.DEF    WORD_LEN        30              ; maximum symbol name length
 
 ; the bottom of the word buffer, just above the heap, can be used
 ; as temporary space for a few bytes (so their use can't overlap)
@@ -97,15 +98,6 @@ heap:   .ADDR $fc00                     ; current position on the heap
 label:  .ADDR $000                      ; addr of last label dictionary-entry
 const:  .ADDR $000                      ; addr of last const dictionary-entry
 
-; expression bytecode:
-;-------------------------------------------------------------------------------
-; calculations are compiled into bytecode to allow for later evaluation,
-; i.e. for deferred calculations where a symbol is not yet known
-;
-expr:   .ADDR $fc7f                     ; expr token space (builds downwards)
-defer:  .ADDR $0000                     ; addr of last deferred expr
-
-.INC    "expr.wla"                      ; expression parsing and evaluation
 
 init:
 ;===============================================================================

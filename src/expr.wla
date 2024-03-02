@@ -8,6 +8,16 @@
 ;
 .BLOCK  "code-expr"
 
+; expression bytecode:
+;-------------------------------------------------------------------------------
+; calculations are compiled into bytecode to allow for later evaluation,
+; i.e. for deferred calculations where a symbol is not yet known
+; (note that the actual address is filled in at runtime)
+;
+expr:   .ADDR $fc7f                     ; expr token space (builds downwards)
+defer:  .ADDR $0000                     ; addr of last deferred expr
+
+
 nextExpr:
 ;===============================================================================
 ; skip spaces before parsing an expression:
