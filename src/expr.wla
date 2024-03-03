@@ -378,10 +378,12 @@ evalExpr:
 @eval:  ld      A,      [HL]            ; read token type
         and     A                       ; (set CPU flags!)
         jr      z,      @end            ; end on expr terminator
-        
+
+        push    AF                      ; keep operator until after value
         dec     HL                      ; move to next token space
         call    _value                  ; get value before applying operator
 
+        pop     AF                      ; restore operator before the value
         cp      CHAR_OP_ADD
         jr      z,      @add
         cp      CHAR_OP_SUB
@@ -489,6 +491,7 @@ _value:
         dec     HL
         ld      C,      [HL]
         dec     HL
+
         ret
 
         ;-----------------------------------------------------------------------

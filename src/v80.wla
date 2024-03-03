@@ -43,7 +43,7 @@
 ;   expr:  expressions are tokenised here (builds downwards)
 ;   stack: usual Z80 stack (builds downwards)
 ;
-.DEF    WORD_LEN        30              ; maximum symbol name length
+.DEF    WORD_LEN        31              ; maximum symbol name length
 
 ; the bottom of the word buffer, just above the heap, can be used
 ; as temporary space for a few bytes (so their use can't overlap)
@@ -111,7 +111,7 @@ init:
         ld      L,      0               ; use 0 for lo-byte, e.g. $FC00
         ld      [temp], HL              ; use bottom of stack for temp bytes
         ld      [heap], HL              ; finally set the heap position
-        ld      BC,     WORD_LEN+1      ; max word-length for word buffer,
+        ld      BC,     WORD_LEN        ; max word-length for word buffer,
         add     HL,     BC              ;  plus 1 byte to store word-length
         ld      [word], HL              ;  (word buffer works downwards)
         ld      L,      $7f             ; the expr token space starts in the
@@ -250,7 +250,6 @@ assemble:
         ; modify the virtual program-counter:
         ;-----------------------------------------------------------------------
 @pc:    call    parseExpr               ; capture the complete expression
-        .printChar      '?'
         halt
         jr      @body
 
@@ -284,8 +283,7 @@ assemble:
 
         ; handle keywords:
         ;=======================================================================
-@key:   .printChar '!'
-        halt
+@key:   halt
 
         ; define label:
         ;=======================================================================
@@ -437,7 +435,7 @@ readChar:
 .IFDEF  DEBUG
         ;///////////////////////////////////////////////////////////////////////
         push    AF
-        call    osPrintChar             ; print every character as we receive it
+        call    osPrintChar             ; print each character as we receive it
         pop     AF                      ; (zero-flag must be preserved)
 .ENDIF  ;///////////////////////////////////////////////////////////////////////
         ret     z                       ; return on end-of-file
@@ -520,7 +518,7 @@ readWord:
         ;-----------------------------------------------------------------------
 @ok:    ld      A,      WORD_LEN        ; max size - characters remaining
         sub     E                       ;  = length of word
-        ld      E,      WORD_LEN+1      ; snap back to length byte
+        ld      E,      WORD_LEN        ; snap back to length byte
         ld      [DE],   A               ; write word-length byte
 
         ret
@@ -559,6 +557,9 @@ getConst:
         ld      C,      [HL]            ; return BC = constant value
         ex      DE,     HL              ; return DE = last addr
 
+        ; (note that DEC HL will have cleared the zero-flag
+        ;  as a constant could never end on address $0000)
+        ;
         ret
 
 
@@ -700,6 +701,7 @@ findSymbol:
         ; CPD ensures that HL is pointing to the byte following the symbol-name
         ; -- on a const this is the value, and for labels this is the flag-byte
         ;
+        and     A                       ; A != 0, clear z-flag & carry-flag
 @end:   ex      DE,     HL              ; return last addr as DE
         pop     HL                      ; restore old heap addr
         ret
