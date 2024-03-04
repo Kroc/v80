@@ -75,7 +75,7 @@ boot:
         ld      A,      [command_fcb.filename]
         and     %01111111               ; (hi-bit might be set)
         cp      ' '+1                   ; non-visible char? $00-$20?
-        jp      c,      @help           ; show help msg and quit
+        jr      c,      @help           ; show help msg and quit
 
         ; open file:
         xor     A                       ; start reading at record 0

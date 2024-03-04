@@ -284,6 +284,52 @@ assemble:
         ;=======================================================================
 @key:   halt
 
+        ;=======================================================================
+        ; define constant:
+        ;-----------------------------------------------------------------------
+        ; because constants can be modified we don't search for the symbol yet
+        ; -- we need the value first! get only the constant name:
+        ;
+@const: call    readWord                ; read symbol name into buffer
+        call    nextExpr                ; try evaluate the following expression
+        jp      c,      errConst        ; cannot contain forward-references!
+        push    BC                      ; keep ahold of the const value
+
+        ld      DE,     const           ; use constant dictionary
+        call    findSymbol              ; check if constant already exists
+        jr      nz,     +               ; if yes, skip to writing the value
+
+        ; push a new constant to the heap:
+        ;-----------------------------------------------------------------------
+        ld      DE,     [const]         ; read prev const addr
+        dec     HL                      ; pre-decrement heap to empty byte
+        ld      [HL],   D               ; write prev const addr hi-byte
+        dec     HL                      ; (this is the heap addr we want)
+        ld      [HL],   E               ; write prev const addr lo-byte
+        ld      [const],HL              ; update entry point with heap addr
+
+        ; push the const name:
+        ;
+        ex      DE,     HL              ; copy goes *from* [HL] *to* [DE]...
+        ld      HL,     [word]          ; get word-buffer addr
+        inc     C                       ; length +1 to include the length-byte
+
+        ; note that LDDR is post-decrement (copy-then-decrement), whereas
+        ; the heap is pre-decrement like the stack (decrement-then-copy)
+        ; -- decrement DE once to adjust for this before the copy
+        ;
+        dec     DE                      ; adjust heap for post-decrement copy
+        lddr                            ; copy BC bytes from [HL] to [DE]!
+        ex      DE,     HL              ; swap back to heap in HL
+
++       pop     BC                      ; get back the const value to set
+        ld      [HL],   B               ; because we're writing downwards
+        dec     HL                      ;  in RAM, write value hi-byte first
+        ld      [HL],   C               ;  followed by value lo-byte
+
+        ; only one constant can be defined per line
+        jr      @line
+
         ; define label:
         ;=======================================================================
         ; check if the label already exists:
@@ -323,52 +369,6 @@ assemble:
         ld      [DE],   A
 
         jr      @next                   ; return to parsing
-
-        ;=======================================================================
-        ; define constant:
-        ;-----------------------------------------------------------------------
-        ; because constants can be modified we don't search for the symbol yet
-        ; -- we need the value first! get only the constant name:
-        ;
-@const: call    readWord                ; read symbol name into buffer
-        call    nextExpr                ; try evaluate the following expression
-        jp      c,      errConst        ; cannot contain forward-references!
-        push    BC                      ; keep ahold of the const value
-
-        ld      DE,     const           ; use constant dictionary
-        call    findSymbol              ; check if constant already exists
-        jp      nz,     +               ; if yes, skip to writing the value
-
-        ; push a new constant to the heap:
-        ;-----------------------------------------------------------------------
-        ld      DE,     [const]         ; read prev const addr
-        dec     HL                      ; pre-decrement heap to empty byte
-        ld      [HL],   D               ; write prev const addr hi-byte
-        dec     HL                      ; (this is the heap addr we want)
-        ld      [HL],   E               ; write prev const addr lo-byte
-        ld      [const],HL              ; update entry point with heap addr
-
-        ; push the const name:
-        ;
-        ex      DE,     HL              ; copy goes *from* [HL] *to* [DE]...
-        ld      HL,     [word]          ; get word-buffer addr
-        inc     C                       ; length +1 to include the length-byte
-
-        ; note that LDDR is post-decrement (copy-then-decrement), whereas
-        ; the heap is pre-decrement like the stack (decrement-then-copy)
-        ; -- decrement DE once to adjust for this before the copy
-        ;
-        dec     DE                      ; adjust heap for post-decrement copy
-        lddr                            ; copy BC bytes from [HL] to [DE]!
-        ex      DE,     HL              ; swap back to heap in HL
-
-+       pop     BC                      ; get back the const value to set
-        ld      [HL],   B               ; because we're writing downwards
-        dec     HL                      ;  in RAM, write value hi-byte first
-        ld      [HL],   C               ;  followed by value lo-byte
-
-        ; only one constant can be defined per line
-        jp      @line
 
 
 nextWord:
