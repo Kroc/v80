@@ -101,18 +101,17 @@ const:  .ADDR $000                      ; addr of last const dictionary-entry
 
 init:
 ;===============================================================================
-        ; set heap position:
+        ; initialise addresses:
         ;-----------------------------------------------------------------------
-        ; this *assumes* we are at least 1 call deep on the stack,
-        ; i.e. $FCFE rather than the unused stack top @ $FD00
+        ; this *assumes* the stack is completely empty,
+        ; i.e. at $FD00 rather than $FCFE
         ;
         ld      HL,     $0000           ; oddly, there's no `ld HL, SP`!
-        add     HL,     SP              ; stack address, e.g. $FCFE
-        ld      L,      0               ; use 0 for lo-byte, e.g. $FC00
+        add     HL,     SP              ; stack address, e.g. $FD00
+        dec     H                       ; go down a page e.g. $FD00 > $FC00
         ld      [temp], HL              ; use bottom of stack for temp bytes
-        ld      [heap], HL              ; finally set the heap position
-        ld      BC,     WORD_LEN        ; max word-length for word buffer,
-        add     HL,     BC              ;  plus 1 byte to store word-length
+        ld      [heap], HL              ; this will also be the top of the heap
+        ld      L,      WORD_LEN        ; max word-length for word buffer,
         ld      [word], HL              ;  (word buffer works downwards)
         ld      L,      $7f             ; the expr token space starts in the
         ld      [expr], HL              ;  middle of the page and works down
@@ -139,7 +138,7 @@ init:
 
         ld      [heap], HL
         call    memStat
-        ret                             ; return to CP/M to quit the program
+        jp      osQuit                  ; return to CP/M to quit the program
 
 
 memStat:
