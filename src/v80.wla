@@ -396,9 +396,6 @@ nextWord:
 -       call    readChar                ; read a character (returns z-flag)
         ret     z                       ; return z-flag set if newline/EOF
 
-        cp      CHAR_COMMENT            ; is this the start of a comment?
-        jr      z,      @skip           ; if so, skip chars until end
-
         ; we need to be careful not to wrongly return z-flag set!
         ;
         ; we cannot check for ASCII_SPC+1 ("!") as if this character appears,
@@ -409,6 +406,9 @@ nextWord:
         cp      ASCII_SPC               ; is ASCII code a space?
         jr      c,      -               ; keep reading if codes 1-31
         jr      z,      -               ; also, keep reading if space
+
+        cp      CHAR_COMMENT            ; is this the start of a comment?
+        jr      z,      @skip           ; if so, skip chars until end
 
         ret
 

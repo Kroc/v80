@@ -240,7 +240,7 @@ osGetChar:
         inc     [HL']                   ; increment index (address above!)
 
         ; in CP/M the ASCII SUB control code ($1A) terminates the file
-        ; because all CP/M2 files are padded to 128 bytes sectors!
+        ; because all CP/M files are padded to 128 bytes sectors!
         ; <https://en.wikipedia.org/wiki/Substitute_character>
         ;
         cp      ASCII_SUB               ; is this a CP/M sector padding byte?
@@ -267,12 +267,13 @@ osPrintChar:
 
         ld      C',     BDOS_CONOUT
         ld      E',     A
-        ex      AF,     AF'
-        call    BDOS
-        ex      AF',    AF
+        ex      AF,     AF'             ; TODO: use L instead?
+        call    BDOS                    ;       CP/M convention means that
+        ex      AF',    AF              ;       on BDOS return, A = L
 
         exx                             ; restore register set
         ret
+
 
 osPrintStr:
 ;===============================================================================
