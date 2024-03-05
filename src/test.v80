@@ -3,6 +3,11 @@
 #true	$1			; define constant
 #true	#true - $1		; redefine constant
 
+; a hexadecimal number first on the line
+; sets the virtual program-counter
+;
+$0100
+
 ;labels can start with numbers and are
 ;limited to 31 chars, including the sigil
 ;

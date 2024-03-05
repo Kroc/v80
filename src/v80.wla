@@ -232,25 +232,25 @@ assemble:
         cp      CHAR_CONST              ; is constant?
         jr      z,      @const          ; define a constant
 
-        ; any expression defines the virtual program-counter
-        ; (except labels, you can't set the virtual program-counter
-        ;  based on another label, set up a constant for that)
+        ; a hexadecimal number at the start of a line
+        ; defines the virtual program-counter
         ;
-        cp      CHAR_HEX                ; hexadecimal literal or current PC?
-        jr      z,      @pc             ; redefine program-counter
-        ; (the unary operators can also start an expression)
-        cp      CHAR_OP_LO              ; lo operator?
-        jr      z,      @pc             ; redefine program-counter 
-        cp      CHAR_OP_HI              ; hi operator?
-        jr      z,      @pc             ; redefine program-counter 
-        cp      CHAR_OP_NOT             ; not operator?
-        jr      nz,     @body           ; no expression -- skip to body context
+        cp      CHAR_HEX                ; hexadecimal literal?
+        jr      nz,     @body           ; if not, skip to body context
 
         ; modify the virtual program-counter:
         ;-----------------------------------------------------------------------
-@pc:    call    parseExpr               ; capture the complete expression
-        halt
-        jr      @body
+        ; full expressions are not supported unless the `.o` keyword is used
+        ;
+@pc:    call    parseHexNumber          ; capture the number
+        ld      IXL,    C               ; change the virtual program-counter
+        ld      IXH,    B               ;  to the number given
+
+        ; fallthrough to check for following statements
+        ; TODO: we should probably allow a label following the PC,
+        ;       e.g.
+        ;               $c000   :label  ret
+        ; ...
 
         ; body context:
         ;=======================================================================
@@ -261,7 +261,7 @@ assemble:
         ;
         ; after a keyword or instruction, parsing returns to the body context
         ; unless a newline is encountered. in cases where the last-read char
-        ; is whitespace we need to pickup the next character
+        ; is whitespace, we need to pickup the next character:
         ;
 @next:  ld      A,      [char]          ; last read character
         and     A                       ; (set CPU flags!)
