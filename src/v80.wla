@@ -238,11 +238,23 @@ assemble:
         cp      CHAR_HEX                ; hexadecimal literal?
         jr      nz,     @body           ; if not, skip to body context
 
-        ; modify the virtual program-counter:
+        ; set the virtual program-counter:
         ;-----------------------------------------------------------------------
-        ; full expressions are not supported unless the `.o` keyword is used
+        ; there is no "org" statement to set the program counter as with other
+        ; assemblers, if a line begins with a hexadecimal number the virtual
+        ; program counter is set to that value, e.g.
+        ;
+        ;       $c000   ; PC is now $c000
+        ;
+        ; to set the virtual program-counter using an expression,
+        ; begin the line with a lone `$` followed by the expression, e.g.
+        ;
+        ;       $       #boot + $0100   ; set PC to #boot constant + 256
         ;
 @pc:    call    parseHexNumber          ; capture the number
+        call    c,      nextExpr        ; if PC, parse the expr that follows
+        jp      c,      errExprConst    ; must be a constant expr!
+
         ld      IXL,    C               ; change the virtual program-counter
         ld      IXH,    B               ;  to the number given
 
@@ -292,7 +304,7 @@ assemble:
         ;
 @const: call    readWord                ; read symbol name into buffer
         call    nextExpr                ; try evaluate the following expression
-        jp      c,      errConst        ; cannot contain forward-references!
+        jp      c,      errExprConst    ; cannot contain forward-references!
         push    BC                      ; keep ahold of the const value
 
         ld      DE,     const           ; use constant dictionary

@@ -627,6 +627,9 @@ parseHexNumber:
 ; that always returns the current virtual program-counter
 ;
 ; out:  BC              the value, 0 padded for numbers < 256
+;       cf              carry-flag is set for virtual program-counter return
+;       [char]          the last character read will always be some kind
+;                       of whitespace -- space, newline or end-of-file
 ;       HL              (preserved)
 ;       A, DE           (clobbered)
 ;-------------------------------------------------------------------------------
@@ -672,8 +675,10 @@ parseHexNumber:
         ; a hex sigil without a number (i.e. `$`) is a special symbol
         ; that always returns the current virtual program-counter
         ;
-        push    IX                      ; transfer virtual program-counter
-        pop     BC                      ;  to return value
+        scf                             ; carry-flag indicates substitution
+        ld      B,      IXH             ; transfer virtual program-counter
+        ld      C,      IXL             ;  to return value
+
         ret
 
         ; four-digit hex number:

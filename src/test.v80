@@ -6,7 +6,13 @@
 ; a hexadecimal number first on the line
 ; sets the virtual program-counter
 ;
-$0100
+$0000
+
+; start the line with `$` to set the virtual program-counter
+; using en expression. be aware that forward-references to
+; labels cannot be used when setting the program-counter
+;
+$	$ + $0100
 
 ;labels can start with numbers and are
 ;limited to 31 chars, including the sigil

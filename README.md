@@ -10,7 +10,7 @@ It currently runs on CP/M with plans to make it self-hosting (can assemble itsel
 ## ~~Features~~
 
 - No Macros! Copy + Paste is your friend
-- No linker, includes can do it
+- No linker, we have linker at home &rarr; includes
 - No decimal numbers. Let's face it, you think in hexadecimal anyway
 - No floating point numbers. Have you _tried_ coding floats on an 8-bit CPU??
 - No negative numbers. It's all 1s in 2s compliment
@@ -46,6 +46,14 @@ The basic principle is that v80 can only recognise a word by the first character
     ; must be constant (no forward-references)
     #true   $0
 
+    ; a hex number at the start of a line
+    ; sets the program-counter
+    $c000
+
+    ; or use `$` to set program-counter
+    ; using an expression
+    $   #base + $0100
+
     ; keywords begin with `.`
     .b <bytes>
     .w <words>
@@ -54,8 +62,7 @@ The basic principle is that v80 can only recognise a word by the first character
     .b :label - $
 
     ; file includes
-    .inc "file.v80"
-    .bin "file.bin" <size> <skip>
+    .i "file.v80"
 
     ; no comparison operators!
     ; expression must evaluate to 0 (true)
