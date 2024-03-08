@@ -10,6 +10,9 @@ emitOpcode:
 ; in:   B               opcode flags byte from the opcode table
 ;       C               opcode byte
 ;       HL              heap address for any deferred expressions
+;       [char]          the last character read by parseInstruction will
+;                       be whitespace / end-of-line or end-of-file
+;
 ; out:  *               (clobbered)
 ;===============================================================================
         ; the flags byte is a set of flags for Z80-specifics
@@ -71,9 +74,9 @@ emitOpcode:
         adc     1                       ; add at least 1-byte
         ld      [stride],       A       ; set width of parameter
 
-        ; consume whitespace before parsing expression. since the parameter
-        ; is required, this will error on newline or end-of-file before expr
-        jp      nextExpr
+        ; parse the following expression and
+        ; write the value to the code-segment
+        jp      @param
 
         ;=======================================================================
         ; handle IX|IY opcodes: (bit 5 chooses between IX & IY)
@@ -120,9 +123,9 @@ emitOpcode:
         adc     1                       ; add that bit, if present
         ld      [stride],       A       ; set width of parameter
 
-        ; consume whitespace before parsing expression. since the parameter
-        ; is required, this will error on newline or end-of-file before expr
-        jp      nextExpr
+        ; parse the following expression and
+        ; write the value to the code-segment
+        jp      @param
 
         ;-----------------------------------------------------------------------
         ; handle two-parameter instruction special case:
@@ -130,11 +133,9 @@ emitOpcode:
 @two:   inc     A
         ld      [stride],       A       ; (set the parameter width to 1 byte)
 
-        ; TODO: must indicate offset vs. immediate parameter type somehow
-
-        ; consume whitespace before parsing expression. since the parameter
-        ; is required, this will error on newline or end-of-file before expr
-        call    nextExpr
+        ; parse the following expression and
+        ; write the value to the code-segment
+        call    @param
 
         ; the first expression will read to the first character of the next
         ; word following the expression, or a newline / end-of-file. since
@@ -148,7 +149,7 @@ emitOpcode:
 
         ; (the first character of the next expression
         ;  has been read so no need to skip whitespace)
-        jp      parseExpr
+        jp      @par2
 
         ;-----------------------------------------------------------------------
         ; IX|IY + $CB is the edge-case that keeps on giving: at all other
@@ -159,13 +160,44 @@ emitOpcode:
         inc     IX                      ; increment virtual program-counter
         push    BC                      ; keep opcode until emit time
 
-        ; consume whitespace before parsing expression. since the parameter
-        ; is required, this will error on newline or end-of-file before expr
-        ;
-        call    nextExpr
+        ; parse the following expression and
+        ; write the value to the code-segment
+        call    @param
 
         pop     BC                      ; retrieve delayed opcode
         ld      [IY+$00],       C       ; emit opcode byte
+        inc     IY                      ; move to next byte in code-segment
+        inc     IX                      ; increment virtual program-counter
+
+        ret
+
+        ; read a param and write it to the code-segment:
+        ;=======================================================================
+        ; a parameter is required; the last char read after the instruction
+        ; will be either whitespace, end-of-line or end-of-file
+        ;
+@param: ld      A,      [char]          ; last character read
+        cp      ASCII_SPC               ; only space would be valid because
+        jp      nz,     errParam        ;  EOL/EOF would mean no parameter!
+        call    nextWord                ; consume whitespace before expression
+        jp      z,      errParam        ; likewise, EOL/EOF = no param!
+
+@par2:  call    parseExpr               ; if the expression contains a forward-
+        call    c,      deferExpr       ;  reference, defer it to the heap
+
+        ; write the result to the code-segment as opcode parameter
+        ; (if deferred, this value is meaningless)
+        ;
+        ld      [IY+$00],       C       ; write value lo-byte
+        inc     IY                      ; move to next byte in code-segment
+        inc     IX                      ; increment virtual program-counter
+
+        ; TODO: error for 16-bit value in 8-bit parameter
+        ld      A,      [stride]
+        dec     A
+        ret     z
+
+        ld      [IY+$00],       B       ; write value hi-byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
 
