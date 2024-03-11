@@ -4,7 +4,7 @@
 ; TODO: support combined unary operators (e.g. `!<`)
 ;       will work in eval but needs parser support
 ; TODO: parentheses
-; TODO: we can store the stride size in the reserved byte(s)
+; TODO: we could store the stride size in the reserved byte(s)
 ;
 .BLOCK  "code-expr"
 
@@ -18,19 +18,74 @@ expr:   .ADDR $fc7f                     ; expr token space (builds downwards)
 defer:  .ADDR $0000                     ; addr of last deferred expr
 
 
+isExpr:
+;===============================================================================
+; check if a character is a valid expression starting point:
+;
+; this routine is used to determine if one expression follows another
+;
+; in:   A               ASCII char
+; out:  zf              zero-flag set = yes, clear = no
+;       A               (preserved)
+;-------------------------------------------------------------------------------
+        cp      CHAR_HEX                ; a hexadecimal literal / PC
+        ret     z
+        cp      CHAR_LABEL              ; a label
+        ret     z
+        cp      CHAR_CONST              ; a constant
+        ret     z
+        cp      CHAR_OP_LO              ; the lo-byte unary operator
+        ret     z
+        cp      CHAR_OP_HI              ; the hi-byte unary operator
+        ret     z
+        cp      CHAR_OP_NOT             ; the not unary operator
+
+        ret
+
+
+nextParam:
+;===============================================================================
+; read an expression and write it to the code-segment:
+;
+; in:   HL              current heap position -- if the expression is deferred
+;                       it will be copied to the heap
+;
+; out:  BC              expr value. if deferred, BC is length of expr bytecode
+;       HL              heap addr will be modified if expr is deferred
+;-------------------------------------------------------------------------------
+        call    nextExpr                ; if the expression contains a forward-
+        call    c,      deferExpr       ;  reference, defer it to the heap
+
+        ; write the result to the code-segment as opcode parameter
+        ; (if deferred, this value is meaningless)
+        ;
+        ld      [IY+$00],       C       ; write value lo-byte
+        inc     IY                      ; move to next byte in code-segment
+        inc     IX                      ; increment virtual program-counter
+
+        ; TODO: error for 16-bit value in 8-bit parameter
+        ld      A,      [stride]
+        dec     A
+        ret     z
+
+        ld      [IY+$00],       B       ; write value hi-byte
+        inc     IY                      ; move to next byte in code-segment
+        inc     IX                      ; increment virtual program-counter
+
+        ret
+
+
 nextExpr:
 ;===============================================================================
 ; skip spaces before parsing an expression:
 ; (see parseExpr below for parameters)
 ;
 ;-------------------------------------------------------------------------------
-        ; skip whitespace and return on either the next non-space character,
-        ; or a newline/end-of-file (where a comment is taken as a newline)
-        call    nextWord
-
-        ; since the expression is expected/required,
-        ; newline or end-of-file is an error:
-        jp      z,      errParam
+        ld      A,      [char]          ; last character read
+        cp      ASCII_SPC               ; space is the only valid whitespace
+        call    z,      nextWord        ; if space, skip spaces
+        cp      ASCII_SPC+1             ; non-visible character?
+        jp      c,      errExpectExpr   ; error if end-of-line / end-of-file
 
         ; fallthrough
         ; ...
@@ -69,7 +124,6 @@ parseExpr:
 
         ;-----------------------------------------------------------------------
 @flag   .BYTE   $00                     ; defer flag
-
 
         ;=======================================================================
         ; (exit-route for forward-references:)
@@ -321,22 +375,22 @@ evalExpr:
         call    _value                  ; get value before applying operator
 
         pop     AF                      ; restore operator before the value
-        cp      CHAR_OP_ADD
-        jr      z,      @add
-        cp      CHAR_OP_SUB
-        jr      z,      @sub
-        cp      CHAR_OP_MUL
-        jr      z,      @mul
-        cp      CHAR_OP_DIV
-        jr      z,      @div
-        cp      CHAR_OP_AND
-        jr      z,      @and
-        cp      CHAR_OP_OR
-        jr      z,      @or
-        cp      CHAR_OP_XOR
-        jr      z,      @xor
-        cp      CHAR_OP_MOD
-        jr      z,      @mod
+        cp      CHAR_OP_ADD             ; add operator?
+        jr      z,      @add            ; ...
+        cp      CHAR_OP_SUB             ; subtract operator?
+        jr      z,      @sub            ; ...
+        cp      CHAR_OP_MUL             ; multiply operator?
+        jr      z,      @mul            ; ...
+        cp      CHAR_OP_DIV             ; divide operator?
+        jr      z,      @div            ; ...
+        cp      CHAR_OP_AND             ; bitwise AND operator?
+        jr      z,      @and            ; ...
+        cp      CHAR_OP_OR              ; bitiwse OR operator?
+        jr      z,      @or             ; ...
+        cp      CHAR_OP_XOR             ; bitwise XOR operator?
+        jr      z,      @xor            ; ...
+        cp      CHAR_OP_MOD             ; modulo operator?
+        jr      z,      @mod            ; ...
 
         .printChar '!'
         halt                            ; unimplemented operator!

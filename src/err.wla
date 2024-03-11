@@ -6,17 +6,18 @@
 ;
 .BLOCK  "code-err"
 
-_strFile:       .BYTE "File not found!$"
-_strEndOfFile:  .BYTE "Unexpected end of file!$"
-_strWord:       .BYTE "Word too long! (max 32 chars)$"
-_strOpcode:     .BYTE "Invalid Z80 instruction!$"
-_strParam:      .BYTE "Expected instruction parameter!$"
-_strExpr:       .BYTE "Invalid expression!$"
-_strHex:        .BYTE "Invalid hexadecimal number!$"
-_strLabelRedef: .BYTE "Labels cannot be redefined!$"
-_strLabelUndef: .BYTE "Label is undefined!$"
-_strExprConst:  .BYTE "Forward-references to labels not allowed here!$"
-_strConstUndef: .BYTE "Undefined constant!$"
+_strFile        .BYTE "File not found!$"
+_strWord        .BYTE "Word too long! (max 32 chars)$"
+_strOpcode      .BYTE "Invalid Z80 instruction!$"
+_strExpectParam .BYTE "Expected instruction parameter!$"
+_strExpectExpr  .BYTE "Expected expression!$"
+_strExpr        .BYTE "Invalid expression!$"
+_strKeyword     .BYTE "Invalid keyword!$"
+_strHex         .BYTE "Invalid hexadecimal number!$"
+_strLabelRedef  .BYTE "Labels cannot be redefined!$"
+_strLabelUndef  .BYTE "Label is undefined!$"
+_strExprConst   .BYTE "Forward-references to labels not allowed here!$"
+_strConstUndef  .BYTE "Undefined constant!$"
 
 _printQuit:
 ;===============================================================================
@@ -30,13 +31,6 @@ errFile:
 ; file not found!
 ;-------------------------------------------------------------------------------
         ld      DE,     _strFile
-        jr      _printQuit
-
-errEndOfFile:
-;===============================================================================
-; unexpected end of file!
-;-------------------------------------------------------------------------------
-        ld      DE,     _strEndOfFile
         jr      _printQuit
 
 errWord:
@@ -53,11 +47,18 @@ errOpcode:
         ld      DE,     _strOpcode
         jr      _printQuit
 
-errParam:
+errExpectParam:
 ;===============================================================================
 ; instruction parameter expected!
 ;-------------------------------------------------------------------------------
-        ld      DE,     _strParam
+        ld      DE,     _strExpectParam
+        jr      _printQuit
+
+errExpectExpr:
+;===============================================================================
+; expression expected!
+;-------------------------------------------------------------------------------
+        ld      DE,     _strExpectExpr
         jr      _printQuit
 
 errExpr:
@@ -65,6 +66,13 @@ errExpr:
 ; not a valid expression!
 ;-------------------------------------------------------------------------------
         ld      DE,     _strExpr
+        jr      _printQuit
+
+errKeyword:
+;===============================================================================
+; not a valid keyword!
+;-------------------------------------------------------------------------------
+        ld      DE,     _strKeyword
         jr      _printQuit
 
 errHex:
@@ -87,7 +95,6 @@ errLabelUndef:
 ;-------------------------------------------------------------------------------
         ld      DE,     _strLabelUndef
         jr      _printQuit
-
 
 errExprConst:
 ;===============================================================================

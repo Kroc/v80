@@ -205,6 +205,91 @@ assemble:
         jr      @line                   ; jump into parsing loop
 
         ;=======================================================================
+        ; define constant:
+        ;-----------------------------------------------------------------------
+        ; because constants can be modified we don't search for the symbol yet
+        ; -- we need the value first! get only the constant name:
+        ;
+@const: call    readWord                ; read symbol name into buffer
+        call    nextExpr                ; try evaluate the following expression
+        jp      c,      errExprConst    ; cannot contain forward-references!
+        push    BC                      ; keep ahold of the const value
+
+        ld      DE,     const           ; use constant dictionary
+        call    findSymbol              ; check if constant already exists
+        jr      nz,     +               ; if yes, skip to writing the value
+
+        ; push a new constant to the heap:
+        ;-----------------------------------------------------------------------
+        ld      DE,     [const]         ; read prev const addr
+        dec     HL                      ; pre-decrement heap to empty byte
+        ld      [HL],   D               ; write prev const addr hi-byte
+        dec     HL                      ; (this is the heap addr we want)
+        ld      [HL],   E               ; write prev const addr lo-byte
+        ld      [const],HL              ; update entry point with heap addr
+
+        ; push the const name:
+        ex      DE,     HL              ; copy goes *from* [HL] *to* [DE]...
+        ld      HL,     [word]          ; get word-buffer addr
+        inc     C                       ; length +1 to include the length-byte
+
+        ; note that LDDR is post-decrement (copy-then-decrement), whereas
+        ; the heap is pre-decrement like the stack (decrement-then-copy)
+        ; -- decrement DE once to adjust for this before the copy
+        ;
+        dec     DE                      ; adjust heap for post-decrement copy
+        lddr                            ; copy BC bytes from [HL] to [DE]!
+        ex      DE,     HL              ; swap back to heap in HL
+
+        ; push const value:
++       pop     BC                      ; get back the const value to set
+        ld      [HL],   B               ; because we're writing downwards
+        dec     HL                      ;  in RAM, write value hi-byte first
+        ld      [HL],   C               ;  followed by value lo-byte
+
+        ; only one constant can be defined per line
+        jr      @line
+
+        ;=======================================================================
+        ; define label:
+        ;-----------------------------------------------------------------------
+@label: call    getLabel                ; read label name and search for it
+
+        ; if the label has been referenced in an expression, but not yet
+        ; defined, carry will be set. in this case we want to 'fill in the
+        ; blank' so that deferred expressions using this label can be evaluated
+        ;
+        jr      c,      +               ; does it exist as a forward-reference?
+        
+        ; zero-flag will be set if the label either does not exist at all,
+        ; or was a forward-reference (we've eliminated forward-references
+        ; first), therefore if the label *does* exist we're trying to
+        ; define a label twice!
+        ;
+        jp      nz,     errLabelRedef   ; cannot redefine labels!
+
+        call    pushLabel               ; define new label on the heap
+        jr      @next                   ; return to parsing
+
+        ;-----------------------------------------------------------------------
+        ; when a label has been referred to in an expression in the past,
+        ; a placeholder is added to the dictionary awaiting definition --
+        ; now that time has come. `getLabel` has returned the addr (DE)
+        ; of the last byte of the label record so we can walk up the
+        ; bytes and patch in the new value
+        ;
++       ld      A,      IXL             ; virtual program-counter, lo-byte
+        ld      [DE],   A
+        inc     DE                      ; move upwards to value hi-byte
+        ld      A,      IXH             ; virtual program-counter, hi-byte
+        ld      [DE],   A
+        inc     DE                      ; move upwards to flag-byte
+        ld      A,      1               ; set flag byte to indicate valid value
+        ld      [DE],   A
+
+        jr      @next                   ; return to parsing
+
+        ;=======================================================================
         ; distinguish between newline and end-of-file:
         ;-----------------------------------------------------------------------
         ; readChar returns zero-flag set for both newline and end-of-file,
@@ -286,101 +371,63 @@ assemble:
 
         ;-----------------------------------------------------------------------
 @body:  cp      CHAR_KEYWORD            ; is this a keyword?
-        jr      z,      @key            ; handle keyword
+        jr      z,      @key
 
-        call    parseInstruction
+        call    parseInstruction        ; if not, must be an instruction
 
         jr      @next
 
-        ; handle keywords:
-        ;=======================================================================
-@key:   halt
-
-        ;=======================================================================
-        ; define constant:
+        ; keywords:
         ;-----------------------------------------------------------------------
-        ; because constants can be modified we don't search for the symbol yet
-        ; -- we need the value first! get only the constant name:
-        ;
-@const: call    readWord                ; read symbol name into buffer
-        call    nextExpr                ; try evaluate the following expression
-        jp      c,      errExprConst    ; cannot contain forward-references!
-        push    BC                      ; keep ahold of the const value
+@key:   call    readChar                ; get next char after the "."
+        jp      z,      errKeyword      ; no letter follows!?
+        ld      C,      A               ; hold char to check next char first
+        call    readChar                ; get 2nd char
+        cp      ASCII_SPC               ; whitespace must follow!
+        jp      nz,     errKeyword      ; (i.e. no additional chars)
 
-        ld      DE,     const           ; use constant dictionary
-        call    findSymbol              ; check if constant already exists
-        jr      nz,     +               ; if yes, skip to writing the value
+        ld      A,      C               ; return to first char
+        res     5,      A               ; force upper-case for "a"-"z"
+        cp      'B'                     ; `.b` keyword?
+        jr      z,      @b              ; process bytes
+        cp      'W'                     ; `.w' keyword?
+        jp      nz,     errKeyword      ; none of the above? invalid keyword!
 
-        ; push a new constant to the heap:
-        ;-----------------------------------------------------------------------
-        ld      DE,     [const]         ; read prev const addr
-        dec     HL                      ; pre-decrement heap to empty byte
-        ld      [HL],   D               ; write prev const addr hi-byte
-        dec     HL                      ; (this is the heap addr we want)
-        ld      [HL],   E               ; write prev const addr lo-byte
-        ld      [const],HL              ; update entry point with heap addr
-
-        ; push the const name:
-        ;
-        ex      DE,     HL              ; copy goes *from* [HL] *to* [DE]...
-        ld      HL,     [word]          ; get word-buffer addr
-        inc     C                       ; length +1 to include the length-byte
-
-        ; note that LDDR is post-decrement (copy-then-decrement), whereas
-        ; the heap is pre-decrement like the stack (decrement-then-copy)
-        ; -- decrement DE once to adjust for this before the copy
-        ;
-        dec     DE                      ; adjust heap for post-decrement copy
-        lddr                            ; copy BC bytes from [HL] to [DE]!
-        ex      DE,     HL              ; swap back to heap in HL
-
-+       pop     BC                      ; get back the const value to set
-        ld      [HL],   B               ; because we're writing downwards
-        dec     HL                      ;  in RAM, write value hi-byte first
-        ld      [HL],   C               ;  followed by value lo-byte
-
-        ; only one constant can be defined per line
-        jr      @line
-
-        ; define label:
-        ;=======================================================================
-        ; check if the label already exists:
-        ;
-@label: call    getLabel                ; read label name and search for it
-
-        ; if the label has been referenced in an expression, but not yet
-        ; defined, carry will be set. in this case we want to 'fill in the
-        ; blank' so that deferred expressions using this label can be evaluated
-        ;
-        jr      c,      +               ; does it exist as a forward-reference?
-        
-        ; zero-flag will be set if the label either does not exist at all,
-        ; or was a forward-reference (we've eliminated forward-references
-        ; first), therefore if the label *does* exist we're trying to
-        ; define a label twice!
-        ;
-        jp      nz,     errLabelRedef   ; cannot redefine labels!
-
-        call    pushLabel               ; define new label on the heap
-        jr      @next                   ; return to parsing
+        ; (fallthrough to handle words)
+        ; ...
 
         ;-----------------------------------------------------------------------
-        ; when a label has been referred to in an expression in the past,
-        ; a placeholder is added to the dictionary awaiting definition --
-        ; now that time has come. `findSymbol` has returned the addr (DE)
-        ; of the last byte of the symbol record so we can walk up the bytes
-        ; and patch in the new value
-        ;
-+       ld      A,      IXL             ; virtual program-counter, lo-byte
-        ld      [DE],   A
-        inc     DE                      ; move upwards to value hi-byte
-        ld      A,      IXH             ; virtual program-counter, hi-byte
-        ld      [DE],   A
-        inc     DE                      ; move upwards to flag-byte
-        ld      A,      1               ; set flag byte to indicate valid value
-        ld      [DE],   A
+        ; words:
+        ;-----------------------------------------------------------------------
+@w:     ld      A,              2       ; set the stride to 2 (words)
+        jr      +                       ; TODO: use a skip opcode here
+        ;-----------------------------------------------------------------------
+        ; bytes:
+        ;-----------------------------------------------------------------------
+@b:     ld      A,              1       ; set the stride to 1 (bytes)
++       ld      [stride],       A
 
-        jr      @next                   ; return to parsing
+        ; parse expr and output to code-segment. deferred
+        ; expressions will automatically be pushed to the heap
+-       call    nextParam
+
+        ; the last character read by expression parsing will be either EOL/EOF,
+        ; where the line ends without any further expressions, or the fist char
+        ; of the following word which may or not be an expression
+        ;
+        ld      A,      [char]          ; last character read
+        cp      ASCII_SPC+1             ; any non-visible char must be EOL/EOF
+        jr      c,      @line           ; EOL/EOF is end of keyword
+
+        ; some word follows but it might not be an expression
+        ; (could be another keyword or invalid syntax)
+        ;
+        call    isExpr                  ; check for start of expr syntax
+        jr      z,      -               ; parse next expr!
+
+        ; a word follows, but it's not an expressions
+        ; -- return to parsing
+        jr      @next
 
 
 nextWord:
@@ -754,7 +801,8 @@ pushLabel:
         ; push the label name:
         ; (these instructions don't modify carry...)
         ;
-        ld      DE,     [word]          ; get word-buffer addr
+        ex      DE,     HL              ; copy goes *from* [HL] *to* [DE]...
+        ld      HL,     [word]          ; get word-buffer addr
         inc     C                       ; length +1 to include the length-byte
 
         ; note that LDDR is post-decrement (copy-then-decrement), whereas
@@ -763,8 +811,9 @@ pushLabel:
         ;
         ; (these instructions don't modify carry...)
         ;
-        dec     HL                      ; adjust heap for post-decrement copy
-        lddr                            ; copy BC bytes from [DE] to [HL]!
+        dec     DE                      ; adjust heap for post-decrement copy
+        lddr                            ; copy BC bytes *from* [HL] *to* [DE]!
+        ex      DE,     HL              ; swap back to heap in HL
 
         ; push flag to indicate a forward-reference:
         ;
