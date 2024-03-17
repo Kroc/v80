@@ -1,5 +1,5 @@
-:b	.b $1 $2 $34 nop
 :w	.w $1 $2 $100 $ffff
+:b	.b $1 $2 $34
 
 ;v80 test file
 ;

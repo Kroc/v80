@@ -442,8 +442,8 @@ nextWord:
 ; - a comment
 ;
 ; in the case of a comment, the comment text is skipped over and the next
-; newline / end-of-file is returned instead! therefore this routine MUST NOT
-; be used to skip over whitespace in string literals etc.
+; newline / end-of-file is returned instead! therefore this routine
+; MUST NOT be used to skip over whitespace in string literals etc.
 ;
 ; WARN: this routine will return on newline and that there may be more leading
 ; whitespace on the next line -- if you want to skip to the next non-whitespace
@@ -501,7 +501,7 @@ readChar:
 .ENDIF  ;///////////////////////////////////////////////////////////////////////
         ret     z                       ; return on end-of-file
 
-        ; check for end of line:
+        ; check for end-of-line:
         ;-----------------------------------------------------------------------
         cp      ASCII_CR                ; /r is always ignored,
         jr      z, -                    ;  don't advance row/col, get next char
