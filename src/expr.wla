@@ -18,31 +18,6 @@ expr:   .ADDR $fc7f                     ; expr token space (builds downwards)
 defer:  .ADDR $0000                     ; addr of last deferred expr
 
 
-isExpr:
-;===============================================================================
-; check if a character is a valid expression starting point:
-;
-; this routine is used to determine if one expression follows another
-;
-; in:   A               ASCII char
-; out:  zf              zero-flag set = yes, clear = no
-;       A               (preserved)
-;-------------------------------------------------------------------------------
-        cp      CHAR_HEX                ; a hexadecimal literal / PC
-        ret     z
-        cp      CHAR_LABEL              ; a label
-        ret     z
-        cp      CHAR_CONST              ; a constant
-        ret     z
-        cp      CHAR_OP_LO              ; the lo-byte unary operator
-        ret     z
-        cp      CHAR_OP_HI              ; the hi-byte unary operator
-        ret     z
-        cp      CHAR_OP_NOT             ; the not unary operator
-
-        ret
-
-
 nextParam:
 ;===============================================================================
 ; read an expression and write it to the code-segment:
@@ -309,9 +284,8 @@ parseExpr:
         ; end of expr:
         ;=======================================================================
         ; TODO: check for heap spill here
-@end:   xor     A                       ; (clear carry flag!)
-        dec     HL                      ; a null terminator is appended to
-        ld      [HL],   A               ;  avoid counting during evaluation
+@end:   dec     HL                      ; a null terminator is appended to
+        ld      [HL],   0               ;  avoid counting during evaluation
         ld      DE,     [expr]          ; get starting (high) addr of expr
 
         pop     HL                      ; restore heap addr to HL
@@ -322,7 +296,6 @@ parseExpr:
         ; fallthrough to evaluate the expr
         ; ...
 
-
 evalExpr:
 ;===============================================================================
 ; evaluates an expr:
@@ -330,8 +303,8 @@ evalExpr:
 ; WARN: this routine DOES NOT CHECK if the expression is deferred!
 ;       expressions are deferred when parsed from source code; it is assumed
 ;       once all code is parsed that all labels will have been defined and
-;       evaluation will now succeed -- any label that is still deferred at
-;       evaluation time is a hard error
+;       evaluation will now succeed -- any label that is still undefined
+;       at evaluation time is a hard error!
 ;
 ; in:   DE              addr of expr (could be [`expr`] or on the heap!)
 ; out:  BC              result value

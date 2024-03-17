@@ -326,8 +326,8 @@ assemble:
         ; set the virtual program-counter:
         ;-----------------------------------------------------------------------
         ; there is no "org" statement to set the program counter as with other
-        ; assemblers, if a line begins with a hexadecimal number the virtual
-        ; program counter is set to that value, e.g.
+        ; assemblers; if a line begins with a hexadecimal number the virtual
+        ; program-counter is set to that value, e.g.
         ;
         ;       $c000   ; PC is now $c000
         ;
@@ -361,12 +361,9 @@ assemble:
         ; is whitespace, we need to pickup the next character:
         ;
 @next:  ld      A,      [char]          ; last read character
-        and     A                       ; (set CPU flags!)
-        ret     z                       ; 0 = end-of-file, end assemby
-        cp      ASCII_LF                ; newline?
-        jr      z,      @line           ; switch to line context
-        cp      ASCII_SPC               ; space?
-        call    z,      nextWord        ; find next character (or newline)
+        cp      ASCII_SPC               ; ASCII<32 = newline (or end-of-file)?
+        jr      c,      @nleof          ; switch to line context
+        call    z,      nextWord        ; SPC = find next char (or newline)
         jr      z,      @nleof          ; did we hit newline or end-of-file?
 
         ;-----------------------------------------------------------------------
@@ -407,7 +404,7 @@ assemble:
 @b:     ld      A,              1       ; set the stride to 1 (bytes)
 +       ld      [stride],       A
 
-        ; parse expr and output to code-segment. deferred
+        ; parse expression and output to code-segment. deferred
         ; expressions will automatically be pushed to the heap
 -       call    nextParam
 
@@ -417,16 +414,22 @@ assemble:
         ;
         ld      A,      [char]          ; last character read
         cp      ASCII_SPC+1             ; any non-visible char must be EOL/EOF
-        jr      c,      @line           ; EOL/EOF is end of keyword
+        jr      c,      @nleof          ; EOL/EOF is always end of keyword
+        cp      CHAR_HEX                ; a hexadecimal literal / PC?
+        jr      z,      -               ; ...
+        cp      CHAR_LABEL              ; a label?
+        jr      z,      -               ; ...
+        cp      CHAR_CONST              ; a constant?
+        jr      z,      -               ; ...
+        cp      CHAR_OP_LO              ; the lo-byte unary operator?
+        jr      z,      -               ; ...
+        cp      CHAR_OP_HI              ; the hi-byte unary operator?
+        jr      z,      -               ; ...
+        cp      CHAR_OP_NOT             ; the not unary operator?
+        jr      z,      -               ; ...
 
-        ; some word follows but it might not be an expression
-        ; (could be another keyword or invalid syntax)
-        ;
-        call    isExpr                  ; check for start of expr syntax
-        jr      z,      -               ; parse next expr!
-
-        ; a word follows, but it's not an expressions
-        ; -- return to parsing
+        ; a word follows, but it's not an expression
+        ; (instructions or another keyword can follow a keyword)
         jr      @next
 
 
@@ -578,6 +581,8 @@ readWord:
         sub     E                       ;  = length of word
         ld      E,      WORD_LEN        ; snap back to length byte
         ld      [DE],   A               ; write word-length byte
+        ld      C,      A               ; copy word-length into BC
+        ld      B,      0               ; 
 
         ret
 
@@ -656,6 +661,7 @@ getLabel:
         ld      A,      [DE]            ; read forward-reference flag byte
         rrca                            ; shift bit 0 into bit 7 AND carry!
         ccf                             ; flip carry so forward-reference = 1
+        dec     DE                      ; step past flag byte
 
         ; get the label's value:
         ; (this is meaningless for a forward-reference)
@@ -663,7 +669,6 @@ getLabel:
         ;       here, saving 2 bytes in the expr record?
         ;
         ex      DE,     HL              ; swap to HL for reg-loading
-        dec     HL                      ; step past flag byte
         ld      B,      [HL]            ; symbol value hi-byte
         dec     HL                      ; move to value lo-byte
         ld      C,      [HL]            ; return BC = symbol value
@@ -707,13 +712,8 @@ findSymbol:
         ;=======================================================================
         ; names do not match!
         ;
-;--      ld      E,      WORD_LEN+1      ; snap back to length byte in buffer
-;        pop     HL                      ; snap back to length byte in symbol
-;        ld      C,      [HL]            ; re-get word-length to check
-;-       inc     HL                      ; move *up* to link addr lo-byte
-
 --      ld      A,      WORD_LEN        ; max symbol size
-        sub     C                       ; - characters remaining
+        sub     E                       ; - characters remaining
         ld      C,      A               ; = length of word
         add     HL,     BC              ; snap back to symbol length field
 -       inc     HL                      ; move *up* to link addr lo-byte
@@ -749,6 +749,7 @@ findSymbol:
         ; symbol length matches, check characters:
         ;=======================================================================
         dec     HL                      ; (skip length byte)
+        ld      E,      WORD_LEN        ; start at top of word-buffer
         ;-----------------------------------------------------------------------
 @char:  dec     E                       ; move down a character in word-buffer
         ld      A,      [DE]            ; read char from word-buffer

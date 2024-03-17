@@ -1,3 +1,6 @@
+:b	.b $1 $2 $34 nop
+:w	.w $1 $2 $100 $ffff
+
 ;v80 test file
 ;
 #true	$1			; define constant
@@ -8,19 +11,19 @@
 ;
 $0000
 
+;labels can start with numbers and are
+;limited to 31 chars, including the sigil
+;
+:234567890123456789012345678901
+
 ; start the line with `$` to set the virtual program-counter
 ; using en expression. be aware that forward-references to
 ; labels cannot be used when setting the program-counter
 ;
 $	$ + $0100
 
-;labels can start with numbers and are
-;limited to 31 chars, including the sigil
-;
-:234567890123456789012345678901
-	;
 	; v80			; z80
-	adc*hl			; adc	A,	[HL]
+:adc	adc*hl			; adc	A,	[HL]
 	adc*ix	$aa		; adc	A,	[IX+$aa]
 	adc*iy	$aa		; adc	A,	[IY+$aa]
 	adc	$aa		; adc	A,	$aa
@@ -40,7 +43,7 @@ $	$ + $0100
 	adc.hl+hl		; adc	HL,	HL
 	adc.hl+sp		; adc	HL,	SP
 
-	add*hl			; add	A,	[HL]
+:add	add*hl			; add	A,	[HL]
 	add*ix	$aa		; add	A,	[IX+$aa]
 	add*iy	$aa		; add	A,	[IY+$aa]
 	add	$aa		; add	A,	$aa
@@ -68,7 +71,7 @@ $	$ + $0100
 	add.iy+iy		; add	IY,	IY
 	add.iy+sp		; add	IY,	SP
 
-	and*hl			; and	A,	[HL]
+:and	and*hl			; and	A,	[HL]
 	and*ix	$aa		; and	A,	[IX+$aa]
 	and*iy	$aa		; and	A,	[IY+$aa]
 	and	$aa		; and	A,	$aa
@@ -84,7 +87,7 @@ $	$ + $0100
 	and.iyl			; and	A,	IYL
 	and.iyh			; and	A,	IYH
 
-	bit0*hl			; bit	0,	[HL]
+:bit	bit0*hl			; bit	0,	[HL]
 	bit0*ix	$aa		; bit	0,	[IX+$aa]
 	bit0*iy	$aa		; bit	0,	[IY+$aa]
 	bit0.a			; bit	0,	A
@@ -165,7 +168,7 @@ $	$ + $0100
 	bit7.h			; bit	7,	H
 	bit7.l			; bit	7,	L
 
-	call	$		; call	$1234
+:call	call	$		; call	$1234
 	call?z	$		; call	z,	$1234
 	call?c	$		; call	c,	$1234
 	call?m	$		; call	m,	$1234
@@ -175,9 +178,9 @@ $	$ + $0100
 	call?nz	$		; call	nz,	$1234
 	call?nc	$		; call	nz,	$1234
 
-	ccf			; ccf
+:ccf	ccf			; ccf
 
-	cp*hl			; cp	A,	[HL]
+:cp	cp*hl			; cp	A,	[HL]
 	cp*ix	$aa		; cp	A,	[IX+$aa]
 	cp*iy	$aa		; cp	A,	[IY+$aa]
 	cp	$aa		; cp	A,	$aa
@@ -193,17 +196,17 @@ $	$ + $0100
 	cp.iyl			; cp	A,	IYL
 	cp.iyh			; cp	A,	IYH
 
-	cpd			; cpd
+:cpd	cpd			; cpd
 	cpdr			; cpdr
 
-	cpi			; cpi
+:cpi	cpi			; cpi
 	cpir			; cpir
 
-	cpl			; cpl
+:cpl	cpl			; cpl
 
-	daa			; daa
+:daa	daa			; daa
 
-	dec*hl			; dec	[HL]
+:dec	dec*hl			; dec	[HL]
 	dec*ix	$aa		; dec	[IX+$aa]
 	dec*iy	$aa		; dec	[IY+$aa]
 	dec.a			; dec	A
@@ -224,26 +227,26 @@ $	$ + $0100
 	dec.iy			; dec	IY
 	dec.sp			; dec	SP
 
-	di			; di
+:di	di			; di
 
-	djnz	$		; djnz	$1234
+:djnz	djnz	$		; djnz	$1234
 
-	ei			; ei
+:ei	ei			; ei
 
-	ex*sp.hl		; ex	[SP],	HL
+:ex	ex*sp.hl		; ex	[SP],	HL
 	ex*sp.ix		; ex	[SP],	IX
 	ex*sp.iy		; ex	[SP],	IY
 	ex.af.af		; ex	AF,	AF
 	ex.de.hl		; ex	DE,	HL
 	exx			; exx
 
-	halt			; halt
+:halt	halt			; halt
 
-	im0			; im	0
+:im	im0			; im	0
 	im1			; im	1
 	im2			; im	2
 
-	in.a*	$aa		; in	A,	[$aa]
+:in	in.a*	$aa		; in	A,	[$aa]
 	in.a*c			; in	A,	[C]
 	in.b*c			; in	B,	[C]
 	in.c*c			; in	C,	[C]
@@ -252,7 +255,7 @@ $	$ + $0100
 	in.h*c			; in	H,	[C]
 	in.l*c			; in	L,	[C]
 
-	inc*hl			; inc	[HL]
+:inc	inc*hl			; inc	[HL]
 	inc*ix	$aa		; inc	[IX+$aa]
 	inc*iy	$aa		; inc	[IY+$aa]
 	inc.a			; inc	A
@@ -273,13 +276,13 @@ $	$ + $0100
 	inc.ix			; inc	IX
 	inc.iy			; inc	IY
 
-	ind			; ind
+:ind	ind			; ind
 	indr			; indr
 
-	ini			; ini
+:ini	ini			; ini
 	inir			; inir
 
-	jp	$		; jp	$1234
+:jp	jp	$		; jp	$1234
 	jp*hl			; jp	[HL]
 	jp*ix			; jp	[IX]
 	jp*iy			; jp	[IY]
@@ -292,13 +295,13 @@ $	$ + $0100
 	jp?po	$		; jp	po,	$
 	jp?z	$		; jp	z,	$
 
-	jr	$		; jr	$
+:jr	jr	$		; jr	$
 	jr?c	$		; jr	c,	$
 	jr?nc	$		; jr	nc,	$
 	jr?nz	$		; jr	nz,	$
 	jr?z	$		; jr	z,	$
 
-	ld*bc.a			; ld	[BC],	A
+:ld	ld*bc.a			; ld	[BC],	A
 	ld*de.a			; ld	[DE],	A
 	ld*hl	$aa		; ld	[HL],	$aa
 	ld*hl.a			; ld	[HL],	A
@@ -502,17 +505,17 @@ $	$ + $0100
 	ld.i.a			; ld	I,	A
 	ld.r.a			; ld	R,	A
 
-	ldd			; ldd
+:ldd	ldd			; ldd
 	lddr			; lddr
 
-	ldi			; ldi
+:ldi	ldi			; ldi
 	ldir			; ldir
 
-	neg			; neg
+:neg	neg			; neg
 
-	nop			; nop
+:nop	nop			; nop
 
-	or*hl			; or	A,	[HL]
+:or	or*hl			; or	A,	[HL]
 	or*ix	$aa		; or	A,	[IX+$aa]
 	or*iy	$aa		; or	A,	[IX+$aa]
 	or	$aa		; or	A,	$aa
@@ -528,7 +531,7 @@ $	$ + $0100
 	or.iyh			; or	A,	IYH
 	or.iyl			; or	A,	IYL
 
-	out*.a	$aa		; out	[$aa],	A
+:out	out*.a	$aa		; out	[$aa],	A
 	out*c.a			; out	[C],	A
 	out*c.b			; out	[C],	B
 	out*c.c			; out	[C],	C
@@ -537,26 +540,27 @@ $	$ + $0100
 	out*c.h			; out	[C],	H
 	out*c.l			; out	[C],	L
 
-	outd			; outd
+:outd	outd			; outd
 	otdr			; otdr
-	outi			; outi
+
+:outi	outi			; outi
 	otir			; otir
 
-	push.af			; push	AF
+:push	push.af			; push	AF
 	push.bc			; push	BC
 	push.de			; push	DE
 	push.hl			; push	HL
 	push.ix			; push	IX
 	push.iy			; push	IY
 
-	pop.af			; pop	AF
+:pop	pop.af			; pop	AF
 	pop.bc			; pop	BC
 	pop.de			; pop	DE
 	pop.hl			; pop	HL
 	pop.ix			; pop	IX
 	pop.iy			; pop	IY
 
-	res0*hl			; res	0,	[HL]
+:res	res0*hl			; res	0,	[HL]
 	res0*ix	$aa		; res	0,	[IX+$aa]
 	res0*iy	$aa		; res	0,	[IY+$aa]
 	res0.a			; res	0,	A
@@ -637,7 +641,7 @@ $	$ + $0100
 	res7.h			; res	7,	H
 	res7.l			; res	7,	L
 
-	ret			; ret
+:ret	ret			; ret
 	ret?c			; ret	c
 	ret?m			; ret	m
 	ret?nc			; ret	nc
@@ -649,7 +653,7 @@ $	$ + $0100
 	reti			; reti
 	retn			; retn
 
-	rl*hl			; rl	[HL]
+:rl	rl*hl			; rl	[HL]
 	rl*ix	$aa		; rl	[IX+$aa]
 	rl*iy	$aa		; rl	[IY+$aa]
 	rl.a			; rl.a
@@ -673,7 +677,7 @@ $	$ + $0100
 	rlca			; rlca
 	rld			; rld
 
-	rr*hl			; rr	[HL]
+:rr	rr*hl			; rr	[HL]
 	rr*ix	$aa		; rr	[IX+$aa]
 	rr.a			; rr	A
 	rr.b			; rr	B
@@ -696,7 +700,7 @@ $	$ + $0100
 	rrca			; rrca
 	rrd			; rrd
 
-	rst0			; rst	$00
+:rst	rst0			; rst	$00
 	rst8			; rst	$08
 	rst10			; rst	$10
 	rst18			; rst	$18
@@ -705,7 +709,7 @@ $	$ + $0100
 	rst30			; rst	$30
 	rst38			; rst	$38
 
-	sbc*hl			; sbc	A,	[HL]
+:sbc	sbc*hl			; sbc	A,	[HL]
 	sbc*ix	$aa		; sbc	A,	[iX+$aa]
 	sbc	$aa		; sbc	A,	$aa
 	sbc.a			; sbc	A,	A
@@ -724,9 +728,9 @@ $	$ + $0100
 	sbc.hl.hl		; sbc	HL,	HL
 	sbc.hl.sp		; sbc	HL,	SP
 
-	scf			; scf
+:scf	scf			; scf
 
-	set0*hl			; set	0,	[HL]
+:set	set0*hl			; set	0,	[HL]
 	set0*ix	$aa		; set	0,	[IX+$aa]
 	set0*iy	$aa		; set	0,	[IY+$aa]
 	set0.a			; set	0,	A
@@ -807,7 +811,7 @@ $	$ + $0100
 	set7.h			; set	7,	H
 	set7.l			; set	7,	L
 
-	sla*hl			; sla	[HL]
+:sla	sla*hl			; sla	[HL]
 	sla*ix	$aa		; sla	[IX+$aa]
 	sla*iy	$aa		; sla	[IY+$aa]
 	sla.a			; sla	A
@@ -818,7 +822,7 @@ $	$ + $0100
 	sla.h			; sla	H
 	sla.l			; sla	L
 
-	sra*hl			; sra	[HL]
+:sra	sra*hl			; sra	[HL]
 	sra*ix	$aa		; sra	[IX+$aa]
 	sra*iy	$aa		; sra	[IY+$aa]
 	sra.a			; sra	A
@@ -829,7 +833,7 @@ $	$ + $0100
 	sra.h			; sra	H
 	sra.l			; sra	L
 
-	srl*hl			; srl	[HL]
+:srl	srl*hl			; srl	[HL]
 	srl*ix	$aa		; srl	[IX+$aa]
 	srl*iy	$aa		; srl	[IY+$aa]
 	srl.a			; srl	A
@@ -840,7 +844,7 @@ $	$ + $0100
 	srl.h			; srl	H
 	srl.l			; srl	L
 
-	sub*hl			; sub	A, 	[HL]
+:sub	sub*hl			; sub	A, 	[HL]
 	sub*ix	$aa		; sub	A,	[IX+$aa]
 	sub*iy	$aa		; sub	A,	[IY+$aa]
 	sub	$aa		; sub	A,	$aa
@@ -856,7 +860,7 @@ $	$ + $0100
 	sub.iyh			; sub	A,	IYH
 	sub.iyl			; sub	A,	IYL
 
-	xor*hl			; xor	A, 	[HL]
+:xor	xor*hl			; xor	A, 	[HL]
 	xor*ix	$aa		; xor	A,	[IX+$aa]
 	xor*iy	$aa		; xor	A,	[IY+$aa]
 	xor	$aa		; xor	A,	$aa
