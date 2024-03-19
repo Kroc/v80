@@ -111,8 +111,8 @@ parseExpr:
         ; so an 8-bit subtraction is sufficient
         ;
 @defer: ld      B,      A               ; B must be 0 (LDDR uses BC)
-        ld      A,      E               ; start with highest addr (expr-start)
-        sub     A,      L               ; subtract lowest addr (expr-end)
+        ld      A,      $7f             ; start with highest addr (expr-start)
+        sub     A,      E               ; subtract lowest addr (expr-end)
         ld      C,      A               ; this is the expr length
 
         ; because the expression could not be evaluated
@@ -291,11 +291,11 @@ parseExpr:
         ; TODO: check for heap spill here
 @end:   dec     HL                      ; a null terminator is appended to
         ld      [HL],   0               ;  avoid counting during evaluation
-        ld      DE,     [expr]          ; get starting (high) addr of expr
+        ex      DE,     HL              ; retain expr last addr in DE
 
         pop     HL                      ; restore heap addr to HL
         ld      A,      [@flag]         ; get the defer flag
-        rla                             ; pop the hi-bit off into carry
+        sla     A                       ; pop the hi-bit off into carry
         jp      c,      @defer          ; do not evaluate forward-refs!
 
         ; fallthrough to evaluate the expr
@@ -636,11 +636,10 @@ deferExpr:
         ; the heap is pre-decrement like the stack (decrement-then-copy)
         ;
         dec     HL                      ; fix heap addr for copy-then-DEC
-        ex      DE,     HL              ; LDDR requires DE to be destination
-        ld      C,      [HL]            ; first byte is length / defer flag
-        ld      B,      0               ; LDDR uses full BC count
+        ld      DE,     [expr]
+        ex      DE,     HL
         lddr                            ; copy BC bytes *from* [HL] *to* [DE]!
-        ex      DE,     HL              ; swap updated heap addr back to HL
+        ex      DE,     HL
         inc     HL                      ; fix heap addr after copy
 
         ret

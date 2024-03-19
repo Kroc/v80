@@ -783,9 +783,9 @@ pushLabel:
 ;
 ; in:   cf              carry-flag set indicates a forward-reference!
 ;       HL              heap position to write new label
-;       BC              word-length (set by `findSymbol`)
+;       BC              word-length (set by `readWord`)
 ;       [word]          the label is assumed to be in the word-buffer,
-;                       i.e. after calling `findSymbol`
+;                       i.e. after calling `readWord`
 ; out:  HL              heap position is advanced (downwards!)
 ;       A, BC, DE       (clobbered)
 ;-------------------------------------------------------------------------------
@@ -802,8 +802,7 @@ pushLabel:
         ; push the label name:
         ; (these instructions don't modify carry...)
         ;
-        ex      DE,     HL              ; copy goes *from* [HL] *to* [DE]...
-        ld      HL,     [word]          ; get word-buffer addr
+        ld      DE,     [word]          ; get word-buffer addr
         inc     C                       ; length +1 to include the length-byte
 
         ; note that LDDR is post-decrement (copy-then-decrement), whereas
@@ -812,7 +811,8 @@ pushLabel:
         ;
         ; (these instructions don't modify carry...)
         ;
-        dec     DE                      ; adjust heap for post-decrement copy
+        dec     HL                      ; adjust heap for post-decrement copy
+        ex      DE,     HL              ; copy goes *from* [HL] *to* [DE]...
         lddr                            ; copy BC bytes *from* [HL] *to* [DE]!
         ex      DE,     HL              ; swap back to heap in HL
 

@@ -1,8 +1,8 @@
-:w	.w $1 $2 $100 $ffff
-:b	.b $1 $2 $34
-
 ;v80 test file
 ;
+:w	.w $1234 $5678 :b
+:b	.b $1 $2 $34 <:w
+
 #true	$1			; define constant
 #true	#true - $1		; redefine constant
 
@@ -10,6 +10,7 @@
 ; sets the virtual program-counter
 ;
 $0000
+
 
 ;labels can start with numbers and are
 ;limited to 31 chars, including the sigil
