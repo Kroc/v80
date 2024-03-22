@@ -207,7 +207,7 @@ assemble:
         ;=======================================================================
         ; define constant:
         ;-----------------------------------------------------------------------
-        ; because constants can be modified we don't search for the symbol yet
+        ; because constants can be redefined we don't search for the symbol yet
         ; -- we need the value first! get only the constant name:
         ;
 @const: call    readWord                ; read symbol name into buffer
@@ -344,6 +344,7 @@ assemble:
         ld      IXH,    B               ;  to the number given
 
         ; fallthrough to check for following statements
+        ;
         ; TODO: we should probably allow a label following the PC,
         ;       e.g.
         ;               $c000   :label  ret

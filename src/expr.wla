@@ -101,26 +101,6 @@ parseExpr:
 @flag   .BYTE   $00                     ; defer flag
 
         ;=======================================================================
-        ; (exit-route for forward-references:)
-        ;
-        ; calculate length of expression; this is needed to defer the expr
-        ; to the heap. the bytecode is ordered *downwards* in memory, so the
-        ; difference from the end address to the starting adress is the length
-        ;
-        ; the expr buffer runs from $xx7F downwards to $xx20
-        ; so an 8-bit subtraction is sufficient
-        ;
-@defer: ld      B,      A               ; B must be 0 (LDDR uses BC)
-        ld      A,      $7f             ; start with highest addr (expr-start)
-        sub     A,      E               ; subtract lowest addr (expr-end)
-        ld      C,      A               ; this is the expr length
-
-        ; because the expression could not be evaluated
-        ; we must return carry-flag set to indicate no-value
-        scf
-        ret
-
-        ;=======================================================================
         ; label?
         ;-----------------------------------------------------------------------
 @label: call    getLabel                ; try get the label's value
@@ -175,6 +155,27 @@ parseExpr:
         ld      [@flag],A
 
         jr      @op                     ; an operator can follow a label
+
+        ;=======================================================================
+        ; (exit-route for forward-references:)
+        ;
+        ; calculate length of expression; this is needed to defer the expr
+        ; to the heap. the bytecode is ordered *downwards* in memory, so the
+        ; difference from the end address to the starting adress is the length
+        ;
+        ; the expr buffer runs from $xx7F downwards to $xx20
+        ; so an 8-bit subtraction is sufficient
+        ;
+@defer: ld      B,      A               ; B must be 0 (LDDR uses BC)
+        ld      A,      $7f             ; start with highest addr (expr-start)
+        sub     A,      L               ; subtract lowest addr (expr-end)
+        ld      C,      A               ; this is the expr length
+        pop     HL                      ; restore heap addr to HL
+
+        ; because the expression could not be evaluated
+        ; we must return carry-flag set to indicate no-value
+        scf
+        ret
 
         ;=======================================================================
         ; add an operator and fall-through to the next operand:
@@ -291,12 +292,12 @@ parseExpr:
         ; TODO: check for heap spill here
 @end:   dec     HL                      ; a null terminator is appended to
         ld      [HL],   0               ;  avoid counting during evaluation
-        ex      DE,     HL              ; retain expr last addr in DE
-
-        pop     HL                      ; restore heap addr to HL
         ld      A,      [@flag]         ; get the defer flag
         sla     A                       ; pop the hi-bit off into carry
-        jp      c,      @defer          ; do not evaluate forward-refs!
+        jr      c,      @defer          ; do not evaluate forward-refs!
+
+        pop     HL                      ; restore heap addr to HL
+        ld      DE,     [expr]
 
         ; fallthrough to evaluate the expr
         ; ...
@@ -311,12 +312,15 @@ evalExpr:
 ;       evaluation will now succeed -- any label that is still undefined
 ;       at evaluation time is a hard error!
 ;
+; TODO: with some rearranging, we might be able to keep the running-total
+;       in BC and use DE for values
+;
 ; in:   DE              addr of expr (could be [`expr`] or on the heap!)
 ; out:  BC              result value
 ;       HL              (preserved)
 ;       A, DE           (clobbered)
 ;-------------------------------------------------------------------------------
-        ; we won't need to push anything new to the heap
+        ; we won't need to push anything new to the heap during evaluation
         ; so we preserve the current heap position
         push    HL
 @expr:  ex      DE,     HL              ; use HL for reading tokens for now
