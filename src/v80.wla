@@ -136,6 +136,33 @@ init:
         call    assembleFile
         ;-----------------------------------------------------------------------
 
+.IFDEF  DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        ; hex dump the code-segment:
+        ;
+        ; the number of bytes to dump is the current code-segment
+        ; address sans the start address of the code segement
+        ;
+        push    IY                      ; code-segement end address
+        pop     HL                      ; transfer to HL for SBC HL, DE
+        ld      DE,     code            ; code-segment start address
+        xor     A                       ; clear carry
+        sbc     HL,     DE              ; HL = HL - DE
+        ex      DE,     HL              ; swap length to DE, start addr to HL
+
+-       ld      A,      [HL]
+        inc     HL
+        call    printHexByte
+        ld      A,      ' '
+        call    osPrintChar
+
+        dec     DE
+        ld      A,      E
+        or      D
+        jr      nz,     -
+
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+
         ld      [heap], HL
         call    memStat
         jp      osQuit                  ; return to CP/M to quit the program
@@ -496,9 +523,9 @@ readChar:
         ld      [char], A               ; retain returned character
 .IFDEF  DEBUG
         ;///////////////////////////////////////////////////////////////////////
-        push    AF
-        call    osPrintChar             ; print each character as we receive it
-        pop     AF                      ; (zero-flag must be preserved)
+        ;push    AF
+        ;call    osPrintChar             ; print each character as we receive it
+        ;pop     AF                      ; (zero-flag must be preserved)
 .ENDIF  ;///////////////////////////////////////////////////////////////////////
         ret     z                       ; return on end-of-file
 
