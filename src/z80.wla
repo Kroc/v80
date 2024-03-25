@@ -447,8 +447,8 @@ opcodes:
         .BYTE   'c', $a0+REG_C,         OP      ; AND.C         |    A1
         .BYTE   'd', $a0+REG_D,         OP      ; AND.D         |    A2
         .BYTE   'e', $a0+REG_E,         OP      ; AND.E         |    A3
-        .BYTE   'h', $a0+REG_E,         OP      ; AND.H         |    A4
-        .BYTE   'l', $88+REG_L,         OP      ; AND.L         |    A5
+        .BYTE   'h', $a0+REG_H,         OP      ; AND.H         |    A4
+        .BYTE   'l', $a0+REG_L,         OP      ; AND.L         |    A5
         .DATA   'i', (@and_i-CADDR)-1
         .BYTE   ERR
         ;-----------------------------------------------------------------------
@@ -763,17 +763,15 @@ opcodes:
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @dec_i  .DATA   'x', (@dec_ix-CADDR)-1
-        .DATA   'y', (@dec_ix-CADDR)-1
+        .BYTE   'y'|AND
+        .BYTE   END, $2b,               OP_IY   ; DEC.IY        | FD 2B
+        .BYTE   'h', $05+(8*REG_IH),    OP_IY   ; DEC.IYH       | FD 25
+        .BYTE   'l', $05+(8*REG_IL),    OP_IY   ; DEC.IYL       | FD 2D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @dec_ix .BYTE   END, $2b,               OP_IX   ; DEC.IX        | DD 2B
         .BYTE   'h', $05+(8*REG_IH),    OP_IX   ; DEC.IXH       | DD 25
         .BYTE   'l', $05+(8*REG_IL),    OP_IX   ; DEC.IXL       | DD 2D
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
-@dec_iy .BYTE   END, $2b,               OP_IY   ; DEC.IX        | FD 2B
-        .BYTE   'h', $05+(8*REG_IH),    OP_IY   ; DEC.IXH       | FD 25
-        .BYTE   'l', $05+(8*REG_IL),    OP_IY   ; DEC.IXL       | FD 2D
         .BYTE   ERR
         ;=======================================================================
 @e      .BYTE   'i', $fb,               OP      ; EI            |    FB
@@ -902,17 +900,15 @@ opcodes:
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @inc_i  .DATA   'x', (@inc_ix-CADDR)-1
-        .DATA   'y', (@inc_ix-CADDR)-1
+        .BYTE   'y'|AND
+        .BYTE   END, $23,               OP_IY   ; INC.IY        | FD 23
+        .BYTE   'h', $04+(8*REG_IH),    OP_IY   ; INC.IYH       | FD 24
+        .BYTE   'l', $04+(8*REG_IL),    OP_IY   ; INC.IYL       | FD 2C
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @inc_ix .BYTE   END, $23,               OP_IX   ; INC.IX        | DD 23
         .BYTE   'h', $04+(8*REG_IH),    OP_IX   ; INC.IXH       | DD 24
         .BYTE   'l', $04+(8*REG_IL),    OP_IX   ; INC.IXL       | DD 2C
-        .BYTE   ERR
-        ;-----------------------------------------------------------------------
-@inc_iy .BYTE   END, $23,               OP_IY   ; INC.IX        | FD 23
-        .BYTE   'h', $04+(8*REG_IH),    OP_IY   ; INC.IXH       | FD 24
-        .BYTE   'l', $04+(8*REG_IL),    OP_IY   ; INC.IXL       | FD 2C
         .BYTE   ERR
         ;=======================================================================
 @ind    .BYTE   END, $aa,               OP_ED   ; IND           | ED AA
@@ -1093,7 +1089,7 @@ opcodes:
         .BYTE   'l', $78+REG_IL,        OP_IX   ; LD.A.IXL      | DD 7D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@lda_m  .BYTE   END, $3a,               OP_B    ; LD.A* $nnnn   |    3A nn nn
+@lda_m  .BYTE   END, $3a,               OP_W    ; LD.A* $nnnn   |    3A nn nn
         .DATA   'b', (@lda_bc-CADDR)-1
         .DATA   'd', (@lda_de-CADDR)-1
         .DATA   'h', (@lda_hl-CADDR)-1
@@ -1108,7 +1104,7 @@ opcodes:
 @lda_de .BYTE   'e', $1a,               OP      ; LD.A*DE       |    1A
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@lda_hl .BYTE   'l', $7a,               OP      ; LD.A*HL       |    7A
+@lda_hl .BYTE   'l', $7e,               OP      ; LD.A*HL       |    7E
         .BYTE   ERR
         ;=======================================================================
 @ld_b   .BYTE   END, $06,               OP_B    ; LD.B $nn      |    06 nn
