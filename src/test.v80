@@ -1,7 +1,7 @@
 ; v80 test file
 ;
-#true	$1			; define constant
-#true	#true - $1		; redefine constant
+;#true	$1			; define constant
+;#true	#true - $1		; redefine constant
 
 ; a hexadecimal number first on the line
 ; sets the virtual program-counter

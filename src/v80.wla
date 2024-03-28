@@ -616,9 +616,9 @@ readWord:
         sub     E                       ;  = length of word
         ld      E,      WORD_LEN        ; snap back to length byte
         ld      [DE],   A               ; write word-length byte
+
         ld      C,      A               ; copy word-length into BC
         ld      B,      0               ; 
-
         ret
 
 
@@ -741,7 +741,7 @@ findSymbol:
         ld      HL,     [word]          ; start of word buffer
         ld      C,      [HL]            ; first byte is name length
         ld      B,      0               ; load this into BC
-        ex      DE,     HL              ; HL = dict. addr, DE = word buffer
+        ex      DE,     HL              ; DE = word buffer, HL = dict. addr
         jr      @next                   ; jump into the loop
 
         ;=======================================================================
@@ -757,8 +757,8 @@ findSymbol:
         ; the link field of a symbol points to      - - -+------+
         ; the lo-byte of the next symbol's link          | link |
         ; field in the chain, with the remaining    - - -+--|---+
-        ; fields extending *downwards* in RAM            .--'
-        ;                                                v
+        ; fields extending *downwards* in RAM       .-------'
+        ;                                           v
         ;          ---+---+---+---+---+---+---+-----+------+
         ;  < heap     | l | o | b | m | y | s | len | link |
         ;          ---+---+---+---+---+---+---+-----+------+
@@ -773,6 +773,7 @@ findSymbol:
         ld      L,      A               ; (complete the addr)
         or      H                       ; is the link addr $0000?
         jr      z,      @end            ; terminate at end of chain
+        dec     HL                      ; return to link-addr, lo-byte
 
         ; (HL is now the next symbol addr in the heap)
 
