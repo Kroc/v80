@@ -152,9 +152,9 @@ init:
 
 -       ld      A,      [HL]
         inc     HL
-        call    printHexByte
+;        call    printHexByte
         ld      A,      ' '
-        call    osPrintChar
+;        call    osPrintChar
 
         dec     DE
         ld      A,      E
@@ -296,6 +296,13 @@ assemble:
         jp      nz,     errLabelRedef   ; cannot redefine labels!
 
         call    pushLabel               ; define new label on the heap
+.IFDEF  DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        push    HL
+        ld      HL,     [label]         ; addr of last label defined
+        call    _printLabel             ; dump label definition
+        pop     HL
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
         jr      @next                   ; return to parsing
 
         ;-----------------------------------------------------------------------
@@ -865,14 +872,14 @@ pushLabel:
         ;
         ; the value comes after the label name to speed up symbol searching
         ; as the value is only needed once a symbol name is matched and then
-        ; the addr is in the right place
+        ; the heap addr is in the right place
         ;
         dec     HL                      ; pre-decrement heap to empty byte
-        ld      A,      IXH
-        ld      [HL],   A
+        ld      A,      IXH             ; ..
+        ld      [HL],   A               ; .
         dec     HL                      ; pre-decrement heap to empty byte
-        ld      A,      IXL
-        ld      [HL],   A
+        ld      A,      IXL             ; ..
+        ld      [HL],   A               ; .
 
         ret
 
