@@ -310,12 +310,12 @@ _printLabel:
 
         ; label-name length:
         ;-----------------------------------------------------------------------
-        ld      HL,     @line+26        ; name length in prepared string
+        ld      HL,     @line+22        ; name length in prepared string
         call    @byte                   ; insert hex digits in prepared string
 
         ; label-name:
         ;-----------------------------------------------------------------------
-        ld      HL,     @line+29
+        ld      HL,     @line+25
         ld      A,      [DE]            ; get name length again
         ld      B,      A               ; use as char counter
         ld      C,      B               ; and keep a copy for trailing spaces
@@ -341,18 +341,26 @@ _printLabel:
 
         ; deferred-flag:
         ;-----------------------------------------------------------------------
-+       ld      HL,     @line+14
-        call    @byte
-        
+        ; deferred = '!', normal = '$' (+3)
+        ;
++       ld      HL,     @line+14        ; position in prepared string
+        dec     DE                      ; (move to deferred flag field)
+        ld      A,      [DE]            ; read deferred flag: 0 = deferred
+        rrca                            ; pop flag off into carry
+        ld      A,      '$'             ; addr uses "$" prefix for real addr
+        jr      c,      +               ; and if flag is 1 (real), skip over
+        sub     3                       ; change "$" to "!" for deferred value
++       ld      [HL],   A               ; insert this char into prepared string
+
         ; label value: (virtual address)
         ;-----------------------------------------------------------------------
-        ld      HL,     @line+19        ; value in prepared string
+        ld      HL,     @line+15        ; value in prepared string
         call    @word                   ; insert hex digits in prepared string
 
         ; output prepared string:
         ;-----------------------------------------------------------------------
         ld      HL,     @line           ; start addr of prepared string
-        ld      B,      61              ; length of prepared string
+        ld      B,      57              ; length of prepared string
 -       ld      A,      [HL]            ; read a character
         call    osPrintChar             ; print it
         inc     HL                      ; move to next character
@@ -379,7 +387,7 @@ _printLabel:
         ret
 
         ;-----------------------------------------------------------------------
-@line:  .BYTE   "$0000: $0000 !00 $[0000] $00 :                              "
+@line:  .BYTE   "$0000: $0000 [$0000] $00 :                              "
         .BYTE   ASCII_LF, 0
 
 ;///////////////////////////////////////////////////////////////////////////////

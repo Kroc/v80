@@ -296,13 +296,6 @@ assemble:
         jp      nz,     errLabelRedef   ; cannot redefine labels!
 
         call    pushLabel               ; define new label on the heap
-.IFDEF  DEBUG
-        ;///////////////////////////////////////////////////////////////////////
-        push    HL
-        ld      HL,     [label]         ; addr of last label defined
-        call    _printLabel             ; dump label definition
-        pop     HL
-.ENDIF  ;///////////////////////////////////////////////////////////////////////
         jr      @next                   ; return to parsing
 
         ;-----------------------------------------------------------------------
@@ -881,6 +874,14 @@ pushLabel:
         dec     HL                      ; pre-decrement heap to empty byte
         ld      A,      IXL             ; ..
         ld      [HL],   A               ; .
+
+.IFDEF  DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        push    HL
+        ld      HL,     [label]         ; addr of last label defined
+        call    _printLabel             ; dump label definition
+        pop     HL
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
 
         ret
 

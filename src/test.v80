@@ -21,8 +21,8 @@ $	$ + $0100
 
 ; .b and .w keywords output bytes / words to the code-segment
 ;
-;;:w	.w $1234 $5678 :b	; forward reference to a label
-;;:b	.b $12 $34 $56 >:w	; back reference to a label
+:w	.w $1234 $5678 :b	; forward reference to a label
+:b	.b $12 $34 $56 >:w	; back reference to a label
 
 	; v80			; z80				; opcodes
 	;

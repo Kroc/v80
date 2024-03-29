@@ -122,8 +122,8 @@ parseExpr:
         ; this is a forward-reference -- we need to add a placeholder for the
         ; label on the heap before we can defer the whole expression
         ;
-        ; swap our current position within the token space with the heap
-        ; position preserved at the beginning of the routine!
+        ; swap our current position within the token space with the
+        ; heap position preserved at the beginning of the routine!
         ex      [SP],   HL
 
         ; WARN: `pushLabel` requires the name length in BC which is returned
