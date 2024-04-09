@@ -1,10 +1,12 @@
 ; v80, (C) Kroc Camen 2023-2024, MIT License
 ; a z80 assembler for Z80s
 ;
-.DEF    DEBUG
+.DEF    DEBUG                           ; enable debug features
+.DEF    DEBUG_LABELS                    ; dump label records when defined
+;.DEF    DEBUG_DUMP                      ; dump binary after assemby
 
 .INC    "cpm.wla"                       ; CP/M interface
-.INC    "err.wla"                       ; error message handling
+.INC    "err.wla"                       ; error messages / debug printing
 
 ; syntax:
 ;
@@ -135,8 +137,10 @@ init:
         ;-----------------------------------------------------------------------
         call    assembleFile
         ;-----------------------------------------------------------------------
+        ld      [heap], HL
+        call    memStat
 
-.IFDEF  DEBUG
+.IFDEF  DEBUG_DUMP
         ;///////////////////////////////////////////////////////////////////////
         ; hex dump the code-segment:
         ;
@@ -149,22 +153,18 @@ init:
         xor     A                       ; clear carry
         sbc     HL,     DE              ; HL = HL - DE
         ex      DE,     HL              ; swap length to DE, start addr to HL
-
--       ld      A,      [HL]
-        inc     HL
-;        call    printHexByte
-        ld      A,      ' '
-;        call    osPrintChar
-
-        dec     DE
-        ld      A,      E
-        or      D
-        jr      nz,     -
-
+        ;-----------------------------------------------------------------------
+-       ld      A,      [HL]            ; read one byte from the code-segment
+        inc     HL                      ; move to next byte
+        call    printHexByte            ; print byte as two hex digits
+        ld      A,      ' '             ; print separating space
+        call    osPrintChar             ; ...
+        dec     DE                      ; decrement number of bytes to dump
+        ld      A,      E               ; have we reached zero?
+        or      D                       ; (bitwise OR lo & hi bytes)
+        jr      nz,     -               ; keep looping until zero
 .ENDIF  ;///////////////////////////////////////////////////////////////////////
 
-        ld      [heap], HL
-        call    memStat
         jp      osQuit                  ; return to CP/M to quit the program
 
 
@@ -720,8 +720,8 @@ findSymbol:
 ; in:   DE              dictionary entry point: an addr that contains the
 ;                       addr of the last symbol added to the dictionary,
 ;                       i.e. `label` for labels & `const` for constants
-;       [word]          the symbol name needs to already be in the word
-;                       buffer, e.g. after calling `readWord`
+;       [word]          the symbol name needs to already be in the
+;                       word-buffer, e.g. after calling `readWord`
 ;
 ; out:  A               non-zero if found. 0 if symbol not found
 ;       zf              zero-flag is set according to the above
@@ -744,6 +744,14 @@ findSymbol:
         sub     E                       ; - characters remaining
         ld      C,      A               ; = length of word
         add     HL,     BC              ; snap back to symbol length field
+        inc     HL                      ; move *up* to length byte
+
+        ; FIXME: the length of the input word needs to be restored
+        ;        as this is the comparison we use against each symbol
+        ld      E,      WORD_LEN
+        ld      A,      [DE]
+        ld      C,      A
+
 -       inc     HL                      ; move *up* to link addr lo-byte
 
         ;-----------------------------------------------------------------------
@@ -766,7 +774,6 @@ findSymbol:
         ld      L,      A               ; (complete the addr)
         or      H                       ; is the link addr $0000?
         jr      z,      @end            ; terminate at end of chain
-        dec     HL                      ; return to link-addr, lo-byte
 
         ; (HL is now the next symbol addr in the heap)
 
@@ -786,6 +793,8 @@ findSymbol:
         jr      nz,     --              ; stop looping if mismatch
         jp      pe,     @char           ; keep looping until chars run out
         ;-----------------------------------------------------------------------
+        ; if all characters match we fall through to here
+        ;
         ; CPD ensures that HL is pointing to the byte following the symbol-name
         ; -- on a const this is the value, and for labels this is the flag-byte
         ;
@@ -827,6 +836,12 @@ pushLabel:
         dec     HL                      ; (this is the heap addr we want)
         ld      [HL],   E               ; write prev label addr lo-byte
         ld      [label],HL              ; update entry point with heap addr
+
+        .printChar '@'
+        .printDE
+        .printChar '-'
+        .printHL
+        .printChar ' '
 
         ; push the label name:
         ; (these instructions don't modify carry...)
@@ -875,7 +890,7 @@ pushLabel:
         ld      A,      IXL             ; ..
         ld      [HL],   A               ; .
 
-.IFDEF  DEBUG
+.IFDEF  DEBUG_LABELS
         ;///////////////////////////////////////////////////////////////////////
         push    HL
         ld      HL,     [label]         ; addr of last label defined

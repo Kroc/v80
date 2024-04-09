@@ -133,8 +133,8 @@ parseExpr:
         call    pushLabel               ; define the label name on the heap
         ld      D,      H               ; HL = last byte of label record
         ld      E,      L               ; copy HL to DE
-        inc     DE                      ; step up to value hi-byte addr
-        inc     DE                      ; step up to flag-byte addr
+        inc     DE                      ; step back to value hi-byte addr
+        inc     DE                      ; step back to flag-byte addr
 
         ; save updated heap position for return and
         ; swap back to our position in token space
@@ -147,12 +147,12 @@ parseExpr:
 +       dec     HL                      ; move to next token space
         ld      [HL],   CHAR_LABEL      ; push the label token
         dec     HL                      ; move to next token space
-        ld      [HL],   D               ; push the label value hi-byte
+        ld      [HL],   D               ; push the label value addr hi-byte
         dec     HL                      ; move to next token space
-        ld      [HL],   E               ; push the label value lo-byte
+        ld      [HL],   E               ; push the label value addr lo-byte
 
-        ld      A,      %10000000       ; set the deferred flag
-        ld      [@flag],A
+        ld      A,      %10000000       ; set the deferred flag -- this will be
+        ld      [@flag],A               ;  checked at the end of the expression
 
         jr      @op                     ; an operator can follow a label
 
@@ -411,7 +411,7 @@ evalExpr:
         call    @div                    ; returns DE divided by BC
         ex      DE,     HL              ; swap remainder to DE
         pop     HL                      ; restore expr position
-        ret
+        ret                             ; continue evaluating
         ;-----------------------------------------------------------------------
         ; add operator:
         ;-----------------------------------------------------------------------
@@ -467,7 +467,7 @@ evalExpr:
         ld      A,      E               ; bitwise AND lo-bytes together
         and     A,      C               ; ..
         ld      E,      A               ; .
-        ret
+        ret                             ; continue evaluating
         ;-----------------------------------------------------------------------
         ; bitwise OR operator:
         ;-----------------------------------------------------------------------
@@ -477,7 +477,7 @@ evalExpr:
         ld      A,      E               ; bitwise OR lo-bytes together
         or      A,      C               ; ..
         ld      E,      A               ; .
-        ret
+        ret                             ; continue evaluating
         ;-----------------------------------------------------------------------
         ; bitwise XOR operator:
         ;-----------------------------------------------------------------------
@@ -487,7 +487,7 @@ evalExpr:
         ld      A,      E               ; bitwise XOR lo-bytes together
         xor     A,      C               ; ..
         ld      E,      A               ; .
-        ret
+        ret                             ; continue evaluating
 
 _value:
 ;===============================================================================

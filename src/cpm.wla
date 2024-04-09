@@ -254,9 +254,9 @@ osPrintChar:
 ;===============================================================================
 ; prints a single ASCII character:
 ;
-; in:   A               input character
-; out:  BC|DE|HL|IX/Y   (preserved)
-;       A               (preserved) -- TODO: should this be kept? +8 cycles!
+; in:   AF              input character
+; out:  BC|DE|HL        (preserved)
+;       AF              (preserved) -- TODO: should this be kept? +8 cycles!
 ;-------------------------------------------------------------------------------
         exx                             ; swap to shadow registers
 

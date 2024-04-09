@@ -8,6 +8,12 @@
 ;
 $0000
 
+; .b and .w keywords output bytes / words to the code-segment
+;
+:w	.w :w			; simple back-reference
+	.w :b			; forward reference to a label
+:b	.b >:w			; back reference to a label
+
 ; start the line with `$` to set the virtual program-counter
 ; using en expression. be aware that forward-references to
 ; labels cannot be used when setting the program-counter
@@ -17,12 +23,7 @@ $	$ + $0100
 ; labels can start with numbers and are
 ; limited to 31 chars, including the sigil
 ;
-:234567890123456789012345678901
-
-; .b and .w keywords output bytes / words to the code-segment
-;
-:w	.w $1234 $5678 :b	; forward reference to a label
-:b	.b $12 $34 $56 >:w	; back reference to a label
+:123456789012345678901234567890
 
 	; v80			; z80				; opcodes
 	;
