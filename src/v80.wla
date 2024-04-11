@@ -3,7 +3,7 @@
 ;
 .DEF    DEBUG                           ; enable debug features
 .DEF    DEBUG_LABELS                    ; dump label records when defined
-;.DEF    DEBUG_DUMP                      ; dump binary after assemby
+.DEF    DEBUG_DUMP                      ; dump binary after assemby
 
 .INC    "cpm.wla"                       ; CP/M interface
 .INC    "err.wla"                       ; error messages / debug printing
@@ -787,11 +787,11 @@ findSymbol:
         dec     HL                      ; (skip length byte)
         ld      E,      WORD_LEN        ; start at top of word-buffer
         ;-----------------------------------------------------------------------
-@char:  dec     E                       ; move down a character in word-buffer
+-       dec     E                       ; move down a char in word-buffer
         ld      A,      [DE]            ; read char from word-buffer
         cpd                             ; = CP A, [HL]; DEC HL; DEC BC
         jr      nz,     --              ; stop looping if mismatch
-        jp      pe,     @char           ; keep looping until chars run out
+        jp      pe,     -               ; keep looping until chars run out
         ;-----------------------------------------------------------------------
         ; if all characters match we fall through to here
         ;
@@ -836,12 +836,6 @@ pushLabel:
         dec     HL                      ; (this is the heap addr we want)
         ld      [HL],   E               ; write prev label addr lo-byte
         ld      [label],HL              ; update entry point with heap addr
-
-        .printChar '@'
-        .printDE
-        .printChar '-'
-        .printHL
-        .printChar ' '
 
         ; push the label name:
         ; (these instructions don't modify carry...)

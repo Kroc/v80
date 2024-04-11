@@ -109,8 +109,7 @@ parseExpr:
         ; be able to evaluate the expression now and it needs to be deferred
         ;
         ; NOTE: it is very imporant to be aware that in the case of carry-set,
-        ;       `getLabel` has returned the label-length in BC and the
-        ;       address of the label's flag byte in DE
+        ;       `getLabel` has returned the addr of the label's flag byte in DE
         ;
         jr      c,      +
 
