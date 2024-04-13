@@ -27,6 +27,7 @@ nextParam:
 ;
 ; out:  BC              expr value. if deferred, BC is length of expr bytecode
 ;       HL              heap addr will be modified if expr is deferred
+;       A, DE           (clobbered)
 ;-------------------------------------------------------------------------------
         call    nextExpr                ; if the expression contains a forward-
         call    c,      deferExpr       ;  reference, defer it to the heap
@@ -75,11 +76,12 @@ parseExpr:
 ;                       read. do not call this routine with whitespace as the
 ;                       last character read!
 ;
-; out:  BC              the result of the expression evaluation
+; out:  BC              the result of the expression evaluation. if the expr
+;                       cannot be evaluated and has to be deferred, BC is the
+;                       length of the expression bytecode
 ;       cf              carry-clear indicates success
-;                       carry-set indicates the expression includes forward-
-;                       references and couldn't be evaluated; the value of BC
-;                       is the length of the expression bytecode
+;                       carry-set indicates the expression includes
+;                       forward-references and couldn't be evaluated
 ;       [char]          depending where an expression ends, the last character
 ;                       read can be either whitespace/eol/eof *OR* the first-
 ;                       character of the following word
@@ -143,12 +145,12 @@ parseExpr:
         ; the whole expression to be deferred. instead of the label value,
         ; the address of the label's flag-byte in the dictionary is tokenised
         ;
-+       dec     HL                      ; move to next token space
-        ld      [HL],   CHAR_LABEL      ; push the label token
++       ld      [HL],   CHAR_LABEL      ; push the label token
         dec     HL                      ; move to next token space
         ld      [HL],   D               ; push the label value addr hi-byte
         dec     HL                      ; move to next token space
         ld      [HL],   E               ; push the label value addr lo-byte
+        dec     HL                      ; move to next token space
 
         ld      A,      %10000000       ; set the deferred flag -- this will be
         ld      [@flag],A               ;  checked at the end of the expression
@@ -166,9 +168,9 @@ parseExpr:
         ; so an 8-bit subtraction is sufficient
         ;
 @defer: ld      B,      A               ; B must be 0 (LDDR uses BC)
-        ld      A,      $7f             ; start with highest addr (expr-start)
+        ld      A,      $7f+1           ; start with highest addr (expr-start)
         sub     A,      L               ; subtract lowest addr (expr-end)
-        ld      C,      A               ; this is the expr length
+        ld      C,      A               ; this is the expr length (1-based)
         pop     HL                      ; restore heap addr to HL
 
         ; because the expression could not be evaluated
@@ -179,8 +181,8 @@ parseExpr:
         ;=======================================================================
         ; add an operator and fall-through to the next operand:
         ;
-@next:  dec     HL                      ; move to next token space
-        ld      [HL],   A               ; push token in A to expr
+@next:  ld      [HL],   A               ; push token in A to expr
+        dec     HL                      ; move to next token space
 
         call    nextWord                ; read first character of the next word
         jp      z,      errExpr         ; newline/EOF = unexpected expr end!
@@ -205,8 +207,8 @@ parseExpr:
 
         ; a unary operator has been added,
         ; read the next character:
-+       dec     HL                      ; move to next token space
-        ld      [HL],   A               ; push a unary operator token
++       ld      [HL],   A               ; push a unary operator token
+        dec     HL                      ; move to next token space
 
         ; TODO: support multiple unary operators without separating space
         ;
@@ -240,12 +242,12 @@ parseExpr:
 
         ; push a literal number token:
         ;-----------------------------------------------------------------------
-@num:   dec     HL                      ; move to next token space
-        ld      [HL],   CHAR_HEX        ; push a number token
+@num:   ld      [HL],   CHAR_HEX        ; push a number token
         dec     HL                      ; move to next token space
         ld      [HL],   B               ; push the number hi-byte
         dec     HL                      ; move to next token space
         ld      [HL],   C               ; push the number lo-byte
+        dec     HL                      ; move to next token space
 
         ; an operator can follow a value
         ; ...
@@ -289,14 +291,13 @@ parseExpr:
         ; end of expr:
         ;=======================================================================
         ; TODO: check for heap spill here
-@end:   dec     HL                      ; a null terminator is appended to
-        ld      [HL],   0               ;  avoid counting during evaluation
-        ld      A,      [@flag]         ; get the defer flag
+@end:   ld      A,      [@flag]         ; get the defer flag
         sla     A                       ; pop the hi-bit off into carry
+        ld      [HL],   A               ; end expr with null terminator
         jr      c,      @defer          ; do not evaluate forward-refs!
 
         pop     HL                      ; restore heap addr to HL
-        ld      DE,     [expr]
+        ld      DE,     [expr]          ; eval expr from temp bytecode space
 
         ; fallthrough to evaluate the expr
         ; ...
@@ -324,16 +325,11 @@ evalExpr:
         push    HL
 @expr:  ex      DE,     HL              ; use HL for reading tokens for now
 
-        ; we do not use the length byte because we don't want to maintain a
-        ; counter register. we can just rely on the null terminator to stop
-        ;
-        dec     HL                      ; skip length byte
-
         ; evaluation consists of a running total (in DE), an operator,
         ; and the next value (in BC). we need to start the expression
         ; with the first value, before any (non-unary) operator
         ;
-        call    _value                  ; read first value
+        call    evalValue               ; read first value
         ld      E,      C               ; initialise running total
         ld      D,      B               ; 
 
@@ -353,7 +349,7 @@ evalExpr:
         push    AF                      ; keep operator until after value
 
         dec     HL                      ; move to next token space
-        call    _value                  ; get value before applying operator
+        call    evalValue               ; get value before applying operator
 
         pop     AF                      ; restore operator before the value
         cp      CHAR_OP_ADD             ; add operator?
@@ -488,7 +484,8 @@ evalExpr:
         ld      E,      A               ; .
         ret                             ; continue evaluating
 
-_value:
+
+evalValue:
 ;===============================================================================
 ; read a value:
 ;
@@ -512,7 +509,7 @@ _value:
 
         ; recurse, fetching the value that follows --
         ; this allows for multiple unary operators per value
-        call    _value
+        call    evalValue
 
         pop     AF                      ; restore the unary operator
         cp      CHAR_OP_LO              ; lo-byte unary operator?
@@ -584,7 +581,8 @@ deferExpr:
 ;===============================================================================
 ; defer expression:
 ;
-; in:   BC              length of expr bytecode (provided by `parseExpr`)
+; in:   A               assumed to be 0 due to the way `parseExpr` ends
+;       BC              length of expr bytecode (provided by `parseExpr`)
 ;       HL              heap position to push expr bytecode on to
 ;       [stride]        the size of the expression output to the code-segment
 ;                       (known as the stride) needs to be set, either 1 for
@@ -629,7 +627,8 @@ deferExpr:
         push    HL
 
         ;-----------------------------------------------------------------------
-        ld      HL,     0               ; there is no `LD HL, SP` (!?), so
+        ld      H,      A               ; A=0, so this is faster than LD HL, 0
+        ld      L,      A               ; there is no `LD HL, SP` (!?), so
         add     HL,     SP              ;  it's quicker to just add SP to 0!
         ld      SP,     [sp]            ; restore stack pointer!
 

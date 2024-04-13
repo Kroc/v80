@@ -161,14 +161,7 @@ errConstUndef:
 ;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 .IFDEF  DEBUG
         ;///////////////////////////////////////////////////////////////////////
-        push    AF
-        ld      A,      '$'
-        call    osPrintChar
-        ld      A,      B
-        call    printHexByte
-        ld      A,      C
-        call    printHexByte
-        pop     AF
+        call    _printBC
 .ENDIF  ;///////////////////////////////////////////////////////////////////////
 ;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 .ENDM
@@ -282,10 +275,23 @@ _printA:
         push    AF
         ld      A,      '$'
         call    osPrintChar             ; (does currently preserve A)
-        call    printHexByte
+        pop     AF
+        push    AF
+        call    printHexByte            ; (does not preseve A)
         pop     AF
         ret
 
+_printBC:
+;===============================================================================
+        push    AF
+        ld      A,      '$'
+        call    osPrintChar             ; (does currently preserve A)
+        ld      A,      B
+        call    printHexByte
+        ld      A,      C
+        call    printHexByte
+        pop     AF
+        ret
 
 _printFlags:
 ;===============================================================================

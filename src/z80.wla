@@ -10,8 +10,6 @@ emitOpcode:
 ; in:   B               opcode flags byte from the opcode table
 ;       C               opcode byte
 ;       HL              heap address for any deferred expressions
-;       [char]          the last character read by parseInstruction will
-;                       be whitespace / end-of-line or end-of-file
 ;
 ; out:  *               (clobbered)
 ;===============================================================================
@@ -62,13 +60,10 @@ emitOpcode:
         ; i.e. 8 / 16 bit immediate, or relative (bit 3). there are no
         ; 2-parameter Z80 opcodes without IX|IY so 1 param can be assumed
         ;
-        ; TODO: is this true for relative jumps?
-        ;
         bit     2,      B               ; if no parameters, extensions
         ret     z                       ;  have been done, finish now!
 
         ; a single, 1 or 2 byte parameter:
-        ; TODO: where to handle relative jump?
         ;
         and     %00000001               ; LSB indicates 2-bytes
         adc     1                       ; add at least 1-byte
@@ -176,7 +171,7 @@ emitOpcode:
 ;             op rr             ; immediate, relative
 ; DD|FD       op                ; IXY implied
 ; DD|FD       op oo             ; IXY offset
-; DD|FD CB oo op                ; IXY offset, CB-extended
+; DD|FD CB oo op                ; IXY offset, CB-extended (the cursed opcode!)
 ; DD|FD       op oo nn          ; IXY offset, immediate -- 2 parameters!
 ; DD|FD       op nn nn          ; IXY implied, immedaite, 16-bit
 ;
@@ -194,7 +189,7 @@ emitOpcode:
 ;
 ; bit 4 on indicates a $CB (or $ED) extension. if bit 6 is off (no IX|Y),
 ;       then bits 5 & 1 on ($22) indicates an $ED extensions, otherwise
-;       bits 5 & 1 are off ($22). bits 5 & 1 are combined this way because
+;       bits 5 & 1 are off ($00). bits 5 & 1 are combined this way because
 ;       $CB + $22 = $ED
 ;
 ; bit 3 on indicates an offset is present. if bit 6 is on, then this is the
@@ -213,26 +208,26 @@ OP      = %10000000     ; implied -- no parameters
 OP_I    = %11000000     ; bit 6=1: IX or IY extended
 OP_X    = %11000000     ; bit 6=1, bit 5=0: IX
 OP_Y    = %11100000     ; bit 6=1, bit 5=1: IY
-OP_IX   = OP_I|OP_X     ; implied, IX ($DD)
-OP_IY   = OP_I|OP_Y     ; implied, IY ($FD)
+OP_IX   = OP_I|OP_X     ; = implied, IX ($DD)
+OP_IY   = OP_I|OP_Y     ; = implied, IY ($FD)
 OP_CB   = %10010000     ; bit 6=?, bit 4=1, bit 5&1=0: CB-extended (+/-IX|IY)
 OP_ED   = %10110010     ; bit 6=0, bit 4=1, bit 5&1=1: ED-extended
 OP_O    = %11001000     ; bit 6=1, bit 3=1, bit 2=?: IX|IY includes offset
-OP_IXO  = OP_IX|OP_O    ; immediate, IX ($DD) + offset
-OP_IYO  = OP_IY|OP_O    ; immediate, IY ($FD) + offset
-OP_CBXO = OP_IXO|OP_CB  ; extended ($CB), IX ($DD) + offset
-OP_CBYO = OP_IYO|OP_CB  ; extended ($CB), IY ($FD) + offset
+OP_IXO  = OP_IX|OP_O    ; = immediate, IX ($DD) + offset
+OP_IYO  = OP_IY|OP_O    ; = immediate, IY ($FD) + offset
+OP_CBXO = OP_IXO|OP_CB  ; = extended ($CB), IX ($DD) + offset
+OP_CBYO = OP_IYO|OP_CB  ; = extended ($CB), IY ($FD) + offset
 OP_R    = %10001100     ; bit 6=0, bit 3=1, bit 2=1: relative jump offset
 OP_B    = %10000100     ; bit 2=1: immediate parameter, 8-bits (byte)
 OP_W    = %10000101     ; bit 2=1, bit 0=1: immediate parameter, 16-bits (word)
 
-OP_IXB  = OP_B|OP_IX    ; IX + immediate 8-bits
-OP_IYB  = OP_B|OP_IY    ; IY + immediate 8-bits
-OP_IXOB = OP_B|OP_IXO   ; IX ($DD) + offset + immediate (2 parameters!)
-OP_IYOB = OP_B|OP_IYO   ; IY ($FD) + offset + immediate (2 parameters!)
-OP_EDW  = OP_W|OP_ED    ; immediate, extended ($ED), 16-bit!
-OP_IXW  = OP_W|OP_IX    ; immediate, IX ($DD), 16-bit
-OP_IYW  = OP_W|OP_IY    ; immediate, IY ($FD), 16-bit
+OP_IXB  = OP_B|OP_IX    ; = IX + immediate 8-bits
+OP_IYB  = OP_B|OP_IY    ; = IY + immediate 8-bits
+OP_IXOB = OP_B|OP_IXO   ; = IX ($DD) + offset + immediate (2 parameters!)
+OP_IYOB = OP_B|OP_IYO   ; = IY ($FD) + offset + immediate (2 parameters!)
+OP_EDW  = OP_W|OP_ED    ; = immediate, extended ($ED), 16-bit!
+OP_IXW  = OP_W|OP_IX    ; = immediate, IX ($DD), 16-bit
+OP_IYW  = OP_W|OP_IY    ; = immediate, IY ($FD), 16-bit
 
 opcodes:
 ;===============================================================================

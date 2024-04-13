@@ -2,8 +2,8 @@
 ; a z80 assembler for Z80s
 ;
 .DEF    DEBUG                           ; enable debug features
-.DEF    DEBUG_LABELS                    ; dump label records when defined
-.DEF    DEBUG_DUMP                      ; dump binary after assemby
+;.DEF    DEBUG_LABELS                    ; dump label records when defined
+;.DEF    DEBUG_DUMP                      ; dump binary after assemby
 
 .INC    "cpm.wla"                       ; CP/M interface
 .INC    "err.wla"                       ; error messages / debug printing
