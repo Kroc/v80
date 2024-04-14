@@ -38,7 +38,7 @@
 ;   +-----+-----------------------------------+--------+--------+---------+
 ;   | v80 | code->                     <-heap | <-word | <-expr | <-stack |
 ;   +-----+-----------------------------------+--------+--------+---------+
-;                                                 32       96       128
+;                                                   32       96       128
 ;   code:  source code is assembled here
 ;   heap:  symbols and other in-flight data goes here (builds downwards)
 ;   word:  a buffer for capturing words (symbol names)
@@ -131,15 +131,21 @@ init:
         ;
         ld      IY,     code            ; code-segement address
 
-        call    memStat                 ; print the memory status
+.IFDEF  DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        call    .memStat                ; print the memory status
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
 
         ; assemble the file
         ;-----------------------------------------------------------------------
         call    assembleFile
         ;-----------------------------------------------------------------------
-        ld      [heap], HL
-        call    memStat
 
+.IFDEF  DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        ld      [heap], HL
+        call    .memStat                ; print the memory status
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
 .IFDEF  DEBUG_DUMP
         ;///////////////////////////////////////////////////////////////////////
         ; hex dump the code-segment:
@@ -166,51 +172,6 @@ init:
 .ENDIF  ;///////////////////////////////////////////////////////////////////////
 
         jp      osQuit                  ; return to CP/M to quit the program
-
-
-memStat:
-;===============================================================================
-; prints memory status:
-;-------------------------------------------------------------------------------
-        ld      HL,     $0000           ; oddly, there's no `ld HL, SP`!
-        add     HL,     SP              ; stack address, e.g. $FCFE
-        ex      DE,     HL              ; swap SP into DE
-        ld      HL,     @stack          ; stack addr position in string
-        call    @hex                    ; convert and insert
-
-        ld      DE,     [heap]
-        ld      HL,     @heap           ; heap addr position in string
-        call    @hex                    ; convert and insert
-
-        ld      D,      IYH
-        ld      E,      IYL
-        ld      HL,     @code           ; code addr position in string
-        call    @hex                    ; convert and insert
-
-        ld      DE,     @mem
-        jp      osPrintStr
-
-        ;-----------------------------------------------------------------------
-        ; convert DE to ASCII hexadecimal digits and insert in the string
-        ;
-@hex:   ld      A,      D
-        call    @byte
-        ld      A,      E
-@byte:  call    getHexByte
-        ld      [HL],   B
-        inc     HL
-        ld      [HL],   C
-        inc     HL
-        ret
-
-        ;-----------------------------------------------------------------------
-@mem    .BYTE   "[stack: "
-@stack  .BYTE   "0000"
-        .BYTE   " | heap: "
-@heap   .BYTE   "0000"
-        .BYTE   " | code: "
-@code   .BYTE   "0000"
-        .BYTE   "]\n$"
 
 
 assembleFile:
