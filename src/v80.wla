@@ -1,11 +1,22 @@
 ; v80, (C) Kroc Camen 2023-2024, MIT License
 ; a z80 assembler for Z80s
 ;
-.DEF    DEBUG                           ; enable debug features
-;.DEF    DEBUG_LABELS                    ; dump label records when defined
-;.DEF    DEBUG_DUMP                      ; dump binary after assemby
+; constants:
+;
+NULL                    = 0
+LO                      = 0
+HI                      = 1
 
+ASCII_SPC               = $20           ; ASCII space (whitespace)
+ASCII_TAB               = $09           ; ASCII tab (whitespace)
+ASCII_CR                = $0d           ; ASCII carriage-return
+ASCII_LF                = $0a           ; ASCII line-feed
+ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
+
+; system:
+;
 .INC    "cpm.wla"                       ; CP/M interface
+.INC    "debug.wla"                     ; debug-only functionality
 .INC    "err.wla"                       ; error messages / debug printing
 
 ; syntax:
@@ -40,10 +51,10 @@
 ;   +-----+-----------------------------------+--------+--------+---------+
 ;                                                   32       96       128
 ;   code:  source code is assembled here
-;   heap:  symbols and other in-flight data goes here (builds downwards)
-;   word:  a buffer for capturing words (symbol names)
-;   expr:  expressions are tokenised here (builds downwards)
-;   stack: usual Z80 stack (builds downwards)
+;   heap:  symbols and other in-flight data goes here; builds downwards
+;   word:  a buffer for capturing words (symbol names); builds downwards
+;   expr:  expressions are tokenised here; builds downwards
+;   stack: usual Z80 stack; builds downwards
 ;
 .DEF    WORD_LEN        31              ; maximum symbol name length
 
@@ -118,6 +129,37 @@ init:
         ld      L,      $7f             ; the expr token space starts in the
         ld      [expr], HL              ;  middle of the page and works down
 
+.IFDEF  DEBUG_STACK
+        ;///////////////////////////////////////////////////////////////////////
+        ; how do you measure the maximum depth of the stack used
+        ; during program execution?
+        ;
+        ; you could record the stack depth every time you push, or at least
+        ; often enough, but that slows down execution. rather, we can write
+        ; an initial value to every stack space and after execution we can
+        ; check how deep the original value remains. But what if the data
+        ; puhsed to the stack happens to contain that value?
+        ;
+        ; the only value you can almost guarantee will never be pushed to the
+        ; stack is... the address of the stack itself! For example, if the
+        ; stack is at $FC80 then you won't ever see $FC80 stored there
+        ; -- this is programatically useless
+        ;
+        ; therefore we fill each stack space with its own address and after
+        ; execution check for stack positions that have changed, revealing
+        ; the deepest push to the stack during execution!
+        ;
+        ld      [sp],   SP              ; backup stack pointer
+        ld      HL,     0               ; load HL with the stack pointer
+        add     HL,     SP              ; (oddly, there's no `ld HL, SP`!)
+        ld      B,      64              ; push 64 words (128 bytes) to stack
+-       dec     HL                      ; decrement HL first to match the
+        dec     HL                      ;  stack-pointer after it pushes HL
+        push    HL                      ;  (stack is decrement-then-copy)
+        djnz    -                       ; loop all 64-pushes (128 bytes)
+        ld      SP,     [sp]            ; restore stack pointer
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+
         ; the virtual program-counter is permanently pinned to IX since
         ; it's a value that needs to be incremented often but not read
         ; back too often. this avoids a bunch of HL/DE register swapping
@@ -131,47 +173,47 @@ init:
         ;
         ld      IY,     code            ; code-segement address
 
-.IFDEF  DEBUG
-        ;///////////////////////////////////////////////////////////////////////
-        call    .memStat                ; print the memory status
-.ENDIF  ;///////////////////////////////////////////////////////////////////////
+        .memStat                        ; DEBUG: print the memory status
 
         ; assemble the file
         ;-----------------------------------------------------------------------
         call    assembleFile
         ;-----------------------------------------------------------------------
 
-.IFDEF  DEBUG
-        ;///////////////////////////////////////////////////////////////////////
         ld      [heap], HL
-        call    .memStat                ; print the memory status
-.ENDIF  ;///////////////////////////////////////////////////////////////////////
-.IFDEF  DEBUG_DUMP
+
+.IFDEF  DEBUG_STACK
         ;///////////////////////////////////////////////////////////////////////
-        ; hex dump the code-segment:
+        ; how deep is your stack?
         ;
-        ; the number of bytes to dump is the current code-segment
-        ; address sans the start address of the code segement
+        ; since counting towards zero is faster on Z80 we start at the top and
+        ; walk down the stack slots checking if each contains its own address
         ;
-        push    IY                      ; code-segement end address
-        pop     HL                      ; transfer to HL for SBC HL, DE
-        ld      DE,     code            ; code-segment start address
-        xor     A                       ; clear carry
-        sbc     HL,     DE              ; HL = HL - DE
-        ex      DE,     HL              ; swap length to DE, start addr to HL
+        ; WARN: this code assumes that stack is at its top (e.g. $FD00),
+        ;       because this code is in the top-most init routine
+        ; 
+        ld      HL,     0               ; load HL with the stack pointer
+        add     HL,     SP              ; (oddly, there's no `ld HL, SP`!)
+        ld      BC,     64              ; begin at the top, report remaining
         ;-----------------------------------------------------------------------
--       ld      A,      [HL]            ; read one byte from the code-segment
-        inc     HL                      ; move to next byte
-        call    printHexByte            ; print byte as two hex digits
-        ld      A,      ' '             ; print separating space
-        call    osPrintChar             ; ...
-        dec     DE                      ; decrement number of bytes to dump
-        ld      A,      E               ; have we reached zero?
-        or      D                       ; (bitwise OR lo & hi bytes)
-        jr      nz,     -               ; keep looping until zero
+-       dec     HL                      ; (decrement into hi-byte)
+        ld      A,      H               ; compare hi-byte first
+        cpd                             ; CP A, [HL]; DEC HL; DEC BC
+        jp      po,     +               ; exit when BC = 0 (all stack checked)
+        jr      nz,     -               ; skip checking lo-byte if mismatch
+        ld      A,      L               ; compare lo-byte of stack addr
+        cp      A,      [HL]            ;  with lo-byte in stack slot
+        jr      nz,     -               ; keep looping if mismatch
+        ;-----------------------------------------------------------------------
+        ; when we drop out of the loop, BC is the number of unused stack slots
+        ; -- we stash this value in the stack pointer backup for later printing
++       ld      [sp],   BC
 .ENDIF  ;///////////////////////////////////////////////////////////////////////
 
-        jp      osQuit                  ; return to CP/M to quit the program
+        .dumpCode                       ; DEBUG_DUMP: hex-dump the code-segment
+        .memStat                        ; DEBUG: print the memory status
+
+        jp      osQuit                  ; jump to CP/M to quit the program
 
 
 assembleFile:
@@ -994,7 +1036,7 @@ getHexByte:
 ;
 ; in:   A               input byte
 ; out:  BC              ASCII hex digits in hi,lo (printable) order
-;       DE|HL|IX/Y      (preserved)
+;       DE|HL           (preserved)
 ;       A               (clobbered)
 ;-------------------------------------------------------------------------------
         ld      B,      A               ; preserve for 2nd digit
@@ -1020,7 +1062,7 @@ getHexByte:
         ret
 .ENDB
 
-; * * *   O B J E C T   C O D E   * * *
+; * * *   C O D E   S E G M E N T   * * *
 ;===============================================================================
 ; this is where the assembled code will be placed;
 ; anything beyond this point will be overwritten

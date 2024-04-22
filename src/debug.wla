@@ -1,0 +1,442 @@
+; v80, (C) Kroc Camen 2023-2024, MIT License
+; debug only code
+;
+.DEF    DEBUG                           ; enable debug features
+;.DEF    DEBUG_LABELS                    ; dump label records when defined
+;.DEF    DEBUG_DUMP                      ; dump binary after assemby
+.DEF    DEBUG_STACK                     ; measure peak stack-depth used
+
+.BLOCK  "debug"
+
+; these macros have to be defined, even if debugging is not enabled, so that
+; assembly can still succeed with debugging off where these macros occur
+
+.MACRO .printFlags
+;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+.IFDEF  DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        call    _printFlags
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+.ENDM
+
+.MACRO .printCharA
+;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+.IFDEF  DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        call    osPrintChar
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+.ENDM
+
+.MACRO  .printChar
+;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+.IFDEF  DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        push    AF
+        ld      A,      \1
+        call    osPrintChar
+        pop     AF
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+.ENDM
+
+; print register A as a hexadecimal number:
+;
+.MACRO  .printA
+;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+.IFDEF  DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        call    _printA
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+.ENDM
+
+; print register BC as a hexadecimal number:
+;
+.MACRO  .printBC
+;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+.IFDEF  DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        call    _printBC
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+.ENDM
+
+; print the value stored at an absolute address:
+;
+.MACRO  .printAddr
+;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+.IFDEF  DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        push    AF
+        ld      A,      '$'
+        call    osPrintChar
+        ld      A,      [\1]
+        call    printHexByte
+        pop     AF
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+.ENDM
+
+; print the character stored at an absolute address:
+;
+.MACRO  .printAddrChar
+;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+.IFDEF  DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        push    AF
+        ld      A,      [\1]
+        call    osPrintChar
+        pop     AF
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+.ENDM
+
+; print register HL as a hexadecimal word:
+;
+.MACRO  .printHL
+;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+.IFDEF  DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        call    _printHL
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+.ENDM
+
+.MACRO  .printAddrHL
+;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+.IFDEF  DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        push    AF
+        ld      A,      '$'
+        call    osPrintChar
+        ld      A,      [HL]
+        call    printHexByte
+        pop     AF
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+.ENDM
+
+.MACRO  .printDE
+;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+.IFDEF  DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        push    AF
+        ld      A,      '$'
+        call    osPrintChar
+        ld      A,      D
+        call    printHexByte
+        ld      A,      E
+        call    printHexByte
+        pop     AF
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+.ENDM
+
+.MACRO  .printAddrDE
+;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+.IFDEF  DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        push    AF
+        ld      A,      '$'
+        call    osPrintChar
+        ld      A,      [DE]
+        call    printHexByte
+        pop     AF
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+.ENDM
+
+.IFDEF  DEBUG
+;///////////////////////////////////////////////////////////////////////////////
+
+_printA:
+        ;=======================================================================
+        push    AF
+        ld      A,      '$'
+        call    osPrintChar             ; (does currently preserve A)
+        pop     AF
+        push    AF
+        call    printHexByte            ; (does not preseve A)
+        pop     AF
+        ret
+
+_printBC:
+        ;=======================================================================
+        push    AF
+        ld      A,      '$'
+        call    osPrintChar             ; (does currently preserve A)
+        ld      A,      B
+        call    printHexByte
+        ld      A,      C
+        call    printHexByte
+        pop     AF
+        ret
+
+_printHL:
+        ;=======================================================================
+        push    AF
+        ld      A,      '$'
+        call    osPrintChar
+        ld      A,      H
+        call    printHexByte
+        ld      A,      L
+        call    printHexByte
+        pop     AF
+        ret
+
+_printFlags:
+        ;=======================================================================
+        push    AF
+        ld      A,      '['
+        call    osPrintChar
+        pop     AF
+
+        jr      nz,     +
+
+        push    AF
+        ld      A,      'z'
+        call    osPrintChar
+        pop     AF
+
++       jr      nc,     +
+
+        push    AF
+        ld      A,      'c'
+        call    osPrintChar
+        pop     AF
+
++       push    AF
+        ld      A,      ']'
+        call    osPrintChar
+        pop     AF
+
+        ret
+;///////////////////////////////////////////////////////////////////////////////
+.ENDIF
+
+.MACRO  .memStat
+;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+.IFDEF  DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        call    _memStat
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+.ENDM
+
+.IFDEF  DEBUG
+;///////////////////////////////////////////////////////////////////////////////
+
+_memStat:
+;===============================================================================
+; prints memory status:
+;-------------------------------------------------------------------------------
+        ld      HL,     $0000           ; oddly, there's no `ld HL, SP`!
+        add     HL,     SP              ; stack address, e.g. $FCFE
+        ex      DE,     HL              ; swap SP into DE
+        ld      HL,     @stack          ; stack addr position in string
+        call    @hex                    ; convert and insert
+
+        ld      DE,     [heap]
+        ld      HL,     @heap           ; heap addr position in string
+        call    @hex                    ; convert and insert
+
+        ld      D,      IYH
+        ld      E,      IYL
+        ld      HL,     @code           ; code addr position in string
+        call    @hex                    ; convert and insert
+
+        ld      DE,     @mem
+        jp      osPrintStr
+
+        ;-----------------------------------------------------------------------
+        ; convert DE to ASCII hexadecimal digits and insert in the string
+        ;
+@hex:   ld      A,      D
+        call    @byte
+        ld      A,      E
+@byte:  call    getHexByte
+        ld      [HL],   B
+        inc     HL
+        ld      [HL],   C
+        inc     HL
+        ret
+
+        ;-----------------------------------------------------------------------
+@mem    .BYTE   "[stack: "
+@stack  .BYTE   "0000"
+        .BYTE   " | heap: "
+@heap   .BYTE   "0000"
+        .BYTE   " | code: "
+@code   .BYTE   "0000"
+        .BYTE   "]\n$"
+
+;///////////////////////////////////////////////////////////////////////////////
+.ENDIF
+
+.MACRO  .printLabel
+;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+.IFDEF  DEBUG_LABELS
+        ;///////////////////////////////////////////////////////////////////////
+        call    _printLabel
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+.ENDM
+
+.IFDEF  DEBUG_LABELS
+;///////////////////////////////////////////////////////////////////////////////
+
+_printLabel:
+;===============================================================================
+        push    AF
+        push    BC
+        push    DE
+        push    HL
+
+        ex      DE,     HL              ; use DE for label record addr
+
+        ; label addr:
+        ;-----------------------------------------------------------------------
+        ld      HL,     @line+1         ; position in prepared string
+        ld      A,      D               ; label record addr, hi-byte
+        call    @hex                    ; insert hex digits in prepared string
+        ld      A,      E               ; label record addr, lo-byte
+        call    @hex                    ; insert hex digits in prepared string
+
+        ; link-addr:
+        ;-----------------------------------------------------------------------
+        ; the label record addr is positioned on the lo-byte of the link-addr
+        ;
+        ld      HL,     @line+8         ; link-addr in prepared string
+        inc     DE                      ; record will be read decrement first,
+        inc     DE                      ;  then read, so move upwards to begin
+        call    @word                   ; insert hex digits in prepared string
+
+        ; label-name length:
+        ;-----------------------------------------------------------------------
+        ld      HL,     @line+22        ; name length in prepared string
+        call    @byte                   ; insert hex digits in prepared string
+
+        ; label-name:
+        ;-----------------------------------------------------------------------
+        ld      HL,     @line+25
+        ld      A,      [DE]            ; get name length again
+        ld      B,      A               ; use as char counter
+        ld      C,      B               ; and keep a copy for trailing spaces
+        ;-----------------------------------------------------------------------
+-       dec     DE                      ; (move to next char in label name)
+        ld      A,      [DE]            ; read a character
+        ld      [HL],   A               ; write to prepared string 
+        inc     HL                      ; (move to next char in string)
+        djnz    -
+
+        ; fill the rest of the string with trailing spaces to avoid
+        ; trailing garbage from previous longer label names:
+        ;
+        ld      A,      WORD_LEN        ; maximum number of chars
+        sub     C                       ;  minus name length
+        jr      z,      +               ; (skip if label name length = 31)
+        ld      B,      A               ; = number of trailing spaces to fill
+        ld      A,      ' '             ; fill with spaces
+        ;-----------------------------------------------------------------------
+-       ld      [HL],   A
+        inc     HL
+        djnz    -
+
+        ; deferred-flag:
+        ;-----------------------------------------------------------------------
+        ; deferred = '!', normal = '$' (+3)
+        ;
++       ld      HL,     @line+14        ; position in prepared string
+        dec     DE                      ; (move to deferred flag field)
+        ld      A,      [DE]            ; read deferred flag: 0 = deferred
+        rrca                            ; pop flag off into carry
+        ld      A,      '$'             ; addr uses "$" prefix for real addr
+        jr      c,      +               ; and if flag is 1 (real), skip over
+        sub     3                       ; change "$" to "!" for deferred value
++       ld      [HL],   A               ; insert this char into prepared string
+
+        ; label value: (virtual address)
+        ;-----------------------------------------------------------------------
+        ld      HL,     @line+15        ; value in prepared string
+        call    @word                   ; insert hex digits in prepared string
+
+        ; output prepared string:
+        ;-----------------------------------------------------------------------
+        ld      HL,     @line           ; start addr of prepared string
+        ld      B,      57              ; length of prepared string
+-       ld      A,      [HL]            ; read a character
+        call    osPrintChar             ; print it
+        inc     HL                      ; move to next character
+        djnz    -                       ; loop until all chars printed
+
+        pop     HL
+        pop     DE
+        pop     BC
+        pop     AF
+        ret
+
+        ;=======================================================================
+@word:  dec     DE
+        ld      A,      [DE]
+        call    @hex
+@byte:  dec     DE
+        ld      A,      [DE]
+@hex:   call    getHexByte              ; convert to hex-digits in BC
+        ld      [HL],   B               ; write hi-nybble into output string
+        inc     HL                      ; (move to next char)
+        ld      [HL],   C               ; write lo-nybble into output string
+        inc     HL                      ; (move to next char)
+
+        ret
+
+        ;-----------------------------------------------------------------------
+@line:  .BYTE   "$0000: $0000 [$0000] $00 :                              "
+        .BYTE   ASCII_LF, 0
+
+;///////////////////////////////////////////////////////////////////////////////
+.ENDIF
+
+.MACRO  .dumpCode
+;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+.IFDEF  DEBUG_DUMP
+        ;///////////////////////////////////////////////////////////////////////
+        call    _dumpCode
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+.ENDM
+
+.IFDEF  DEBUG_DUMP
+;///////////////////////////////////////////////////////////////////////////////
+
+_dumpCode:
+;===============================================================================
+; hex dump the code-segment:
+;-------------------------------------------------------------------------------
+        ; the number of bytes to dump is the current code-segment
+        ; address sans the start address of the code segement
+        ;
+        push    IY                      ; code-segement end address
+        pop     HL                      ; transfer to HL for SBC HL, DE
+        ld      DE,     code            ; code-segment start address
+        xor     A                       ; clear carry
+        sbc     HL,     DE              ; HL = HL - DE
+        ex      DE,     HL              ; swap length to DE, start addr to HL
+        ;-----------------------------------------------------------------------
+-       ld      A,      [HL]            ; read one byte from the code-segment
+        inc     HL                      ; move to next byte
+        call    printHexByte            ; print byte as two hex digits
+        ld      A,      ' '             ; print separating space
+        call    osPrintChar             ; ...
+        dec     DE                      ; decrement number of bytes to dump
+        ld      A,      E               ; have we reached zero?
+        or      D                       ; (bitwise OR lo & hi bytes)
+        jr      nz,     -               ; keep looping until zero
+        ;-----------------------------------------------------------------------
+        ret
+
+;///////////////////////////////////////////////////////////////////////////////
+.ENDIF
+
+.ENDB

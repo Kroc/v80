@@ -15,16 +15,6 @@
 
 ; system constants:
 ;-------------------------------------------------------------------------------
-NULL                    = 0
-LO                      = 0
-HI                      = 1
-
-ASCII_SPC               = $20           ; ASCII space (whitespace)
-ASCII_TAB               = $09           ; ASCII tab (whitespace)
-ASCII_CR                = $0d           ; ASCII carriage-return
-ASCII_LF                = $0a           ; ASCII line-feed
-ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
-
 CPM_VER                 = $22           ; CP/M version as BCD
 CPM_VER_STR             = "2.2"         ; CP/M version as string
 
@@ -41,12 +31,6 @@ TBASE                   = $0100         ; start of transient program area
 
 boot:
 ;===============================================================================
-        ; always print the banner first,
-        ; it differs for each OS/platform
-        ;
-        ld      DE,     @banner         ; print the program banner
-        call    osPrintStr
-
         ; check CP/M version -- it's not likely we're going to be running
         ; on CP/M-1 but this same check will be required for a CP/M-3 version
         ;
@@ -55,7 +39,8 @@ boot:
         ld      A,      L               ; compare returned version
         cp      CPM_VER                 ;  with required CP/M version
         jr      c,      @err            ; ver < CPM_VER, quit with error
-
+        
+        ;-----------------------------------------------------------------------
         ; when a program is loaded in CP/M a small stack is created, enough
         ; to call the BDOS/BIOS. we want to set the stack to the top of
         ; memory although that depends were the TPA ends and the BDOS begins
@@ -64,9 +49,15 @@ boot:
         ; so if we set the stack there the first push will go to BDOS-1.
         ; on RunCPM this is $FD00
         ;
-@ok:    ld      HL,     [BDOS+1]        ; get BDOS address from `jp $xxxx`
+        ld      HL,     [BDOS+1]        ; get BDOS address from `JP $xxxx`
         ld      L,      0               ; normalise to beginning of page
         ld      SP,     HL
+        
+        ; always print the banner first,
+        ; it differs for each OS/platform
+        ;
+        ld      DE,     @banner         ; print the program banner
+        call    osPrintStr
 
         ; check for an automatic file-reference,
         ; i.e. a file parameter was passed on the command line
@@ -94,17 +85,20 @@ boot:
 @banner .BYTE   "v80 CP/M v0, Kroc Camen 2034-2024\n$"
 
         ;=======================================================================
-@err:   ld      DE,     @@str           ; exit with a version error
-        call    osPrintStr
-        jp      osQuit
-
-@@str   .BYTE "Error: CP/M ", CPM_VER_STR, " or higher required!$"
-
-        ;=======================================================================
 @help:  ld      DE,     @@str
         jp      osPrintStr
 
 @@str   .BYTE "\n    V80 SOURCE.V80$"
+
+        ;=======================================================================
+        ; CP/M version less than 2.2 -- call BDOS manually for safety
+        ;
+@err:   ld      DE,     @@str           ; version error string
+        ld      C,      BDOS_PRNSTR     ; print using BDOS directly
+        jp      BDOS                    ; call BDOS but also return to CCP
+
+        ; string is "$" terminated for compatibility with CP/M <= v2.2
+@@str   .BYTE "Error: CP/M ", CPM_VER_STR, " or higher required!$"
 
 
 ; BDOS calls:
