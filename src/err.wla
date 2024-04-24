@@ -6,18 +6,18 @@
 ;
 .BLOCK  "code-err"
 
-_strFile        .BYTE "File not found!$"
-_strWord        .BYTE "Word too long! (max 32 chars)$"
-_strOpcode      .BYTE "Invalid Z80 instruction!$"
-_strExpectParam .BYTE "Expected instruction parameter!$"
-_strExpectExpr  .BYTE "Expected expression!$"
-_strExpr        .BYTE "Invalid expression!$"
-_strKeyword     .BYTE "Invalid keyword!$"
-_strHex         .BYTE "Invalid hexadecimal number!$"
-_strLabelRedef  .BYTE "Labels cannot be redefined!$"
-_strLabelUndef  .BYTE "Label is undefined!$"
-_strExprConst   .BYTE "Forward-references to labels not allowed here!$"
-_strConstUndef  .BYTE "Undefined constant!$"
+_strFile        .BYTE 15, "File not found!"
+_strWord        .BYTE 29, "Word too long! (max 32 chars)"
+_strOpcode      .BYTE 24, "Invalid Z80 instruction!"
+_strExpectParam .BYTE 31, "Expected instruction parameter!"
+_strExpectExpr  .BYTE 20, "Expected expression!"
+_strExpr        .BYTE 19, "Invalid expression!"
+_strKeyword     .BYTE 16, "Invalid keyword!"
+_strHex         .BYTE 27, "Invalid hexadecimal number!"
+_strLabelRedef  .BYTE 27, "Labels cannot be redefined!"
+_strLabelUndef  .BYTE 19, "Label is undefined!"
+_strExprConst   .BYTE 46, "Forward-references to labels not allowed here!"
+_strConstUndef  .BYTE 19, "Undefined constant!"
 
 _printQuit:
 ;===============================================================================

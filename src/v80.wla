@@ -129,8 +129,6 @@ init:
         ld      L,      $7f             ; the expr token space starts in the
         ld      [expr], HL              ;  middle of the page and works down
 
-.IFDEF  DEBUG_STACK
-        ;///////////////////////////////////////////////////////////////////////
         ; how do you measure the maximum depth of the stack used
         ; during program execution?
         ;
@@ -158,7 +156,6 @@ init:
         push    HL                      ;  (stack is decrement-then-copy)
         djnz    -                       ; loop all 64-pushes (128 bytes)
         ld      SP,     [sp]            ; restore stack pointer
-.ENDIF  ;///////////////////////////////////////////////////////////////////////
 
         ; the virtual program-counter is permanently pinned to IX since
         ; it's a value that needs to be incremented often but not read
@@ -166,24 +163,45 @@ init:
         ;
         ld      IX,     $0100           ; virtual program-counter
 
-        ; the code-segement address (where assembled binary code goes)
+        ; the code-segment address (where assembled binary code goes)
         ; is pinned to IY. as with the virtual program-counter, depsite
         ; the IY register being slower to utilise, it is used sparingly
         ; and avoids costly register swapping
         ;
-        ld      IY,     code            ; code-segement address
+        ld      IY,     code            ; code-segment address
 
         .memStat                        ; DEBUG: print the memory status
 
-        ; assemble the file
-        ;-----------------------------------------------------------------------
+        ; assemble the source file
+        ;=======================================================================
+        ld      HL,     [heap]          ; where symbols / expressions go
         call    assembleFile
-        ;-----------------------------------------------------------------------
-
         ld      [heap], HL
 
-.IFDEF  DEBUG_STACK
-        ;///////////////////////////////////////////////////////////////////////
+        ; print final stats:
+        ;=======================================================================
+        push    HL                      ; preserve final heap addr for now
+
+        ; size of code-segment:
+        ; (size of generated binary)
+        ;
+        ld      DE,     @code           ; = "code: $..." string
+        push    IY                      ; code-segment end address
+        pop     HL                      ; transfer to HL for SBC HL, BC
+        ld      BC,     code            ; code-segment start address
+        ld      DE,     @code           ; 
+        call    @size                   ; 
+
+        ; size of the heap:
+        ; the heap works downwards so we have to swap start and end values
+        ;
+        ld      DE,     @heap           ; = "heap: $..." string
+        pop     BC                      ; retrieve final heap address
+        ld      HL,     [heap]          ; get top of heap address
+        ld      [heap], BC              ; (save final heap position)
+        ld      DE,     @heap
+        call    @size                   ; print string, calc & print size
+
         ; how deep is your stack?
         ;
         ; since counting towards zero is faster on Z80 we start at the top and
@@ -194,6 +212,7 @@ init:
         ; 
         ld      HL,     0               ; load HL with the stack pointer
         add     HL,     SP              ; (oddly, there's no `ld HL, SP`!)
+        ld      [sp],   HL              ; backup top of stack address
         ld      BC,     64              ; begin at the top, report remaining
         ;-----------------------------------------------------------------------
 -       dec     HL                      ; (decrement into hi-byte)
@@ -206,14 +225,49 @@ init:
         jr      nz,     -               ; keep looping if mismatch
         ;-----------------------------------------------------------------------
         ; when we drop out of the loop, BC is the number of unused stack slots
-        ; -- we stash this value in the stack pointer backup for later printing
-+       ld      [sp],   BC
-.ENDIF  ;///////////////////////////////////////////////////////////////////////
++       ld      B,      H
+        ld      C,      L
+        ld      HL,     [sp]
+        ld      DE,     @stack
+        call    @size
+
+        ld      DE,     @str            ; print final stats string
+        call    osPrintStr
 
         .dumpCode                       ; DEBUG_DUMP: hex-dump the code-segment
         .memStat                        ; DEBUG: print the memory status
 
         jp      osQuit                  ; jump to CP/M to quit the program
+
+        ;-----------------------------------------------------------------------
+        ; calculate the size of HL-BC & write number to string in DE
+        ;
+@size:  xor     A                       ; clear carry
+        sbc     HL,     BC              ; HL = HL - BC
+        ex      DE,     HL
+        call    @word
+        ex      DE,     HL
+        ret
+
+@word:  ld      A,      D
+        call    @byte
+        ld      A,      E
+@byte:  call    getHexByte
+        ld      [HL],   B
+        inc     HL
+        ld      [HL],   C
+        inc     HL
+        ret
+
+@str    .BYTE   73, "\n"
+        .BYTE   "CODE: $"
+@code   .BYTE   "0000 bytes\n"          ; size of code-segment
+        .BYTE   "FREE: $"
+@free   .BYTE   "0000 bytes\n"          ; how much RAM was free
+        .BYTE   "HEAP: $"
+@heap   .BYTE   "0000 bytes\n"          ; size of heap used
+        .BYTE   "STAK: $"
+@stack  .BYTE   "0000 bytes\n"          ; peak stack usage
 
 
 assembleFile:
@@ -231,7 +285,6 @@ assemble:
 ; NOTE: we avoid using calls here where possible because scopes are linear
 ;       and we don't want to pressure the stack too much (it's small)
 ;-------------------------------------------------------------------------------
-        ld      HL,     [heap]          ; where symbols / expressions go
         jr      @line                   ; jump into parsing loop
 
         ;=======================================================================
@@ -909,7 +962,7 @@ parseInstruction:
 ; in:   A               first character of word to parse
 ;       HL              heap addr
 ; out:  HL              heap addr is advanced for any expressions deferred
-;       IY              binary code is appended to the code-segement,
+;       IY              binary code is appended to the code-segment,
 ;       IX              and the virtual program-counter is advanced
 ;       A, BC|DE        (clobbered)
 ;-------------------------------------------------------------------------------

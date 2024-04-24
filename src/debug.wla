@@ -1,10 +1,9 @@
 ; v80, (C) Kroc Camen 2023-2024, MIT License
 ; debug only code
 ;
-.DEF    DEBUG                           ; enable debug features
+;.DEF    DEBUG                           ; enable debug features
 ;.DEF    DEBUG_LABELS                    ; dump label records when defined
 ;.DEF    DEBUG_DUMP                      ; dump binary after assemby
-.DEF    DEBUG_STACK                     ; measure peak stack-depth used
 
 .BLOCK  "debug"
 
@@ -247,7 +246,7 @@ _memStat:
         ld      HL,     @code           ; code addr position in string
         call    @hex                    ; convert and insert
 
-        ld      DE,     @mem
+        ld      DE,     @str
         jp      osPrintStr
 
         ;-----------------------------------------------------------------------
@@ -264,13 +263,14 @@ _memStat:
         ret
 
         ;-----------------------------------------------------------------------
+@str    .BYTE   40
 @mem    .BYTE   "[stack: "
 @stack  .BYTE   "0000"
         .BYTE   " | heap: "
 @heap   .BYTE   "0000"
         .BYTE   " | code: "
 @code   .BYTE   "0000"
-        .BYTE   "]\n$"
+        .BYTE   "]\n"
 
 ;///////////////////////////////////////////////////////////////////////////////
 .ENDIF
@@ -415,9 +415,9 @@ _dumpCode:
 ; hex dump the code-segment:
 ;-------------------------------------------------------------------------------
         ; the number of bytes to dump is the current code-segment
-        ; address sans the start address of the code segement
+        ; address sans the start address of the code segment
         ;
-        push    IY                      ; code-segement end address
+        push    IY                      ; code-segment end address
         pop     HL                      ; transfer to HL for SBC HL, DE
         ld      DE,     code            ; code-segment start address
         xor     A                       ; clear carry

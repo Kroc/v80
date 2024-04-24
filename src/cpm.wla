@@ -82,13 +82,13 @@ boot:
         jp      init
 
         ;-----------------------------------------------------------------------
-@banner .BYTE   "v80 CP/M v0, Kroc Camen 2034-2024\n$"
+@banner .BYTE   34, "v80 CP/M v0, Kroc Camen 2034-2024\n"
 
         ;=======================================================================
 @help:  ld      DE,     @@str
         jp      osPrintStr
 
-@@str   .BYTE "\n    V80 SOURCE.V80$"
+@@str   .BYTE   19, "\n    V80 SOURCE.V80"
 
         ;=======================================================================
         ; CP/M version less than 2.2 -- call BDOS manually for safety
@@ -112,7 +112,7 @@ BDOS_CONOUT             = 2             ; console output
 BDOS_RDRIN              = 3             ; reader input
 BDOS_PUNOUT             = 4             ; punch output
 BDOS_LISTOUT            = 5             ; list output
-BDOS_DIRCON             = 6             ; direct console control
+BDOS_CONIO              = 6             ; direct console control
 BDOS_GETIO              = 7             ; get I/O byte
 BDOS_SETIO              = 8             ; set I/O byte
 BDOS_PRNSTR             = 9             ; print string
@@ -248,17 +248,15 @@ osPrintChar:
 ;===============================================================================
 ; prints a single ASCII character:
 ;
-; in:   AF              input character
-; out:  BC|DE|HL        (preserved)
-;       AF              (preserved) -- TODO: should this be kept? +8 cycles!
+; in:   A               input character
+; out:  A, BC|DE|HL     (preserved)
 ;-------------------------------------------------------------------------------
         exx                             ; swap to shadow registers
 
-        ld      C',     BDOS_CONOUT
-        ld      E',     A
-        ex      AF,     AF'             ; TODO: use L instead?
-        call    BDOS                    ;       CP/M convention means that
-        ex      AF',    AF              ;       on BDOS return, A = L
+        ld      C',     BDOS_CONOUT     ; = BDOS function to call
+        ld      E',     A               ; = character to print
+        ld      L',     A               ; CP/M convention means that
+        call    BDOS                    ;  on BDOS return, A = L
 
         exx                             ; restore register set
         ret
@@ -266,13 +264,29 @@ osPrintChar:
 
 osPrintStr:
 ;===============================================================================
-; TODO: this relies on "$" as terminator on CPM2.2;
-;       we can speed up a byte-by-byte print a little by using direct I/O
+; print a length-prefixed string:
 ;
-; in:   DE              string addr
-; out:  C               (clobbered)
+; in:   DE              string-addr
+; out:  DE              DE is advanced according to the length of the string
+;       HL              (preserved)
+;       A, BC           (clobbered)
 ;-------------------------------------------------------------------------------
-        ld      C,      BDOS_PRNSTR
-        jp      BDOS
+        push    HL                      ; preserve HL coming in
+        ld      A,      [DE]            ; read string-length
+        ld      B,      A               ; use as counter
+        ;-----------------------------------------------------------------------
+-       inc     DE                      ; (move to next byte)
+        ld      A,      [DE]            ; read a character
+        exx                             ; swap to shadow registers
 
+        ld      E',     A               ; BDOS param for character
+        ld      C',     BDOS_CONIO      ; BDOS function to use
+        call    BDOS                    ; print character!
+
+        exx                             ; return to normal registers
+        djnz    -                       ; loop string length
+        ;-----------------------------------------------------------------------
+        inc     DE                      ; (step over last byte)
+        pop     HL                      ; restore original HL
+        ret
 .ENDB
