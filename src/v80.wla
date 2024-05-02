@@ -57,6 +57,7 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 ;   stack: usual Z80 stack; builds downwards
 ;
 .DEF    WORD_LEN        31              ; maximum symbol name length
+.DEF    STACK_SLOTS     64              ; maximum size of stack (*2 for bytes)
 
 ; the bottom of the word buffer, just above the heap, can be used
 ; as temporary space for a few bytes (so their use can't overlap)
@@ -121,17 +122,30 @@ init:
         ;
         ld      HL,     $0000           ; oddly, there's no `ld HL, SP`!
         add     HL,     SP              ; stack address, e.g. $FD00
+        ld      [sp],   HL              ; (save value for printing later)
         dec     H                       ; go down a page e.g. $FD00 > $FC00
         ld      [temp], HL              ; use bottom of stack for temp bytes
         ld      [heap], HL              ; this will also be the top of the heap
         ld      L,      WORD_LEN        ; max word-length for word buffer,
         ld      [word], HL              ;  (word buffer works downwards)
-        ld      L,      $7f             ; the expr token space starts in the
-        ld      [expr], HL              ;  middle of the page and works down
+        ld      L,  $ff-(STACK_SLOTS*2) ; the expr token space starts
+        ld      [expr], HL              ;  under the stack and works down
+
+        ; print addresses:
+        ;
+        ld      DE,     @addrc          ; start with "CODE @ ..."
+        ld      HL,     code            ; start addr of code-segment
+        call    @print                  ; print string and value
+        ld      HL,     [heap]          ; start addr of heap
+        call    @print                  ; print next string and value
+        ld      HL,     [sp]            ; start addr of stack
+        call    @print                  ; print next string and value
+        ld      A,      ASCII_LF        ; print newline
+        call    osPrintChar             ; ...
 
         ; how do you measure the maximum depth of the stack used
         ; during program execution?
-        ;
+        ;-----------------------------------------------------------------------
         ; you could record the stack depth every time you push, or at least
         ; often enough, but that slows down execution. rather, we can write
         ; an initial value to every stack space and after execution we can
@@ -150,11 +164,11 @@ init:
         ld      [sp],   SP              ; backup stack pointer
         ld      HL,     0               ; load HL with the stack pointer
         add     HL,     SP              ; (oddly, there's no `ld HL, SP`!)
-        ld      B,      64              ; push 64 words (128 bytes) to stack
+        ld      B,      STACK_SLOTS     ; number of slots allocated to stack
 -       dec     HL                      ; decrement HL first to match the
         dec     HL                      ;  stack-pointer after it pushes HL
         push    HL                      ;  (stack is decrement-then-copy)
-        djnz    -                       ; loop all 64-pushes (128 bytes)
+        djnz    -                       ; loop all stack pushes
         ld      SP,     [sp]            ; restore stack pointer
 
         ; the virtual program-counter is permanently pinned to IX since
@@ -170,11 +184,9 @@ init:
         ;
         ld      IY,     code            ; code-segment address
 
-        .memStat                        ; DEBUG: print the memory status
-        ld      HL,     [heap]          ; where symbols / expressions go
-
         ; assemble the source file
         ;=======================================================================
+        ld      HL,     [heap]          ; where symbols / expressions go
         call    assembleFile
 
         ; print final stats:
@@ -222,8 +234,7 @@ init:
         ; 
         ld      HL,     0               ; load HL with the stack pointer
         add     HL,     SP              ; (oddly, there's no `ld HL, SP`!)
-        ld      [sp],   HL              ; backup top of stack address
-        ld      BC,     64              ; begin at the top, report remaining
+        ld      BC,     STACK_SLOTS     ; begin at the top, report remaining
         ;-----------------------------------------------------------------------
 -       dec     HL                      ; (decrement into hi-byte)
         ld      A,      H               ; compare hi-byte first
@@ -234,8 +245,7 @@ init:
         cp      A,      [HL]            ;  with lo-byte in stack slot
         jr      nz,     -               ; keep looping if mismatch
         ;-----------------------------------------------------------------------
-        ; when we drop out of the loop, BC is the number of unused stack slots
-+       ld      A,      C               ;
++       ld      A,      C               ; BC is number of unused stack slots
         rla                             ; * 2 for bytes
         ld      [@stack],       A       ; save value for printing later
 
@@ -243,14 +253,14 @@ init:
         ;
         ld      DE,     @strc           ; string to print ("CODE")
         ld      HL,     [@code]         ; value to print (code size)
-        call    @print                  ; ...
+        call    @size                   ; ...
         ld      DE,     @strh           ; string to print ("HEAP")
         ld      HL,     [@heap]         ; value to print (heap size)
-        call    @print                  ; ...
+        call    @size                   ; ...
         ld      DE,     @strf           ; string to print ("FREE")
         ld      HL,     [@free]         ; value to print (free bytes)
-        call    @print                  ; ...
-        ld      DE,     @strs
+        call    @size                   ; ...
+        ld      DE,     @strs           ; string to print ("STACK")
         call    osPrintStrZ
         ld      A,      [@stack]
         call    printHexByte
@@ -265,23 +275,30 @@ init:
 @code   .WORD   $0000                   ; size of code-segment
 @free   .WORD   $0000                   ; free RAM between code and heap
 @heap   .WORD   $0000                   ; size of heap
-@stack  .BYTE   $00                     ; bytes stack used (peak)
+@stack  .WORD   $0000                   ; bytes stack used (peak)
 
         ;-----------------------------------------------------------------------
-@print: call    osPrintStrZ
-        ld      A,      H
+@print: call    osPrintStrZ             ; print string passed in DE
+        ld      A,      H               ; print HL in hi-lo byte order
         call    printHexByte
         ld      A,      L
-        call    printHexByte
-        ld      DE,     @bytes
-        jp      osPrintStrZ
+        jp      printHexByte
 
-@strc   .BYTE   "CODE: $", 0
-@strh   .BYTE   "HEAP: $", 0
-@strf   .BYTE   "FREE: $", 0
+@addrc  .BYTE   "CODE @ $", 0
+@addrh  .BYTE   ", HEAP @ $", 0
+@addrs  .BYTE   ", STACK @ $", 0
+
+        ;-----------------------------------------------------------------------
+@size:  call    @print                  ; print string (DE) and value (HL)
+        ld      DE,     @bytes          ; append " bytes"
+        jp      osPrintStrZ             ;  and return
+
+@strc   .BYTE   "\nCODE : $", 0
+@strh   .BYTE   "HEAP : $", 0
+@strf   .BYTE   "FREE : $", 0
 @bytes  .BYTE   " bytes\n", 0
-@strs   .BYTE   "STAK: $00", 0
-@peak   .BYTE   " free\n", 0
+@strs   .BYTE   "STACK: $00", 0
+@peak   .BYTE   " free", 0
 
 
 assembleFile:

@@ -215,65 +215,6 @@ _printFlags:
 ;///////////////////////////////////////////////////////////////////////////////
 .ENDIF
 
-.MACRO  .memStat
-;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-.IFDEF  DEBUG
-        ;///////////////////////////////////////////////////////////////////////
-        call    _memStat
-.ENDIF  ;///////////////////////////////////////////////////////////////////////
-;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-.ENDM
-
-.IFDEF  DEBUG
-;///////////////////////////////////////////////////////////////////////////////
-
-_memStat:
-;===============================================================================
-; prints memory status:
-;-------------------------------------------------------------------------------
-        ld      HL,     $0000           ; oddly, there's no `ld HL, SP`!
-        add     HL,     SP              ; stack address, e.g. $FCFE
-        ex      DE,     HL              ; swap SP into DE
-        ld      HL,     @stack          ; stack addr position in string
-        call    @hex                    ; convert and insert
-
-        ld      DE,     [heap]
-        ld      HL,     @heap           ; heap addr position in string
-        call    @hex                    ; convert and insert
-
-        ld      D,      IYH
-        ld      E,      IYL
-        ld      HL,     @code           ; code addr position in string
-        call    @hex                    ; convert and insert
-
-        ld      DE,     @mem
-        jp      osPrintStrZ
-
-        ;-----------------------------------------------------------------------
-        ; convert DE to ASCII hexadecimal digits and insert in the string
-        ;
-@hex:   ld      A,      D
-        call    @byte
-        ld      A,      E
-@byte:  call    getHexByte
-        ld      [HL],   B
-        inc     HL
-        ld      [HL],   C
-        inc     HL
-        ret
-
-        ;-----------------------------------------------------------------------
-@mem    .BYTE   "[stack: "
-@stack  .BYTE   "0000"
-        .BYTE   " | heap: "
-@heap   .BYTE   "0000"
-        .BYTE   " | code: "
-@code   .BYTE   "0000"
-        .BYTE   "]\n", 0
-
-;///////////////////////////////////////////////////////////////////////////////
-.ENDIF
-
 .MACRO  .printLabel
 ;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 .IFDEF  DEBUG_LABELS
