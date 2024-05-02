@@ -57,7 +57,7 @@ boot:
         ; it differs for each OS/platform
         ;
         ld      DE,     @banner         ; print the program banner
-        call    osPrintStr
+        call    osPrintStrZ
 
         ; check for an automatic file-reference,
         ; i.e. a file parameter was passed on the command line
@@ -82,13 +82,13 @@ boot:
         jp      init
 
         ;-----------------------------------------------------------------------
-@banner .BYTE   34, "v80 CP/M v0, Kroc Camen 2034-2024\n"
+@banner .BYTE   "v80 CP/M v0, Kroc Camen 2034-2024\n", 0
 
         ;=======================================================================
 @help:  ld      DE,     @@str
-        jp      osPrintStr
+        jp      osPrintStrZ
 
-@@str   .BYTE   19, "\n    V80 SOURCE.V80"
+@@str   .BYTE   "\n    V80 SOURCE.V80", 0
 
         ;=======================================================================
         ; CP/M version less than 2.2 -- call BDOS manually for safety
@@ -262,21 +262,48 @@ osPrintChar:
         ret
 
 
-osPrintStr:
+;osPrintBStr:
 ;===============================================================================
 ; print a length-prefixed string:
 ;
-; in:   DE              string-addr
+; in:   DE              string-addr, first byte is length in bytes, 1-based
 ; out:  DE              DE is advanced according to the length of the string
 ;       HL              (preserved)
 ;       A, BC           (clobbered)
 ;-------------------------------------------------------------------------------
-        push    HL                      ; preserve HL coming in
-        ld      A,      [DE]            ; read string-length
-        ld      B,      A               ; use as counter
-        ;-----------------------------------------------------------------------
--       inc     DE                      ; (move to next byte)
-        ld      A,      [DE]            ; read a character
+;        push    HL                      ; preserve HL coming in
+;        ld      A,      [DE]            ; read string-length
+;        ld      B,      A               ; use as counter
+;        ;----------------------------------------------------------------------
+;-       inc     DE                      ; (move to next byte)
+;        ld      A,      [DE]            ; read a character
+;        exx                             ; swap to shadow registers
+;
+;        ld      E',     A               ; BDOS param for character
+;        ld      C',     BDOS_CONIO      ; BDOS function to use
+;        call    BDOS                    ; print character!
+;
+;        exx                             ; return to normal registers
+;        djnz    -                       ; loop string length
+;        ;----------------------------------------------------------------------
+;        inc     DE                      ; (step over last byte)
+;        pop     HL                      ; restore original HL
+;        ret
+
+
+osPrintStrZ:
+;===============================================================================
+; print a null-terminated string:
+;
+; in:   DE              string-addr, must be 0-terminated
+; out:  DE              DE is advanced according to the length of the string
+;       A               zero, by nature of the null-terminator
+;       HL, BC          (preserved)
+;-------------------------------------------------------------------------------
+-       ld      A,      [DE]            ; read a character
+        and     A                       ; (set CPU flags!)
+        inc     DE                      ; (go to next char, does not set zf!)
+        ret     z                       ; return after null-terminator
         exx                             ; swap to shadow registers
 
         ld      E',     A               ; BDOS param for character
@@ -284,9 +311,6 @@ osPrintStr:
         call    BDOS                    ; print character!
 
         exx                             ; return to normal registers
-        djnz    -                       ; loop string length
-        ;-----------------------------------------------------------------------
-        inc     DE                      ; (step over last byte)
-        pop     HL                      ; restore original HL
-        ret
+        jr      -                       ; keep looping until null-terminator
+
 .ENDB

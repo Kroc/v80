@@ -6,24 +6,24 @@
 ;
 .BLOCK  "code-err"
 
-_strFile        .BYTE 15, "File not found!"
-_strWord        .BYTE 29, "Word too long! (max 32 chars)"
-_strOpcode      .BYTE 24, "Invalid Z80 instruction!"
-_strExpectParam .BYTE 31, "Expected instruction parameter!"
-_strExpectExpr  .BYTE 20, "Expected expression!"
-_strExpr        .BYTE 19, "Invalid expression!"
-_strKeyword     .BYTE 16, "Invalid keyword!"
-_strHex         .BYTE 27, "Invalid hexadecimal number!"
-_strLabelRedef  .BYTE 27, "Labels cannot be redefined!"
-_strLabelUndef  .BYTE 19, "Label is undefined!"
-_strExprConst   .BYTE 46, "Forward-references to labels not allowed here!"
-_strConstUndef  .BYTE 19, "Undefined constant!"
+_strFile        .BYTE "File not found!", 0
+_strWord        .BYTE "Word too long! (max 32 chars)", 0
+_strOpcode      .BYTE "Invalid Z80 instruction!", 0
+_strExpectParam .BYTE "Expected instruction parameter!", 0
+_strExpectExpr  .BYTE "Expected expression!", 0
+_strExpr        .BYTE "Invalid expression!", 0
+_strKeyword     .BYTE "Invalid keyword!", 0
+_strHex         .BYTE "Invalid hexadecimal number!", 0
+_strLabelRedef  .BYTE "Labels cannot be redefined!", 0
+_strLabelUndef  .BYTE "Label is undefined!", 0
+_strExprConst   .BYTE "Forward-references to labels not allowed here!", 0
+_strConstUndef  .BYTE "Undefined constant!", 0
 
 _printQuit:
 ;===============================================================================
 ; (print string and quit to OS)
 ;-------------------------------------------------------------------------------
-        call    osPrintStr
+        call    osPrintStrZ
         jp      osQuit
 
 errFile:

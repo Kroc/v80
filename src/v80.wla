@@ -171,36 +171,46 @@ init:
         ld      IY,     code            ; code-segment address
 
         .memStat                        ; DEBUG: print the memory status
+        ld      HL,     [heap]          ; where symbols / expressions go
 
         ; assemble the source file
         ;=======================================================================
-        ld      HL,     [heap]          ; where symbols / expressions go
         call    assembleFile
-        ld      [heap], HL
 
         ; print final stats:
         ;=======================================================================
-        push    HL                      ; preserve final heap addr for now
+        ;
+        ; +----------------+----------------------+---------------+
+        ; | code-segment > |     < free RAM >     | < heap        |
+        ; +----------------+----------------------+---------------+
+        ; ^ code           ^ IY                   ^ HL            ^ [heap]
+        ;
+        ex      DE,     HL              ; put current heap address aside
+        xor     A                       ; (clear carry)
+
+        ; size of the heap:
+        ; (works downwards from top of RAM)
+        ;
+        ld      HL,     [heap]          ; get heap starting address (high!)
+        sbc     HL,     DE              ; calculate end-start difference
+        ld      [@heap],HL              ; save value for printing later
+
+        ; free RAM size:
+        ; (size between end of code-segment and end-of-heap)
+        ;
+        ex      DE,     HL              ; return last heap addr to HL
+        push    IY                      ; swap code-segement last address
+        pop     DE                      ;  into DE for SBC HL, DE
+        sbc     HL,     DE              ; calculate end-start difference
+        ld      [@free],HL              ; save value for printing later
 
         ; size of code-segment:
         ; (size of generated binary)
         ;
-        ld      DE,     @code           ; = "code: $..." string
-        push    IY                      ; code-segment end address
-        pop     HL                      ; transfer to HL for SBC HL, BC
-        ld      BC,     code            ; code-segment start address
-        ld      DE,     @code           ; 
-        call    @size                   ; 
-
-        ; size of the heap:
-        ; the heap works downwards so we have to swap start and end values
-        ;
-        ld      DE,     @heap           ; = "heap: $..." string
-        pop     BC                      ; retrieve final heap address
-        ld      HL,     [heap]          ; get top of heap address
-        ld      [heap], BC              ; (save final heap position)
-        ld      DE,     @heap
-        call    @size                   ; print string, calc & print size
+        ex      DE,     HL              ; swap code end addr into HL
+        ld      DE,     code            ; code-segment start addr
+        sbc     HL,     DE              ; calculate end-start difference
+        ld      [@code],HL              ; save value for printing later
 
         ; how deep is your stack?
         ;
@@ -225,49 +235,53 @@ init:
         jr      nz,     -               ; keep looping if mismatch
         ;-----------------------------------------------------------------------
         ; when we drop out of the loop, BC is the number of unused stack slots
-+       ld      B,      H
-        ld      C,      L
-        ld      HL,     [sp]
-        ld      DE,     @stack
-        call    @size
++       ld      A,      C               ;
+        rla                             ; * 2 for bytes
+        ld      [@stack],       A       ; save value for printing later
 
-        ld      DE,     @str            ; print final stats string
-        call    osPrintStr
+        ; print results:
+        ;
+        ld      DE,     @strc           ; string to print ("CODE")
+        ld      HL,     [@code]         ; value to print (code size)
+        call    @print                  ; ...
+        ld      DE,     @strh           ; string to print ("HEAP")
+        ld      HL,     [@heap]         ; value to print (heap size)
+        call    @print                  ; ...
+        ld      DE,     @strf           ; string to print ("FREE")
+        ld      HL,     [@free]         ; value to print (free bytes)
+        call    @print                  ; ...
+        ld      DE,     @strs
+        call    osPrintStrZ
+        ld      A,      [@stack]
+        call    printHexByte
+        ld      DE,     @peak
+        call    osPrintStrZ
 
         .dumpCode                       ; DEBUG_DUMP: hex-dump the code-segment
-        .memStat                        ; DEBUG: print the memory status
 
         jp      osQuit                  ; jump to CP/M to quit the program
 
+        ;=======================================================================
+@code   .WORD   $0000                   ; size of code-segment
+@free   .WORD   $0000                   ; free RAM between code and heap
+@heap   .WORD   $0000                   ; size of heap
+@stack  .BYTE   $00                     ; bytes stack used (peak)
+
         ;-----------------------------------------------------------------------
-        ; calculate the size of HL-BC & write number to string in DE
-        ;
-@size:  xor     A                       ; clear carry
-        sbc     HL,     BC              ; HL = HL - BC
-        ex      DE,     HL
-        call    @word
-        ex      DE,     HL
-        ret
+@print: call    osPrintStrZ
+        ld      A,      H
+        call    printHexByte
+        ld      A,      L
+        call    printHexByte
+        ld      DE,     @bytes
+        jp      osPrintStrZ
 
-@word:  ld      A,      D
-        call    @byte
-        ld      A,      E
-@byte:  call    getHexByte
-        ld      [HL],   B
-        inc     HL
-        ld      [HL],   C
-        inc     HL
-        ret
-
-@str    .BYTE   73, "\n"
-        .BYTE   "CODE: $"
-@code   .BYTE   "0000 bytes\n"          ; size of code-segment
-        .BYTE   "FREE: $"
-@free   .BYTE   "0000 bytes\n"          ; how much RAM was free
-        .BYTE   "HEAP: $"
-@heap   .BYTE   "0000 bytes\n"          ; size of heap used
-        .BYTE   "STAK: $"
-@stack  .BYTE   "0000 bytes\n"          ; peak stack usage
+@strc   .BYTE   "CODE: $", 0
+@strh   .BYTE   "HEAP: $", 0
+@strf   .BYTE   "FREE: $", 0
+@bytes  .BYTE   " bytes\n", 0
+@strs   .BYTE   "STAK: $00", 0
+@peak   .BYTE   " free\n", 0
 
 
 assembleFile:
@@ -1105,7 +1119,7 @@ getHexByte:
         ; ...
 
         ; NOTE: multiple online sources cite this method,
-        ;       dating back to at least the 70s!
+        ;       dating back to at least the 1970s!
 @digit: and     %00001111               ; isolate low-nybble
         add     $90                     ; magic!
         daa                             ; adjust to decimal

@@ -51,6 +51,74 @@ nextParam:
         ret
 
 
+deferExpr:
+;===============================================================================
+; defer expression:
+;
+; in:   HL              heap position to push expr bytecode on to
+;       BC              length of expr bytecode (provided by `parseExpr`)
+;       [stride]        the size of the expression output to the code-segment
+;                       (known as the stride) needs to be set, either 1 for
+;                       a byte or 2 for a word
+;
+; out:  HL              updated heap position
+;       A, BC|DE        (clobbered)
+;-------------------------------------------------------------------------------
+        ; we need to push a bunch of values to the heap and the fastest way
+        ; to write 16-bit values easily is... the stack! simply make the heap
+        ; into the stack and we can PUSH our stuff on to it!
+        ;
+        ; WE DO NOT NEED TO DISABLE INTERRUPTS!!! any interrupt is going to
+        ; push to our heap and then pop the address off when it returns,
+        ; which has no effect on the values we're pushing
+        ;
+        ld      [sp],   SP              ; backup stack pointer
+        ld      SP,     HL              ; move stack to heap!
+        ;-----------------------------------------------------------------------
+
+        ; link this expression to the previous one:
+        ; (since the heap address is in SP, we can reuse HL)
+        ;
+        ld      HL,     [defer]         ; get previous deferred expr address
+        push    HL                      ; write to heap
+        ld      [defer],SP              ; write heap addr to the entry point!
+
+        ; push the current code-segment position; this is where
+        ; the expression result will be filled in after evaluation
+        push    IY
+
+        ; push the current virtual program-counter
+        ; (for calculating relative jumps)
+        push    IX                      ; PC is always stored in IX, not RAM
+
+        ; push the source file line-number
+        ld      HL,     [row]
+        push    HL
+        ; push the source file column-number, plus the number
+        ; of bytes the result should occupy in the code-segment
+        ld      HL,     [stride_col]
+        push    HL
+
+        ;-----------------------------------------------------------------------
+        ld      HL,     0               ; there is no `LD HL, SP` (!?), so
+        add     HL,     SP              ;  it's quicker to just add SP to 0!
+        ld      SP,     [sp]            ; restore stack pointer!
+
+        ; copy expression bytecode to the heap:
+        ;
+        ; note that LDDR is post-decrement (copy-then-decrement), whereas
+        ; the heap is pre-decrement like the stack (decrement-then-copy)
+        ;
+        dec     HL                      ; fix heap addr for copy-then-DEC
+        ld      DE,     [expr]
+        ex      DE,     HL
+        lddr                            ; copy BC bytes *from* [HL] *to* [DE]!
+        ex      DE,     HL
+        inc     HL                      ; fix heap addr after copy
+
+        ret
+
+
 nextExpr:
 ;===============================================================================
 ; skip spaces before parsing an expression:
@@ -327,16 +395,16 @@ evalExpr:
 
         ; evaluation consists of a running total (in DE), an operator,
         ; and the next value (in BC). we need to start the expression
-        ; with the first value, before any (non-unary) operator
+        ; with the first value, before any [non-unary] operator
         ;
         call    evalValue               ; read first value
-        ld      E,      C               ; initialise running total
-        ld      D,      B               ; 
+        ld      E,      C               ; initialise running
+        ld      D,      B               ;  total in DE
 
         call    @eval
 
-        ld      C,      E               ; copy the final total to BC
-        ld      B,      D               ; 
+        ld      C,      E               ; copy the final
+        ld      B,      D               ;  total to BC
         xor     A                       ; return carry-clear for success
         pop     HL                      ; restore heap position
 
@@ -489,7 +557,7 @@ evalValue:
 ;===============================================================================
 ; read a value:
 ;
-; read the next value and returns it in BC:
+; read the next value from expr bytecode and returns it in BC:
 ; - if present, unary operator(s) are applied before return
 ; - TODO: parentheses are evaluated recursively
 ;-------------------------------------------------------------------------------
@@ -574,76 +642,6 @@ evalValue:
 
         ex      DE,     HL              ; switch back to expr addr in HL
         pop     DE                      ; restore running total
-        ret
-
-
-deferExpr:
-;===============================================================================
-; defer expression:
-;
-; in:   A               assumed to be 0 due to the way `parseExpr` ends
-;       BC              length of expr bytecode (provided by `parseExpr`)
-;       HL              heap position to push expr bytecode on to
-;       [stride]        the size of the expression output to the code-segment
-;                       (known as the stride) needs to be set, either 1 for
-;                       a byte or 2 for a word
-;
-; out:  HL              updated heap position
-;       A, BC|DE        (clobbered)
-;-------------------------------------------------------------------------------
-        ; we need to push a bunch of values to the heap and the fastest way
-        ; to write 16-bit values easily is... the stack! simply make the heap
-        ; into the stack and we can PUSH our stuff on to it!
-        ;
-        ; WE DO NOT NEED TO DISABLE INTERRUPTS!!! any interrupt is going to
-        ; push to our heap and then pop the address off when it returns,
-        ; which has no effect on the values we're pushing
-        ;
-        ld      [sp],   SP              ; backup stack pointer
-        ld      SP,     HL              ; move stack to heap!
-        ;-----------------------------------------------------------------------
-
-        ; link this expression to the previous one:
-        ; (since the heap address is in SP, we can reuse HL)
-        ;
-        ld      HL,     [defer]         ; get previous deferred expr address
-        push    HL                      ; write to heap
-        ld      [defer],SP              ; write heap addr to the entry point!
-
-        ; push the current code-segment position; this is where
-        ; the expression result will be filled in after evaluation
-        push    IY
-
-        ; push the current virtual program-counter
-        ; (for calculating relative jumps)
-        push    IX                      ; PC is always stored in IX, not RAM
-
-        ; push the source file line-number
-        ld      HL,     [row]
-        push    HL
-        ; push the source file column-number, plus the number
-        ; of bytes the result should occupy in the code-segment
-        ld      HL,     [stride_col]
-        push    HL
-
-        ;-----------------------------------------------------------------------
-        ld      H,      A               ; A=0, so this is faster than LD HL, 0
-        ld      L,      A               ; there is no `LD HL, SP` (!?), so
-        add     HL,     SP              ;  it's quicker to just add SP to 0!
-        ld      SP,     [sp]            ; restore stack pointer!
-
-        ; copy expression bytecode to the heap:
-        ;
-        ; note that LDDR is post-decrement (copy-then-decrement), whereas
-        ; the heap is pre-decrement like the stack (decrement-then-copy)
-        ;
-        dec     HL                      ; fix heap addr for copy-then-DEC
-        ld      DE,     [expr]
-        ex      DE,     HL
-        lddr                            ; copy BC bytes *from* [HL] *to* [DE]!
-        ex      DE,     HL
-        inc     HL                      ; fix heap addr after copy
-
         ret
 
 
