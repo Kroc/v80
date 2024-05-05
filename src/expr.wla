@@ -4,7 +4,6 @@
 ; TODO: support combined unary operators (e.g. `!<`)
 ;       will work in eval but needs parser support
 ; TODO: parentheses
-; TODO: we could store the stride size in the reserved byte(s)
 ;
 .BLOCK  "code-expr"
 
@@ -14,33 +13,55 @@
 ; i.e. for deferred calculations where a symbol is not yet known
 ; (note that the actual address is filled in at runtime)
 ;
-expr:   .ADDR $fc7f                     ; expr token space (builds downwards)
-defer:  .ADDR $0000                     ; addr of last deferred expr
+expr:   .ADDR   $fc7f                   ; expr token space (builds downwards)
+defer:  .ADDR   $0000                   ; addr of last deferred expr
+param:  .BYTE   $00
 
 
-nextParam:
+parseParam:
 ;===============================================================================
 ; read an expression and write it to the code-segment:
 ;
+; in:   A               parameter size & relative-jump flag:
+;                       set to the number of bytes the parameter must occupy
+;                       in the code-segment. bit 7 set indicates relative jump
+;       *               see nextParam below for remaining parameters / returns
+;-------------------------------------------------------------------------------
+        ld      [param],        A
+
+        ; fallthrough
+        ; ...
+
+nextParam:
+;===============================================================================
+; evaluate an expression and write it to the code-segment:
+;
 ; in:   HL              current heap position -- if the expression is deferred
 ;                       it will be copied to the heap
+;       [param]         the param size & rel-flag byte must be set
+;                       (see parseParam above)
 ;
 ; out:  BC              expr value. if deferred, BC is length of expr bytecode
 ;       HL              heap addr will be modified if expr is deferred
 ;       A, DE           (clobbered)
 ;-------------------------------------------------------------------------------
+        ; parse the next expression and evaluate it. if the expression
+        ; contains a forward-reference, the parameter cannot be validated
+        ;
         call    nextExpr                ; if the expression contains a forward-
-        call    c,      deferExpr       ;  reference, defer it to the heap
+        jp      c,      deferExpr       ;  reference, defer it to the heap
 
-        ; write the result to the code-segment as opcode parameter
-        ; (if deferred, this value is meaningless)
+        ; validate size / value:
+        ;-----------------------------------------------------------------------
+        ld      A,      [param]         ; TODO: rel-flag
+
+        ; write the result to the code-segment
         ;
         ld      [IY+$00],       C       ; write value lo-byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
 
         ; TODO: error for 16-bit value in 8-bit parameter
-        ld      A,      [stride]
         dec     A
         ret     z
 
@@ -57,9 +78,6 @@ deferExpr:
 ;
 ; in:   HL              heap position to push expr bytecode on to
 ;       BC              length of expr bytecode (provided by `parseExpr`)
-;       [stride]        the size of the expression output to the code-segment
-;                       (known as the stride) needs to be set, either 1 for
-;                       a byte or 2 for a word
 ;
 ; out:  HL              updated heap position
 ;       A, BC|DE        (clobbered)
@@ -91,20 +109,32 @@ deferExpr:
         ; (for calculating relative jumps)
         push    IX                      ; PC is always stored in IX, not RAM
 
-        ; push the source file line-number
-        ld      HL,     [row]
-        push    HL
-        ; push the source file column-number, plus the number
-        ; of bytes the result should occupy in the code-segment
-        ld      HL,     [stride_col]
-        push    HL
+        ld      HL,     [row]           ; push the source file
+        push    HL                      ;  line-number (16-bits)
+        ld      HL,     [filenum_col]   ; push file-number & column-number
+        push    HL                      ; (combined because they're 1-byte ea.)
 
         ;-----------------------------------------------------------------------
         ld      HL,     0               ; there is no `LD HL, SP` (!?), so
         add     HL,     SP              ;  it's quicker to just add SP to 0!
         ld      SP,     [sp]            ; restore stack pointer!
 
-        ; copy expression bytecode to the heap:
+        ; since the expression result is not known we can't validate it and
+        ; we need to skip over the parameter bytes for now. the parameter
+        ; size & rel-flag byte needs to be kept for when the deferred expr
+        ; is reevaluated so it's written to the first reserved byte
+        ;
+        ld      A,      [param]         ; read param size + rel-flag byte
+        ld      [IY+$00],       A       ; store it in the reserved byte
+        and     %01111111               ; strip rel-flag in hi-bit
+        inc     IY                      ; step over first byte
+        inc     IX                      ; advance program-counter to match
+        dec     A                       ; is there another byte?
+        jr      z,      +               ; if not, skip ahead
+        inc     IY                      ; step over 2nd byte
+        inc     IX                      ; advance program-counter to match
+
++       ; copy expression bytecode to the heap:
         ;
         ; note that LDDR is post-decrement (copy-then-decrement), whereas
         ; the heap is pre-decrement like the stack (decrement-then-copy)
@@ -151,7 +181,7 @@ parseExpr:
 ;                       carry-set indicates the expression includes
 ;                       forward-references and couldn't be evaluated
 ;       [char]          depending where an expression ends, the last character
-;                       read can be either whitespace/eol/eof *OR* the first-
+;                       read can be either whitespace/EOL/EOF *OR* the first-
 ;                       character of the following word
 ;       A, DE           (clobbered)
 ;       HL              (preserved)
@@ -236,7 +266,7 @@ parseExpr:
         ; so an 8-bit subtraction is sufficient
         ;
 @defer: ld      B,      A               ; B must be 0 (LDDR uses BC)
-        ld      A,      $7f+1           ; start with highest addr (expr-start)
+        ld      A,      [expr]          ; start with highest addr (expr-start)
         sub     A,      L               ; subtract lowest addr (expr-end)
         ld      C,      A               ; this is the expr length (1-based)
         pop     HL                      ; restore heap addr to HL
@@ -271,6 +301,9 @@ parseExpr:
         jr      z,      +               ; a value must follow a unary operator
         ;-----------------------------------------------------------------------
         cp      CHAR_OP_NOT             ; not operator?
+        jr      z,      +               ; a value must follow a unary operator
+        ;-----------------------------------------------------------------------
+        cp      CHAR_OP_NEG             ; negate operator?
         jr      nz,     @value          ; no unary operators, check for values
 
         ; a unary operator has been added,
@@ -341,8 +374,6 @@ parseExpr:
         jr      z,      @next           ; ...
         cp      CHAR_OP_MUL             ; multiply operator?
         jr      z,      @next           ; ...
-        cp      CHAR_OP_DIV             ; divide operator?
-        jr      z,      @next           ; ...
         cp      CHAR_OP_AND             ; and operator?
         jr      z,      @next           ; ...
         cp      CHAR_OP_OR              ; or operator?
@@ -351,6 +382,10 @@ parseExpr:
         jr      z,      @next           ; ...
         cp      CHAR_OP_MOD             ; modulo operator?
         jr      z,      @next           ; ...
+        cp      CHAR_OP_DIV             ; divide operator?
+        jr      z,      @next           ; ...
+        cp      CHAR_OP_REL             ; relative operator?
+        jr      z,      @next           ; ...
 
         ; whatever it is, it isn't an operator;
         ; fall through and terminate the expression
@@ -358,7 +393,8 @@ parseExpr:
 
         ; end of expr:
         ;=======================================================================
-        ; TODO: check for heap spill here
+        ; TODO: check for heap spill here?
+        ;
 @end:   ld      A,      [@flag]         ; get the defer flag
         sla     A                       ; pop the hi-bit off into carry
         ld      [HL],   A               ; end expr with null terminator
@@ -381,7 +417,7 @@ evalExpr:
 ;       at evaluation time is a hard error!
 ;
 ; TODO: with some rearranging, we might be able to keep the running-total
-;       in BC and use DE for values
+;       in HL and use DE for the value (better for EX DE, HL + ADD|SBC HL, DE)
 ;
 ; in:   DE              addr of expr (could be [`expr`] or on the heap!)
 ; out:  BC              result value
@@ -426,8 +462,6 @@ evalExpr:
         jr      z,      @sub            ; ...
         cp      CHAR_OP_MUL             ; multiply operator?
         jr      z,      @mul            ; ...
-        cp      CHAR_OP_DIV             ; divide operator?
-        jr      z,      @div            ; ...
         cp      CHAR_OP_AND             ; bitwise AND operator?
         jr      z,      @and            ; ...
         cp      CHAR_OP_OR              ; bitiwse OR operator?
@@ -436,23 +470,25 @@ evalExpr:
         jr      z,      @xor            ; ...
         cp      CHAR_OP_MOD             ; modulo operator?
         jr      z,      @mod            ; ...
+        cp      CHAR_OP_REL             ; relative operator?
+        jr      z,      @rel            ; ...
         
-        ; only remaining operator is divide!
+        ; only remaining operator is DIV!
         ; ...
 
         ; operators:
         ;=======================================================================
         ; divide operator:
         ;-----------------------------------------------------------------------
-        push    HL                      ; preserve expr position
-        call    @div                    ; returns DE divided by BC
+@div:   push    HL                      ; preserve expr position
+        call    @dodiv                  ; returns DE divided by BC
         pop     HL                      ; restore expr position
         ret
 
         ; divide routine used from here:
         ; <http://z80-heaven.wikidot.com/math#toc15>
         ;
-@div:   ld      A,      16              ; number of bit-shifts to do
+@dodiv: ld      A,      16              ; number of bit-shifts to do
         ld      HL,     0               ; initialise remainder
         jr      +                       ; jump into divide loop
 
@@ -468,10 +504,36 @@ evalExpr:
         inc     E
         jr      -
         ;-----------------------------------------------------------------------
+        ; relative operator:
+        ;-----------------------------------------------------------------------
+        ; the relative operator is for calculating relative jumps. it works the
+        ; same as the subtract operator except the terms are reversed, with the
+        ; left being subtracted from the right to allow the program-counter to
+        ; be provided before the destination
+        ;
+        ; TODO: the full expression must be calculated on the right --
+        ;       implied parentheses -- do rel calc in nextParam?
+        ;
+@rel:   ex      DE,     HL              ; switch running total to HL
+
+        ld      A,      B               ; swap HL (running total)
+        ld      B,      H               ;  and BC (right-hand value)
+        ld      H,      A               ; ....
+        ld      A,      C               ; ...
+        ld      C,      L               ; ..
+        ld      L,      A               ; .
+
+        ; WARN: the `cp CHAR_OP_REL` that led here
+        ;       has cleared the carry flag for us!
+        ;xor     A                       ; carry must be clear for SBC HL, BC!
+        sbc     HL,     BC              ; subtract value from total
+        ex      DE,     HL              ; swap expr addr back to HL
+        ret                             ; continue evaluating
+        ;-----------------------------------------------------------------------
         ; modulo operator:
         ;-----------------------------------------------------------------------
 @mod:   push    HL                      ; preserve expr position
-        call    @div                    ; returns DE divided by BC
+        call    @dodiv                  ; returns DE divided by BC
         ex      DE,     HL              ; swap remainder to DE
         pop     HL                      ; restore expr position
         ret                             ; continue evaluating
@@ -488,7 +550,6 @@ evalExpr:
         ;-----------------------------------------------------------------------
         ; TODO: err on underflow?
 @sub:   ex      DE,     HL              ; switch running total to HL
-        xor     A                       ; clear carry!
         sbc     HL,     BC              ; subtract value from total
         ex      DE,     HL              ; swap expr addr back to HL
         ret                             ; continue evaluating
@@ -555,7 +616,7 @@ evalExpr:
 
 evalValue:
 ;===============================================================================
-; read a value:
+; evaluate a value from expr bytecode:
 ;
 ; read the next value from expr bytecode and returns it in BC:
 ; - if present, unary operator(s) are applied before return
@@ -584,6 +645,8 @@ evalValue:
         jr      z,      @lo             ; ...
         cp      CHAR_OP_HI              ; hi-byte unary operator?
         jr      z,      @hi             ; ...
+        cp      CHAR_OP_NEG             ; negate unary operator?
+        jr      z,      @neg
 
         ; ...
 
@@ -607,6 +670,19 @@ evalValue:
 @hi:    ld      C,      B               ; swap the hi-byte into the lo-byte
         ld      B,      0               ;  and clear the hi-byte
         ret
+        ;-----------------------------------------------------------------------
+        ; NEGate unary operator:
+        ;-----------------------------------------------------------------------
+        ; 16-bit negate taken from:
+        ; <www.smspower.org/Development/Z80ProgrammingTechniques#x16bitNeg>
+        ;
+@neg:   xor     A                       ; set A to zero and clear flags
+        sub     C                       ; do 0-C
+        ld      C,      A               ; .
+        sbc     A,      A               ; set A to 0 or -1 based on carry
+        sub     B                       ; do 0-B (+carry)
+        ld      B,      A               ; .
+        ret                             ; WARN: carry may be set!
 
         ;=======================================================================
         ; read a number literal:

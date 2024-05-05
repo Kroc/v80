@@ -198,7 +198,7 @@ osGetChar:
         ; if a sector has not been read, then fetch from disk first.
         ; CP/M uses 128-byte records and reads 1 record at a time
         ;
-        ld      A,      [HL']           ; current index, 0 if uninitialised
+        ld      A,      [HL']           ; current index, 0 if uninitialized
         and     A                       ; (set flags!)
         jr      nz,     @index          ; skip if at least 1-byte read
 

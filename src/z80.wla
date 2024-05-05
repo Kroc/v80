@@ -67,11 +67,10 @@ emitOpcode:
         ;
         and     %00000001               ; LSB indicates 2-bytes
         adc     1                       ; add at least 1-byte
-        ld      [stride],       A       ; set width of parameter
 
         ; parse the following expression and
         ; write the value to the code-segment
-        jp      nextParam
+        jp      parseParam
 
         ;=======================================================================
         ; handle IX|IY opcodes: (bit 5 chooses between IX & IY)
@@ -116,23 +115,21 @@ emitOpcode:
         xor     A                       ; set A to zero
         rrc     B                       ; pop off bit 0 of opcode-flags
         adc     1                       ; add that bit, if present
-        ld      [stride],       A       ; set width of parameter
 
         ; parse the following expression and
         ; write the value to the code-segment
-        jp      nextParam
+        jp      parseParam
 
         ;-----------------------------------------------------------------------
         ; handle two-parameter instruction special case:
         ;
-@two:   inc     A
-        ld      [stride],       A       ; (set the parameter width to 1 byte)
+@two:   inc     A                       ; (set the parameter width to 1-byte)
 
         ; the first expression will read to the first character of the next
         ; word following the expression, or a newline / end-of-file. since
         ; a 2nd parameter is expected, newline or end-of-file is an error!
         ;
-        call    nextParam               ; parse 1st parameter
+        call    parseParam              ; parse 1st parameter
         jp      nextParam               ; parse 2nd parameter
 
         ;-----------------------------------------------------------------------
@@ -146,7 +143,8 @@ emitOpcode:
 
         ; parse the following expression and
         ; write the value to the code-segment
-        call    nextParam
+        ld      A,      1
+        call    parseParam
 
         pop     BC                      ; retrieve delayed opcode
         ld      [IY+$00],       C       ; emit opcode byte

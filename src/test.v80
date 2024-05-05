@@ -9,7 +9,7 @@
 $0000
 
 ; start the line with `$` to set the virtual program-counter
-; using en expression. be aware that forward-references to
+; using an expression. be aware that forward-references to
 ; labels cannot be used when setting the program-counter
 ;
 $	$ + $0100
@@ -23,6 +23,7 @@ $	$ + $0100
 ;
 :w	.w :w			; simple back-reference
 	.w :b			; forward reference to a label
+	.w $ ~ :w
 :b	.b >:w			; back reference to a label
 	.b <:b			; label address should be known now
 

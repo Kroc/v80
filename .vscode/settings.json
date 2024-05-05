@@ -42,5 +42,19 @@
         "BDOS",
         "Camen",
         "djnz"
-    ]
+    ],
+    "spellright.language": [
+        "en"
+    ],
+    "spellright.documentTypes": [
+        "markdown",
+        "latex",
+        "plaintext",
+        "wla-dx-asm"
+    ],
+    "spellright.parserByClass": {
+        "wla-dx-asm": {
+            "parser": "code"
+        }
+    }
 }

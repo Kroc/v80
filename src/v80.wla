@@ -30,6 +30,7 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 .DEF    CHAR_OP_LO      '<'             ; lo-byte unary operator
 .DEF    CHAR_OP_HI      '>'             ; hi-byte unary operator
 .DEF    CHAR_OP_NOT     '!'             ; not unary operator
+.DEF    CHAR_OP_NEG     '-'             ; negate unary operator
 .DEF    CHAR_OP_ADD     '+'             ; add operator
 .DEF    CHAR_OP_SUB     '-'             ; subtract operator
 .DEF    CHAR_OP_MUL     '*'             ; multiply operator
@@ -38,6 +39,7 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 .DEF    CHAR_OP_OR      '|'             ; or operator
 .DEF    CHAR_OP_XOR     '^'             ; xor operator
 .DEF    CHAR_OP_MOD     '\'             ; modulo operator
+.DEF    CHAR_OP_REL     '~'             ; relative operator (for jumps)
 
 .INC    "expr.wla"                      ; expression parsing and evaluation
 .INC    "z80.wla"                       ; Z80 parser & opcode binary tree
@@ -74,8 +76,8 @@ char:   .BYTE $00                       ; current input character
 ; NOTE: these two bytes are specifically grouped together because they
 ;       are required by deferred expressions written to the heap,
 ;       and are pushed together as a single word
-stride_col:
-stride: .BYTE $00                       ; number of bytes to occupy
+filenum_col:
+filenum:.BYTE $00                       ; current file number
 col:    .BYTE $00                       ; current column-number in file
 row:    .WORD $0000                     ; current line-number in file
 
@@ -511,16 +513,17 @@ assemble:
         ;-----------------------------------------------------------------------
         ; words:
         ;-----------------------------------------------------------------------
-@w:     ld      A,              2       ; set the stride to 2 (words)
+@w:     ld      A,              2       ; set parameter size to 2 (words)
         jr      +                       ; TODO: use a skip opcode here
         ;-----------------------------------------------------------------------
         ; bytes:
         ;-----------------------------------------------------------------------
-@b:     ld      A,              1       ; set the stride to 1 (bytes)
-+       ld      [stride],       A
+@b:     ld      A,              1       ; set parameter size to 1 (bytes)
++       ld      [param],        A       ; save parameter size to reuse
 
         ; parse expression and output to code-segment. deferred
-        ; expressions will automatically be pushed to the heap
+        ; expressions will automatically be pushed to the heap:
+        ;
 -       call    nextParam
 
         ; the last character read by expression parsing will be either EOL/EOF,
