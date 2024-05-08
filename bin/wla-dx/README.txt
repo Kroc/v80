@@ -1,459 +1,488 @@
-wla-dx v10.1 documentation
+wla-dx v10.6 documentation
 
 * 1. Introduction
 
-* 2. Assembler Directives
+* 2. Quickstart
 
-  * 2.1. ".16BIT"
+* 3. Assembler Directives
 
-  * 2.2. ".24BIT"
+  * 3.1. ".16BIT"
 
-  * 2.3. ".8BIT"
+  * 3.2. ".24BIT"
 
-  * 2.4. ".ACCU 8"
+  * 3.3. ".8BIT"
 
-  * 2.5. ".ADDR 16000, main, 255"
+  * 3.4. ".ACCU 8"
 
-  * 2.6. ".ARRAYDB NAME MyArray INDICES '0', 0, 1"
+  * 3.5. ".ADDR 16000, main, 255"
 
-  * 2.7. ".ARRAYDD NAME MyArray INDICES '0', 0, 1"
+  * 3.6. ".ALIGN 4"
 
-  * 2.8. ".ARRAYDEF NAME MyArray SIZE 256"
+  * 3.7. ".ARRAYDB NAME MyArray INDICES '0', 0, 1"
 
-  * 2.9. ".ARRAYDEFINE NAME MyArray SIZE 256"
+  * 3.8. ".ARRAYDD NAME MyArray INDICES '0', 0, 1"
 
-  * 2.10. ".ARRAYDL NAME MyArray INDICES '0', 0, 1"
+  * 3.9. ".ARRAYDEF NAME MyArray SIZE 256"
 
-  * 2.11. ".ARRAYDW NAME MyArray INDICES '0', 0, 1"
+  * 3.10. ".ARRAYDEFINE NAME MyArray SIZE 256"
 
-  * 2.12. ".ARRAYIN NAME MyArray INDEX 0 VALUE 10"
+  * 3.11. ".ARRAYDL NAME MyArray INDICES '0', 0, 1"
 
-  * 2.13. ".ARRAYOUT NAME MyArray INDEX 0 DEFINITION ArrayOut"
+  * 3.12. ".ARRAYDW NAME MyArray INDICES '0', 0, 1"
 
-  * 2.14. ".ASC "HELLO WORLD!""
+  * 3.13. ".ARRAYIN NAME MyArray INDEX 0 VALUE 10"
 
-  * 2.15. ".ASCIITABLE"
+  * 3.14. ".ARRAYOUT NAME MyArray INDEX 0 DEFINITION ArrayOut"
 
-  * 2.16. ".ASCSTR "HELLO WORLD!", $A"
+  * 3.15. ".ASC "HELLO WORLD!""
 
-  * 2.17. ".ASCTABLE"
+  * 3.16. ".ASCIITABLE"
 
-  * 2.18. ".ASM"
+  * 3.17. ".ASCSTR "HELLO WORLD!", $A"
 
-  * 2.19. ".BACKGROUND "parallax.gb""
+  * 3.18. ".ASCTABLE"
 
-  * 2.20. ".BANK 0 SLOT 1"
+  * 3.19. ".ASM"
 
-  * 2.21. ".BASE $80"
+  * 3.20. ".ASSERT VALUE_1 == 1"
 
-  * 2.22. ".BITS 4 DATA %1011, %0100, %1010, %0101"
+  * 3.21. ".BACKGROUND "parallax.gb""
 
-  * 2.23. ".BLOCK "Block1""
+  * 3.22. ".BANK 0 SLOT 1"
 
-  * 2.24. ".BREAKPOINT"
+  * 3.23. ".BASE $80"
 
-  * 2.25. ".BR"
+  * 3.24. ".BITS 4 DATA %1011, %0100, %1010, %0101"
 
-  * 2.26. ".BYT 100, $30, %1000, "HELLO WORLD!""
+  * 3.25. ".BLOCK "Block1""
 
-  * 2.27. ".CARTRIDGETYPE 1"
+  * 3.26. ".BR"
 
-  * 2.28. ".COMPUTEGBCHECKSUM"
+  * 3.27. ".BREAK"
 
-  * 2.29. ".COMPUTEGBCOMPLEMENTCHECK"
+  * 3.28. ".BREAKPOINT"
 
-  * 2.30. ".COMPUTESMSCHECKSUM"
+  * 3.29. ".BYT 100, $30, %1000, "HELLO WORLD!""
 
-  * 2.31. ".COMPUTESNESCHECKSUM"
+  * 3.30. ".CARTRIDGETYPE 1"
 
-  * 2.32. ".COUNTRYCODE 1"
+  * 3.31. ".COMPUTEGBCHECKSUM"
 
-  * 2.33. ".DATA $ff00, 2"
+  * 3.32. ".COMPUTEGBCOMPLEMENTCHECK"
 
-  * 2.34. ".DB 100, $30, %1000, "HELLO WORLD!""
+  * 3.33. ".COMPUTESMDCHECKSUM"
 
-  * 2.35. ".DBCOS 0.2, 10, 3.2, 120, 1.3"
+  * 3.34. ".COMPUTESMSCHECKSUM"
 
-  * 2.36. ".DBM filtermacro 1, 2, "encrypt me""
+  * 3.35. ".COMPUTESNESCHECKSUM"
 
-  * 2.37. ".DBRND 20, 0, 10"
+  * 3.36. ".CONTINUE"
 
-  * 2.38. ".DBSIN 0.2, 10, 3.2, 120, 1.3"
+  * 3.37. ".COUNTRYCODE 1"
 
-  * 2.39. ".DD $1ffffff, $2000000"
+  * 3.38. ".DATA $ff00, 2"
 
-  * 2.40. ".DDM filtermacro 1, 2, 3"
+  * 3.39. ".DB 100, $30, %1000, "HELLO WORLD!""
 
-  * 2.41. ".DEF IF $FF0F"
+  * 3.40. ".DBCOS 0.2, 10, 3.2, 120, 1.3"
 
-  * 2.42. ".DEFINE IF $FF0F"
+  * 3.41. ".DBM filtermacro 1, 2, "encrypt me""
 
-  * 2.43. ".DESTINATIONCODE 1"
+  * 3.42. ".DBRND 20, 0, 10"
 
-  * 2.44. ".DL $102030, $405060"
+  * 3.43. ".DBSIN 0.2, 10, 3.2, 120, 1.3"
 
-  * 2.45. ".DLM filtermacro 1, 2, 3"
+  * 3.44. ".DD $1ffffff, $2000000"
 
-  * 2.46. ".DS 256, $10"
+  * 3.45. ".DDM filtermacro 1, 2, 3"
 
-  * 2.47. ".DSB 256, $10"
+  * 3.46. ".DEF IF $FF0F"
 
-  * 2.48. ".DSD 256, $1ffffff"
+  * 3.47. ".DEFINE IF $FF0F"
 
-  * 2.49. ".DSL 16, $102030"
+  * 3.48. ".DESTINATIONCODE 1"
 
-  * 2.50. ".DSTRUCT waterdrop INSTANCEOF water VALUES"
+  * 3.49. ".DL $102030, $405060"
 
-  * 2.51. ".DSW 128, 20"
+  * 3.50. ".DLM filtermacro 1, 2, 3"
 
-  * 2.52. ".DW 16000, 10, 255"
+  * 3.51. ".DS 256, $10"
 
-  * 2.53. ".DWCOS 0.2, 10, 3.2, 1024, 1.3"
+  * 3.52. ".DSB 256, $10"
 
-  * 2.54. ".DWM filtermacro 1, 2, 3"
+  * 3.53. ".DSD 256, $1ffffff"
 
-  * 2.55. ".DWRND 20, 0, 10"
+  * 3.54. ".DSL 16, $102030"
 
-  * 2.56. ".DWSIN 0.2, 10, 3.2, 1024, 1.3"
+  * 3.55. ".DSTRUCT waterdrop INSTANCEOF water VALUES"
 
-  * 2.57. ".ELIF defined(DEBUG) && VERSION > 110"
+  * 3.56. ".DSW 128, 20"
 
-  * 2.58. ".ELSE"
+  * 3.57. ".DW 16000, 10, 255"
 
-  * 2.59. ".EMPTYFILL $C9"
+  * 3.58. ".DWCOS 0.2, 10, 3.2, 1024, 1.3"
 
-  * 2.60. ".ENDASM"
+  * 3.59. ".DWM filtermacro 1, 2, 3"
 
-  * 2.61. ".ENDA"
+  * 3.60. ".DWRND 20, 0, 10"
 
-  * 2.62. ".ENDB"
+  * 3.61. ".DWSIN 0.2, 10, 3.2, 1024, 1.3"
 
-  * 2.63. ".ENDBITS"
+  * 3.62. ".ELIF defined(DEBUG) && VERSION > 110"
 
-  * 2.64. ".ENDEMUVECTOR"
+  * 3.63. ".ELSE"
 
-  * 2.65. ".ENDE"
+  * 3.64. ".EMPTYFILL $C9"
 
-  * 2.66. ".ENDIF"
+  * 3.65. ".ENDASM"
 
-  * 2.67. ".ENDME"
+  * 3.66. ".ENDA"
 
-  * 2.68. ".ENDM"
+  * 3.67. ".ENDB"
 
-  * 2.69. ".ENDNATIVEVECTOR"
+  * 3.68. ".ENDBITS"
 
-  * 2.70. ".ENDRO"
+  * 3.69. ".ENDEMUVECTOR"
 
-  * 2.71. ".ENDR"
+  * 3.70. ".ENDE"
 
-  * 2.72. ".ENDSNES"
+  * 3.71. ".ENDIF"
 
-  * 2.73. ".ENDST"
+  * 3.72. ".ENDME"
 
-  * 2.74. ".ENDS"
+  * 3.73. ".ENDM"
 
-  * 2.75. ".ENDU"
+  * 3.74. ".ENDNATIVEVECTOR"
 
-  * 2.76. ".ENUM $C000"
+  * 3.75. ".ENDRO"
 
-  * 2.77. ".ENUMID ID_1 0"
+  * 3.76. ".ENDR"
 
-  * 2.78. ".EQU IF $FF0F"
+  * 3.77. ".ENDSNES"
 
-  * 2.79. ".EXHIROM"
+  * 3.78. ".ENDST"
 
-  * 2.80. ".EXPORT work_x"
+  * 3.79. ".ENDS"
 
-  * 2.81. ".FAIL "THE EYE OF MORDOR HAS SEEN US!""
+  * 3.80. ".ENDU"
 
-  * 2.82. ".FARADDR main, irq_1"
+  * 3.81. ".ENUM $C000"
 
-  * 2.83. ".FASTROM"
+  * 3.82. ".ENUMID ID_1 0"
 
-  * 2.84. ".FCLOSE FP_DATABIN"
+  * 3.83. ".EQU IF $FF0F"
 
-  * 2.85. ".FILTER filtermacro 1, 2, "encrypt me""
+  * 3.84. ".EXHIROM"
 
-  * 2.86. ".FOPEN "data.bin" FP_DATABIN"
+  * 3.85. ".EXPORT work_x"
 
-  * 2.87. ".FREAD FP_DATABIN DATA"
+  * 3.86. ".FAIL "THE EYE OF MORDOR HAS SEEN US!""
 
-  * 2.88. ".FSEEK FP_DATABIN 10 START"
+  * 3.87. ".FARADDR main, irq_1"
 
-  * 2.89. ".FSIZE FP_DATABIN SIZE"
+  * 3.88. ".FASTROM"
 
-  * 2.90. ".FTELL FP_DATABIN POSITION"
+  * 3.89. ".FCLOSE FP_DATABIN"
 
-  * 2.91. ".GBHEADER"
+  * 3.90. ".FILTER filtermacro 1, 2, "encrypt me""
 
-  * 2.92. ".HEX "a0A0ffDE""
+  * 3.91. ".FOPEN "data.bin" FP_DATABIN"
 
-  * 2.93. ".HIROM"
+  * 3.92. ".FREAD FP_DATABIN DATA"
 
-  * 2.94. ".IF DEBUG == 2"
+  * 3.93. ".FSEEK FP_DATABIN 10 START"
 
-  * 2.95. ".IFDEF IF"
+  * 3.94. ".FSIZE FP_DATABIN SIZE"
 
-  * 2.96. ".IFDEFM \2"
+  * 3.95. ".FTELL FP_DATABIN POSITION"
 
-  * 2.97. ".IFEQ DEBUG 2"
+  * 3.96. ".FUNCTION SUM_AB(varA,varB)"
 
-  * 2.98. ".IFEXISTS "main.s""
+  * 3.97. ".GBHEADER"
 
-  * 2.99. ".IFGR DEBUG 2"
+  * 3.98. ".HEX "a0A0ffDE""
 
-  * 2.100. ".IFGREQ DEBUG 2"
+  * 3.99. ".HIROM"
 
-  * 2.101. ".IFLE DEBUG 2"
+  * 3.100. ".IF DEBUG == 2"
 
-  * 2.102. ".IFLEEQ DEBUG 2"
+  * 3.101. ".IFDEF IF"
 
-  * 2.103. ".IFNDEF IF"
+  * 3.102. ".IFDEFM \2"
 
-  * 2.104. ".IFNDEFM \2"
+  * 3.103. ".IFEQ DEBUG 2"
 
-  * 2.105. ".IFNEQ DEBUG 2"
+  * 3.104. ".IFEXISTS "main.s""
 
-  * 2.106. ".INC "cgb_hardware.i""
+  * 3.105. ".IFGR DEBUG 2"
 
-  * 2.107. ".INCBIN "sorority.bin""
+  * 3.106. ".IFGREQ DEBUG 2"
 
-  * 2.108. ".INCDIR "/usr/programming/gb/include/""
+  * 3.107. ".IFLE DEBUG 2"
 
-  * 2.109. ".INCLUDE "cgb_hardware.i""
+  * 3.108. ".IFLEEQ DEBUG 2"
 
-  * 2.110. ".INDEX 8"
+  * 3.109. ".IFNDEF IF"
 
-  * 2.111. ".INPUT NAME"
+  * 3.110. ".IFNDEFM \2"
 
-  * 2.112. ".LICENSEECODENEW "1A""
+  * 3.111. ".IFNEQ DEBUG 2"
 
-  * 2.113. ".LICENSEECODEOLD $1A"
+  * 3.112. ".INC "cgb_hardware.i""
 
-  * 2.114. ".LONG $102030, $405060"
+  * 3.113. ".INCBIN "sorority.bin""
 
-  * 2.115. ".LOROM"
+  * 3.114. ".INCDIR "/usr/programming/gb/include/""
 
-  * 2.116. ".MACRO TEST"
+  * 3.115. ".INCLUDE "cgb_hardware.i""
 
-  * 2.117. ".MEMORYMAP"
+  * 3.116. ".INDEX 8"
 
-  * 2.118. ".NAME "NAME OF THE ROM""
+  * 3.117. ".INPUT NAME"
 
-  * 2.119. ".NEXTU name"
+  * 3.118. ".LICENSEECODENEW "1A""
 
-  * 2.120. ".NINTENDOLOGO"
+  * 3.119. ".LICENSEECODEOLD $1A"
 
-  * 2.121. ".NOWDC"
+  * 3.120. ".LONG $102030, $405060"
 
-  * 2.122. ".ORG $150"
+  * 3.121. ".LOROM"
 
-  * 2.123. ".ORGA $150"
+  * 3.122. ".MACRO TEST"
 
-  * 2.124. ".OUTNAME "other.o""
+  * 3.123. ".MEMORYMAP"
 
-  * 2.125. ".PRINT "Numbers 1 and 10: ", DEC 1, " $", HEX 10, "\n""
+  * 3.124. ".NAME "NAME OF THE ROM""
 
-  * 2.126. ".PRINTT "Here we are...\n""
+  * 3.125. ".NEXTU name"
 
-  * 2.127. ".PRINTV DEC DEBUG+1"
+  * 3.126. ".NINTENDOLOGO"
 
-  * 2.128. ".RAMSECTION "Vars" BANK 0 SLOT 1 ALIGN 256 OFFSET 32"
+  * 3.127. ".NOWDC"
 
-  * 2.129. ".RAMSIZE 0"
+  * 3.128. ".ORG $150"
 
-  * 2.130. ".REDEF IF $0F"
+  * 3.129. ".ORGA $150"
 
-  * 2.131. ".REDEFINE IF $0F"
+  * 3.130. ".OUTNAME "other.o""
 
-  * 2.132. ".REPEAT 6"
+  * 3.131. ".PRINT "Numbers 1 and 10: ", DEC 1, " $", HEX 10, "\n""
 
-  * 2.133. ".REPT 6"
+  * 3.132. ".PRINTT "Here we are...\n""
 
-  * 2.134. ".ROMBANKMAP"
+  * 3.133. ".PRINTV DEC DEBUG+1"
 
-  * 2.135. ".ROMBANKS 2"
+  * 3.134. ".RAMSECTION "Vars" BASE $7E BANK 0 SLOT 1 ALIGN 256 OFFSET
+    32"
 
-  * 2.136. ".ROMBANKSIZE $4000"
+  * 3.135. ".RAMSIZE 0"
 
-  * 2.137. ".ROMDMG"
+  * 3.136. ".REDEF IF $0F"
 
-  * 2.138. ".ROMGBCONLY"
+  * 3.137. ".REDEFINE IF $0F"
 
-  * 2.139. ".ROMGBC"
+  * 3.138. ".REPEAT 6"
 
-  * 2.140. ".ROMSGB"
+  * 3.139. ".REPT 6"
 
-  * 2.141. ".ROW $ff00, 1, "3""
+  * 3.140. ".ROMBANKMAP"
 
-  * 2.142. ".SDSCTAG 1.0, "DUNGEON MAN", "A wild dungeon exploration
+  * 3.141. ".ROMBANKS 2"
+
+  * 3.142. ".ROMBANKSIZE $4000"
+
+  * 3.143. ".ROMDMG"
+
+  * 3.144. ".ROMGBCONLY"
+
+  * 3.145. ".ROMGBC"
+
+  * 3.146. ".ROMSGB"
+
+  * 3.147. ".ROMSIZE 1"
+
+  * 3.148. ".ROW $ff00, 1, "3""
+
+  * 3.149. ".SDSCTAG 1.0, "DUNGEON MAN", "A wild dungeon exploration
     game", "Ville Helin""
 
-  * 2.143. ".SECTION "Init" FORCE"
+  * 3.150. ".SECTION "Init" FORCE"
 
-  * 2.144. ".SEED 123"
+  * 3.151. ".SEED 123"
 
-  * 2.145. ".SHIFT"
+  * 3.152. ".SEEDRANDOM"
 
-  * 2.146. ".SLOT 1"
+  * 3.153. ".SHIFT"
 
-  * 2.147. ".SLOWROM"
+  * 3.154. ".SLOT 1"
 
-  * 2.148. ".SMC"
+  * 3.155. ".SLOWROM"
 
-  * 2.149. ".SMSHEADER"
+  * 3.156. ".SMC"
 
-  * 2.150. ".SMSTAG"
+  * 3.157. ".SMDHEADER"
 
-  * 2.151. ".SNESEMUVECTOR"
+  * 3.158. ".SMSHEADER"
 
-  * 2.152. ".SNESHEADER"
+  * 3.159. ".SMSTAG"
 
-  * 2.153. ".SNESNATIVEVECTOR"
+  * 3.160. ".SNESEMUVECTOR"
 
-  * 2.154. ".STRINGMAP script "Hello\n""
+  * 3.161. ".SNESHEADER"
 
-  * 2.155. ".STRINGMAPTABLE script "script.tbl""
+  * 3.162. ".SNESNATIVEVECTOR"
 
-  * 2.156. ".STRUCT enemy_object"
+  * 3.163. ".STRINGMAP script "Hello\n""
 
-  * 2.157. ".SYM SAUSAGE"
+  * 3.164. ".STRINGMAPTABLE script "script.tbl""
 
-  * 2.158. ".SYMBOL SAUSAGE"
+  * 3.165. ".STRUCT enemy_object"
 
-  * 2.159. ".TABLE byte, word, byte"
+  * 3.166. ".SYM SAUSAGE"
 
-  * 2.160. ".UNBACKGROUND $1000 $1FFF"
+  * 3.167. ".SYMBOL SAUSAGE"
 
-  * 2.161. ".UNDEF DEBUG"
+  * 3.168. ".TABLE byte, word, byte"
 
-  * 2.162. ".UNDEFINE DEBUG"
+  * 3.169. ".UNBACKGROUND $1000 $1FFF"
 
-  * 2.163. ".UNION name"
+  * 3.170. ".UNDEF DEBUG"
 
-  * 2.164. ".VERSION 1"
+  * 3.171. ".UNDEFINE DEBUG"
 
-  * 2.165. ".WDC"
+  * 3.172. ".UNION name"
 
-  * 2.166. ".WORD 16000, 10, 255"
+  * 3.173. ".VERSION 1"
 
-* 3. Assembler Syntax
+  * 3.174. ".WDC"
 
-  * 3.1. Case Sensitivity
+  * 3.175. ".WHILE COUNTER > 0"
 
-  * 3.2. Comments
+  * 3.176. ".WORD 16000, 10, 255"
 
-  * 3.3. Line splitting
+* 4. Assembler Syntax
 
-  * 3.4. Labels
+  * 4.1. Case Sensitivity
 
-  * 3.5. Number Types
+  * 4.2. Comments
 
-  * 3.6. Strings
+  * 4.3. Line splitting
 
-  * 3.7. Substitution
+  * 4.4. Using Commas
 
-  * 3.8. Mnemonics
+  * 4.5. Labels
 
-  * 3.9. Brackets?
+  * 4.6. Number Types
 
-* 4. Error Messages
+  * 4.7. Strings
 
-* 5. Supported ROM/RAM/Cartridge Types (WLA-GB)
+  * 4.8. Substitution
 
-  * 5.1. ROM Size
+  * 4.9. Mnemonics
 
-  * 5.2. RAM Size
+  * 4.10. Brackets?
 
-  * 5.3. Cartridge Type
+* 5. Error Messages
 
-* 6. Bugs
+* 6. Supported ROM/RAM/Cartridge Types (WLA-GB)
 
-* 7. Files
+  * 6.1. ROM Size
 
-  * 7.1. "tests"
+  * 6.2. RAM Size
 
-  * 7.2. "tests/gb-z80/lib"
+  * 6.3. Cartridge Type
 
-  * 7.3. "memorymaps"
+* 7. Bugs
 
-* 8. Functions
+* 8. Files
 
-  * 8.1. Built-in functions
+  * 8.1. "tests"
 
-  * 8.2. Examples of functions
+  * 8.2. "tests/gb-z80/lib"
 
-* 9. Temporary Files
+  * 8.3. "memorymaps"
 
-* 10. Compiling
+* 9. Functions
 
-  * 10.1. Compiling Object Files
+  * 9.1. User defined functions
 
-  * 10.2. Compiling Library Files
+  * 9.2. Built-in functions
 
-* 11. Linking
+  * 9.3. Examples of functions
 
-* 12. Arithmetics
+* 10. Temporary Files
 
-* 13. Binary to DB Conversion
+* 11. Compiling
 
-* 14. Things you should know about coding for…
+  * 11.1. Compiling Object Files
 
-  * 14.1. Z80
+  * 11.2. Compiling Library Files
 
-  * 14.2. 6502
+* 12. Linking
 
-  * 14.3. 65C02
+* 13. Arithmetics
 
-  * 14.4. 65CE02
+* 14. Binary to DB Conversion
 
-  * 14.5. 6510
+* 15. Things you should know about coding for…
 
-  * 14.6. 65816
+  * 15.1. Z80
 
-  * 14.7. HUC6280
+  * 15.2. 6502
 
-  * 14.8. SPC-700
+  * 15.3. 65C02
 
-  * 14.9. Pocket Voice (GB-Z80)
+  * 15.4. 65CE02
 
-  * 14.10. GB-Z80
+  * 15.5. 65816
 
-* 15. WLA Flags
+  * 15.6. HUC6280
 
-* 16. Extra compile time definitions
+  * 15.7. SPC-700
 
-* 17. Good things to know about WLA
+  * 15.8. Pocket Voice (GB-Z80)
 
-* 18. WLA DX’s architectural overview
+  * 15.9. GB-Z80
 
-  * 18.1. WLA
+* 16. WLA Flags
 
-  * 18.2. WLALINK
+* 17. Extra compile time definitions
 
-* 19. WLA Symbols
+* 18. Good things to know about WLA
 
-  * 19.1. WLA Symbol Version History
+* 19. WLA DX’s architectural overview
 
-  * 19.2. Information For Emulator Developers
+  * 19.1. WLA
 
-    * 19.2.1. [information]
+  * 19.2. WLALINK
 
-    * 19.2.2. [labels]
+* 20. WLA Symbols
 
-    * 19.2.3. [definitions]
+  * 20.1. WLA Symbol Version History
 
-    * 19.2.4. [breakpoints]
+  * 20.2. Information For Emulator Developers
 
-    * 19.2.5. [symbols]
+    * 20.2.1. [information]
 
-    * 19.2.6. [source files v2]
+    * 20.2.2. [labels]
 
-    * 19.2.7. [rom checksum]
+    * 20.2.3. [definitions]
 
-    * 19.2.8. [addr-to-line mapping v2]
+    * 20.2.4. [breakpoints]
 
-* 20. Legal Note
+    * 20.2.5. [symbols]
+
+    * 20.2.6. [source files v2]
+
+    * 20.2.7. [rom checksum]
+
+    * 20.2.8. [addr-to-line mapping v2]
+
+    * 20.2.9. [sections]
+
+    * 20.2.10. [ramsections]
+
+* 21. Legal Note
 
 * 1. Manpage: WLA-LINK
 
@@ -488,15 +517,15 @@ The history behind WLA DX, from the original author, Ville Helin:
 Good to know about WLA DX:
 
 Almost all rules that apply to Z80 source code processing with WLA DX
-apply also to 6502, 65C02, 65CE02, 6510, 65816, 6800, 6801, 6809,
-8008, 8080, HUC6280, SPC-700 and SuperFX.
+apply also to 6502, 65C02, 65CE02, 65816, 6800, 6801, 6809, 8008,
+8080, HUC6280, SPC-700 and SuperFX.
 
 About the names: WLA DX means all the tools covered in this
 documentation. So WLA DX includes WLA
-GB-Z80/Z80/6502/65C02/65CE02/6510/65816/6800/6801/6809/
+GB-Z80/Z80/6502/65C02/65CE02/65816/6800/6801/6809/
 8008/8080/HUC6280/SPC-700/SuperFX macro assembler (what a horribly
 long name), WLAB, and WLALINK
-GB-Z80/Z80/6502/65C02/65CE02/6510/65816/6800/6801/6809/8008/8080/
+GB-Z80/Z80/6502/65C02/65CE02/65816/6800/6801/6809/8008/8080/
 HUC6280/SPC-700/SuperFX linker. We use plain WLA to refer to the macro
 assembler in this document.
 
@@ -517,6 +546,44 @@ ROM/program file.
    WLA DX’s new homepage: https://github.com/vhelin/wla-dx
 
 
+Quickstart
+**********
+
+Every assembly file needs to begin with the definition of ".MEMORYMAP"
+and ".ROMBANKMAP". You can put these inside a separate file that is
+included at the beginning of the assembly files. Here’s an example:
+
+   .MEMORYMAP
+   DEFAULTSLOT 1
+   SLOT 0 START $0000 SIZE $2000
+   SLOT 1 START $2000 SIZE $2000
+   .ENDME
+
+   .ROMBANKMAP
+   BANKSTOTAL 2
+   BANKSIZE $2000
+   BANKS 8
+   .ENDRO
+
+Right after these, before any code is written, you should define bank,
+slot and org:
+
+   .BANK 0 SLOT 0
+   .ORGA $0000
+
+Now you are ready to start programming!
+
+The next step would be creating a linkfile for the linker as after the
+assembly files go through the assembler they need to be linked. Here
+is a minimal example of a linkfile when your project has just main.s
+(that has been assembled into main.o):
+
+   [objects]
+   main.o
+
+Give this to the linker and you’ll get the final binaries.
+
+
 Assembler Directives
 ********************
 
@@ -530,37 +597,41 @@ Here’s the order in which the data is placed into the output:
 
 4. Group 1 directives.
 
-+-----+-----------------------------------------------------------------------+
-| ALL | All, GB-Z80, Z80, 6502, 65C02, 65CE02, 6510, 65816, HUC6280, SPC-700, |
-|     | 6800, 6801, 6809, 8008, 8080 and SuperFX versions apply.              |
-+-----+-----------------------------------------------------------------------+
-| GB  | Only the GB-Z80 version applies.                                      |
-+-----+-----------------------------------------------------------------------+
-| GB8 | Only the GB-Z80 and 65816 versions apply.                             |
-+-----+-----------------------------------------------------------------------+
-| Z80 | Only the Z80 version applies.                                         |
-+-----+-----------------------------------------------------------------------+
-| 658 | Only the 65816 version applies.                                       |
-+-----+-----------------------------------------------------------------------+
-| 680 | Only the 6800, 6801 and 6809 versions apply.                          |
-+-----+-----------------------------------------------------------------------+
-| 800 | Only the 8008 version applies.                                        |
-+-----+-----------------------------------------------------------------------+
-| 808 | Only the 8080 version applies.                                        |
-+-----+-----------------------------------------------------------------------+
-| SPC | Only the SPC-700 version applies.                                     |
-+-----+-----------------------------------------------------------------------+
-| SFX | Only the SuperFX version applies.                                     |
-+-----+-----------------------------------------------------------------------+
-| 65x | Only the 6502, 65C02, 65CE02, 6510, 65816 and HUC6280 versions apply. |
-+-----+-----------------------------------------------------------------------+
-| !GB | All but the GB-Z80 versions apply.                                    |
-+-----+-----------------------------------------------------------------------+
++-----+------------------------------------------------------------------+
+| ALL | All, GB-Z80, Z80, 6502, 65C02, 65CE02, 65816, HUC6280, SPC-700,  |
+|     | 68000, 6800, 6801, 6809, 8008, 8080 and SuperFX versions apply.  |
++-----+------------------------------------------------------------------+
+| GB  | Only the GB-Z80 version applies.                                 |
++-----+------------------------------------------------------------------+
+| GB8 | Only the GB-Z80 and 65816 versions apply.                        |
++-----+------------------------------------------------------------------+
+| Z80 | Only the Z80 version applies.                                    |
++-----+------------------------------------------------------------------+
+| 658 | Only the 65816 version applies.                                  |
++-----+------------------------------------------------------------------+
+| 68K | Only the 68000 version applies.                                  |
++-----+------------------------------------------------------------------+
+| 680 | Only the 6800, 6801 and 6809 versions apply.                     |
++-----+------------------------------------------------------------------+
+| 800 | Only the 8008 version applies.                                   |
++-----+------------------------------------------------------------------+
+| 808 | Only the 8080 version applies.                                   |
++-----+------------------------------------------------------------------+
+| SPC | Only the SPC-700 version applies.                                |
++-----+------------------------------------------------------------------+
+| SFX | Only the SuperFX version applies.                                |
++-----+------------------------------------------------------------------+
+| 65x | Only the 6502, 65C02, 65CE02, 65816 and HUC6280 versions apply.  |
++-----+------------------------------------------------------------------+
+| !GB | All but the GB-Z80 versions apply.                               |
++-----+------------------------------------------------------------------+
 
 Group 1:
 
 +-----+------------------------------------------------------------------------------------+
 | GB  | ".COMPUTEGBCHECKSUM"                                                               |
++-----+------------------------------------------------------------------------------------+
+| 68K | ".COMPUTESMDCHECKSUM"                                                              |
 +-----+------------------------------------------------------------------------------------+
 | Z80 | ".COMPUTESMSCHECKSUM"                                                              |
 +-----+------------------------------------------------------------------------------------+
@@ -622,9 +693,13 @@ Group 2:
 +-----+---------------------------------+
 | GB  | ".ROMSGB"                       |
 +-----+---------------------------------+
+| GB  | ".ROMSIZE 1"                    |
++-----+---------------------------------+
 | 658 | ".SLOWROM"                      |
 +-----+---------------------------------+
 | 658 | ".SMC"                          |
++-----+---------------------------------+
+| 68K | ".SMDHEADER"                    |
 +-----+---------------------------------+
 | Z80 | ".SMSHEADER"                    |
 +-----+---------------------------------+
@@ -639,267 +714,281 @@ Group 2:
 
 Group 3:
 
-+-----+------------------------------------------------------------------+
-| 65x | ".16BIT"                                                         |
-+-----+------------------------------------------------------------------+
-| 658 | ".24BIT"                                                         |
-+-----+------------------------------------------------------------------+
-| 65x | ".8BIT"                                                          |
-+-----+------------------------------------------------------------------+
-| 658 | ".ACCU 8"                                                        |
-+-----+------------------------------------------------------------------+
-| ALL | ".ADDR 16000, main, 255"                                         |
-+-----+------------------------------------------------------------------+
-| ALL | ".ARRAYDB NAME MyArray INDICES '0', 0, 1"                        |
-+-----+------------------------------------------------------------------+
-| ALL | ".ARRAYDD NAME MyArray INDICES '0', 0, 1"                        |
-+-----+------------------------------------------------------------------+
-| ALL | ".ARRAYDEF NAME MyArray SIZE 256"                                |
-+-----+------------------------------------------------------------------+
-| ALL | ".ARRAYDEFINE NAME MyArray SIZE 256"                             |
-+-----+------------------------------------------------------------------+
-| ALL | ".ARRAYDL NAME MyArray INDICES '0', 0, 1"                        |
-+-----+------------------------------------------------------------------+
-| ALL | ".ARRAYDW NAME MyArray INDICES '0', 0, 1"                        |
-+-----+------------------------------------------------------------------+
-| ALL | ".ARRAYIN NAME MyArray INDEX 0 VALUE 10"                         |
-+-----+------------------------------------------------------------------+
-| ALL | ".ARRAYOUT NAME MyArray INDEX 0 DEFINITION ArrayOut"             |
-+-----+------------------------------------------------------------------+
-| ALL | ".ASC "HELLO WORLD!""                                            |
-+-----+------------------------------------------------------------------+
-| ALL | ".ASCIITABLE"                                                    |
-+-----+------------------------------------------------------------------+
-| ALL | ".ASCSTR "HELLO WORLD!", $A"                                     |
-+-----+------------------------------------------------------------------+
-| ALL | ".ASCTABLE"                                                      |
-+-----+------------------------------------------------------------------+
-| ALL | ".ASM"                                                           |
-+-----+------------------------------------------------------------------+
-| ALL | ".BACKGROUND "parallax.gb""                                      |
-+-----+------------------------------------------------------------------+
-| ALL | ".BANK 0 SLOT 1"                                                 |
-+-----+------------------------------------------------------------------+
-| ALL | ".BASE $80"                                                      |
-+-----+------------------------------------------------------------------+
-| ALL | ".BITS 4 DATA %1011, %0100, %1010, %0101"                        |
-+-----+------------------------------------------------------------------+
-| ALL | ".BLOCK "Block1""                                                |
-+-----+------------------------------------------------------------------+
-| ALL | ".BR"                                                            |
-+-----+------------------------------------------------------------------+
-| ALL | ".BREAKPOINT"                                                    |
-+-----+------------------------------------------------------------------+
-| ALL | ".BYT 100, $30, %1000, "HELLO WORLD!""                           |
-+-----+------------------------------------------------------------------+
-| ALL | ".DATA $ff00, 2"                                                 |
-+-----+------------------------------------------------------------------+
-| ALL | ".DB 100, $30, %1000, "HELLO WORLD!""                            |
-+-----+------------------------------------------------------------------+
-| ALL | ".DBCOS 0.2, 10, 3.2, 120, 1.3"                                  |
-+-----+------------------------------------------------------------------+
-| ALL | ".DBM filtermacro 1, 2, "encrypt me""                            |
-+-----+------------------------------------------------------------------+
-| ALL | ".DBRND 20, 0, 10"                                               |
-+-----+------------------------------------------------------------------+
-| ALL | ".DBSIN 0.2, 10, 3.2, 120, 1.3"                                  |
-+-----+------------------------------------------------------------------+
-| ALL | ".DD $1ffffff, $2000000"                                         |
-+-----+------------------------------------------------------------------+
-| ALL | ".DDM filtermacro 1, 2, 3"                                       |
-+-----+------------------------------------------------------------------+
-| ALL | ".DEF IF $FF0F"                                                  |
-+-----+------------------------------------------------------------------+
-| ALL | ".DEFINE IF $FF0F"                                               |
-+-----+------------------------------------------------------------------+
-| ALL | ".DL $102030, $405060"                                           |
-+-----+------------------------------------------------------------------+
-| ALL | ".DLM filtermacro 1, 2, 3"                                       |
-+-----+------------------------------------------------------------------+
-| ALL | ".DS 256, $10"                                                   |
-+-----+------------------------------------------------------------------+
-| ALL | ".DSB 256, $10"                                                  |
-+-----+------------------------------------------------------------------+
-| ALL | ".DSD 256, $1ffffff"                                             |
-+-----+------------------------------------------------------------------+
-| ALL | ".DSL 16, $102030"                                               |
-+-----+------------------------------------------------------------------+
-| ALL | ".DSTRUCT waterdrop INSTANCEOF water DATA "tingle", 40, 120"     |
-+-----+------------------------------------------------------------------+
-| ALL | ".DSW 128, 20"                                                   |
-+-----+------------------------------------------------------------------+
-| ALL | ".DW 16000, 10, 255"                                             |
-+-----+------------------------------------------------------------------+
-| ALL | ".DWCOS 0.2, 10, 3.2, 1024, 1.3"                                 |
-+-----+------------------------------------------------------------------+
-| ALL | ".DWM filtermacro 1, 2, 3"                                       |
-+-----+------------------------------------------------------------------+
-| ALL | ".DWRND 20, 0, 10"                                               |
-+-----+------------------------------------------------------------------+
-| ALL | ".DWSIN 0.2, 10, 3.2, 1024, 1.3"                                 |
-+-----+------------------------------------------------------------------+
-| ALL | ".ELIF defined(DEBUG) && VERSION > 110"                          |
-+-----+------------------------------------------------------------------+
-| ALL | ".ELSE"                                                          |
-+-----+------------------------------------------------------------------+
-| ALL | ".ENDA"                                                          |
-+-----+------------------------------------------------------------------+
-| ALL | ".ENDASM"                                                        |
-+-----+------------------------------------------------------------------+
-| ALL | ".ENDB"                                                          |
-+-----+------------------------------------------------------------------+
-| ALL | ".ENDBITS"                                                       |
-+-----+------------------------------------------------------------------+
-| ALL | ".ENDE"                                                          |
-+-----+------------------------------------------------------------------+
-| ALL | ".ENDIF"                                                         |
-+-----+------------------------------------------------------------------+
-| ALL | ".ENDM"                                                          |
-+-----+------------------------------------------------------------------+
-| ALL | ".ENDME"                                                         |
-+-----+------------------------------------------------------------------+
-| ALL | ".ENDR"                                                          |
-+-----+------------------------------------------------------------------+
-| ALL | ".ENDRO"                                                         |
-+-----+------------------------------------------------------------------+
-| ALL | ".ENDS"                                                          |
-+-----+------------------------------------------------------------------+
-| ALL | ".ENDST"                                                         |
-+-----+------------------------------------------------------------------+
-| ALL | ".ENDU"                                                          |
-+-----+------------------------------------------------------------------+
-| ALL | ".ENUM $C000"                                                    |
-+-----+------------------------------------------------------------------+
-| ALL | ".ENUMID ID_1 0"                                                 |
-+-----+------------------------------------------------------------------+
-| ALL | ".EQU IF $FF0F"                                                  |
-+-----+------------------------------------------------------------------+
-| ALL | ".FAIL "THE EYE OF MORDOR HAS SEEN US!""                         |
-+-----+------------------------------------------------------------------+
-| ALL | ".FARADDR main, irq_1"                                           |
-+-----+------------------------------------------------------------------+
-| ALL | ".FCLOSE FP_DATABIN"                                             |
-+-----+------------------------------------------------------------------+
-| ALL | ".FILTER filtermacro 1, 2, "encrypt me""                         |
-+-----+------------------------------------------------------------------+
-| ALL | ".FOPEN "data.bin" FP_DATABIN"                                   |
-+-----+------------------------------------------------------------------+
-| ALL | ".FREAD FP_DATABIN DATA"                                         |
-+-----+------------------------------------------------------------------+
-| ALL | ".FSEEK FP_DATABIN 10 START"                                     |
-+-----+------------------------------------------------------------------+
-| ALL | ".FSIZE FP_DATABIN SIZE"                                         |
-+-----+------------------------------------------------------------------+
-| ALL | ".FTELL FP_DATABIN POSITION"                                     |
-+-----+------------------------------------------------------------------+
-| ALL | ".HEX "a0A0ffDE""                                                |
-+-----+------------------------------------------------------------------+
-| ALL | ".IF DEBUG == 2"                                                 |
-+-----+------------------------------------------------------------------+
-| ALL | ".IFDEF IF"                                                      |
-+-----+------------------------------------------------------------------+
-| ALL | ".IFDEFM \2"                                                     |
-+-----+------------------------------------------------------------------+
-| ALL | ".IFEQ DEBUG 2"                                                  |
-+-----+------------------------------------------------------------------+
-| ALL | ".IFEXISTS "main.s""                                             |
-+-----+------------------------------------------------------------------+
-| ALL | ".IFGR DEBUG 2"                                                  |
-+-----+------------------------------------------------------------------+
-| ALL | ".IFGREQ DEBUG 1"                                                |
-+-----+------------------------------------------------------------------+
-| ALL | ".IFLE DEBUG 2"                                                  |
-+-----+------------------------------------------------------------------+
-| ALL | ".IFLEEQ DEBUG 1"                                                |
-+-----+------------------------------------------------------------------+
-| ALL | ".IFNDEF IF"                                                     |
-+-----+------------------------------------------------------------------+
-| ALL | ".IFNDEFM \2"                                                    |
-+-----+------------------------------------------------------------------+
-| ALL | ".IFNEQ DEBUG 2"                                                 |
-+-----+------------------------------------------------------------------+
-| ALL | ".INC "cgb_hardware.i""                                          |
-+-----+------------------------------------------------------------------+
-| ALL | ".INCBIN "sorority.bin""                                         |
-+-----+------------------------------------------------------------------+
-| ALL | ".INCDIR "/usr/programming/gb/include/""                         |
-+-----+------------------------------------------------------------------+
-| ALL | ".INCLUDE "cgb_hardware.i""                                      |
-+-----+------------------------------------------------------------------+
-| 658 | ".INDEX 8"                                                       |
-+-----+------------------------------------------------------------------+
-| ALL | ".INPUT NAME"                                                    |
-+-----+------------------------------------------------------------------+
-| ALL | ".LONG $102030, $405060"                                         |
-+-----+------------------------------------------------------------------+
-| ALL | ".MACRO TEST"                                                    |
-+-----+------------------------------------------------------------------+
-| ALL | ".MEMORYMAP"                                                     |
-+-----+------------------------------------------------------------------+
-| ALL | ".NEXTU name"                                                    |
-+-----+------------------------------------------------------------------+
-| 658 | ".NOWDC"                                                         |
-+-----+------------------------------------------------------------------+
-| ALL | ".ORG $150"                                                      |
-+-----+------------------------------------------------------------------+
-| ALL | ".ORGA $150"                                                     |
-+-----+------------------------------------------------------------------+
-| ALL | ".PRINT "Numbers 1 and 10: ", DEC 1, " $", HEX 10, "\n""         |
-+-----+------------------------------------------------------------------+
-| ALL | ".PRINTT "Here we are...\n""                                     |
-+-----+------------------------------------------------------------------+
-| ALL | ".PRINTV DEC DEBUG+1"                                            |
-+-----+------------------------------------------------------------------+
-| ALL | ".RAMSECTION "Vars" BANK 0 SLOT 1 ALIGN 256 OFFSET 32"           |
-+-----+------------------------------------------------------------------+
-| ALL | ".REDEF IF $F"                                                   |
-+-----+------------------------------------------------------------------+
-| ALL | ".REDEFINE IF $F"                                                |
-+-----+------------------------------------------------------------------+
-| ALL | ".REPEAT 6"                                                      |
-+-----+------------------------------------------------------------------+
-| ALL | ".REPT 6"                                                        |
-+-----+------------------------------------------------------------------+
-| ALL | ".ROMBANKMAP"                                                    |
-+-----+------------------------------------------------------------------+
-| ALL | ".ROMBANKS 2"                                                    |
-+-----+------------------------------------------------------------------+
-| ALL | ".ROMBANKSIZE $4000"                                             |
-+-----+------------------------------------------------------------------+
-| ALL | ".ROW $ff00, 1, "3""                                             |
-+-----+------------------------------------------------------------------+
-| ALL | ".SECTION "Init" FORCE"                                          |
-+-----+------------------------------------------------------------------+
-| ALL | ".SEED 123"                                                      |
-+-----+------------------------------------------------------------------+
-| ALL | ".SHIFT"                                                         |
-+-----+------------------------------------------------------------------+
-| ALL | ".SLOT 1"                                                        |
-+-----+------------------------------------------------------------------+
-| ALL | ".STRINGMAP script "Hello\n""                                    |
-+-----+------------------------------------------------------------------+
-| ALL | ".STRINGMAPTABLE script "script.tbl""                            |
-+-----+------------------------------------------------------------------+
-| ALL | ".STRUCT enemy_object"                                           |
-+-----+------------------------------------------------------------------+
-| ALL | ".SYM SAUSAGE"                                                   |
-+-----+------------------------------------------------------------------+
-| ALL | ".SYMBOL SAUSAGE"                                                |
-+-----+------------------------------------------------------------------+
-| ALL | ".TABLE byte, word, byte"                                        |
-+-----+------------------------------------------------------------------+
-| ALL | ".UNBACKGROUND $1000 $1FFF"                                      |
-+-----+------------------------------------------------------------------+
-| ALL | ".UNDEF DEBUG"                                                   |
-+-----+------------------------------------------------------------------+
-| ALL | ".UNDEFINE DEBUG"                                                |
-+-----+------------------------------------------------------------------+
-| ALL | ".UNION name"                                                    |
-+-----+------------------------------------------------------------------+
-| 658 | ".WDC"                                                           |
-+-----+------------------------------------------------------------------+
-| ALL | ".WORD 16000, 10, 255"                                           |
-+-----+------------------------------------------------------------------+
++-----+--------------------------------------------------------------------+
+| 65x | ".16BIT"                                                           |
++-----+--------------------------------------------------------------------+
+| 658 | ".24BIT"                                                           |
++-----+--------------------------------------------------------------------+
+| 65x | ".8BIT"                                                            |
++-----+--------------------------------------------------------------------+
+| 658 | ".ACCU 8"                                                          |
++-----+--------------------------------------------------------------------+
+| ALL | ".ADDR 16000, main, 255"                                           |
++-----+--------------------------------------------------------------------+
+| ALL | ".ALIGN 4"                                                         |
++-----+--------------------------------------------------------------------+
+| ALL | ".ARRAYDB NAME MyArray INDICES '0', 0, 1"                          |
++-----+--------------------------------------------------------------------+
+| ALL | ".ARRAYDD NAME MyArray INDICES '0', 0, 1"                          |
++-----+--------------------------------------------------------------------+
+| ALL | ".ARRAYDEF NAME MyArray SIZE 256"                                  |
++-----+--------------------------------------------------------------------+
+| ALL | ".ARRAYDEFINE NAME MyArray SIZE 256"                               |
++-----+--------------------------------------------------------------------+
+| ALL | ".ARRAYDL NAME MyArray INDICES '0', 0, 1"                          |
++-----+--------------------------------------------------------------------+
+| ALL | ".ARRAYDW NAME MyArray INDICES '0', 0, 1"                          |
++-----+--------------------------------------------------------------------+
+| ALL | ".ARRAYIN NAME MyArray INDEX 0 VALUE 10"                           |
++-----+--------------------------------------------------------------------+
+| ALL | ".ARRAYOUT NAME MyArray INDEX 0 DEFINITION ArrayOut"               |
++-----+--------------------------------------------------------------------+
+| ALL | ".ASC "HELLO WORLD!""                                              |
++-----+--------------------------------------------------------------------+
+| ALL | ".ASCIITABLE"                                                      |
++-----+--------------------------------------------------------------------+
+| ALL | ".ASCSTR "HELLO WORLD!", $A"                                       |
++-----+--------------------------------------------------------------------+
+| ALL | ".ASCTABLE"                                                        |
++-----+--------------------------------------------------------------------+
+| ALL | ".ASM"                                                             |
++-----+--------------------------------------------------------------------+
+| ALL | ".ASSERT VALUE_1 == 1"                                             |
++-----+--------------------------------------------------------------------+
+| ALL | ".BACKGROUND "parallax.gb""                                        |
++-----+--------------------------------------------------------------------+
+| ALL | ".BANK 0 SLOT 1"                                                   |
++-----+--------------------------------------------------------------------+
+| ALL | ".BASE $80"                                                        |
++-----+--------------------------------------------------------------------+
+| ALL | ".BITS 4 DATA %1011, %0100, %1010, %0101"                          |
++-----+--------------------------------------------------------------------+
+| ALL | ".BLOCK "Block1""                                                  |
++-----+--------------------------------------------------------------------+
+| ALL | ".BR"                                                              |
++-----+--------------------------------------------------------------------+
+| ALL | ".BREAK"                                                           |
++-----+--------------------------------------------------------------------+
+| ALL | ".BREAKPOINT"                                                      |
++-----+--------------------------------------------------------------------+
+| ALL | ".BYT 100, $30, %1000, "HELLO WORLD!""                             |
++-----+--------------------------------------------------------------------+
+| ALL | ".CONTINUE"                                                        |
++-----+--------------------------------------------------------------------+
+| ALL | ".DATA $ff00, 2"                                                   |
++-----+--------------------------------------------------------------------+
+| ALL | ".DB 100, $30, %1000, "HELLO WORLD!""                              |
++-----+--------------------------------------------------------------------+
+| ALL | ".DBCOS 0.2, 10, 3.2, 120, 1.3"                                    |
++-----+--------------------------------------------------------------------+
+| ALL | ".DBM filtermacro 1, 2, "encrypt me""                              |
++-----+--------------------------------------------------------------------+
+| ALL | ".DBRND 20, 0, 10"                                                 |
++-----+--------------------------------------------------------------------+
+| ALL | ".DBSIN 0.2, 10, 3.2, 120, 1.3"                                    |
++-----+--------------------------------------------------------------------+
+| ALL | ".DD $1ffffff, $2000000"                                           |
++-----+--------------------------------------------------------------------+
+| ALL | ".DDM filtermacro 1, 2, 3"                                         |
++-----+--------------------------------------------------------------------+
+| ALL | ".DEF IF $FF0F"                                                    |
++-----+--------------------------------------------------------------------+
+| ALL | ".DEFINE IF $FF0F"                                                 |
++-----+--------------------------------------------------------------------+
+| ALL | ".DL $102030, $405060"                                             |
++-----+--------------------------------------------------------------------+
+| ALL | ".DLM filtermacro 1, 2, 3"                                         |
++-----+--------------------------------------------------------------------+
+| ALL | ".DS 256, $10"                                                     |
++-----+--------------------------------------------------------------------+
+| ALL | ".DSB 256, $10"                                                    |
++-----+--------------------------------------------------------------------+
+| ALL | ".DSD 256, $1ffffff"                                               |
++-----+--------------------------------------------------------------------+
+| ALL | ".DSL 16, $102030"                                                 |
++-----+--------------------------------------------------------------------+
+| ALL | ".DSTRUCT waterdrop INSTANCEOF water DATA "tingle", 40, 120"       |
++-----+--------------------------------------------------------------------+
+| ALL | ".DSW 128, 20"                                                     |
++-----+--------------------------------------------------------------------+
+| ALL | ".DW 16000, 10, 255"                                               |
++-----+--------------------------------------------------------------------+
+| ALL | ".DWCOS 0.2, 10, 3.2, 1024, 1.3"                                   |
++-----+--------------------------------------------------------------------+
+| ALL | ".DWM filtermacro 1, 2, 3"                                         |
++-----+--------------------------------------------------------------------+
+| ALL | ".DWRND 20, 0, 10"                                                 |
++-----+--------------------------------------------------------------------+
+| ALL | ".DWSIN 0.2, 10, 3.2, 1024, 1.3"                                   |
++-----+--------------------------------------------------------------------+
+| ALL | ".ELIF defined(DEBUG) && VERSION > 110"                            |
++-----+--------------------------------------------------------------------+
+| ALL | ".ELSE"                                                            |
++-----+--------------------------------------------------------------------+
+| ALL | ".ENDA"                                                            |
++-----+--------------------------------------------------------------------+
+| ALL | ".ENDASM"                                                          |
++-----+--------------------------------------------------------------------+
+| ALL | ".ENDB"                                                            |
++-----+--------------------------------------------------------------------+
+| ALL | ".ENDBITS"                                                         |
++-----+--------------------------------------------------------------------+
+| ALL | ".ENDE"                                                            |
++-----+--------------------------------------------------------------------+
+| ALL | ".ENDIF"                                                           |
++-----+--------------------------------------------------------------------+
+| ALL | ".ENDM"                                                            |
++-----+--------------------------------------------------------------------+
+| ALL | ".ENDME"                                                           |
++-----+--------------------------------------------------------------------+
+| ALL | ".ENDR"                                                            |
++-----+--------------------------------------------------------------------+
+| ALL | ".ENDRO"                                                           |
++-----+--------------------------------------------------------------------+
+| ALL | ".ENDS"                                                            |
++-----+--------------------------------------------------------------------+
+| ALL | ".ENDST"                                                           |
++-----+--------------------------------------------------------------------+
+| ALL | ".ENDU"                                                            |
++-----+--------------------------------------------------------------------+
+| ALL | ".ENUM $C000"                                                      |
++-----+--------------------------------------------------------------------+
+| ALL | ".ENUMID ID_1 0"                                                   |
++-----+--------------------------------------------------------------------+
+| ALL | ".EQU IF $FF0F"                                                    |
++-----+--------------------------------------------------------------------+
+| ALL | ".FAIL "THE EYE OF MORDOR HAS SEEN US!""                           |
++-----+--------------------------------------------------------------------+
+| ALL | ".FARADDR main, irq_1"                                             |
++-----+--------------------------------------------------------------------+
+| ALL | ".FCLOSE FP_DATABIN"                                               |
++-----+--------------------------------------------------------------------+
+| ALL | ".FILTER filtermacro 1, 2, "encrypt me""                           |
++-----+--------------------------------------------------------------------+
+| ALL | ".FOPEN "data.bin" FP_DATABIN"                                     |
++-----+--------------------------------------------------------------------+
+| ALL | ".FREAD FP_DATABIN DATA"                                           |
++-----+--------------------------------------------------------------------+
+| ALL | ".FSEEK FP_DATABIN 10 START"                                       |
++-----+--------------------------------------------------------------------+
+| ALL | ".FSIZE FP_DATABIN SIZE"                                           |
++-----+--------------------------------------------------------------------+
+| ALL | ".FTELL FP_DATABIN POSITION"                                       |
++-----+--------------------------------------------------------------------+
+| ALL | ".FUNCTION SUM_AB(varA,varB)"                                      |
++-----+--------------------------------------------------------------------+
+| ALL | ".HEX "a0A0ffDE""                                                  |
++-----+--------------------------------------------------------------------+
+| ALL | ".IF DEBUG == 2"                                                   |
++-----+--------------------------------------------------------------------+
+| ALL | ".IFDEF IF"                                                        |
++-----+--------------------------------------------------------------------+
+| ALL | ".IFDEFM \2"                                                       |
++-----+--------------------------------------------------------------------+
+| ALL | ".IFEQ DEBUG 2"                                                    |
++-----+--------------------------------------------------------------------+
+| ALL | ".IFEXISTS "main.s""                                               |
++-----+--------------------------------------------------------------------+
+| ALL | ".IFGR DEBUG 2"                                                    |
++-----+--------------------------------------------------------------------+
+| ALL | ".IFGREQ DEBUG 1"                                                  |
++-----+--------------------------------------------------------------------+
+| ALL | ".IFLE DEBUG 2"                                                    |
++-----+--------------------------------------------------------------------+
+| ALL | ".IFLEEQ DEBUG 1"                                                  |
++-----+--------------------------------------------------------------------+
+| ALL | ".IFNDEF IF"                                                       |
++-----+--------------------------------------------------------------------+
+| ALL | ".IFNDEFM \2"                                                      |
++-----+--------------------------------------------------------------------+
+| ALL | ".IFNEQ DEBUG 2"                                                   |
++-----+--------------------------------------------------------------------+
+| ALL | ".INC "cgb_hardware.i""                                            |
++-----+--------------------------------------------------------------------+
+| ALL | ".INCBIN "sorority.bin""                                           |
++-----+--------------------------------------------------------------------+
+| ALL | ".INCDIR "/usr/programming/gb/include/""                           |
++-----+--------------------------------------------------------------------+
+| ALL | ".INCLUDE "cgb_hardware.i""                                        |
++-----+--------------------------------------------------------------------+
+| 658 | ".INDEX 8"                                                         |
++-----+--------------------------------------------------------------------+
+| ALL | ".INPUT NAME"                                                      |
++-----+--------------------------------------------------------------------+
+| ALL | ".LONG $102030, $405060"                                           |
++-----+--------------------------------------------------------------------+
+| ALL | ".MACRO TEST"                                                      |
++-----+--------------------------------------------------------------------+
+| ALL | ".MEMORYMAP"                                                       |
++-----+--------------------------------------------------------------------+
+| ALL | ".NEXTU name"                                                      |
++-----+--------------------------------------------------------------------+
+| 658 | ".NOWDC"                                                           |
++-----+--------------------------------------------------------------------+
+| ALL | ".ORG $150"                                                        |
++-----+--------------------------------------------------------------------+
+| ALL | ".ORGA $150"                                                       |
++-----+--------------------------------------------------------------------+
+| ALL | ".PRINT "Numbers 1 and 10: ", DEC 1, " $", HEX 10, "\n""           |
++-----+--------------------------------------------------------------------+
+| ALL | ".PRINTT "Here we are...\n""                                       |
++-----+--------------------------------------------------------------------+
+| ALL | ".PRINTV DEC DEBUG+1"                                              |
++-----+--------------------------------------------------------------------+
+| ALL | ".RAMSECTION "Vars" BASE $7E BANK 0 SLOT 1 ALIGN 256 OFFSET 32"    |
++-----+--------------------------------------------------------------------+
+| ALL | ".REDEF IF $F"                                                     |
++-----+--------------------------------------------------------------------+
+| ALL | ".REDEFINE IF $F"                                                  |
++-----+--------------------------------------------------------------------+
+| ALL | ".REPEAT 6"                                                        |
++-----+--------------------------------------------------------------------+
+| ALL | ".REPT 6"                                                          |
++-----+--------------------------------------------------------------------+
+| ALL | ".ROMBANKMAP"                                                      |
++-----+--------------------------------------------------------------------+
+| ALL | ".ROMBANKS 2"                                                      |
++-----+--------------------------------------------------------------------+
+| ALL | ".ROMBANKSIZE $4000"                                               |
++-----+--------------------------------------------------------------------+
+| ALL | ".ROW $ff00, 1, "3""                                               |
++-----+--------------------------------------------------------------------+
+| ALL | ".SECTION "Init" FORCE"                                            |
++-----+--------------------------------------------------------------------+
+| ALL | ".SEED 123"                                                        |
++-----+--------------------------------------------------------------------+
+| ALL | ".SEEDRANDOM"                                                      |
++-----+--------------------------------------------------------------------+
+| ALL | ".SHIFT"                                                           |
++-----+--------------------------------------------------------------------+
+| ALL | ".SLOT 1"                                                          |
++-----+--------------------------------------------------------------------+
+| ALL | ".STRINGMAP script "Hello\n""                                      |
++-----+--------------------------------------------------------------------+
+| ALL | ".STRINGMAPTABLE script "script.tbl""                              |
++-----+--------------------------------------------------------------------+
+| ALL | ".STRUCT enemy_object"                                             |
++-----+--------------------------------------------------------------------+
+| ALL | ".SYM SAUSAGE"                                                     |
++-----+--------------------------------------------------------------------+
+| ALL | ".SYMBOL SAUSAGE"                                                  |
++-----+--------------------------------------------------------------------+
+| ALL | ".TABLE byte, word, byte"                                          |
++-----+--------------------------------------------------------------------+
+| ALL | ".UNBACKGROUND $1000 $1FFF"                                        |
++-----+--------------------------------------------------------------------+
+| ALL | ".UNDEF DEBUG"                                                     |
++-----+--------------------------------------------------------------------+
+| ALL | ".UNDEFINE DEBUG"                                                  |
++-----+--------------------------------------------------------------------+
+| ALL | ".UNION name"                                                      |
++-----+--------------------------------------------------------------------+
+| 658 | ".WDC"                                                             |
++-----+--------------------------------------------------------------------+
+| ALL | ".WHILE COUNTER > 0"                                               |
++-----+--------------------------------------------------------------------+
+| ALL | ".WORD 16000, 10, 255"                                             |
++-----+--------------------------------------------------------------------+
 
 Descriptions:
 
@@ -971,8 +1060,8 @@ examples:
    LSR 11.B   ; $46 $0B
    LSR 11.W   ; $4E $0B $00
 
-In WLA-65816 ".ACCU"/".INDEX"/"SEP"/"REP" override
-".8BIT"/".16BIT"/".24BIT" when considering the immediate values, so be
+In WLA-65816 ".ACCU" / ".INDEX" / "SEP" / "REP" override ".8BIT" /
+".16BIT"/".24BIT" when considering the immediate values, so be
 careful. Still, operand hints override all of these, so use them to be
 sure.
 
@@ -982,7 +1071,7 @@ This is not a compulsory directive.
 ".ACCU 8"
 =========
 
-Forces WLA to override the accumulator size given with "SEP"/"REP".
+Forces WLA to override the accumulator size given with "SEP" / "REP".
 ".ACCU" doesn’t produce any code, it only affects the way WLA
 interprets the immediate values (8 for 8 bit operands, 16 for 16 bit
 operands) for opcodes dealing with the accumulator.
@@ -997,7 +1086,7 @@ will produce "$29 $06", and after giving ".ACCU 16":
 
 will yield "$29 $00 $06".
 
-Note that "SEP"/"REP" again will in turn reset the accumulator/index
+Note that "SEP" / "REP" again will in turn reset the accumulator/index
 register size.
 
 This is not a compulsory directive.
@@ -1007,6 +1096,17 @@ This is not a compulsory directive.
 ========================
 
 ".ADDR" is an alias for ".DW".
+
+This is not a compulsory directive.
+
+
+".ALIGN 4"
+==========
+
+Makes it so that on the next line the address is a multiple of the
+supplied value. Currently this directive can only be given outside
+".SECTION" s or inside FORCE ".SECTION" s or inside ".SECTION" s that
+have ALIGN that is a multiple of the ".ALIGN" here.
 
 This is not a compulsory directive.
 
@@ -1235,6 +1335,15 @@ the ANSI C -counterpart.
 This is not a compulsory directive.
 
 
+".ASSERT VALUE_1 == 1"
+======================
+
+".ASSERT" takes a condition, and if it’s evaluated to be true, nothing
+happens. If it’s false, then assembling ends right there in an error.
+
+This is not a compulsory directive.
+
+
 ".BACKGROUND "parallax.gb""
 ===========================
 
@@ -1263,7 +1372,7 @@ You can also type the following:
 This tells WLA to move into BANK 0 which will be put into the
 "DEFAULTSLOT" of ".MEMORYMAP".
 
-Every time you use ".BANK", supply ".ORG"/".ORGA" as well, just to
+Every time you use ".BANK", supply ".ORG" / ".ORGA" as well, just to
 make sure WLA calculates addresses correctly.
 
 This is a compulsory directive.
@@ -1341,19 +1450,27 @@ s.
 This is not a compulsory directive.
 
 
-".BREAKPOINT"
-=============
-
-".BREAKPOINT" is an alias for ".BR".
-
-This is not a compulsory directive.
-
-
 ".BR"
 =====
 
 Inserts a breakpoint that behaves like a ".SYM" without a name.
 Breakpoints can only be seen in WLALINK’s symbol file.
+
+This is not a compulsory directive.
+
+
+".BREAK"
+========
+
+Exits the active ".REPEAT" or ".WHILE".
+
+This is not a compulsory directive.
+
+
+".BREAKPOINT"
+=============
+
+".BREAKPOINT" is an alias for ".BR".
 
 This is not a compulsory directive.
 
@@ -1401,6 +1518,16 @@ for this directive), but it’s not recommended.
 This is not a compulsory directive.
 
 
+".COMPUTESMDCHECKSUM"
+=====================
+
+When this directive is used WLA computes the Sega Mega Drive ROM
+checksum found at "$18E". Note that this directive works only with
+WLA-68000.
+
+This is not a compulsory directive.
+
+
 ".COMPUTESMSCHECKSUM"
 =====================
 
@@ -1409,7 +1536,7 @@ When this directive is used WLA computes the ROM checksum found at
 "$1FFA" - "$1FFB" for 8KB ROMs) in a SMS/GG ROM. Note that this
 directive can only be used with WLA-z80. Also note that the ROM size
 must be at least 8KBs. The checksum is calculated using bytes "0x0000"
-- "0x1FEF"/"0x3FEF"/"0x7FEF".
+- "0x1FEF" / "0x3FEF" / "0x7FEF".
 
 This is not a compulsory directive.
 
@@ -1426,6 +1553,14 @@ images and 32.5MBit for ExHiROM.
 
 ".LOROM", ".HIROM" or ".EXHIROM" must be issued before
 ".COMPUTESNESCHECKSUM".
+
+This is not a compulsory directive.
+
+
+".CONTINUE"
+===========
+
+Jumps to the beginning of an active ".REPEAT" or ".WHILE".
 
 This is not a compulsory directive.
 
@@ -1546,6 +1681,10 @@ Here’s how it works:
 
    for (i = 0; i < A; i++)
      output_data((rand() % (C-B+1)) + B);
+
+You can also use the following keywords to make the code clearer:
+
+   .DBRND COUNT A MIN B MAX C
 
 This is not a compulsory directive.
 
@@ -1716,7 +1855,7 @@ This is not a compulsory directive.
 ".DSTRUCT waterdrop INSTANCEOF water VALUES"
 ============================================
 
-Defines an instance of struct water, called waterdrop, and fills it
+Defines an instance of ".STRUCT" water, called waterdrop, and fills it
 with the given data. Before calling ".DSTRUCT" we must have defined
 the structure, and in this example it could be like:
 
@@ -1726,9 +1865,9 @@ the structure, and in this example it could be like:
        weight dw
    .ENDST
 
-There are two syntaxes for .DSTRUCT; the new and legacy versions. To
-use the new syntax, put the keyword “VALUES” at the end of the first
-line. The old syntax uses the keyword “DATA” or none at all.
+There are two syntaxes for ".DSTRUCT"; the new and legacy versions. To
+use the new syntax, put the keyword "VALUES" at the end of the first
+line. The old syntax uses the keyword "DATA" or none at all.
 
 The new syntax looks like this:
 
@@ -1740,9 +1879,9 @@ The new syntax looks like this:
 
 The fields can be put in any order. Any omitted fields are set to the
 ".EMPTYFILL" value ("$00" by default). Any data-defining directive can
-be used within .DSTRUCT, as long as it does not exceed the size of the
-data it is being defined for. The only exception is .DSTRUCT itself,
-which cannot be nested.
+be used within ".DSTRUCT", as long as it does not exceed the size of
+the data it is being defined for. The only exception is ".DSTRUCT"
+itself, which cannot be nested.
 
 The old syntax looks like this:
 
@@ -1801,12 +1940,28 @@ defined in this context, as opposed to the 11 bytes for the entire
 Named unions can be assigned to in a similar way, by writing its full
 name with a "." separating the union name and the field name.
 
-The struct can be defined namelessly, in which case no labels will be
-generated, like so:
+The struct can be defined namelessly:
 
    .DSTRUCT INSTANCEOF drop_pair VALUES
        ...
    .ENDST
+
+You can use "SIZE" to specify the size of the instance. The additional
+bytes are filled with ".EMPTYFILL":
+
+   .DSTRUCT INSTANCEOF drop_pair SIZE 128 VALUES
+       ...
+   .ENDST
+
+If you don’t want to generate labels use "NOLABELS":
+
+   .DSTRUCT INSTANCEOF drop_pair NOLABELS VALUES
+       ...
+   .ENDST
+
+Here’s another example using the legacy syntax:
+
+   .DSTRUCT INSTANCEOF water SIZE 32 NOLABELS DATA "Ocean", 100, 16384
 
 This is not a compulsory directive.
 
@@ -2000,10 +2155,10 @@ this one is required to terminate it.
 ".ENDR"
 =======
 
-Ends the repetition.
+Ends the ".REPEAT" or ".WHILE".
 
-This is not a compulsory directive, but when ".REPEAT" is used this
-one is required to terminate it.
+This is not a compulsory directive, but when ".REPEAT" or ".WHILE" is
+used this one is required to terminate it.
 
 
 ".ENDSNES"
@@ -2052,7 +2207,6 @@ generated definitions automatically.
 
 Here’s an example of ".ENUM":
 
-   ...
    .STRUCT mon                ; check out the documentation on
    name ds 2                  ; .STRUCT
    age  db
@@ -2069,7 +2223,6 @@ Here’s an example of ".ENUM":
    monster   INSTANCEOF mon 3 ; three instances of structure mon
    dragon    INSTANCEOF mon   ; one mon
    .ENDE
-   ...
 
 Previous example transforms into following definitions:
 
@@ -2141,6 +2294,23 @@ Regarding nemesis, you’ll get these definitions:
 
 If you want more flexible variable positioning, take a look at
 ".RAMSECTION" s.
+
+You can also specify the size of an instantiated struct (padding added
+at the end) using the keyword "SIZE". Also use keyword "COUNT" to make
+things more clear:
+
+   .STRUCT mon                            ; the size of this .STRUCT is 3 (bytes)
+   name ds 2
+   age  db
+   .ENDST
+
+   .ENUM $A000
+   monsters INSTANCEOF mon SIZE 4 COUNT 2 ; two instances of structure mon.
+   .ENDE                                  ; each instance is padded to 4 bytes.
+
+Note that in the previous example we’ll also get extra definitions
+
+   _paddingof_monsters.1   (== 1) _paddingof_monsters.2   (== 1)
 
 This is not a compulsory directive.
 
@@ -2374,6 +2544,24 @@ an ordinary definition label, so you can ".UNDEFINE" it.
 This is not a compulsory directive.
 
 
+".FUNCTION SUM_AB(varA,varB)"
+=============================
+
+Creates a function called "SUM_AB". Here are some examples:
+
+   .FUNCTION SUM_AB(varA, varB) (varA + varB)
+   .FUNCTION SUB_A_6(varA) varA-6
+   .FUNCTION SUM_ABC(varA, varB, varC) (SUM_AB(varA. varB) + varC)
+   .FUNCTION CONSTANT_1() 1
+
+".FUNCTION" can be used anywhere values are expected:
+
+   LDA SUM_AB(1, 2)
+   .DEFINE SUM = 0 + 1 + SUM_AB(2, 3) + 4 + 5
+
+This is not a compulsory directive.
+
+
 ".GBHEADER"
 ===========
 
@@ -2387,6 +2575,7 @@ example:
        LICENSEECODENEW "HI"  ; identical to a freestanding .LICENSEECODENEW.
        CARTRIDGETYPE $00     ; identical to a freestanding .CARTRIDGETYPE.
        RAMSIZE $09           ; identical to a freestanding .RAMSIZE.
+       ROMSIZE               ; identical to a freestanding .ROMSIZE.
        COUNTRYCODE $01       ; identical to a freestanding .COUNTRYCODE/DESTINATIONCODE.
        DESTINATIONCODE $01   ; identical to a freestanding .DESTINATIONCODE/COUNTRYCODE.
        NINTENDOLOGO          ; identical to a freestanding .NINTENDOLOGO.
@@ -2406,6 +2595,14 @@ hexadecimal format. For example, the same result can be obtained using
 ".DB"
 
    .DB $a0, $A0, $ff, $DE
+
+".HEX" can also be used in the following ways:
+
+   .HEX 01 AA 02 BB 03 CC    ; -> .DB $01, $AA, $02, $BB, $03, $CC
+   .HEX BLOCK
+        01 02 03 04 05 06    ; -> .DB $01, $02, $03, $04, $05, $06
+        07 08 09 0A 0B 0C    ; -> .DB $07, $08, $09, $0A, $0B, $0C
+   .ENDHEX
 
 This is not a compulsory directive.
 
@@ -2428,7 +2625,7 @@ This is not a compulsory directive.
 ================
 
 If the condition is fulfilled the following piece of code is
-acknowledged until ".ENDIF"/".ELSE"/".ELIF" occurs in the text,
+acknowledged until ".ENDIF" / ".ELSE" / ".ELIF" occurs in the text,
 otherwise it is skipped. Operands must be immediate values or strings.
 
 The following operators are supported:
@@ -2473,7 +2670,7 @@ This is not a compulsory directive.
 ===========
 
 If "IF" is defined, then the following piece of code is acknowledged
-until ".ENDIF"/".ELSE" occurs in the text, otherwise it is skipped.
+until ".ENDIF" / ".ELSE" occurs in the text, otherwise it is skipped.
 
 This is not a compulsory directive.
 
@@ -2483,7 +2680,7 @@ This is not a compulsory directive.
 
 If the specified argument is defined (argument number two, in the
 example), then the following piece of code is acknowledged until
-".ENDIF"/".ELSE" occurs in the macro, otherwise it is skipped.
+".ENDIF" / ".ELSE" occurs in the macro, otherwise it is skipped.
 
 This is not a compulsory directive. ".IFDEFM" works only inside a
 macro.
@@ -2493,7 +2690,7 @@ macro.
 ===============
 
 If the value of "DEBUG" equals to "2", then the following piece of
-code is acknowledged until ".ENDIF"/".ELSE" occurs in the text,
+code is acknowledged until ".ENDIF" / ".ELSE" occurs in the text,
 otherwise it is skipped. Both arguments can be computations, defines
 or immediate values.
 
@@ -2504,7 +2701,7 @@ This is not a compulsory directive.
 ====================
 
 If "main.s" file can be found, then the following piece of code is
-acknowledged until ".ENDIF"/".LESE" occurs in the text, otherwise it
+acknowledged until ".ENDIF" / ".ELSE" occurs in the text, otherwise it
 is skipped.
 
 By writing the following few lines you can include a file if it exists
@@ -2521,7 +2718,7 @@ This is not a compulsory directive.
 ===============
 
 If the value of "DEBUG" is greater than "2", then the following piece
-of code is acknowledged until ".ENDIF"/".ELSE" occurs in the text,
+of code is acknowledged until ".ENDIF" / ".ELSE" occurs in the text,
 otherwise it is skipped. Both arguments can be computations, defines
 or immediate values.
 
@@ -2532,7 +2729,7 @@ This is not a compulsory directive.
 =================
 
 If the value of "DEBUG" is greater or equal to "2", then the following
-pieceof code is acknowledged until ".ENDIF"/".ELSE" occurs in the
+pieceof code is acknowledged until ".ENDIF" / ".ELSE" occurs in the
 text, otherwise it is skipped. Both arguments can be computations,
 defines or immediate values.
 
@@ -2543,7 +2740,7 @@ This is not a compulsory directive.
 ===============
 
 If the value of "DEBUG" is less than "2", then the following piece of
-code is acknowledged until ".ENDIF"/".ELSE" occurs in the text,
+code is acknowledged until ".ENDIF" / ".ELSE" occurs in the text,
 otherwise it is skipped. Both arguments can be computations, defines
 or immediate values.
 
@@ -2554,7 +2751,7 @@ This is not a compulsory directive.
 =================
 
 If the value of "DEBUG" is less or equal to "2", then the following
-piece of code is acknowledged until ".ENDIF"/".ELSE" occurs in the
+piece of code is acknowledged until ".ENDIF" / ".ELSE" occurs in the
 text, otherwise it is skipped. Both arguments can be computations,
 defines or immediate values.
 
@@ -2565,7 +2762,7 @@ This is not a compulsory directive.
 ============
 
 If "IF" is not defined, then the following piece of code is
-acknowledged until ".ENDIF"/".ELSE" occurs in the text, otherwise it
+acknowledged until ".ENDIF" / ".ELSE" occurs in the text, otherwise it
 is skipped.
 
 This is not a compulsory directive.
@@ -2575,7 +2772,7 @@ This is not a compulsory directive.
 =============
 
 If the specified argument is not defined, then the following piece of
-code is acknowledged until ".ENDIF"/".ELSE" occurs in the macro,
+code is acknowledged until ".ENDIF" / ".ELSE" occurs in the macro,
 otherwise it is skipped.
 
 This is not a compulsory directive. ".IFNDEFM" works only inside a
@@ -2586,7 +2783,7 @@ macro.
 ================
 
 If the value of "DEBUG" doesn’t equal to "2", then the following piece
-of code is acknowledged until ".ENDIF"/".ELSE" occurs in the text,
+of code is acknowledged until ".ENDIF" / ".ELSE" occurs in the text,
 otherwise it is skipped. Both arguments can be computations, defines
 or immediate values.
 
@@ -2614,7 +2811,7 @@ You can optionally use "SWAP" after the file name, e.g.,
 
 ".INCBIN" data is divided into blocks of two bytes, and inside every
 block the bytes are exchanged (like "SWAP r" does to nibbles). This
-requires that the size of the file is even.
+requires that the size of the read data is even.
 
 You can also force WLA to skip n bytes from the beginning of the file
 by writing for example:
@@ -2626,9 +2823,20 @@ is incbinned.
 
 It is also possible to incbin only n bytes from a file:
 
-   .INCBIN "kitten.bin" READ 10
+   .INCBIN "kitten.bin" READ 10 FREADSIZE bytesRead
 
-Will read ten bytes from the beginning of "kitten.bin".
+Will read ten bytes from the beginning of "kitten.bin" and create a
+definition called "bytesRead" with value 10. If you make "READ"
+negative, like:
+
+   .INCBIN "kitten.bin" READ -2
+
+all bytes except the last two are read. To extend this:
+
+   .INCBIN "kitten.bin" SKIP 1 READ -2
+
+and one byte will be skipped at the beginning of the file and two at
+the end.
 
 You can also force WLA to create a definition holding the size of the
 file:
@@ -2658,10 +2866,18 @@ Here’s an example of a filter macro that increments all the bytes by
 one:
 
    .macro filtermacro    ; the input byte is \1, the output byte is in "_out"
-   .redefine _out \1+1
+   .redefine _out \1+1   ; \2 is the index of the element
    .endm
 
-Note that the order of the extra commands is important.
+Instead of passing just one byte at a time to the filter macro, you
+can specify the chunk size as follows:
+
+   .INCBIN "kitten.bin" FILTER filtermacro FILTERSIZE 4
+
+"FILTERSIZE" specifies the chunk size of the number of bytes (read) in
+1 in the filter macro. 2 in the macro specifies the index of the chunk
+and 3 specifies the size of the chunk (same as "FILTERSIZE"). You can
+still use "SWAP" to change the order of the bytes in 1.
 
 If the file’s not found in the ".INCDIR" directory, WLA tries to find
 it in the current working directory. If the "INCDIR" is specified in
@@ -2675,9 +2891,9 @@ This is not a compulsory directive.
 ========================================
 
 Changes the current include root directory. Use this to specify main
-directory for the following ".INCLUDE" and ".INCBIN" directives. If
-you want to change to the current working directory (WLA also defaults
-to this), use:
+directory for the following ".INCLUDE", ".INCBIN" and
+".STRINGMAPTABLE" directives. If you want to change to the current
+working directory (WLA also defaults to this), use:
 
    .INCDIR ""
 
@@ -2711,6 +2927,14 @@ included file uses "APPENDTO" with a section name that starts with
 ""*:"", that "APPENDTO" is considered to belong to the global
 namespace and we won’t prefix it with the ".INCLUDE" ‘s namespace.
 
+To add the namespace prefix to everything including ".DEFINE" s use
+the keyword "ISOLATED":
+
+   .INCLUDE "music_player.s" NAMESPACE "musicplayer" ISOLATED
+
+Note that a dot is the namespace separator so your namespace cannot
+contain a dot.
+
 Note that you can create the file name from pieces:
 
    .INCLUDE ROOTDIR, SUBDIR, "cthulhu.s" NAMESPACE "cthulhu"
@@ -2729,8 +2953,8 @@ This is not a compulsory directive.
 ".INDEX 8"
 ==========
 
-Forces WLA to override the index ("X"/"Y") register size given with
-"SEP"/"REP". ".INDEX" doesn’t produce any code, it only affects the
+Forces WLA to override the index ("X" / "Y") register size given with
+"SEP" / "REP". ".INDEX" doesn’t produce any code, it only affects the
 way WLA interprets the immediate values ("8" for 8 bit operands, "16"
 for 16 bit operands) for opcodes dealing with the index registers.
 
@@ -2744,7 +2968,7 @@ will produce "$E0 $A0", and after giving ".INDEX 16"
 
 will yield "$E0 $00 $A0".
 
-Note that "SEP"/"REP" again will in turn reset the accumulator/index
+Note that "SEP" / "REP" again will in turn reset the accumulator/index
 register size.
 
 This is not a compulsory directive.
@@ -2890,17 +3114,13 @@ Here are some examples:
    .ENDM
 
    .MACRO LOAD_ABCD_2 ARGS ONE, TWO, THREE, FOUR, FIVE
-       LD A, ONE
-       LD B, TWO
-       LD C, THREE
-       LD D, FOUR
+       LD A, ONE        ; note! ONE, TWO, THREE, FOUR and FIVE
+       LD B, TWO        ; here are actually definitions that
+       LD C, THREE      ; exist as long as the .MACRO is alive
+       LD D, FOUR       ; so be careful when using named args...
        NOPMONSTER
        LD HL, 1<<ONE
    .INCBIN FIVE
-   .ENDM
-
-   .MACRO TEST NARGS 3
-       .DB \1, \2, \3
    .ENDM
 
 And here’s how they can be used:
@@ -2909,7 +3129,13 @@ And here’s how they can be used:
    LOAD_ABCD $10, $20, $30, XYZ, "merman.bin"
    QUEEN 123
    LOAD_ABCD_2 $10, $20, $30, XYZ, "merman.bin"
-   TEST 1, 2, 3
+
+Note that arguments can be optionally wrapped inside parentheses:
+
+   NOPMONSTER()
+   LOAD_ABCD($10, $20, $30, XYZ, "merman.bin")
+   QUEEN(123)
+   LOAD_ABCD_2($10, $20, $30, XYZ, "merman.bin")
 
 Note that you must separate the arguments with commas.
 
@@ -2917,9 +3143,9 @@ Note that the following works as well:
 
    .DEF prev_test $0000
 
-   .MACRO .test ARGS str
-   __\._{\@+1}:                   ; this will become __.test_1 during
-       .PRINT __\._{\@+1}, "\n"   ; the first call, __.test_2 during the
+   .MACRO test ARGS str
+   __\._{\@+1}:                   ; this will become __test_1 during
+       .PRINT __\._{\@+1}, "\n"   ; the first call, __test_2 during the
        .WORD  prev_test           ; second call...
        .REDEF prev_test __\._{\@+1}
        .BYTE  str.length, str, 0
@@ -2944,7 +3170,7 @@ an example:
 You can also use "\?" to ask for the type of the argument in the
 following fashion:
 
-   .macro .differentThings
+   .macro differentThings
      .if \?1 == ARG_IMMEDIATE
        .db \1
      .elif \?1 == ARG_NUMBER
@@ -2960,11 +3186,11 @@ following fashion:
 
    .section "TestingDifferentThings"
    TDT1:
-       .differentThings 100
-       .differentThings "HELLO"
-       .differentThings TDT1
-       .differentThings TDT1+1
-       .differentThings #0
+       differentThings 100
+       differentThings "HELLO"
+       differentThings TDT1
+       differentThings TDT1+1
+       differentThings #0
    .ends
 
 The previous example will result in .db 1, 2, 3, 4, 0
@@ -2979,6 +3205,71 @@ Here’s another useful example:
 
    REDEFINER &DEFINITION_A    ; here we feed the definition's name
                               ; as first argument, not it's value
+
+Another useful example:
+
+   .MACRO LOOP ISOLATED
+      LD A, 10
+   -  DEC A                   ; B
+      JP NZ, -
+   .ENDM
+
+   ...
+      LD B, 20
+   -  LOOP                    ; C
+      DEC B
+      JP NZ, -                ; A
+   ...
+
+Here we use the keyword "ISOLATED" to make un-named labels inside the
+macro to be isolated from the outside world. Without it the jump in A
+would jump to B, but now it jumps to C.
+
+Using the keyword "ISOLATED" we would also make the macro to have its
+own child label stack:
+
+           .macro MACROM
+   AA03:   .db 0
+   @child: .db 1          ; A
+           .dw @child     ; B
+           .endm
+
+   AA00:   .db "25>"
+   @child: MACROM         ; C
+           .dw @child     ; D
+           .db "<25"
+
+In this case B points to A and D points to A. If you add keyword
+"ISOLATED" to ".MACRO" MACROM then B still points to A, but A doesn’t
+leak out of MACROM and D points to C. Exiting a ".MACRO" that uses
+keyword "ISOLATED" restores the child label stack.
+
+One example more, but this time with local labels:
+
+           .macro LOCALS isolated
+   _hello: .db 0            ; A
+           .dw _hello + 1   ; B
+           .endm
+
+   _hello: .db "27>"        ; C
+           .db 0, 1, 2
+           LOCALS
+           .dw _hello + 2   ; D
+           .db "<27"
+
+Normally this would create the local label "_hello" twice and it would
+not work. Adding the keyword "ISOLATED" to ".MACRO" makes the local
+labels unique and D points to C and B points to A.
+
+To enable only local label isolation use the keyword "ISOLATELOCAL"
+instead of "ISOLATED" and to enable only the isolation of un-named
+labels use the keyword "ISOLATEUNNAMED".
+
+Note that there is an alternative way of defining a ".MACRO":
+
+   .macro DBSUMOFTWOVALUES(v1,v2) isolated
+   .db v1+v2
+   .endm
 
 This is not a compulsory directive.
 
@@ -3206,8 +3497,8 @@ the result. Here’s an example:
 This is not a compulsory directive.
 
 
-".RAMSECTION "Vars" BANK 0 SLOT 1 ALIGN 256 OFFSET 32"
-======================================================
+".RAMSECTION "Vars" BASE $7E BANK 0 SLOT 1 ALIGN 256 OFFSET 32"
+===============================================================
 
 "RAMSECTION" s accept only variable labels and variable sizes, and the
 syntax to define these is identical to ".ENUM" (all the syntax rules
@@ -3310,6 +3601,16 @@ be:
    _sizeof_moomin3_b   (== 1)
    _sizeof_moomin3_c   (== 1)
 
+Going back to the previous example, if you wanted to make the size of
+all instances of "game_object" to be 8 (bytes) in "enemies":
+
+   .RAMSECTION "vars 4" BANK 1 SLOT $A000
+   enemies      INSTANCEOF game_object SIZE 8 COUNT 2 STARTFROM 0
+   .ENDS
+
+Use the keyword "SIZE" to do that. Also note that the keyword "COUNT"
+is optional, and recommended.
+
 It is also possible to merge two or more sections using "APPENDTO":
 
    .RAMSECTION "RAMSection1" BANK 0 SLOT 0
@@ -3319,6 +3620,12 @@ It is also possible to merge two or more sections using "APPENDTO":
    .RAMSECTION "RAMSection2" APPENDTO "RAMSection1"
    label2    DB
    .ENDS
+
+NOTE! The "APPENDTO" ".SECTION" s are appended in the order the linker
+sorts them. So first "PRIORITY" is considered (0 by default, the
+bigger the value the more important it is) and then the size of the
+".SECTION" is considered, bigger ".SECTION" s are more important than
+smaller.
 
 If you wist to skip some bytes without giving them labels, use "." as
 a label:
@@ -3344,13 +3651,30 @@ address, do as follows:
 
 Other types that are supported: "SEMIFREE" and "SEMISUBFREE".
 
+Note that ".ALIGN" also works inside a ".RAMSECTION", but there are
+limitations (see ".ALIGN"). Here’s an example:
+
+   .RAMSECTION "AlignTest" BANK 0 SLOT 1 ALIGN 8
+   Objects INSTANCEOF game_object COUNT 2
+   .ALIGN 8
+   Byte1 DB
+   Byte2 DB
+   .ALIGN 4
+   Checksum DW
+   .ENDS
+
 Here’s the order in which WLA writes the RAM sections:
 
 1. "FORCE"
 
 2. "SEMISUBFREE"
 
-3. "SEMIFREE" & "FREE"
+3. "SEMIFREE"
+
+4. "FREE"
+
+You can change this order using "[ramsectionwriteorder]" in a link
+file.
 
 NOTE: You can use "ORGA" to specify the fixed address for a "FORCE"
 "RAMSECTION". "ORG" is also supported.
@@ -3475,9 +3799,7 @@ you can enlarge the size of the project on the fly.
 ".ROMBANKS 2"
 =============
 
-Indicates the size of the ROM in rombanks. This value is converted to
-a standard Gameboy ROM size indicator value found at "$148" in a
-Gameboy ROM, and there this one is put into.
+Indicates the size of the ROM in rombanks.
 
 This is a compulsory directive unless ".ROMBANKMAP" is defined.
 
@@ -3532,6 +3854,17 @@ Gameboy enhanced ROM ("$03" -> "$0146").
 
 This is not a compulsory directive. ".ROMSGB" cannot be used with
 ".ROMDMG".
+
+
+".ROMSIZE 1"
+============
+
+This is a standard Gameboy ROM size indicator value found at "$148" in
+a Gameboy ROM, and there this one is put to also. If you don’t specify
+a value then WLA-GB tries to calculate it based on ".ROMBANKS" /
+".ROMBANKMAP".
+
+This is not a compulsory directive.
 
 
 ".ROW $ff00, 1, "3""
@@ -3601,11 +3934,16 @@ file according to the section type and ".BANK" and ".ORG" directive
 values.
 
 The example begins a section called "Init". Before a section can be
-declared, ".BANK" and ".ORG" must be used unless WLA is in library
+declared, ".BANK" and ".ORG" should be used unless WLA is in library
 file output mode. Library file’s sections must all be "FREE" ones.
 ".BANK" tells the bank number where this section will be later
 relocated into. ".ORG" tells the offset for the relocation from the
 beginning of ".BANK".
+
+It is also possible to supply "BANK", "SLOT", "BASE" and "ORG" or
+"ORGA" to ".SECTION" as follows:
+
+   .SECTION "NoInheritedParameters" BASE $70 BANK 0 SLOT 1 ORGA $1000
 
 You can put sections inside a namespace. For instance, if you put a
 section into a namespace called "bank0", then labels in that section
@@ -3620,8 +3958,8 @@ to some specific size, the following way:
 
    .SECTION "Init" SIZE 100 FREE
 
-It’s possible to force WLALINK to align the "FREE", "SEMIFREE" and
-"SUPERFREE" sections by giving the alignment as follows:
+It’s possible to force WLALINK to align the sections by giving the
+alignment as follows:
 
    .SECTION "Init" SIZE 100 ALIGN 4 FREE
 
@@ -3672,6 +4010,15 @@ into the first suitable place inside the first suitable bank
 of the section, no other banks are considered). You can also leave
 away the type specifier as the default type for the section is "FREE".
 
+If you wish to specify the banks where the section could be inserted
+into, use "SEMISUPERFREE" (and "BANKS" to specify the banks list):
+
+   .SECTION "IAmABankedSection" SEMISUPERFREE BANKS 15-13/10/6-9/3/1
+
+The banks list in the example unrolls into this: [ 15, 14, 13, 10, 6,
+7, 8, 9, 3, 1 ]. The banks are inspected for free space in the given
+order.
+
 You can name the sections as you wish, but there is one special name.
 A section called "BANKHEADER" is placed in the front of the bank where
 it is defined. These sections contain data that is not in the memory
@@ -3716,23 +4063,36 @@ in the bank "0", but not in the "$0" - "$14F" area. If you replace
 "FREE" with "SUPERFREE" the section will be inserted somewhere in any
 bank with the same size as bank "0".
 
-Here’s the order in which WLA writes the sections:
+Here’s the order in which WLALINK writes the sections:
 
 1. "FORCE"
 
-2. "SEMISUBFREE"
+2. "SEMISUPERFREE"
 
-3. "SEMIFREE" & "FREE"
+3. "SEMISUBFREE"
 
-4. "SUPERFREE"
+4. "SEMIFREE"
 
-5. "OVERWRITE"
+5. "FREE"
+
+6. "SUPERFREE"
+
+7. "OVERWRITE"
+
+You can change this order using "[sectionwriteorder]" in a link file.
 
 Before the sections are inserted into the output file, they are sorted
 by priorities, so that the section with the highest priority is
 processed first. If priorities are the same, then the size of the
 section matters, and bigger sections are processed before smaller
-ones. The default "PRIORITY", when not explicitly given, is 0.
+ones. The default "PRIORITY", when not explicitly given, is 0. Note
+that "PRIORITY" accepts negative values as well.
+
+You can use "AUTOPRIORITY" instead of "PRIORITY" when you want to
+assign descending priority to sections. Using this you can make it so
+that e.g., "APPENDTO" sections are appended in the lexical parsing
+order. "AUTOPRIORITY" starts from 65535 and is subtracted by one every
+time it’s used.
 
 You can also create a RAM section. For more information about them,
 please read the ".RAMSECTION" directive explanation.
@@ -3790,6 +4150,20 @@ In WLA DX 9.4a and before we used the stdlib’s "srand()" and "rand()"
 functions making the output differ on different platforms. Since v9.4
 WLA DX contains its own Mersenne Twister pseudo random number
 generator.
+
+This is not a compulsory directive.
+
+
+".SEEDRANDOM"
+=============
+
+Seeds the random number generator with the output of "time()", which
+is, according to the manual, *the time since the Epoch (00:00:00 UTC,
+January 1, 1970), measured in seconds*.
+
+By default the (pseudo) random number generator is seeded with
+"time()", so you don’t have to do it yourself, but just in the case
+you want to do it somewhere in the source code, use this.
 
 This is not a compulsory directive.
 
@@ -3854,6 +4228,34 @@ the first three bytes:
 This is not a compulsory directive.
 
 
+".SMDHEADER"
+============
+
+Defines the Sega Mega Drive ROM header in "$100-$1FF". All the fields
+in ".SMDHEADER" are optional. Here are the default values:
+
+   .SMDHEADER
+       SYSTEMTYPE "SEGA MEGA DRIVE "    ; 16 bytes
+       COPYRIGHT  "                "    ; 16 bytes
+       TITLEDOMESTIC "             "    ; 48 bytes (all spaces)
+       TITLEOVERSEAS "             "    ; 48 bytes (all spaces)
+       SERIALNUMBER  "             "    ; 14 bytes (all spaces)
+       DEVICESUPPORT "J            "    ; 16 bytes ('J' and the rest are spaces)
+       ROMADDRESSRANGE $0, -1           ;  8 bytes (-1 is turned into ROM size minus one)
+       RAMADDRESSRANGE $FF0000, $FFFFFF ;  8 bytes
+       EXTRAMEMORY "RA", $A0, $20, S, E ; 12 bytes (S and E and start and end, both 0)
+       MODEMSUPPORT "            "      ; 12 bytes (all spaces)
+       REGIONSUPPORT "JUE"              ;  3 bytes
+   .ENDSMD
+
+When ".SMDHEADER" is defined, also the ROM checksum is calculated.
+
+See https://plutiedev.com/rom-header for more information about the
+SMD header.
+
+This is not a compulsory directive.
+
+
 ".SMSHEADER"
 ============
 
@@ -3870,6 +4272,7 @@ specified it will be calculated automatically:
        CHECKSUMSIZE 32*1024  ; Uses the first this-many bytes in checksum
                              ;   calculations (excluding header area)
        FORCECHECKSUM $1234   ; Forces the checksum to be this value
+       BASEADDRESS $1FF0     ; Write the header at this address
    .ENDSMS
 
 The "REGIONCODE" also defines the system:
@@ -4041,8 +4444,14 @@ This is not a compulsory directive.
 ".STRINGMAP script "Hello\n""
 =============================
 
-".ASC" is an alias for ".DB", but if you use ".ASC" it will remap the
-characters using the mapping given via ".ASCIITABLE".
+After you’ve given the ".STRINGMAPTABLE", use ".STRINGMAP" to define
+bytes using the mapping in ".STRINGMAPTABLE". For example:
+
+   .STRINGMAP script, "いうえA\n"
+
+".STRINGMAP" with ".STRINGMAPTABLE" is an alternative way of mapping
+characters to ".ASC" and ".ASCIITABLE". Also note that here the result
+and the source of the mapping can be more than just one byte.
 
 This is not a compulsory directive.
 
@@ -4149,6 +4558,24 @@ enemy. All other labels should be safe:
    lda enemy1.b  ; load a byte from zeropage address enemy1 or from the address
                  ; of enemy1.b??? i can't tell you, and WLA can't tell you...
 
+It’s possible to explicitly define the size of the ".STRUCT" by using
+keyword "SIZE":
+
+   .STRUCT PaddedStruct SIZE 8
+   posX  DW
+   posY  DW
+   .ENDST
+
+Normally this ".STRUCT" would define four bytes, but by using keyword
+"SIZE" its size is now eight bytes. The extra padding, put after the
+last item in the ".STRUCT", will contain ".EMPTYFILL" bytes when used
+with ".DSTRUCT".
+
+Note that if we ".DSTRUCT" “PaddedStruct” and name it PS1 we’ll also
+get a definition
+
+   _paddingof_PS1   (== 4)
+
 This is not a compulsory directive.
 
 
@@ -4251,8 +4678,8 @@ This is not a compulsory directive.
 ".UNION name"
 =============
 
-Begins a “union”. This can only be used in enums, ramsections, and
-structs.
+Begins a “union”. This can only be used in ".ENUM" s, ".RAMSECTION" s
+and ".STRUCT" s.
 
 When entering a union, the current address in the enum is saved, and
 the following data is processed as normal. When the ".NEXTU" directive
@@ -4330,6 +4757,19 @@ in WLA’s own syntax. Beware of the situations where you use ‘<’ and
 This is not a compulsory directive.
 
 
+".WHILE COUNTER > 0"
+====================
+
+Repeats the text enclosed between ".WHILE <CONDITION>" and ".ENDR":
+
+   .WHILE COUNTER > 0
+   .DB COUNTER
+   .REDEFINE COUNTER = COUNTER - 1
+   .ENDR
+
+This is not a compulsory directive.
+
+
 ".WORD 16000, 10, 255"
 ======================
 
@@ -4375,7 +4815,7 @@ Lines can be split using a "\" between elements. So instead of writing
 
 it’s possible to write
 
-   .db 1, 2, 3, 4
+   .db 1, 2, 3, 4 \
       5, 6, 7, 8
 
 Note that line splitting works only in places where WLA expects a new
@@ -4383,10 +4823,30 @@ label, number, calculation, etc. String splitting isn’t currently
 supported.
 
 
+Using Commas
+============
+
+In many places it’s possible to give parameters without commas between
+them:
+
+   .db 1 2 3 4 5 ; 01 02 03 04 05
+
+**CAVEAT! CAVEAT! CAVEAT!**
+
+If you specify the following
+
+   .db 1 -2 3 -4 5 ; FF FF 05
+
+WLA will detect and compute calculations, so to be sure, always use
+commas:
+
+   .db 1, -2, 3, -4, 5 ; 01 FE 03 FC 05
+
+
 Labels
 ======
 
-Labels are ordinary strings (which can also end to a ":"). Labels
+Labels are ordinary strings (which can also end with a ":"). Labels
 starting with "_" are considered to be local labels and do not show
 outside sections where they were defined, or outside object files, if
 they were not defined inside a section.
@@ -4529,6 +4989,17 @@ calculations and sees only the preprocessed output of WLA):
                    ; for WLALINK (so it's better to use \@ with labels inside
                    ; a macro).
 
+To make un-named labels inside a ".MACRO" isolated, and the previous
+example to work, use the keyword "ISOLATED"
+
+   .macro dummy isolated
+   -  dec a        ; #
+      jp nz, -     ; jump -> #
+   .endm
+
+The same issue exists with child labels. See ".MACRO"’s documentation
+for more details.
+
 WLALINK will also generate "_sizeof_[label]" defines that measure the
 distance between two consecutive labels. These labels have the same
 scope as the labels they describe. Here is an example:
@@ -4634,7 +5105,7 @@ Mnemonics
 
 You can give the operand size with the operand itself (and this is
 highly recommended) in WLA
-6502/65C02/65CE02/6510/HUC6280/65816/6800/6801/6809:
+6502/65C02/65CE02/HUC6280/65816/6800/6801/6809:
 
    and #20.b
    and #20.w
@@ -4688,8 +5159,8 @@ ROM Size
 ========
 
 GB-Z80 version of WLA supports the following ROM bank sizes. There’s
-no such limit in the Z80/6502/65C02/65CE02/6510/65816/6800/6801/6809/
-8008/8080/HUC6280/SPC-700/SuperFX version of WLA. Supply one of the
+no such limit in the Z80/6502/65C02/65CE02/65816/6800/6801/6809/8008/
+8080/HUC6280/SPC-700/SuperFX version of WLA. Supply one of the
 following values to ".ROMBANKS".
 
 +---------+----------+------------+-------------+
@@ -4855,31 +5326,83 @@ WLA supports functions in addition to ".MACRO" s. Functions are
 different from ".MACRO" s as functions always return a value.
 
 
+User defined functions
+======================
+
+Use ".FUNCTION" to create your own functions.
+
+
 Built-in functions
 ==================
 
 The following built-in functions can be used where ever a number is
 expected:
 
-+------------+-------------------------------------------------------------------------+
-| asc()      | Uses ".ASCIITABLE" to map the supplied value                            |
-+------------+-------------------------------------------------------------------------+
-| defined()  | Returns 1 (true) if the supplied definition exists, 0 (false) otherwise |
-+------------+-------------------------------------------------------------------------+
-| exists()   | Returns 1 (true) if the supplied file exists, 0 (false) otherwise       |
-+------------+-------------------------------------------------------------------------+
-| lobyte()   | Returns the low byte, bits 0-7 (the same as preceding "<")              |
-+------------+-------------------------------------------------------------------------+
-| hibyte()   | Returns the high byte, bits 8-15 (the same as preceding ">")            |
-+------------+-------------------------------------------------------------------------+
-| loword()   | Returns the low word, bits 0-15                                         |
-+------------+-------------------------------------------------------------------------+
-| hiword()   | Returns the high word, bits 16-31                                       |
-+------------+-------------------------------------------------------------------------+
-| bankbyte() | Returns the bank byte, bits 16-23                                       |
-+------------+-------------------------------------------------------------------------+
-| bank()     | Returns the bank (the same as preceding ":")                            |
-+------------+-------------------------------------------------------------------------+
++------------+-----------------------------------------------------------------------------------+
+| abs()      | Returns the positive version of the argument                                      |
++------------+-----------------------------------------------------------------------------------+
+| acos()     | The same as ANSI C90 acos()                                                       |
++------------+-----------------------------------------------------------------------------------+
+| asc()      | Uses ".ASCIITABLE" to map the supplied value                                      |
++------------+-----------------------------------------------------------------------------------+
+| asin()     | The same as ANSI C90 asin()                                                       |
++------------+-----------------------------------------------------------------------------------+
+| atan()     | The same as ANSI C90 atan()                                                       |
++------------+-----------------------------------------------------------------------------------+
+| atan2()    | The same as ANSI C90 atan2()                                                      |
++------------+-----------------------------------------------------------------------------------+
+| bank()     | Returns the bank (the same as preceding ":")                                      |
++------------+-----------------------------------------------------------------------------------+
+| bankbyte() | Returns the bank byte, bits 16-23                                                 |
++------------+-----------------------------------------------------------------------------------+
+| ceil()     | The same as ANSI C90 ceil()                                                       |
++------------+-----------------------------------------------------------------------------------+
+| clamp()    | Takes three arguments, value, min and max, clamps the value between min and max   |
++------------+-----------------------------------------------------------------------------------+
+| cos()      | The same as ANSI C90 cos()                                                        |
++------------+-----------------------------------------------------------------------------------+
+| cosh()     | The same as ANSI C90 cosh()                                                       |
++------------+-----------------------------------------------------------------------------------+
+| defined()  | Returns 1 (true) if the supplied definition exists, 0 (false) otherwise           |
++------------+-----------------------------------------------------------------------------------+
+| exists()   | Returns 1 (true) if the supplied file exists, 0 (false) otherwise                 |
++------------+-----------------------------------------------------------------------------------+
+| floor()    | The same as ANSI C90 floor()                                                      |
++------------+-----------------------------------------------------------------------------------+
+| hibyte()   | Returns the high byte, bits 8-15 (the same as preceding ">")                      |
++------------+-----------------------------------------------------------------------------------+
+| hiword()   | Returns the high word, bits 16-31                                                 |
++------------+-----------------------------------------------------------------------------------+
+| lobyte()   | Returns the low byte, bits 0-7 (the same as preceding "<")                        |
++------------+-----------------------------------------------------------------------------------+
+| log()      | The same as ANSI C90 log()                                                        |
++------------+-----------------------------------------------------------------------------------+
+| log10()    | The same as ANSI C90 log10()                                                      |
++------------+-----------------------------------------------------------------------------------+
+| loword()   | Returns the low word, bits 0-15                                                   |
++------------+-----------------------------------------------------------------------------------+
+| max()      | Takes two arguments, a and b, returns the bigger value                            |
++------------+-----------------------------------------------------------------------------------+
+| min()      | Takes two arguments, a and b, returns the smaller value                           |
++------------+-----------------------------------------------------------------------------------+
+| pow()      | The same as ANSI C90 pow()                                                        |
++------------+-----------------------------------------------------------------------------------+
+| random()   | Takes two arguments, min and max, returns a pseudo random integer like ".DBRND"   |
++------------+-----------------------------------------------------------------------------------+
+| round()    | The same as ANSI C99 round()                                                      |
++------------+-----------------------------------------------------------------------------------+
+| sign()     | Return 0 if the supplied value is 0, -1 if negative and 1 if positive             |
++------------+-----------------------------------------------------------------------------------+
+| sin()      | The same as ANSI C90 sin()                                                        |
++------------+-----------------------------------------------------------------------------------+
+| sinh()     | The same as ANSI C90 sinh()                                                       |
++------------+-----------------------------------------------------------------------------------+
+| sqrt()     | Returns the square root of the supplied value                                     |
++------------+-----------------------------------------------------------------------------------+
+| tan()      | The same as ANSI C90 tan()                                                        |
++------------+-----------------------------------------------------------------------------------+
+| tanh()     | The same as ANSI C90 tanh()                                                       |
++------------+-----------------------------------------------------------------------------------+
 
 Note! Use bankbyte() with WLA-65816 as on that platform the bank (+
 base) bits are 16-23. On other platforms bank() works better.
@@ -4890,24 +5413,25 @@ Examples of functions
 
 Here’s an example about how these functions can be used
 
-   .IF defined(USE_DEBUG) && defined(DEBUG_SHOW)
+   .IF defined(USE_DEBUG) && defined(DEBUG_SHOW) && min(VALUE_A, VALUE_B) > 10
 
    LDX #loword(CPU_ADDR)           ; instead of (CPU_ADDR & $00FFFF)
    LDA #bankbyte(CPU_ADDR)         ; instead of :CPU_ADDR
+   .DB random(0, 10)               ; defines a byte with value 0-10
 
    .ENDIF
+
+NOTE: random() needs immediate min and max values.
 
 
 Temporary Files
 ***************
 
-Note that WLA will generate an temporary files in the current working
-directory while it works. On Windows and Unix-like systems, the file
-is called ".wla%PID%a", where "%PID%" is the PID of the process. For
-other system, it’s just "wla_a.tmp".
+Note that WLA will generate temporary files while it works. The files
+are generated using ANSI C’s tmpfile() function.
 
-When WLA finishes its work these two files are deleted as they serve
-of no further use.
+When WLA finishes its work these files are deleted as they serve of no
+further use.
 
 
 Compiling
@@ -5006,6 +5530,8 @@ want to link together. Here’s the format:
       [definitions]
       [ramsections]
       [sections]
+      [sectionwriteorder]
+      [ramsectionwriteorder]
 
 2. Start to list the file names.
 
@@ -5067,8 +5593,35 @@ want to link together. Here’s the format:
       start $150
       ...
 
+8. If you want to change the order in which the linker writes the
+   sections to output:
+
+      [sectionwriteorder]
+      OVERWRITE
+      FORCE
+      FREE
+      SEMISUPERFREE
+      SEMISUBFREE
+      SEMIFREE
+      SUPERFREE
+
+9. If you want to change the order in which the linker writes the RAM
+   sections to output:
+
+      [ramsectionwriteorder]
+      FREE
+      FORCE
+      SEMISUBFREE
+      SEMIFREE
+
+Note that you have to specify all the section types here.
+
 If flag "v" is used, WLALINK displays information about ROM file after
 a succesful linking.
+
+If flag "R" is used the file paths inside the link file are relative
+to the directory where the link file is, not relative to current
+working directory.
 
 If flag "nS" is used, WLALINK doesn’t sort the sections at all, so
 they are placed in the output in their order of appearance.
@@ -5090,6 +5643,12 @@ only the used sections, so you won’t be linking any dead code/data.
 If flag "D" is used, WLALINK doesn’t create any _sizeof_* labels. Note
 that to disable fully _sizeof_* label creation, you’ll also need to
 give WLA the "s" flag.
+
+If flag "pS" is used then WLALINK doesn’t use section type in writing
+the ".SECTION" s, but instead uses just the "PRIORITY" (and size) when
+it writes the ".SECTION" s to output.
+
+Flag "pR" works the same as "pS" but for ".RAMSECTION" s.
 
 If flag "t" is used with "c64PRG", WLALINK will add a two byte header
 to the program file (use with flag "b"). The header contains the load
@@ -5184,6 +5743,14 @@ so you can write something like
 
 WLALINK also has this ability so it can compute the pending
 calculations WLA wasn’t able to solve.
+
+NOTE! The assembler has only a limited capability to turn labels into
+addresses. Often label references are left for the linker to solve.
+Currently the assembler can do so when the label is outside ".SECTION"
+s or inside "FORCE" or "OVERWRITE" ".SECTION" s and the label is
+defined before it is referenced. Many directives like ".ASSERT"
+require data that the assembler can immediately solve so you might run
+into problems when feeding labels to directives.
 
 The following operators are valid:
 
@@ -5425,24 +5992,6 @@ Opcodes that make relative label references:
    BBS*
 
 
-6510
-====
-
-Read the subsection 6502 as the information applies also to 6510
-coding…
-
-Opcodes that make relative label references:
-
-   BCC
-   BCS
-   BEQ
-   BMI
-   BNE
-   BPL
-   BVC
-   BVS
-
-
 65816
 =====
 
@@ -5487,6 +6036,15 @@ Opcodes that make relative label references:
 
 Use ".WDC" to start parsing WDC standard assembly code. ".NOWDC" sets
 the parser to parse WLA syntax assembly code.
+
+"MVN" and "MVP" work as follows:
+
+   MVN $xx, $yy
+   MVN $xxyy
+   MVP $xx, $yy
+   MVP $xxyy
+
+"xx" is the source bank, "yy" is the target bank.
 
 
 HUC6280
@@ -5569,82 +6127,62 @@ WLA Flags
 Here are short descriptions for the flags you can give to WLA:
 
 You can supply WLA with some (or all or none) of the following option
-flags.
+flags:
 
--h
-
-Assume that all label references are 16-bit by default (size hints
-still work). Without this flag it’s assumed that label references are
-8-bit unless otherwise specified.
-
--i
-
-Add list file information. Adds extra information to the output so
-WLALINK can produce list files.
-
--k
-
-Keep all empty sections. By default they are discarded.
-
--M
-
-WLA generates makefile rules describing the dependencies of the main
-source file. Use only with flags "o" and "l".
-
--q
-
-Quiet mode. ".PRINT*" -directives output nothing.
-
--s
-
-Don’t create _sizeof_* definitions.
-
--t
-
-Test compile. Doesn’t output any files.
-
--v
-
-Verbose mode. Shows a lot of information about the compiling process.
-
--x
-
-Extra compile time labels & definitions. WLA does extra work by
-creating few helpful definitions, and labels SECTIONSTART_[section
-name] and SECTIONEND_[section name] at the beginning and end of a
-section.
-
--D
-
-Declare a definition.
+   -c  Continue parsing after an error. Currently we can only continue after
+       encountering an unknown symbol or a mistyped instruction.
+   -d  Disable WLA's ability to calculate A-B where A and B are labels
+   -h  Assume that all label references are 16-bit by default (size hints
+       still work). Without this flag it's assumed that label references are
+       8-bit unless otherwise specified.
+   -i  Add list file information. Adds extra information to the output so
+       WLALINK can produce list files.
+   -k  Keep all empty sections. By default they are discarded.
+   -M  WLA generates makefile rules describing the dependencies of the main
+       source file.
+   -MP Create a phony target for each dependency other than the main file,
+       use this with -M.
+   -MF Specify a file to write the dependencies to, use this with -M.
+   -q  Quiet mode. ``.PRINT*`` -directives output nothing.
+   -s  Don't create _sizeof_* and _padding_* definitions.
+   -t  Test assemble. Doesn't output any files.
+   -v  Verbose mode. Shows a lot of information about the compiling process.
+   -v1 Verbose messages (only discard sections)
+   -v2 Verbose messages (-v1 plus short summary)
+   -w  Require labels to end in a colon.
+   -x  Extra compile time labels and definitions. WLA does extra work by creating
+       few helpful definitions, and labels SECTIONSTART_[section name] and
+       SECTIONEND_[section name] at the beginning and end of a section.
+   -D  Declare a definition.
 
 One (and only one) of the following command flags must be defined.
 
--l
+   -l
 
-Output a library file.
+   Output a library file.
 
--o
+   -o
 
-Output an object file.
+   Output an object file.
 
 You may also use an extra option to specify the include directory. WLA
 will search this directory for included files before defaulting to the
-specified ".INCDIR" or current working directory.
+specified ".INCDIR" or current working directory:
 
--I
-
-Directory to include files.
+   -I  Directory to include files.
 
 Examples:
 
    [seravy@localhost tbp]# wla -D VERSION=255 -x -v -i -o testa.o testa.s
-   [seravy@localhost tbp]# wla -M -o testa.o testa.s
+   [seravy@localhost tbp]# wla -M testa.s
    [seravy@localhost tbp]# wla -D VERSION=$FF -D MESSAGE=\"Hello world\" -l testb.lib testb.s
    [seravy@localhost tbp]# wla -I ../../include -l testb.lib testb.s
    [seravy@localhost tbp]# wla -M -I myfiles -l testa.lib testa.s
 
-Note that the first example produces file named "testa.o".
+NOTE: If you use -M and -l/-o at the same time, specify -M first on
+the command line.
+
+NOTE: The first example produces a file named "testa.o".
 
 
 Extra compile time definitions
@@ -5730,13 +6268,13 @@ assembler) and WLALINK (the linker).
 WLA
 ===
 
-WLA has four separate phases, called a little bit incorrectly passes:
+WLA has four separate phases:
 
-1. "pass_1.c": "pass_1()":
+1. "phase_1.c": "phase_1()":
 
    * The biggest data processor in WLA.
 
-   * Includes the include files: every time time happens the file is
+   * Includes the include files: every time this happens the file is
      read in, white space is removed, lines formatted, etc.
 
    * Macros are processed along with directives
@@ -5754,18 +6292,18 @@ WLA has four separate phases, called a little bit incorrectly passes:
      encounters, but when a macro is called, the parser jumps to the
      beginning of the macro, and continues parsing from there.
 
-2. "pass_2.c": "pass_2()":
+2. "phase_2.c": "phase_2()":
 
    * If the user has issued directives like ".SDSCTAG", here we
      generate the needed data and write that into TMP.
 
-3. "pass_3.c": "pass_3()":
+3. "phase_3.c": "phase_3()":
 
    * Here we read in TMP and do some sanity checks for the data, give
      labels addresses (if possible), generate internal structures for
      labels and sections.
 
-4. "pass_4.c": "pass_4()":
+4. "phase_4.c": "phase_4()":
 
    * Again we read in TMP.
 
@@ -5828,8 +6366,7 @@ Version 1: https://github.com/vhelin/wla-dx/blob/v9.12/doc/symbols.rst
   [breakpoints], [symbols], [source files], [rom checksum], [addr-to-
   line mapping]
 
-Version 2: https://github.com/vhelin/wla-
-dx/blob/master/doc/symbols.rst
+Version 2: https://github.com/vhelin/wla-dx/blob/v10.5/doc/symbols.rst
 
 * Added [information] section
 
@@ -5838,6 +6375,13 @@ dx/blob/master/doc/symbols.rst
 
 * Deprecated [addr-to-line mapping] section definition, and replaced
   with [addr-to-line mapping v2]
+
+Version 3: https://github.com/vhelin/wla-
+dx/blob/master/doc/symbols.rst
+
+* Added [sections] and [ramsections] sections
+
+* Added “wlasymbol true” under [information] section
 
 
 Information For Emulator Developers
@@ -5870,10 +6414,10 @@ mean, and how their data should be interpreted.
 [information]
 -------------
 
-The only fields this section has currently are “version” and then the
-version number. [information], if present, must always occur before
-any other section or data, and its first line will always be the
-format version.
+The only fields this section has currently are “version” (and then the
+version number) and “wlasymbol” (which is followed by “true”).
+[information], if present, must always occur before any other section
+or data, and its first line will always be the format version.
 
 
 [labels]
@@ -5981,6 +6525,32 @@ and line instead of some address in the binary ROM file.
 * Format specifier: "%8x %2x:%4x %4x %4x:%4x:%8x"
 
 
+[sections]
+----------
+
+Each line specifies a ".SECTION": hexadecimal ROM address, bank, ROM
+bank offset, memory address, size and name. Use this information for
+example to locate ".SECTION" data in the output.
+
+* Regex match: "[0-9a-fA-F]{8} [0-9a-fA-F]{2}:[0-9a-fA-F]{4} [0-9a-
+  fA-F]{4} [0-9a-fA-F]{8} .*"
+
+* Format specifier: "%.8x %.2x:%.4x %.4x %.8x %s"
+
+
+[ramsections]
+-------------
+
+Each line specifies a ".RAMSECTION": hexadecimal bank, RAM bank
+offset, memory address, size and name. Use this information for
+example to see where a ".RAMSECTION" was placed.
+
+* Regex match: "[0-9a-fA-F]{2}:[0-9a-fA-F]{4} [0-9a-fA-F]{4} [0-9a-
+  fA-F]{8} .*"
+
+* Format specifier: "%.2x:%.4x %.4x %.8x %s"
+
+
 Legal Note
 **********
 
@@ -5989,8 +6559,9 @@ WLA DX (the whole package) was originally written by Ville Helin in
 development of WLA DX, and recently via GitHub. The authors are not
 responsible for anything the software does.
 
-WLA DX is GPL software. For more information about GPL, take a look at
-the "LICENCE" file.
+WLA DX is GPL-2.0-or-later software. For more information about
+GPL-2.0-or-later, take a look at the "LICENCE" file, or visit
+https://spdx.org/licenses/GPL-2.0-or-later.html
 
 Game Boy and Game Boy Color are copyrighted by Nintendo.
 
@@ -6159,7 +6730,6 @@ SYNOPSIS
 ========
 
    "wla-6502" ["OPTIONS"] "SRC_FILE"
-   "wla-6510" ["OPTIONS"] "SRC_FILE"
    "wla-65816" ["OPTIONS"] "SRC_FILE"
    "wla-65c02" ["OPTIONS"] "SRC_FILE"
    "wla-65ce02" ["OPTIONS"] "SRC_FILE"
