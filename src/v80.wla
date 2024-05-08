@@ -39,7 +39,6 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 .DEF    CHAR_OP_OR      '|'             ; or operator
 .DEF    CHAR_OP_XOR     '^'             ; xor operator
 .DEF    CHAR_OP_MOD     '\'             ; modulo operator
-.DEF    CHAR_OP_REL     '~'             ; relative operator (for jumps)
 
 .INC    "expr.wla"                      ; expression parsing and evaluation
 .INC    "z80.wla"                       ; Z80 parser & opcode binary tree

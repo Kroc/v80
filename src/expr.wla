@@ -446,8 +446,6 @@ parseExpr:
         jr      z,      @next           ; ...
         cp      CHAR_OP_DIV             ; divide operator?
         jr      z,      @next           ; ...
-        cp      CHAR_OP_REL             ; relative operator?
-        jr      z,      @next           ; ...
 
         ; whatever it is, it isn't an operator;
         ; fall through and terminate the expression
@@ -532,9 +530,7 @@ evalExpr:
         jr      z,      @xor            ; ...
         cp      CHAR_OP_MOD             ; modulo operator?
         jr      z,      @mod            ; ...
-        cp      CHAR_OP_REL             ; relative operator?
-        jr      z,      @rel            ; ...
-        
+
         ; only remaining operator is DIV!
         ; ...
 
@@ -565,32 +561,6 @@ evalExpr:
         jr      nc,     --
         inc     E
         jr      -
-        ;-----------------------------------------------------------------------
-        ; relative operator:
-        ;-----------------------------------------------------------------------
-        ; the relative operator is for calculating relative jumps. it works the
-        ; same as the subtract operator except the terms are reversed, with the
-        ; left being subtracted from the right to allow the program-counter to
-        ; be provided before the destination
-        ;
-        ; TODO: the full expression must be calculated on the right --
-        ;       implied parentheses -- do rel calc in nextParam?
-        ;
-@rel:   ex      DE,     HL              ; switch running total to HL
-
-        ld      A,      B               ; swap HL (running total)
-        ld      B,      H               ;  and BC (right-hand value)
-        ld      H,      A               ; ....
-        ld      A,      C               ; ...
-        ld      C,      L               ; ..
-        ld      L,      A               ; .
-
-        ; WARN: the `cp CHAR_OP_REL` that led here
-        ;       has cleared the carry flag for us!
-        ;xor     A                       ; carry must be clear for SBC HL, BC!
-        sbc     HL,     BC              ; subtract value from total
-        ex      DE,     HL              ; swap expr addr back to HL
-        ret                             ; continue evaluating
         ;-----------------------------------------------------------------------
         ; modulo operator:
         ;-----------------------------------------------------------------------
