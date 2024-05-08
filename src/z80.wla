@@ -66,11 +66,15 @@ emitOpcode:
         ; a single, 1 or 2 byte parameter:
         ;
         and     %00000001               ; LSB indicates 2-bytes
-        adc     1                       ; add at least 1-byte
+        add     1                       ; param has at least 1-byte
+
+        bit     3,      B               ; relative jump?
+        jr      z,      +               ; skip over the next instruction if not
+        or      %10000000               ; add the rel-flag to the param type
 
         ; parse the following expression and
         ; write the value to the code-segment
-        jp      parseParam
++       jp      parseParam
 
         ;=======================================================================
         ; handle IX|IY opcodes: (bit 5 chooses between IX & IY)
@@ -129,8 +133,8 @@ emitOpcode:
         ; word following the expression, or a newline / end-of-file. since
         ; a 2nd parameter is expected, newline or end-of-file is an error!
         ;
-        call    parseParam              ; parse 1st parameter
-        jp      nextParam               ; parse 2nd parameter
+        call    parseParam              ; parse and emit 1st parameter
+        jp      nextParam               ; parse and emit 2nd parameter
 
         ;-----------------------------------------------------------------------
         ; IX|IY + $CB is the edge-case that keeps on giving: at all other
@@ -141,10 +145,8 @@ emitOpcode:
         inc     IX                      ; increment virtual program-counter
         push    BC                      ; keep opcode until emit time
 
-        ; parse the following expression and
-        ; write the value to the code-segment
-        ld      A,      1
-        call    parseParam
+        ld      A,      1               ; parse the following expression and
+        call    parseParam              ;  write the value to the code-segment
 
         pop     BC                      ; retrieve delayed opcode
         ld      [IY+$00],       C       ; emit opcode byte

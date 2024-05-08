@@ -18,6 +18,7 @@ _strLabelRedef  .BYTE "Labels cannot be redefined!", 0
 _strLabelUndef  .BYTE "Label is undefined!", 0
 _strExprConst   .BYTE "Forward-references to labels not allowed here!", 0
 _strConstUndef  .BYTE "Undefined constant!", 0
+_strRel         .BYTE "Relative jump too far!", 0
 
 _printQuit:
 ;===============================================================================
@@ -109,6 +110,13 @@ errConstUndef:
 ; use of undefined constant in expr!
 ;-------------------------------------------------------------------------------
         ld      DE,     _strConstUndef
+        jr      _printQuit
+
+errRelJump:
+;===============================================================================
+; relative jump is too far!
+;-------------------------------------------------------------------------------
+        ld      DE,     _strRel
         jr      _printQuit
 
 .ENDB

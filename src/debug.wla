@@ -187,30 +187,16 @@ _printHL:
 
 _printFlags:
         ;=======================================================================
-        push    AF
-        ld      A,      '['
-        call    osPrintChar
-        pop     AF
-
-        jr      nz,     +
-
-        push    AF
-        ld      A,      'z'
-        call    osPrintChar
-        pop     AF
-
-+       jr      nc,     +
-
-        push    AF
-        ld      A,      'c'
-        call    osPrintChar
-        pop     AF
-
-+       push    AF
-        ld      A,      ']'
-        call    osPrintChar
-        pop     AF
-
+        .printChar '['
+        jr      nz,     +               ; zero flag?
+        .printChar 'z'
++       jp      p,      +               ; sign flag?
+        .printChar 'm'
++       jr      nc,     +               ; carry flag?
+        .printChar 'c'
++       jp      po,     +               ; overflow flag?
+        .printChar 'v'
++       .printChar ']'
         ret
 ;///////////////////////////////////////////////////////////////////////////////
 .ENDIF

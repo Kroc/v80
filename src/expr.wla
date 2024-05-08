@@ -15,7 +15,7 @@
 ;
 expr:   .ADDR   $fc7f                   ; expr token space (builds downwards)
 defer:  .ADDR   $0000                   ; addr of last deferred expr
-param:  .BYTE   $00
+param:  .BYTE   $00                     ; parameter type / relative-flag
 
 
 parseParam:
@@ -45,15 +45,19 @@ nextParam:
 ;       HL              heap addr will be modified if expr is deferred
 ;       A, DE           (clobbered)
 ;-------------------------------------------------------------------------------
-        ; parse the next expression and evaluate it. if the expression
-        ; contains a forward-reference, the parameter cannot be validated
+        ; parse the next expression and evaluate it. if it contains a
+        ; forward-reference, the parameter cannot be validated (yet)
+        ; and it'll be pushed to the heap for later
         ;
-        call    nextExpr                ; if the expression contains a forward-
-        jp      c,      deferExpr       ;  reference, defer it to the heap
+        call    nextExpr                ; parse and evaluate expression
+        jp      c,      deferExpr       ; defer to heap? note early exit
 
         ; validate size / value:
         ;-----------------------------------------------------------------------
-        ld      A,      [param]         ; TODO: rel-flag
+        ld      A,      [param]         ; retrieve the parameter type
+        rla                             ; pop hi-bit (relative-flag) into carry
+        jr      c,      @rel            ; handle relative jump parameter
+        rra                             ; correct param byte from above shift
 
         ; write the result to the code-segment
         ;
@@ -69,6 +73,62 @@ nextParam:
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
 
+        ret
+
+        ;=======================================================================
+        ; (for now, we assume a relative parameter is the only parameter and is
+        ;  1-byte wide as that's the case with most 8-bit CPUs I'm aware of)
+        ;
+@rel:   ex      DE,     HL              ; preserve heap-addr in DE
+
+        ; BC is the value of the expr -- the address to jump to. we calculate
+        ; the relative offset with 'value - PC' so that positive is forward and
+        ; negative is backward. we can only do 16-bit subtractions in HL so we
+        ; swap BC & HL and then load BC with the virtual program-counter
+        ;
+        ld      H,      B               ; copy BC (destination)
+        ld      L,      C               ;  into HL (for SBC HL, BC)
+
+        ; the relative offset byte has to account for two automatic increments
+        ; of the program-counter, the first by the parameter byte itself
+        inc     IX
+        ld      B,      IXH             ; load BC with current
+        ld      C,      IXL             ;  virtual program-counter (IX)
+
+        ; and the second is the automatic incrementing of the program-counter
+        ; after every instruction, here compensated by carry already being set!
+        ; (this was done by the rel-flag check at the start of this routine)
+        ;
+        sbc     HL,     BC              ; do 'destination - PC'
+
+        ; check for 8-bit signed bounds:
+        ;-----------------------------------------------------------------------
+        ; the carry-flag indicates if the jump is forward (clear) or backward
+        ; (set). we set A to 0 or -1 ($FF) depending on carry-flag: (any value
+        ; minus itself is 0, but the carry-flag is an additional -1)
+        sbc     A,      A
+
+        ; detect 8-bit overflow in either direction: if the distance is > 255
+        ; then the hi-byte will not be all 1s (negative) or all 0s (positive)
+        ; therefore we expect A = H. compare sets flags without changing A,
+        ; allowing us to do two tests using the same A value!
+        cp      H
+        jp      nz,     errRelJump              ; err if hi-byte is not 'empty'
+
+        ; because the relative-distance byte is signed, we expect its sign
+        ; to match that of the result -- a forward jump can only produce
+        ; a positive distance; if the lo-byte is negative it's a positive
+        ; distance that's too large (>127, i.e. hi-bit set)
+        xor     L
+        jp      m,      errRelJump              ; if sign bits differ, error
+
+        ; output relative-distance byte:
+        ;-----------------------------------------------------------------------
+        ; (note the virtual program-counter, IX, has already been incremented)
+        ;
+        ld      [IY+$00],       L       ; write relative distance byte
+        inc     IY                      ; move to next byte in code-segment
+        ex      DE,     HL              ; restore heap-addr to HL
         ret
 
 
@@ -138,6 +198,8 @@ deferExpr:
         ;
         ; note that LDDR is post-decrement (copy-then-decrement), whereas
         ; the heap is pre-decrement like the stack (decrement-then-copy)
+        ;
+        ; TODO: create a shared routine for doing LDDR?
         ;
         dec     HL                      ; fix heap addr for copy-then-DEC
         ld      DE,     [expr]
