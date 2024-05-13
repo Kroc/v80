@@ -135,7 +135,7 @@ readWord:
 ;       written on the heap, for faster comparison -- we use the bottom of
 ;       a page to hold the incoming word so that we can get away with using
 ;       `DEC E` instead of `DEC DE`
-; 
+;
 ; out:  A               length of word
 ;       DE              DE is set to the first byte (length) of `[word]`
 ;       [char]          the last character read will always be some kind
@@ -146,7 +146,7 @@ readWord:
         jr      +                       ; (first character already read)
         ;-----------------------------------------------------------------------
 -       call    readChar                ; read char from input file
-        cp      ASCII_SPC+1             ; whitespace?
+        cp      ASCII_SPC+1             ; whitespace or end-of-line/file?
         jr      c,      @ok             ; (leave loop at whitespace)
 +       dec     E                       ; move to next space in buffer
         ld      [DE],   A               ; add the character to the buffer
@@ -159,7 +159,4 @@ readWord:
         sub     E                       ;  = length of word
         ld      E,      WORD_LEN        ; snap back to length byte
         ld      [DE],   A               ; write word-length byte
-
-        ld      C,      A               ; copy word-length into BC
-        ld      B,      0               ; 
         ret

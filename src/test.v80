@@ -26,6 +26,10 @@ $	$ + $0100
 :b	.b >:w			; back reference to a label
 	.b <:b			; label address should be known now
 
+; a string is simply a series of bytes
+;
+	.b "hello, world" $00
+
 ;===============================================================================
 
 	; v80			; z80				; opcodes

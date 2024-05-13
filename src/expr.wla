@@ -50,7 +50,7 @@ nextParam:
         ; and it'll be pushed to the heap for later
         ;
         call    nextExpr                ; parse and evaluate expression
-        jp      c,      deferExpr       ; defer to heap? note early exit
+        jr      c,      @defer          ; defer to heap? (note early exit)
 
         ; validate size / value:
         ;-----------------------------------------------------------------------
@@ -131,17 +131,7 @@ nextParam:
         ex      DE,     HL              ; restore heap-addr to HL
         ret
 
-
-deferExpr:
-;===============================================================================
-; defer expression:
-;
-; in:   HL              heap position to push expr bytecode on to
-;       BC              length of expr bytecode (provided by `parseExpr`)
-;
-; out:  HL              updated heap position
-;       A, BC|DE        (clobbered)
-;-------------------------------------------------------------------------------
+        ;=======================================================================
         ; we need to push a bunch of values to the heap and the fastest way
         ; to write 16-bit values easily is... the stack! simply make the heap
         ; into the stack and we can PUSH our stuff on to it!
@@ -150,7 +140,7 @@ deferExpr:
         ; push to our heap and then pop the address off when it returns,
         ; which has no effect on the values we're pushing
         ;
-        ld      [sp],   SP              ; backup stack pointer
+@defer: ld      [sp],   SP              ; backup stack pointer
         ld      SP,     HL              ; move stack to heap!
         ;-----------------------------------------------------------------------
 
@@ -775,7 +765,7 @@ parseHexNumber:
         ; INC E instead of INC DE
         ;
         ld      BC,     5<<8            ; B=5, C=0
-        ld      DE,     [temp]          ; where to write the bytes
+        ld      DE,     [str]           ; where to write the bytes
         ;-----------------------------------------------------------------------
 -       call    readChar                ; read a char from file
         cp      ASCII_SPC+1             ; ASCII space or below?
@@ -789,7 +779,7 @@ parseHexNumber:
         jp      errHex
 
         ;-----------------------------------------------------------------------
-+       ld      DE,     [temp]          ; go back to the start of the number
++       ld      DE,     [str]           ; go back to the start of the number
 
         ; number of digits in hex number is reversed;
         ; B=1 for 4 digits, B=2 for 3 digits, B=3 for 2 digits and B=4 for 1,

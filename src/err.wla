@@ -19,6 +19,8 @@ _strLabelUndef  .BYTE "Label is undefined!", 0
 _strExprConst   .BYTE "Forward-references to labels not allowed here!", 0
 _strConstUndef  .BYTE "Undefined constant!", 0
 _strRel         .BYTE "Relative jump too far!", 0
+_strStrEnd      .BYTE "Unterminated string!", 0
+_strStrHere     .BYTE "String not allowed here", 0
 
 _printQuit:
 ;===============================================================================
@@ -117,6 +119,20 @@ errRelJump:
 ; relative jump is too far!
 ;-------------------------------------------------------------------------------
         ld      DE,     _strRel
+        jr      _printQuit
+
+errStrEnd:
+;===============================================================================
+; unterminated string!
+;===============================================================================
+        ld      DE,     _strStrEnd
+        jr      _printQuit
+
+errStrHere:
+;===============================================================================
+; string not allowed here!
+;===============================================================================
+        ld      DE,     _strStrHere
         jr      _printQuit
 
 .ENDB

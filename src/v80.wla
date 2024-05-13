@@ -27,6 +27,7 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 .DEF    CHAR_HEX        '$'             ; hexadecimal literal or PC
 .DEF    CHAR_LABEL      ':'             ; a label (16-bit)
 .DEF    CHAR_CONST      '#'             ; a constant (flexible size)
+.DEF    CHAR_STR        '"'             ; a string
 .DEF    CHAR_OP_LO      '<'             ; lo-byte unary operator
 .DEF    CHAR_OP_HI      '>'             ; hi-byte unary operator
 .DEF    CHAR_OP_NOT     '!'             ; not unary operator
@@ -47,16 +48,17 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 .BLOCK  "code"
 ;===============================================================================
 ; memory map:
-;
+;                                             | str->       128 |
 ;   +-----+-----------------------------------+--------+--------+---------+
 ;   | v80 | code->                     <-heap | <-word | <-expr | <-stack |
 ;   +-----+-----------------------------------+--------+--------+---------+
 ;                                                   32       96       128
-;   code:  source code is assembled here
-;   heap:  symbols and other in-flight data goes here; builds downwards
-;   word:  a buffer for capturing words (symbol names); builds downwards
-;   expr:  expressions are tokenised here; builds downwards
-;   stack: usual Z80 stack; builds downwards
+;       code:   source code is assembled here
+;       heap:   symbols and other in-flight data goes here; builds downwards
+;       word:   a buffer for capturing words (symbol names); builds downwards
+;       expr:   expressions are tokenised here; builds downwards
+;       stack:  usual Z80 stack; builds downwards
+;       str:    forward buffer for reading include filenames
 ;
 .DEF    WORD_LEN        31              ; maximum symbol name length
 .DEF    STACK_SLOTS     64              ; maximum size of stack (*2 for bytes)
@@ -67,7 +69,7 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 ; (these addresses are set during initialisation,
 ;  the values here are only examples based on RunCPM)
 ;
-temp:   .ADDR $fc00                     ; temp bytes at bottom of stack
+str:    .ADDR $fc00                     ; string buffer
 word:   .ADDR $fc1f                     ; word-buffer (works backwards)
 sp:     .ADDR $fd00                     ; stack pointer backup
 
@@ -118,7 +120,7 @@ init:
         add     HL,     SP              ; stack address, e.g. $FD00
         ld      [sp],   HL              ; (save value for printing later)
         dec     H                       ; go down a page e.g. $FD00 > $FC00
-        ld      [temp], HL              ; use bottom of stack for temp bytes
+        ld      [str],  HL              ; temp string buffer starts here
         ld      [heap], HL              ; this will also be the top of the heap
         ld      L,      WORD_LEN        ; max word-length for word buffer,
         ld      [word], HL              ;  (word buffer works downwards)
@@ -497,50 +499,92 @@ assemble:
         cp      'B'                     ; `.b` keyword?
         jr      z,      @b              ; process bytes
         cp      'W'                     ; `.w' keyword?
+        jr      z,      @w              ; process words
+        cp      'I'                     ; .`i` keyword?
         jp      nz,     errKeyword      ; none of the above? invalid keyword!
 
-        ; (fallthrough to handle words)
+        ; (fallthrough to handle includes)
         ; ...
 
+        ;-----------------------------------------------------------------------
+        ; include:
+        ;-----------------------------------------------------------------------
+        ; TODO: should we read ALL bytes until the end of the line, including
+        ;       expressions? where do we store these? (need a 256B temp string)
+        ;
+        ; next parameter is a string. unlike other strings this shouldn't be
+        ; written directly to the code-segment
+@i:     halt
+
+        jr      @next
         ;-----------------------------------------------------------------------
         ; words:
         ;-----------------------------------------------------------------------
 @w:     ld      A,              2       ; set parameter size to 2 (words)
-        jr      +                       ; TODO: use a skip opcode here
+        jr      +                       ; TODO: use a skip opcode here?
         ;-----------------------------------------------------------------------
         ; bytes:
         ;-----------------------------------------------------------------------
 @b:     ld      A,              1       ; set parameter size to 1 (bytes)
 +       ld      [param],        A       ; save parameter size to reuse
 
-        ; parse expression and output to code-segment. deferred
-        ; expressions will automatically be pushed to the heap:
+        ; check if either a string OR an expression follows:
         ;
--       call    nextParam
+--      call    nextWord                ; skip in-between spaces
+        jr      z,      @nleof          ; stop at EOL/EOF
+        cp      A,      CHAR_STR        ; a string?
+        jr      z,      @str            ; process string literal
+
+        ; not a string, parse as an expression and output to code-segment:
+        ; deferred expressions will automatically be pushed to the heap
+        ;
+        call    nextParam
 
         ; the last character read by expression parsing will be either EOL/EOF,
         ; where the line ends without any further expressions, or the fist char
-        ; of the following word which may or not be an expression
+        ; of the following word which may or may not be an expression
         ;
         ld      A,      [char]          ; last character read
-        cp      ASCII_SPC+1             ; any non-visible char must be EOL/EOF
+-       cp      ASCII_SPC+1             ; any non-visible char must be EOL/EOF
         jr      c,      @nleof          ; EOL/EOF is always end of keyword
         cp      CHAR_HEX                ; a hexadecimal literal / PC?
-        jr      z,      -               ; ...
+        jr      z,      --              ; ...
         cp      CHAR_LABEL              ; a label?
-        jr      z,      -               ; ...
+        jr      z,      --              ; ...
         cp      CHAR_CONST              ; a constant?
-        jr      z,      -               ; ...
+        jr      z,      --              ; ...
         cp      CHAR_OP_LO              ; the lo-byte unary operator?
-        jr      z,      -               ; ...
+        jr      z,      --              ; ...
         cp      CHAR_OP_HI              ; the hi-byte unary operator?
-        jr      z,      -               ; ...
+        jr      z,      --              ; ...
         cp      CHAR_OP_NOT             ; the not unary operator?
-        jr      z,      -               ; ...
+        jr      z,      --              ; ...
+        cp      CHAR_OP_NEG             ; the negate unary operator
+        jr      z,      --              ; ...
 
         ; a word follows, but it's not an expression
         ; (instructions or another keyword can follow a keyword)
         jr      @next
+
+        ;-----------------------------------------------------------------------
+        ; string literal:
+        ;-----------------------------------------------------------------------
+        ; it's important to note that a string is not a value and cannot be
+        ; a part of an expression or a parameter; it is a series of bytes
+        ; written directly to the code-segment
+        ;
+@str:   ld      A,      [param]         ; a string cannot be a part of 
+        cp      2                       ;  a list of words!
+        jp      z,      errStrHere      ;  (i.e. `.w` keyword)
+        ;-----------------------------------------------------------------------
+-       call    readChar                ; read next character
+        jp      z,      errStrEnd       ; sudden EOL/EOF? unterminated string!
+        cp      CHAR_STR                ; string terminator?
+        jr      z,      --              ; yes, check for next string/expr
+        ld      [IY+$00],       A       ; emit byte to code-segment
+        inc     IY                      ; move to next byte in code-segment
+        inc     IX                      ; increment virtual program-counter
+        jr      -                       ; keep reading
 
 
 getConst:
