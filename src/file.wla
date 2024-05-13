@@ -152,7 +152,7 @@ readWord:
         ld      [DE],   A               ; add the character to the buffer
         jp      p,      -               ; keep going until buffer full
         ;-----------------------------------------------------------------------
-        jp      errWord                 ; word too long!
+        jp      errInvalSym             ; quit with invalid symbol error
 
         ;-----------------------------------------------------------------------
 @ok:    ld      A,      WORD_LEN        ; max size - characters remaining

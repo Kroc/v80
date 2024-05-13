@@ -75,7 +75,7 @@ boot:
         ld      DE,     command_fcb     ; use default FileControlBlock
         call    BDOS
         and     A                       ; (set flags!)
-        jp      m,      errFile         ; $FF = error
+        jp      m,      errUndefFile    ; $FF = error
 
         ; run the program
         ;-----------------------------------------------------------------------
@@ -98,7 +98,7 @@ boot:
         jp      BDOS                    ; call BDOS but also return to CCP
 
         ; string is "$" terminated for compatibility with CP/M <= v2.2
-@@str   .BYTE "Error: CP/M ", CPM_VER_STR, " or higher required!$"
+@@str   .BYTE "ERROR: CP/M ", CPM_VER_STR, " or higher required!$"
 
 
 ; BDOS calls:

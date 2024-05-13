@@ -189,7 +189,7 @@ init:
         ;=======================================================================
         ;
         ; +----------------+----------------------+---------------+
-        ; | code-segment > |     < free RAM >     | < heap        |
+        ; | code-segment-> |     <-free RAM->     | <-heap        |
         ; +----------------+----------------------+---------------+
         ; ^ code           ^ IY                   ^ HL            ^ [heap]
         ;
@@ -322,7 +322,7 @@ assemble:
         ;
 @const: call    readWord                ; read symbol name into buffer
         call    nextExpr                ; try evaluate the following expression
-        jp      c,      errExprConst    ; cannot contain forward-references!
+        jp      c,      errUnexpDefer   ; cannot contain forward-references!
         push    BC                      ; keep ahold of the const value
 
         ld      DE,     const           ; use constant dictionary
@@ -376,7 +376,7 @@ assemble:
         ; first), therefore if the label *does* exist we're trying to
         ; define a label twice!
         ;
-        jp      nz,     errLabelRedef   ; cannot redefine labels!
+        jp      nz,     errRedefLabel   ; cannot redefine labels!
 
         call    pushLabel               ; define new label on the heap
         jr      @next                   ; return to parsing
@@ -448,7 +448,7 @@ assemble:
         ;
 @pc:    call    parseHexNumber          ; capture the number
         call    c,      nextExpr        ; if PC, parse the expr that follows
-        jp      c,      errExprConst    ; must be a constant expr!
+        jp      c,      errUnexpDefer   ; must be a constant expr!
 
         ld      IXL,    C               ; change the virtual program-counter
         ld      IXH,    B               ;  to the number given
@@ -488,11 +488,11 @@ assemble:
         ; keywords:
         ;-----------------------------------------------------------------------
 @key:   call    readChar                ; get next char after the "."
-        jp      z,      errKeyword      ; no letter follows!?
+        jp      z,      errInvalKey     ; no letter follows!?
         ld      C,      A               ; hold char to check next char first
         call    readChar                ; get 2nd char
         cp      ASCII_SPC               ; whitespace must follow!
-        jp      nz,     errKeyword      ; (i.e. no additional chars)
+        jp      nz,     errInvalKey     ; (i.e. no additional chars)
 
         ld      A,      C               ; return to first char
         res     5,      A               ; force upper-case for "a"-"z"
@@ -501,7 +501,7 @@ assemble:
         cp      'W'                     ; `.w' keyword?
         jr      z,      @w              ; process words
         cp      'I'                     ; .`i` keyword?
-        jp      nz,     errKeyword      ; none of the above? invalid keyword!
+        jp      nz,     errInvalKey     ; none of the above? invalid keyword!
 
         ; (fallthrough to handle includes)
         ; ...
@@ -574,11 +574,11 @@ assemble:
         ; written directly to the code-segment
         ;
 @str:   ld      A,      [param]         ; a string cannot be a part of 
-        cp      2                       ;  a list of words!
-        jp      z,      errStrHere      ;  (i.e. `.w` keyword)
+        cp      2                       ;  a list of words! (i.e. `.w` keyword)
+        jp      z,      errInvalExpr    ; TODO: better error message for this
         ;-----------------------------------------------------------------------
 -       call    readChar                ; read next character
-        jp      z,      errStrEnd       ; sudden EOL/EOF? unterminated string!
+        jp      z,      errInvalStr     ; sudden EOL/EOF? unterminated string!
         cp      CHAR_STR                ; string terminator?
         jr      z,      --              ; yes, check for next string/expr
         ld      [IY+$00],       A       ; emit byte to code-segment
@@ -960,7 +960,7 @@ parseInstruction:
         ;
 @cont:  or      %10000000               ; *add* top bit to input char
         cp      [HL]                    ; redo comparison with tree
-        jp      nz,     errOpcode       ; any mismatch is an error!
+        jp      nz,     errInvalIns     ; any mismatch is an error!
         inc     HL                      ; match -- move to next char in tree
         jr      @char
 
@@ -974,7 +974,7 @@ parseInstruction:
 
         call    readChar
         cp      ASCII_SPC+1             ; is it whitespace (or eof)?
-        jp      nc,     errOpcode       ; if not, invalid instruction!
+        jp      nc,     errInvalIns     ; if not, invalid instruction!
 
 +       ex      DE,     HL              ; swap heap back to HL
 

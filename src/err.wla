@@ -1,138 +1,139 @@
 ; v80, (C) Kroc Camen 2023-2024, MIT License
 ; error stuff
 ;
-; TODO: use an error number to deduplicate these calls
 ; TODO: with any error, print out file name, line & col number
 ;
 .BLOCK  "code-err"
 
-_strFile        .BYTE "File not found!", 0
-_strWord        .BYTE "Word too long! (max 32 chars)", 0
-_strOpcode      .BYTE "Invalid Z80 instruction!", 0
-_strExpectParam .BYTE "Expected instruction parameter!", 0
-_strExpectExpr  .BYTE "Expected expression!", 0
-_strExpr        .BYTE "Invalid expression!", 0
-_strKeyword     .BYTE "Invalid keyword!", 0
-_strHex         .BYTE "Invalid hexadecimal number!", 0
-_strLabelRedef  .BYTE "Labels cannot be redefined!", 0
-_strLabelUndef  .BYTE "Label is undefined!", 0
-_strExprConst   .BYTE "Forward-references to labels not allowed here!", 0
-_strConstUndef  .BYTE "Undefined constant!", 0
-_strRel         .BYTE "Relative jump too far!", 0
-_strStrEnd      .BYTE "Unterminated string!", 0
-_strStrHere     .BYTE "String not allowed here", 0
+_errmsg:
+;===============================================================================
+; this is a lookup table from error code (ERR_*) to string address to print
+;-------------------------------------------------------------------------------
+.DEF    ERR_INVAL_EXPR          0       ; invalid expression
+        .ADDR   @inval_expr
+.DEF    ERR_INVAL_INS           1       ; invalid CPU instruction
+        .ADDR   @inval_ins
+.DEF    ERR_INVAL_KEY           2       ; invalid keyword
+        .ADDR   @inval_key
+.DEF    ERR_INVAL_NUM           3       ; invalid number
+        .ADDR   @inval_num
+.DEF    ERR_INVAL_STR           4       ; invalid string
+        .ADDR   @inval_str
+.DEF    ERR_INVAL_SYM           5       ; invalid symbol
+        .ADDR   @inval_sym
+.DEF    ERR_RANGE_JUMP          6       ; out-of-range relative jump
+        .ADDR   @range_jump
+.DEF    ERR_REDEF_LABEL         7       ; label redefined
+        .ADDR   @redef_label
+.DEF    ERR_UNDEF_CONST         8       ; const undefined
+        .ADDR   @undef_const
+.DEF    ERR_UNDEF_FILE          9       ; file not found
+        .ADDR   @undef_file
+.DEF    ERR_UNDEF_LABEL         10      ; label undefined
+        .ADDR   @undef_label
+.DEF    ERR_UNEXP_DEFER         11      ; label cannot be deferred here
+        .ADDR   @unexp_defer
+.DEF    ERR_UNEXP_EOL           12      ; unexpected end-of-line / file
+        .ADDR   @unexp_eol
+;-------------------------------------------------------------------------------
+@inval_expr     .BYTE "Invalid expression!", 0
+@inval_ins      .BYTE "Invalid CPU instruction!", 0
+@inval_key      .BYTE "Invalid keyword!", 0
+@inval_num      .BYTE "Invalid hexadecimal number!", 0
+@inval_str      .BYTE "Unterminated string!", 0
+@inval_sym      .BYTE "Invalid symbol name!", 0
+@range_jump     .BYTE "Relative jump too far!", 0
+@redef_label    .BYTE "Labels cannot be redefined!", 0
+@undef_const    .BYTE "Undefined constant!", 0
+@undef_file     .BYTE "File not found!", 0
+@undef_label    .BYTE "Label is undefined!", 0
+@unexp_defer    .BYTE "Forward-references to labels not allowed here!", 0
+@unexp_eol      .BYTE "Expected expression!", 0
 
-_printQuit:
+
+; print error message and quit:
+;===============================================================================
+; this is a fall-through 'ladder' that sets A to the value based on entrypoint.
+; opcode $21 is manually inserted to skip the next LD A instruction and so on.
+; 
+errInvalExpr:
+        ;-----------------------------------------------------------------------
+        xor     A                       ; = ERR_INVAL_EXPR
+        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+errInvalIns:
+        ;-----------------------------------------------------------------------
+        ld      A,      ERR_INVAL_INS   ; err code for invalid CPU instruction
+        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+errInvalKey:
+        ;-----------------------------------------------------------------------
+        ld      A,      ERR_INVAL_KEY   ; err code for invalid keyword
+        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+errInvalNum:
+        ;-----------------------------------------------------------------------
+        ld      A,      ERR_INVAL_NUM   ; err code for invalid number
+        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+errInvalStr:
+        ;-----------------------------------------------------------------------
+        ld      A,      ERR_INVAL_STR   ; err code for invalid string
+        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+errInvalSym:
+        ;-----------------------------------------------------------------------
+        ld      A,      ERR_INVAL_SYM   ; err code for invalid symbol
+        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+errRangeJump:
+        ;-----------------------------------------------------------------------
+        ld      A,      ERR_RANGE_JUMP  ; err code for out-of-range jump
+        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+errRedefLabel:
+        ;-----------------------------------------------------------------------
+        ld      A,      ERR_REDEF_LABEL ; err code for label redefined
+        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+errUndefConst:
+        ;-----------------------------------------------------------------------
+        ld      A,      ERR_UNDEF_CONST ; err code for const undefined
+        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+errUndefFile:
+        ;-----------------------------------------------------------------------
+        ld      A,      ERR_UNDEF_FILE  ; err code for file not found
+        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+errUndefLabel:
+        ;-----------------------------------------------------------------------
+        ld      A,      ERR_UNDEF_LABEL ; err code for label undefined
+        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+errUnexpDefer:
+        ;-----------------------------------------------------------------------
+        ld      A,      ERR_UNEXP_DEFER ; err code for disallowed fwd-reference
+        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+errUnexpEOL:
+        ;-----------------------------------------------------------------------
+        ld      A,      ERR_UNEXP_EOL   ; err code for unexpected end-of-line
+
+        ; fallthrough
+        ; ...
+
+err:
+;===============================================================================
+; print an error message and quit:
+;
+; in:   A               error number (an index to the errmsg table)
+;===============================================================================
+        add     A,      A               ; double index number for table lookup
+        ld      C,      A               ; load into BC
+        ld      B,      0               ;  for 16-bit add
+        ld      HL,     _errmsg         ; err msg lookup table
+        add     HL,     BC              ; offset into table
+        ld      E,      [HL]            ; get string addr lo-byte
+        inc     HL                      ; ...
+        ld      D,      [HL]            ; get string addr hi-byte
+
+        ; fallthrough
+        ; ...
+
+printQuit:
 ;===============================================================================
 ; (print string and quit to OS)
 ;-------------------------------------------------------------------------------
         call    osPrintStrZ
         jp      osQuit
-
-errFile:
-;===============================================================================
-; file not found!
-;-------------------------------------------------------------------------------
-        ld      DE,     _strFile
-        jr      _printQuit
-
-errWord:
-;===============================================================================
-; word is too long!
-;-------------------------------------------------------------------------------
-        ld      DE,     _strWord
-        jr      _printQuit
-
-errOpcode:
-;===============================================================================
-; not a recognised opcode!
-;-------------------------------------------------------------------------------
-        ld      DE,     _strOpcode
-        jr      _printQuit
-
-errExpectParam:
-;===============================================================================
-; instruction parameter expected!
-;-------------------------------------------------------------------------------
-        ld      DE,     _strExpectParam
-        jr      _printQuit
-
-errExpectExpr:
-;===============================================================================
-; expression expected!
-;-------------------------------------------------------------------------------
-        ld      DE,     _strExpectExpr
-        jr      _printQuit
-
-errExpr:
-;===============================================================================
-; not a valid expression!
-;-------------------------------------------------------------------------------
-        ld      DE,     _strExpr
-        jr      _printQuit
-
-errKeyword:
-;===============================================================================
-; not a valid keyword!
-;-------------------------------------------------------------------------------
-        ld      DE,     _strKeyword
-        jr      _printQuit
-
-errHex:
-;===============================================================================
-; not a valid hexadecimal number!
-;-------------------------------------------------------------------------------
-        ld      DE,     _strHex
-        jr      _printQuit
-
-errLabelRedef:
-;===============================================================================
-; labels cannot be redefined!
-;-------------------------------------------------------------------------------
-        ld      DE,     _strLabelRedef
-        jr      _printQuit
-
-errLabelUndef:
-;===============================================================================
-; label is undefined! (forward-reference remains)
-;-------------------------------------------------------------------------------
-        ld      DE,     _strLabelUndef
-        jr      _printQuit
-
-errExprConst:
-;===============================================================================
-; forward-references to labels not allowed in constant /
-; program-counter defines!
-;-------------------------------------------------------------------------------
-        ld      DE,     _strExprConst
-        jr      _printQuit
-
-errConstUndef:
-;===============================================================================
-; use of undefined constant in expr!
-;-------------------------------------------------------------------------------
-        ld      DE,     _strConstUndef
-        jr      _printQuit
-
-errRelJump:
-;===============================================================================
-; relative jump is too far!
-;-------------------------------------------------------------------------------
-        ld      DE,     _strRel
-        jr      _printQuit
-
-errStrEnd:
-;===============================================================================
-; unterminated string!
-;===============================================================================
-        ld      DE,     _strStrEnd
-        jr      _printQuit
-
-errStrHere:
-;===============================================================================
-; string not allowed here!
-;===============================================================================
-        ld      DE,     _strStrHere
-        jr      _printQuit
 
 .ENDB

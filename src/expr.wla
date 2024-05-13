@@ -113,14 +113,14 @@ nextParam:
         ; therefore we expect A = H. compare sets flags without changing A,
         ; allowing us to do two tests using the same A value!
         cp      H
-        jp      nz,     errRelJump              ; err if hi-byte is not 'empty'
+        jp      nz,     errRangeJump    ; err if hi-byte is not 'empty'
 
         ; because the relative-distance byte is signed, we expect its sign
         ; to match that of the result -- a forward jump can only produce
         ; a positive distance; if the lo-byte is negative it's a positive
         ; distance that's too large (>127, i.e. hi-bit set)
         xor     L
-        jp      m,      errRelJump              ; if sign bits differ, error
+        jp      m,      errRangeJump    ; if sign bits differ, error
 
         ; output relative-distance byte:
         ;-----------------------------------------------------------------------
@@ -211,7 +211,7 @@ nextExpr:
         cp      ASCII_SPC               ; space is the only valid whitespace
         call    z,      nextWord        ; if space, skip spaces
         cp      ASCII_SPC+1             ; non-visible character?
-        jp      c,      errExpectExpr   ; error if end-of-line / end-of-file
+        jp      c,      errUnexpEOL     ; error if end-of-line / end-of-file
 
         ; fallthrough
         ; ...
@@ -335,7 +335,7 @@ parseExpr:
         dec     HL                      ; move to next token space
 
         call    nextWord                ; read first character of the next word
-        jp      z,      errExpr         ; newline/EOF = unexpected expr end!
+        jp      z,      errUnexpEOL     ; newline/EOF = unexpected expr end!
 
         ;-----------------------------------------------------------------------
         ; unary operators:
@@ -366,7 +366,7 @@ parseExpr:
         ; TODO: support multiple unary operators without separating space
         ;
         call    nextWord                ; read first character of the next word
-        jp      z,      errExpr         ; newline/EOF = unexpected expr end!
+        jp      z,      errUnexpEOL     ; newline/EOF = unexpected expr end!
 
         ; after a unary operator, a value must follow
         ;
@@ -375,7 +375,7 @@ parseExpr:
         cp      CHAR_LABEL              ; a label?
         jr      z,      @label          ;
         cp      CHAR_CONST              ; a constant?
-        jp      nz,     errExpr         ; no? expression has no value!!
+        jp      nz,     errUnexpEOL     ; no? expression has no value!!
 
         ; fallthrough to const-handling
         ; ...
@@ -384,7 +384,7 @@ parseExpr:
         ; constant?
         ;-----------------------------------------------------------------------
 @const: call    getConst                ; try get the constant's value
-        jp      z,      errConstUndef   ; exprssion contains undefined const!
+        jp      z,      errUndefConst   ; exprssion contains undefined const!
         ;-----------------------------------------------------------------------
         ; hexadecimal literal?
         ;-----------------------------------------------------------------------
@@ -732,7 +732,7 @@ evalValue:
         dec     HL                      ; .
         ex      DE,     HL              ; switch flag-byte addr to HL
         or      A,      [HL]            ; is the flag byte 0? (=fwd-ref!)
-        jp      z,      errLabelUndef   ; label was never defined!
+        jp      z,      errUndefLabel   ; label was never defined!
         dec     HL                      ; skip over flag byte
         ld      C,      [HL]            ; read label value into BC
         dec     HL                      ; ..
@@ -776,7 +776,7 @@ parseHexNumber:
         ;-----------------------------------------------------------------------
         ; if a 5th byte was read that wasn't whitespace,
         ; it's an error -- the number is too long!
-        jp      errHex
+        jp      errInvalNum
 
         ;-----------------------------------------------------------------------
 +       ld      DE,     [str]           ; go back to the start of the number
@@ -869,7 +869,7 @@ parseHexNumber:
         add     $31
         cp      10                      ; check for 0-9
         ret     c                       ; (conditional RET first is slightly
-        jp      errHex                  ;  faster than conditional JP first)
+        jp      errInvalNum             ;  faster than conditional JP first)
 
 +       add     10                      ; change "A"-"F" to 10-15
         ret
