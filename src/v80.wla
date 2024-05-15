@@ -146,7 +146,7 @@ init:
         ; often enough, but that slows down execution. rather, we can write
         ; an initial value to every stack space and after execution we can
         ; check how deep the original value remains. But what if the data
-        ; puhsed to the stack happens to contain that value?
+        ; pushed to the stack happens to contain that value?
         ;
         ; the only value you can almost guarantee will never be pushed to the
         ; stack is... the address of the stack itself! For example, if the
@@ -174,7 +174,7 @@ init:
         ld      IX,     $0100           ; virtual program-counter
 
         ; the code-segment address (where assembled binary code goes)
-        ; is pinned to IY. as with the virtual program-counter, depsite
+        ; is pinned to IY. as with the virtual program-counter, despite
         ; the IY register being slower to utilise, it is used sparingly
         ; and avoids costly register swapping
         ;
@@ -207,7 +207,7 @@ init:
         ; (size between end of code-segment and end-of-heap)
         ;
         ex      DE,     HL              ; return last heap addr to HL
-        push    IY                      ; swap code-segement last address
+        push    IY                      ; swap code-segment last address
         pop     DE                      ;  into DE for SBC HL, DE
         sbc     HL,     DE              ; calculate end-start difference
         ld      [@free],HL              ; save value for printing later
@@ -403,7 +403,7 @@ assemble:
         ; distinguish between newline and end-of-file:
         ;-----------------------------------------------------------------------
         ; readChar returns zero-flag set for both newline and end-of-file,
-        ; check the ASCII code to differntiate the two
+        ; check the ASCII code to differentiate the two
         ;
 @nleof: cp      ASCII_LF                ; check for newline
         ret     nz                      ; no? end-of-file -- end assembling
@@ -496,27 +496,16 @@ assemble:
 
         ld      A,      C               ; return to first char
         res     5,      A               ; force upper-case for "a"-"z"
+        cp      'I'                     ; .`i` keyword?
+        jr      z,      @i              ; handle file include
         cp      'B'                     ; `.b` keyword?
         jr      z,      @b              ; process bytes
         cp      'W'                     ; `.w' keyword?
-        jr      z,      @w              ; process words
-        cp      'I'                     ; .`i` keyword?
         jp      nz,     errInvalKey     ; none of the above? invalid keyword!
 
-        ; (fallthrough to handle includes)
+        ; (fallthrough to handle words)
         ; ...
 
-        ;-----------------------------------------------------------------------
-        ; include:
-        ;-----------------------------------------------------------------------
-        ; TODO: should we read ALL bytes until the end of the line, including
-        ;       expressions? where do we store these? (need a 256B temp string)
-        ;
-        ; next parameter is a string. unlike other strings this shouldn't be
-        ; written directly to the code-segment
-@i:     halt
-
-        jr      @next
         ;-----------------------------------------------------------------------
         ; words:
         ;-----------------------------------------------------------------------
@@ -586,6 +575,41 @@ assemble:
         inc     IX                      ; increment virtual program-counter
         jr      -                       ; keep reading
 
+        ;-----------------------------------------------------------------------
+        ; include:
+        ;-----------------------------------------------------------------------
+        ; TODO: should we read ALL bytes until the end of the line, including
+        ;       expressions? where do we store these? (need a 256B temp string)
+        ;       we could temporarily relocate the code-segment addr (IY) and
+        ;       reuse the `.b` bytes parser but we'd need to disallow defers
+        ;
+        ; next parameter must be a string. unlike other strings
+        ; this shouldn't be written directly to the code-segment
+        ;
+@i:     call    nextWord                ; skip in-between spaces
+        jp      z,      errUnexpEOL     ; error if no parameter!
+        cp      CHAR_STR                ; is it a string?
+        jp      nz,     errInvalStr     ; error if not a string
+        ld      DE,     [str]           ; get addr of string buffer
+        ;-----------------------------------------------------------------------
+-       call    readChar                ; read next character
+        jp      z,      errInvalStr     ; sudden EOL/EOF? unterminated string!
+        cp      CHAR_STR                ; string terminator?
+        jr      z,      +               ; yes, continue with include
+        ld      [DE],   A               ; add char to string buffer
+        inc     DE                      ; move to next byte in buffer
+        jr      -                       ; keep reading
+        ;-----------------------------------------------------------------------
++       xor	A			; set A to zero
+	ld      [DE],   A               ; add string terminator
+
+	; TODO: the current file state needs to be preserved and a new file
+	;	opened. the OS needs to preserve the FCB and the current index
+	;	of the current record (0-127). after parsing the file we must
+	;	restore that specific record and index!
+        halt
+
+        jp      @next
 
 getConst:
 ;===============================================================================
@@ -633,7 +657,7 @@ getLabel:
 ; out:  A               non-zero if found. 0 if label not found, including
 ;                       forward-references that don't have a valid value yet
 ;       zf              zero-flag is set according to the above
-;       cf              carry set indciates the label is a forward-reference
+;       cf              carry set indicates the label is a forward-reference
 ;       BC              if label found, BC holds its value
 ;                       if label doesn't exist, **BC retains the name length**
 ;       DE              if label is a forward-reference (carry-set), then DE
