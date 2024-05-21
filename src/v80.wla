@@ -595,18 +595,25 @@ assemble:
 -       call    readChar                ; read next character
         jp      z,      errInvalStr     ; sudden EOL/EOF? unterminated string!
         cp      CHAR_STR                ; string terminator?
-        jr      z,      +               ; yes, continue with include
+        jr      z,      +               ; yes, stop reading chars
         ld      [DE],   A               ; add char to string buffer
-        inc     DE                      ; move to next byte in buffer
+        inc     E                       ; move to next byte in buffer
         jr      -                       ; keep reading
         ;-----------------------------------------------------------------------
-+       xor	A			; set A to zero
-	ld      [DE],   A               ; add string terminator
+        ; because the string buffer is page-aligned, the lo-byte
+        ; of the address doubles as the length of the string
+        ;
++       xor     A                       ; (set A to zero)
+        ld      [DE],   A               ; write terminator
+        ld      C,      E               ; swap to C for OS call
+        ld      E,      A               ; return addr to start of string
 
-	; TODO: the current file state needs to be preserved and a new file
-	;	opened. the OS needs to preserve the FCB and the current index
-	;	of the current record (0-127). after parsing the file we must
-	;	restore that specific record and index!
+        call    osFileOpen
+
+        ; TODO: the current file state needs to be preserved and a new file
+        ;       opened. the OS needs to preserve the FCB and the current index
+        ;       of the current record (0-127). after parsing the file we must
+        ;       restore that specific record and index!
         halt
 
         jp      @next

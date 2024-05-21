@@ -21,6 +21,73 @@ CPM_VER_STR             = "2.2"         ; CP/M version as string
 BOOT                    = $0000
 TBASE                   = $0100         ; start of transient program area
 
+; BDOS calls:
+BDOS                    = $0005         ; call address to access BDOS
+
+; function:             ; C = ?         ; notes:
+BDOS_RESET              = 0             ; system reset
+BDOS_CONIN              = 1             ; console input
+BDOS_CONOUT             = 2             ; console output
+BDOS_RDRIN              = 3             ; reader input
+BDOS_PUNOUT             = 4             ; punch output
+BDOS_LISTOUT            = 5             ; list output
+BDOS_CONIO              = 6             ; direct console control
+BDOS_GETIO              = 7             ; get I/O byte
+BDOS_SETIO              = 8             ; set I/O byte
+BDOS_PRNSTR             = 9             ; print string
+BDOS_CONBUF             = 10            ; buffered console input (line input)
+BDOS_CONSTAT            = 11            ; get console status
+BDOS_VER                = 12            ; get version number
+BDOS_RSTDSK             = 13            ; reset disk system
+BDOS_SELDSK             = 14            ; select disk
+BDOS_OPEN               = 15            ; open file
+BDOS_CLOSE              = 16            ; close file
+BDOS_FIND1ST            = 17            ; search for first file
+BDOS_FINDNEXT           = 18            ; search for next file
+BDOS_DEL                = 19            ; delete file
+BDOS_READSEQ            = 20            ; read sequential
+BDOS_WRITESEQ           = 21            ; write sequential
+BDOS_MAKEFILE           = 22            ; create new file
+BDOS_RENFILE            = 23            ; rename file
+BDOS_LOGIN              = 24            ; return bitmap of present drives A-P
+BDOS_CURDSK             = 25            ; get current disk
+BDOS_SETDMA             = 26            ; set DMA address at $0008
+BDOS_GETADDR            = 27            ; get addr of disk allocation
+BDOS_WRTPTRCT           = 28            ; write protect disk
+BDOS_GETRO              = 29            ; get read-only bitmap for drives A-P
+BDOS_SETATTR            = 30            ; set file attributes
+BDOS_DSKPARMS           = 31            ; get file parameters addr
+BDOS_USER               = 32            ; set/return user number
+BDOS_READRND            = 33            ; read random-access
+BDOS_WRITERND           = 34            ; write random-access
+BDOS_FILESIZE           = 35            ; get file size
+BDOS_RECORD             = 36            ; get random-access record
+BDOS_RSTDRV             = 37            ; reset drive
+BDOS_FILLZERO           = 40            ; random-access zero-out
+
+.STRUCT FileControlBlock
+        drive           BYTE            ; 0 = default, 1 = A: ... 16 = P:
+        name            DSB 8           ; filename, first 8-letters
+        type            DSB 3           ; filename, extension. NB: no dot!
+        extent          BYTE            ; extent, for files > 127 records
+        rsvrd           WORD            ; reserved
+        rec_count       BYTE            ; number of records in extent, 0-127
+        data            DSB 16          ; depends on usage
+        cur_rec         BYTE            ; current record number
+        rnd_rec         FARADDR         ; optional random record number
+.ENDST
+
+.RAMSECTION "CPM_FCB"                   SLOT "ZP" ORGA $5C FORCE RETURNORG
+;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+cpm_fcb                 INSTANCEOF FileControlBlock
+;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+.ENDS
+.RAMSECTION "CPM_DMA"                   SLOT "ZP" ORGA $80 FORCE RETURNORG
+;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+cpm_dma                 DSB 128
+;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+.ENDS
+
 
 ; bootstrap:
 ;===============================================================================
@@ -63,16 +130,16 @@ boot:
         ; i.e. a file parameter was passed on the command line
         ;-----------------------------------------------------------------------
         ; check filename first-letter in the built-in file-control-block
-        ld      A,      [command_fcb.filename]
+        ld      A,      [cpm_fcb.name]
         and     %01111111               ; (hi-bit might be set)
         cp      ' '+1                   ; non-visible char? $00-$20?
         jr      c,      @help           ; show help msg and quit
 
         ; open file:
         xor     A                       ; start reading at record 0
-        ld      [command_fcb.current_record],   A
+        ld      [cpm_fcb.cur_rec],      A
         ld      C,      BDOS_OPEN
-        ld      DE,     command_fcb     ; use default FileControlBlock
+        ld      DE,     cpm_fcb         ; use default FileControlBlock
         call    BDOS
         and     A                       ; (set flags!)
         jp      m,      errUndefFile    ; $FF = error
@@ -101,82 +168,203 @@ boot:
 @@str   .BYTE "ERROR: CP/M ", CPM_VER_STR, " or higher required!$"
 
 
-; BDOS calls:
-;===============================================================================
-BDOS                    = $0005         ; call address to access BDOS
-
-; function              ; C             ; notes
-BDOS_RESET              = 0             ; system reset
-BDOS_CONIN              = 1             ; console input
-BDOS_CONOUT             = 2             ; console output
-BDOS_RDRIN              = 3             ; reader input
-BDOS_PUNOUT             = 4             ; punch output
-BDOS_LISTOUT            = 5             ; list output
-BDOS_CONIO              = 6             ; direct console control
-BDOS_GETIO              = 7             ; get I/O byte
-BDOS_SETIO              = 8             ; set I/O byte
-BDOS_PRNSTR             = 9             ; print string
-BDOS_CONBUF             = 10            ; buffered console input (line input)
-BDOS_CONSTAT            = 11            ; get console status
-BDOS_VER                = 12            ; get version number
-BDOS_RSTDSK             = 13            ; reset disk system
-BDOS_SELDSK             = 14            ; select disk
-BDOS_OPEN               = 15            ; open file
-BDOS_CLOSE              = 16            ; close file
-BDOS_FIND1ST            = 17            ; search for first file
-BDOS_FINDNEXT           = 18            ; search for next file
-BDOS_DEL                = 19            ; delete file
-BDOS_READSEQ            = 20            ; read sequential
-BDOS_WRITESEQ           = 21            ; write sequential
-BDOS_MAKEFILE           = 22            ; create new file
-BDOS_RENFILE            = 23            ; rename file
-BDOS_LOGIN              = 24            ; return bitmap of present drives A-P
-BDOS_CURDSK             = 25            ; get current disk
-BDOS_SETDMA             = 26            ; set DMA address at $0008
-BDOS_GETADDR            = 27            ; get addr of disk allocation
-BDOS_WRTPTRCT           = 28            ; write protect disk
-BDOS_GETRO              = 29            ; get read-only bitmap for drives A-P
-BDOS_SETATTR            = 30            ; set file attributes
-BDOS_DSKPARMS           = 31            ; get file parameters addr
-BDOS_USER               = 32            ; set/return user number
-BDOS_READRND            = 33            ; read random-access
-BDOS_WRITERND           = 34            ; write random-access
-BDOS_FILESIZE           = 35            ; get file size
-BDOS_RECORD             = 36            ; get random-access record
-BDOS_RSTDRV             = 37            ; reset drive
-BDOS_FILLZERO           = 40            ; random-access zero-out
-
-.STRUCT FileControlBlock
-        drive_code      BYTE
-        filename        DSB 8
-        extension       DSB 3
-        extent          BYTE
-        reserved1       BYTE
-        reserved2       BYTE
-        record_count    BYTE
-        data            DSB 16
-        current_record  BYTE
-        random_record   FARADDR
-.ENDST
-
-.RAMSECTION "CPMCommandFCB"             SLOT "ZP" ORGA $5C FORCE RETURNORG
-;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-command_fcb             INSTANCEOF FileControlBlock
-;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-.ENDS
-.RAMSECTION "CPMBuffer"                 SLOT "ZP" ORGA $80 FORCE RETURNORG
-;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-buffer                  DSB 128
-;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-.ENDS
-
-
 osQuit:
 ;===============================================================================
-; quit the application and return to the OS (if present)
+; quit the application and return to the OS: (if present)
 ;-------------------------------------------------------------------------------
         ld      C,      BDOS_RESET      ; CP/M doesn't require us to unwind
         jp      BDOS                    ;  the stack, we can just reset
+
+
+osFileOpen:
+;===============================================================================
+; open a file:
+;
+; WARN: this routine is intended for filename strings from v80 source files,
+;       it will NOT work with CP/M-formatted filenames from the default FCB
+;
+; TODO: support files on other drives? ("A:" prefix)
+;       and user-numbers?? ("0A:" prefix)
+;
+; TODO: CP/M-3 has a "parse filename" BDOS function, no.152
+;
+; in:   DE              address of the filename to use, zero-terminated
+;       C               length of filename, 1-based
+; out:  A, BC, DE       (clobbered)
+;       HL              (preserved)
+;-------------------------------------------------------------------------------
+        push    HL                      ; (preserve caller's HL)
+        ex      DE,     HL              ; swap source filename to HL
+
+        ; validate filename according to CP/M rules:
+        ; (the parser takes any string)
+        ;
+        ld      A,      C               ; provided filename length
+        cp      12+1                    ; can't be more than 12 chars! (8.3)
+        jp      nc,     errUndefFile    ; too long? it won't be found
+
+        ; prefill the FCB filename/ext with spaces since CP/M filenames have
+        ; the extension separate from the filename which is padded by spaces.
+        ; this is done backwards so DE ends at the beginning of the filename
+        ;
+        ld      DE,     cpm_fcb.name+11
+        ld      B,      11              ; 8.3 but CP/M doesn't store the dot
+        ld      A,      ' '             ; spaces (called "blanks" in CP/M?)
+-       ld      [DE],   A               ; write a space in the FCB
+        dec     E                       ; (the system FCB is in zero-page)
+        djnz    -                       ; blank 11 chars and end at the start
+
+        ; copy file name to the FCB:
+        ;-----------------------------------------------------------------------
+        ld      B,      8               ; max filename chars (sans extension)
+        call    @copy                   ; test/fix and copy up to 8 chars
+        jr      z,      +               ; if null encountered, no extension
+
+        ; copy file extension:
+        ; (the dot has already been skipped by `@copy`)
+        ;
+@ext:   ld      DE,     cpm_fcb.type    ; 
+        ld      B,      3               ; max extension chars (sans dot)
+        call    @copy                   ; copy up to 3 chars for extension
+        jr      nz,     @err            ; dot not allowed in extensions!
+
+        ; set the remaining fields in the FCB:
+        ;
++       xor     A                       ; set A to zero
+        ld      [cpm_fcb.drive],        A
+        ld      [cpm_fcb.extent],       A
+        ld      [cpm_fcb.cur_rec],      A
+
+        pop     HL                      ; (restore caller's HL)
+        ret
+
+        ; test, fix & copy chars to FCB:
+        ;=======================================================================
+        ; in:   B               max. number of chars to copy
+        ; out:  A               last character read
+        ;       zf              zf-set   = reached a null
+        ;                       zf-clear = reached a dot
+        ;-----------------------------------------------------------------------
+@copy:  ld      A,      [HL]            ; read a source character
+        inc     HL                      ; move to next source character
+        and     A                       ; (set zero-flag)
+        ret     z                       ; return zf-set on null-terminator
+        cp      '.'                     ; is it a dot? (file/ext separator)
+        jr      z,      +               ; if yes, return zf-clear instead
+        call    @valid                  ; test/fix char (will err on invalid)
+        ld      [DE],   A               ; write fixed char to FCB
+        inc     E                       ;  and move to next char
+        djnz    @copy                   ; loop until all chars copied
+        ;-----------------------------------------------------------------------
+        ; if all chars are copied, the next char *must* be a dot (filename)
+        ; or the null-terminator (filename or extension)
+        ;
+        ld      A,      [HL]            ; read ahead next character
+        and     A                       ; set flags -- check for 0
+        ret     z                       ; if null return zf-set
+        cp      '.'                     ; check for dot
+        inc     HL                      ; (skip the dot)
+        jr      nz,     @err            ; not null or dot -- too many chars!
+        ;-----------------------------------------------------------------------
++       and     A                       ; clear zero-flag for dot
+        ret                             ; (A is last char code)
+
+        ; test / fix char for CP/M filenames:
+        ;=======================================================================
+        ; the CP/M manual says that the following characters are not
+        ; allowed in filenames: < > = , ! | * ? & / $ [ ] ( ) . : ; \ + -
+        ;
+        ; (note that whilst the dot is used as the separator for the
+        ;  file extension, multiple dots cannot occur in a filename!)
+        ;
+        ; with such a long list it is perhaps clearer to state the
+        ; non-alphanum characters that _are_ valid: " # % ' @ ^ _ ` { } ~
+        ; the chart below shows valid chars by "<" & ranges between "|"
+        ;
+        ;   $20        $30  0  <  $40  @  <  $50  P  |  $60  `  |  $70  p  |
+        ;   $21  !     $31  1  |  $41  A  |  $51  Q  |  $61  a  |  $71  q  |
+        ;   $22  "  <  $32  2  |  $42  B  |  $52  R  |  $62  b  |  $72  r  |
+        ;   $23  #  <  $33  3  |  $43  C  |  $53  S  |  $63  c  |  $73  s  |
+        ;   $24  $     $34  4  |  $44  D  |  $54  T  |  $64  d  |  $74  t  |
+        ;   $25  %  <  $35  5  |  $45  E  |  $55  U  |  $65  e  |  $75  u  |
+        ;   $26  &     $36  6  |  $46  F  |  $56  V  |  $66  f  |  $76  v  |
+        ;   $27  '  <  $37  7  |  $47  G  |  $57  W  |  $67  g  |  $77  w  |
+        ;   $28  (     $38  8  |  $48  H  |  $58  X  |  $68  h  |  $78  x  |
+        ;   $29  )     $39  9  <  $49  I  |  $59  Y  |  $69  i  |  $79  y  |
+        ;   $2A  *     $3A  :     $4A  J  |  $5A  Z  <  $6A  j  |  $7A  z  |
+        ;   $2B  +     $3B  ;     $4B  K  |  $5B  [     $6B  k  |  $7B  {  <
+        ;   $2C  ,     $3C  <     $4C  L  |  $5C  \     $6C  l  |  $7C  |   
+        ;   $2D  -     $3D  =     $4D  M  |  $5D  ]     $6D  m  |  $7D  }  <
+        ;   $2E  .     $3E  >     $4E  N  |  $5E  ^  <  $6E  n  |  $7E  ~  <
+        ;   $2F  /     $3F  ?     $4F  O  |  $5F  _  |  $6F  o  |  $7F  ⌂   
+        ;
+        ; the CP/M file-system is upper-case only so we must fix filenames
+        ; coming from source code. we expect v80 source files to use lower-
+        ; case names so we optimise for that case, handling them first
+        ;
+@valid: cp      'a'                     ; ASCII code after lower-case A?
+        jr      c,      @lt_a           ; branch to handle code below 'a'
+
+        cp      'z'+1                   ; ASCII code above lower-case Z?
+        jr      nc,     @gt_z           ; check only codes >'z'
+
+        res     5,      A               ; unset bit 5 to switch a-z to A-Z
+        ret                             ; return with case-fixed char
+
+        ;-----------------------------------------------------------------------
+        ; codes above lower-case Z: ($7B+)
+        ;
+@gt_z:  cp      $7F                     ; any char >= 127 (DEL) is invalid
+        jr      nc,     @err            ; this leaves only "{", "|", "}" & "~"
+        cp      '|'                     ;  of which only "|" is invalid
+        ret     nz                      ; return if not "|", i.e. "{", "}" & "~"
+        jr      @err                    ; error for "|"
+
+        ;-----------------------------------------------------------------------
+        ; codes below lower-case A ($61) make up the majority.
+        ; the largest contiguous block is @ followed by upper-case A-Z
+        ;
+@lt_a:  cp      '@'                     ; ASCII code @ or above?
+        jr      c,      @lt_at          ; no, handle codes below @ (numbers)
+        cp      'Z'+1                   ; ASCII code below upper-case Z?
+        ret     nc                      ; upper-case A-Z is valid as-is
+        cp      '^'                     ; but above upper-case Z, only
+        ret     nc                      ;  "^", "_" and "`" are valid, and
+        jr      @err                    ;  "[", "|" and "]" are invalid
+
+        ;-----------------------------------------------------------------------
+        ; note that due to the branches already taken,
+        ; any greater-than check assumes a ceiling below "@"
+        ;
+@lt_at: cp      '0'                     ; >= "0"?
+        jr      c,      @lt_0           ; if no, handle codes below "0"
+        cp      '9'+1                   ; <= "9"?
+        ret     c                       ; "0"-"9" are valid as-is
+
+        ; there are no valid chars after "9" and before "@"!
+        ;
+        jr      @err                    ; ":", ";", "<", "=", ">" & "?" invalid
+
+        ;-----------------------------------------------------------------------
+        ; there are only 4 valid characters below "0":
+        ;
+@lt_0:  cp      '"'
+        ret     z
+        cp      '#'
+        ret     z
+        cp      '%'
+        ret     z
+        cp      '''
+        ret     z
+
+        ; if none of the above,
+        ; fallthrough to error
+        ; ...
+
+        ;=======================================================================
+        ; hard error for filenames containing invalid characters
+        ;
+@err:   jp      errUndefFile
 
 
 osGetChar:
@@ -205,12 +393,12 @@ osGetChar:
         ; read sector:
         ;-----------------------------------------------------------------------
         ld      C',     BDOS_READSEQ
-        ld      DE',    command_fcb
+        ld      DE',    cpm_fcb
         call    BDOS
 
         ; reset record byte counter
         ld      HL',    @index+1        ; re-get index
-        ld      [HL'],  <buffer         ; set addr *in* instruction below
+        ld      [HL'],  <cpm_dma        ; set addr *in* instruction below
 
         dec     A                       ; if A is $01, the file has ended
         jr      z,      @eof            ; go return 0 for EOF, zero-flag set
