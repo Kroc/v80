@@ -13,12 +13,6 @@ ASCII_CR                = $0d           ; ASCII carriage-return
 ASCII_LF                = $0a           ; ASCII line-feed
 ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 
-; system:
-;
-.INC    "cpm.wla"                       ; CP/M interface
-.INC    "debug.wla"                     ; debug-only functionality
-.INC    "err.wla"                       ; error messages / debug printing
-
 ; syntax:
 ;
 .DEF    CHAR_END         0              ; general terminator
@@ -41,6 +35,11 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 .DEF    CHAR_OP_XOR     '^'             ; xor operator
 .DEF    CHAR_OP_MOD     '\'             ; modulo operator
 
+; system:
+;
+.INC    "cpm.wla"                       ; CP/M interface
+.INC    "debug.wla"                     ; debug-only functionality
+.INC    "err.wla"                       ; error messages
 .INC    "file.wla"                      ; file input / output
 .INC    "expr.wla"                      ; expression parsing and evaluation
 .INC    "z80.wla"                       ; Z80 parser & opcode binary tree
@@ -389,13 +388,13 @@ assemble:
         ; bytes and patch in the new value
         ;
 +       ld      A,      IXL             ; virtual program-counter, lo-byte
-        ld      [DE],   A
+        ld      [DE],   A               ; ...
         inc     DE                      ; move upwards to value hi-byte
         ld      A,      IXH             ; virtual program-counter, hi-byte
-        ld      [DE],   A
+        ld      [DE],   A               ; ...
         inc     DE                      ; move upwards to flag-byte
         ld      A,      1               ; set flag byte to indicate valid value
-        ld      [DE],   A
+        ld      [DE],   A               ; ...
 
         jr      @next                   ; return to parsing
 
@@ -608,15 +607,19 @@ assemble:
         ld      C,      E               ; swap to C for OS call
         ld      E,      A               ; return addr to start of string
 
-        call    osFileOpen
-
         ; TODO: the current file state needs to be preserved and a new file
         ;       opened. the OS needs to preserve the FCB and the current index
         ;       of the current record (0-127). after parsing the file we must
         ;       restore that specific record and index!
+        ;
+        call    osFileOpen
+
         halt
 
-        jp      @next
+        ; skip any whitespace / comment following the string and return
+        ; to the line context (other keywords cannot follow `.i`)
+        jp      @line
+
 
 getConst:
 ;===============================================================================

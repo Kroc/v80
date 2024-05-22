@@ -207,11 +207,11 @@ osFileOpen:
         ; the extension separate from the filename which is padded by spaces.
         ; this is done backwards so DE ends at the beginning of the filename
         ;
-        ld      DE,     cpm_fcb.name+11
+        ld      DE,     cpm_fcb.name+11 ; filename chars 0-10
         ld      B,      11              ; 8.3 but CP/M doesn't store the dot
         ld      A,      ' '             ; spaces (called "blanks" in CP/M?)
--       ld      [DE],   A               ; write a space in the FCB
-        dec     E                       ; (the system FCB is in zero-page)
+-       dec     E                       ; (the system FCB is in zero-page)
+        ld      [DE],   A               ; write a space in the FCB
         djnz    -                       ; blank 11 chars and end at the start
 
         ; copy file name to the FCB:
@@ -240,10 +240,10 @@ osFileOpen:
 
         ; test, fix & copy chars to FCB:
         ;=======================================================================
-        ; in:   B               max. number of chars to copy
-        ; out:  A               last character read
-        ;       zf              zf-set   = reached a null
-        ;                       zf-clear = reached a dot
+        ; in:   B                       max. number of chars to copy
+        ; out:  A                       last character read
+        ;       zf                      zf-set   = reached a null
+        ;                               zf-clear = reached a dot
         ;-----------------------------------------------------------------------
 @copy:  ld      A,      [HL]            ; read a source character
         inc     HL                      ; move to next source character
@@ -263,7 +263,7 @@ osFileOpen:
         and     A                       ; set flags -- check for 0
         ret     z                       ; if null return zf-set
         cp      '.'                     ; check for dot
-        inc     HL                      ; (skip the dot)
+        inc     HL                      ; (skip over the dot for extension)
         jr      nz,     @err            ; not null or dot -- too many chars!
         ;-----------------------------------------------------------------------
 +       and     A                       ; clear zero-flag for dot

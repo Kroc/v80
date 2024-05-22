@@ -1,5 +1,7 @@
 ; v80 test file
 ;
+.i	"z80.v80"
+
 #true	$1			; define constant
 #true	#true - $1		; redefine constant
 
