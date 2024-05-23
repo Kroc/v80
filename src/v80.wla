@@ -138,8 +138,8 @@ init:
         ld      A,      ASCII_LF        ; print newline
         call    osPrintChar             ; ...
 
-        ; how do you measure the maximum depth of the stack used
-        ; during program execution?
+        ; how do you measure the maximum depth of the stack
+        ; used during program execution?
         ;-----------------------------------------------------------------------
         ; you could record the stack depth every time you push, or at least
         ; often enough, but that slows down execution. rather, we can write
@@ -603,10 +603,26 @@ assemble:
         ld      [DE],   A               ; write terminator
         ld      E,      A               ; return addr to start of string
 
-        call    osFileOpen
-        call    osFileClose
+        ; backup the current file number, col & row:
+        ;
+        ; we don't have to backup the last read character because `@line`
+        ; doesn't use it before reading another character
+        ;
+        ld      BC,     [filenum_col]   ; file number and col are 1 byte
+        push    BC                      ;  each so are batched together
+        ld      BC,     [row]           ; the row (line) number is 16-bit
+        push    BC                      ; ...
 
-        ; skip any whitespace / comment following the string and return
+        call    osFileOpen              ; switch to new file
+        call    assemble                ; assemble its contents
+        call    osFileClose             ; return to previous file
+
+        pop     BC                      ; pop row (line) number
+        ld      [row],  BC              ; restore current file row-number
+        pop     BC                      ; pop file number & line
+        ld      [filenum_col],  BC      ; restore current file column-number
+
+        ; skip any whitespace / comment following the file-name and return
         ; to the line context (other keywords cannot follow `.i`)
         jp      @line
 

@@ -212,7 +212,7 @@ osFileOpen:
         pop     BC                      ; steal the return address!
         exx                             ; put aside input parameters for now
 
-        ; preserve the current FileControlBlock on the stack:
+        ; push the current FileControlBlock on the stack:
         ;-----------------------------------------------------------------------
         ; write the current record byte index into the FCB
         ; (in the random record field that isn't used by us)
@@ -260,7 +260,7 @@ osFileOpen:
         ; copy file extension:
         ; (the dot has already been skipped by `@copy`)
         ;
-@ext:   ld      DE,     cpm_fcb.type    ; skip ahead to file-extension field
+        ld      DE,     cpm_fcb.type    ; skip ahead to file-extension field
         ld      B,      3               ; max extension chars (sans dot)
         call    @copy                   ; copy up to 3 chars for extension
         jr      nz,     @err            ; dot not allowed in extensions!
@@ -284,7 +284,7 @@ osFileOpen:
         ld      A,      <cpm_dma        ; reset the index for reading chars
         ld      [osGetChar@index+1],    A
         ld      C,      BDOS_READSEQ    ; read the first record from the file
-        call    BDOS                    ; ...
+        call    BDOS                    ; TODO: error?
 
         pop     HL                      ; (restore caller's HL)
         ret
@@ -506,13 +506,14 @@ osGetChar:
 @next:  ld      [HL'],  <cpm_dma        ; reset the index to $0080
 @read:  push    AF                      ; preserve read character
 
-        ld      C',     BDOS_READSEQ    ; select BDOS command number
+        ld      C',     BDOS_READSEQ    ; select BDOS function number
         ld      DE',    cpm_fcb         ; use default FileControlBlock @ $005C
         call    BDOS                    ; do the disk read
         dec     A                       ; if A is $01, the file has ended and
-        jr      z,      @eof            ;  the NEXT char get must return EOF!
+        call    z,      @eof            ;  the NEXT char get must return EOF!
 
         pop     AF                      ; return read character
+        and     A                       ; don't return zero-flag set
         ret
 
         ;-----------------------------------------------------------------------
@@ -521,8 +522,6 @@ osGetChar:
         ;
 @eof:   ld      A,      ASCII_SUB       ; write the CP/M EOF marker
         ld      [cpm_dma],      A       ;  to the first byte for next read
-
-        pop     AF                      ; return read character
         ret
 
 
@@ -542,6 +541,29 @@ osPrintChar:
 
         exx                             ; restore register set
         ret
+
+
+osPrintStrZ:
+;===============================================================================
+; print a null-terminated string:
+;
+; in:   DE              string-addr, must be 0-terminated
+; out:  DE              DE is advanced according to the length of the string
+;       A               zero, by nature of the null-terminator
+;       HL, BC          (preserved)
+;-------------------------------------------------------------------------------
+-       ld      A,      [DE]            ; read a character
+        and     A                       ; (set CPU flags!)
+        inc     DE                      ; (go to next char, does not set zf!)
+        ret     z                       ; return after null-terminator
+        exx                             ; swap to shadow registers
+
+        ld      E',     A               ; BDOS param for character
+        ld      C',     BDOS_CONIO      ; BDOS function to use
+        call    BDOS                    ; print character!
+
+        exx                             ; return to normal registers
+        jr      -                       ; keep looping until null-terminator
 
 
 ;osPrintBStr:
@@ -571,28 +593,5 @@ osPrintChar:
 ;        inc     DE                      ; (step over last byte)
 ;        pop     HL                      ; restore original HL
 ;        ret
-
-
-osPrintStrZ:
-;===============================================================================
-; print a null-terminated string:
 ;
-; in:   DE              string-addr, must be 0-terminated
-; out:  DE              DE is advanced according to the length of the string
-;       A               zero, by nature of the null-terminator
-;       HL, BC          (preserved)
-;-------------------------------------------------------------------------------
--       ld      A,      [DE]            ; read a character
-        and     A                       ; (set CPU flags!)
-        inc     DE                      ; (go to next char, does not set zf!)
-        ret     z                       ; return after null-terminator
-        exx                             ; swap to shadow registers
-
-        ld      E',     A               ; BDOS param for character
-        ld      C',     BDOS_CONIO      ; BDOS function to use
-        call    BDOS                    ; print character!
-
-        exx                             ; return to normal registers
-        jr      -                       ; keep looping until null-terminator
-
 .ENDB
