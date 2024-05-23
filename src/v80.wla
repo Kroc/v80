@@ -142,8 +142,7 @@ init:
         call    @print                  ; print next string and value
         ld      HL,     [sp]            ; start addr of stack
         call    @print                  ; print next string and value
-        ld      A,      ASCII_LF        ; print newline
-        call    osPrintChar             ; ...
+        call    osPrintCRLF             ; end of line
 
         ; how do you measure the maximum depth of the stack
         ; used during program execution?
@@ -267,7 +266,7 @@ init:
         ld      A,      [@stack]        ; lastly, the number of bytes free
         call    printHexByte            ;  on the stack at peak usage
         ld      DE,     @peak           ;  i.e. the deepest the stack got,
-        call    osPrintStrZ             ;  not the current level
+        call    osPrintLn               ;  not the current level
 
         .dumpCode                       ; DEBUG_DUMP: hex-dump the code-segment
 
@@ -293,12 +292,12 @@ init:
         ;-----------------------------------------------------------------------
 @size:  call    @print                  ; print string (DE) and value (HL)
         ld      DE,     @bytes          ; append " bytes"
-        jp      osPrintStrZ             ;  and return
+        jp      osPrintLn               ;  and return
 
-@strc   .BYTE   "\nCODE : $", 0
+@strc   .BYTE   "\r\nCODE : $", 0
 @strh   .BYTE   "HEAP : $", 0
 @strf   .BYTE   "FREE : $", 0
-@bytes  .BYTE   " bytes\n", 0
+@bytes  .BYTE   " bytes", 0
 @strs   .BYTE   "STACK: $00", 0
 @peak   .BYTE   " free", 0
 

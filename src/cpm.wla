@@ -124,7 +124,7 @@ boot:
         ; it differs for each OS/platform
         ;
         ld      DE,     @banner         ; print the program banner
-        call    osPrintStrZ
+        call    osPrintLn
 
         ; check for an automatic file-reference,
         ; i.e. a file parameter was passed on the command line
@@ -153,13 +153,13 @@ boot:
         jp      init                    ; we will not return from here!
 
         ;-----------------------------------------------------------------------
-@banner .BYTE   "v80 CP/M v0, Kroc Camen 2023-2024\n", 0
+@banner .BYTE   "v80 CP/M v0, Kroc Camen 2023-2024", 0
 
         ;=======================================================================
 @help:  ld      DE,     @@str
         jp      osPrintStrZ
 
-@@str   .BYTE   "\n    V80 SOURCE.V80", 0
+@@str   .BYTE   "\r\n    V80 SOURCE.V80", 0
 
         ;=======================================================================
         ; CP/M version less than 2.2 -- call BDOS manually for safety
@@ -524,6 +524,34 @@ osGetChar:
         ld      [cpm_dma],      A       ;  to the first byte for next read
         ret
 
+
+osPrintLn:
+;===============================================================================
+; prints a null-terminated string and appends a newline: (CRLF)
+;
+; in:   DE              string-addr, must be 0-terminated
+; out:  DE              DE is advanced according to the length of the string
+;       HL, BC          (preserved)
+;       A               (clobbered)
+;-------------------------------------------------------------------------------
+        call    osPrintStrZ
+
+        ; fallthrough
+        ; ...
+
+osPrintCRLF:
+;===============================================================================
+; print a newline!
+;
+; out:  BC, DE, HL      (preserved)
+;       A               (clobbered)
+;-------------------------------------------------------------------------------
+        ld      A,      ASCII_CR
+        call    osPrintChar
+        ld      A,      ASCII_LF
+
+        ; fallthrough
+        ; ...
 
 osPrintChar:
 ;===============================================================================
