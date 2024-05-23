@@ -135,18 +135,22 @@ boot:
         cp      ' '+1                   ; non-visible char? $00-$20?
         jr      c,      @help           ; show help msg and quit
 
-        ; open file:
+        ; open the file:
+        ;-----------------------------------------------------------------------
         xor     A                       ; start reading at record 0
         ld      [cpm_fcb.cur_rec],      A
         ld      C,      BDOS_OPEN
-        ld      DE,     cpm_fcb         ; use default FileControlBlock
+        ld      DE,     cpm_fcb         ; use default FileControlBlock @ $005C
         call    BDOS
         and     A                       ; (set flags!)
         jp      m,      errUndefFile    ; $FF = error
 
-        ; run the program
+        ld      C',     BDOS_READSEQ    ; read the first sector to pre-populate
+        call    BDOS                    ;  the buffer for the first char read
+
+        ; run the program:
         ;-----------------------------------------------------------------------
-        jp      init
+        jp      init                    ; we will not return from here!
 
         ;-----------------------------------------------------------------------
 @banner .BYTE   "v80 CP/M v0, Kroc Camen 2023-2024\n", 0
@@ -181,7 +185,7 @@ osFileOpen:
 ; open a file:
 ;
 ; WARN: this routine is intended for filename strings from v80 source files,
-;       it will NOT work with CP/M-formatted filenames from the default FCB
+;       it will NOT work with CP/M-formatted filenames from the command tail
 ;
 ; TODO: support files on other drives? ("A:" prefix)
 ;       and user-numbers?? ("0A:" prefix)
@@ -189,20 +193,17 @@ osFileOpen:
 ; TODO: CP/M-3 has a "parse filename" BDOS function, no.152
 ;
 ; in:   DE              address of the filename to use, zero-terminated
-;       C               length of filename, 1-based
 ; out:  A, BC, DE       (clobbered)
 ;       HL              (preserved)
 ;-------------------------------------------------------------------------------
         push    HL                      ; (preserve caller's HL)
         ex      DE,     HL              ; swap source filename to HL
 
+        ; 
+
         ; validate filename according to CP/M rules:
         ; (the parser takes any string)
         ;
-        ld      A,      C               ; provided filename length
-        cp      12+1                    ; can't be more than 12 chars! (8.3)
-        jp      nc,     errUndefFile    ; too long? it won't be found
-
         ; prefill the FCB filename/ext with spaces since CP/M filenames have
         ; the extension separate from the filename which is padded by spaces.
         ; this is done backwards so DE ends at the beginning of the filename
@@ -234,6 +235,20 @@ osFileOpen:
         ld      [cpm_fcb.drive],        A
         ld      [cpm_fcb.extent],       A
         ld      [cpm_fcb.cur_rec],      A
+
+        ; now attempt to open the file,
+        ; CP/M will check if the file exists
+        ;
+        ld      C,      BDOS_OPEN       ; BDOS function number
+        ld      DE,     cpm_fcb         ; address of the FileControlBlock
+        call    BDOS                    ; call BDOS -> BIOS etc.
+        and     A                       ; OK = 0, file not found = $FF
+        jr      nz,     @err            ; error if not zero
+
+        ; TODO: reset the record index and read
+        ;       the first record of the new file
+        ;
+        halt
 
         pop     HL                      ; (restore caller's HL)
         ret
@@ -369,7 +384,7 @@ osFileOpen:
 
 osGetChar:
 ;===============================================================================
-; read an ASCII character from an open file:
+; read an ASCII character from the currently open file:
 ;
 ; out:  A               character. 0 = end-of-file
 ;       zf              zero-flag is set for end of file
@@ -380,41 +395,14 @@ osGetChar:
 ; TODO: index byte will not be reset when changing file!
 ;       this routine needs to multi-task FCBs (store index in FCB?)
 ;-------------------------------------------------------------------------------
-        exx                             ; swap to shadow registers
-        ld      HL',    @index+1        ; index is stored *in* the instruction!
-
-        ; if a sector has not been read, then fetch from disk first.
-        ; CP/M uses 128-byte records and reads 1 record at a time
-        ;
-        ld      A,      [HL']           ; current index, 0 if uninitialized
-        and     A                       ; (set flags!)
-        jr      nz,     @index          ; skip if at least 1-byte read
-
-        ; read sector:
-        ;-----------------------------------------------------------------------
-        ld      C',     BDOS_READSEQ
-        ld      DE',    cpm_fcb
-        call    BDOS
-
-        ; reset record byte counter
-        ld      HL',    @index+1        ; re-get index
-        ld      [HL'],  <cpm_dma        ; set addr *in* instruction below
-
-        dec     A                       ; if A is $01, the file has ended
-        jr      z,      @eof            ; go return 0 for EOF, zero-flag set
-
-        ; TODO: non-zero indicates some other error;
-        ;       does BDOS terminate anyway or do we need to handle this?
-
-        ;-----------------------------------------------------------------------
         ; get byte:
         ;
         ; the sector is read to the "DMA" address, which is $80 by default.
-        ; the address "$0000" is assembled into the instruction and the code
-        ; will replace the low-byte with $80 after a sector read
+        ; the address "$0080" is assembled into the instruction and the code
+        ; increments this addr after each character read! when it overflows
+        ; a new sector is read from disk and the index is reset to $80 again
         ;
-@index  ld      A,      [$0000]         ; get byte at current index
-        inc     [HL']                   ; increment index (address above!)
+@index  ld      A,      [cpm_dma]       ; get byte at current index
 
         ; in CP/M the ASCII SUB control code ($1A) terminates the file
         ; because all CP/M files are padded to 128 bytes sectors!
@@ -423,12 +411,47 @@ osGetChar:
         cp      ASCII_SUB               ; is this a CP/M sector padding byte?
         jr      z,      @sub            ; return A=0, zero-flag set for EOF
 
+        ; increment index:
+        ;-----------------------------------------------------------------------
+        exx                             ; swap to shadow registers
+        ld      HL',    @index+1        ; index is stored *in* the instruction!
+        inc     [HL']                   ; increment index (address above!)
+        jr      z,      @next           ; if overflow, fetch next sector
         exx                             ; (restore register set)
         ret
 
         ;-----------------------------------------------------------------------
 @sub:   xor     A                       ; return 0 for EOF, zero-flag set
-@eof:   exx                             ; restore register set
+        ret
+
+        ;-----------------------------------------------------------------------
+        ; read sector:
+        ;
+@next:  push    AF                      ; preserve read character
+
+        ld      C',     BDOS_READSEQ    ; select BDOS command number
+        ld      DE',    cpm_fcb         ; use default FileControlBlock @ $005C
+        call    BDOS                    ; do the disk read
+        dec     A                       ; if A is $01, the file has ended and
+        jr      z,      @eof            ;  the NEXT char get must return EOF!
+
+        ld      A,      <cpm_dma        ; start of the sector buffer
+        ld      [@index+1],     A       ; set addr *in* instruction at top
+
+        pop     AF                      ; return read character
+        exx                             ; (restore register set)
+        ret
+
+        ;-----------------------------------------------------------------------
+        ; if an end-of-file occurs at a sector boundary then we need to return
+        ; EOF on the *NEXT* call as the last character has already been read:
+        ;
+@eof:   ld      [HL'],  <cpm_dma        ; reset the index to $0080
+        ld      A,      ASCII_SUB       ; write the CP/M EOF marker
+        ld      [cpm_dma],      A       ;  to the first byte for next read
+
+        exx                             ; (restore register set)
+        pop     AF                      ; return successfully read character
         ret
 
 

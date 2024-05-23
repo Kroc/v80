@@ -9,7 +9,6 @@ filenum:.BYTE $00                       ; current file number
 col:    .BYTE $00                       ; current column-number in file
 row:    .WORD $0000                     ; current line-number in file
 
-
 readChar:
 ;===============================================================================
 ; reads the next character in the file:
@@ -75,88 +74,4 @@ readChar:
         ld      [char], A               ; update retained value to match
 
         exx                             ; restore HL/DE
-        ret
-
-
-nextWord:
-;===============================================================================
-; reads input and skips spaces until either:
-;
-; - the next non-terminating character
-; - a newline or end-of-line character
-; - a comment
-;
-; in the case of a comment, the comment text is skipped over and the next
-; newline / end-of-file is returned instead! therefore this routine
-; MUST NOT be used to skip over whitespace in string literals etc.
-;
-; WARN: this routine will return on newline and that there may be more leading
-; whitespace on the next line -- if you want to skip to the next non-whitespace
-; character, call the routine again after a newline!
-;
-; out:  A               ASCII code, 0 = end-of-file
-;       zf              zero-flag is set for "no word", i.e. when the line
-;                       ends before another valid word. check A for newline
-;                       or end-of-file (0) to differentiate those
-;-------------------------------------------------------------------------------
--       call    readChar                ; read a character (returns z-flag)
-        ret     z                       ; return z-flag set if newline/EOF
-
-        ; we need to be careful not to wrongly return z-flag set!
-        ;
-        ; we cannot check for ASCII_SPC+1 ("!") as if this character appears,
-        ; the parser will think the file ended. instead look for space itself
-        ; -- for any ASCII code below we continue looping, and space itself
-        ; is caught with the zero-flag and re-looped
-        ; 
-        cp      ASCII_SPC               ; is ASCII code a space?
-        jr      c,      -               ; keep reading if codes 1-31
-        jr      z,      -               ; also, keep reading if space
-
-        cp      CHAR_COMMENT            ; is this the start of a comment?
-        jr      z,      @skip           ; if so, skip chars until end
-
-        ret
-
-        ;-----------------------------------------------------------------------
-        ; skip over a comment until the newline / end-of-line:
-        ;
-@skip:  call    readChar                ; read a character (returns z-flag)
-        jr      nz,     @skip           ; read until newline / end-of-file
-        
-        ret
-
-
-readWord:
-;===============================================================================
-; read symbol name:
-;
-; NOTE: the word is written *downwards* in RAM, to match how symbol names are
-;       written on the heap, for faster comparison -- we use the bottom of
-;       a page to hold the incoming word so that we can get away with using
-;       `DEC E` instead of `DEC DE`
-;
-; out:  A               length of word
-;       DE              DE is set to the first byte (length) of `[word]`
-;       [char]          the last character read will always be some kind
-;                       of whitespace -- space, newline or end-of-file
-;       HL              (preserved)
-;-------------------------------------------------------------------------------
-        ld      DE,     [word]          ; top of word-buffer, e.g $FC1F
-        jr      +                       ; (first character already read)
-        ;-----------------------------------------------------------------------
--       call    readChar                ; read char from input file
-        cp      ASCII_SPC+1             ; whitespace or end-of-line/file?
-        jr      c,      @ok             ; (leave loop at whitespace)
-+       dec     E                       ; move to next space in buffer
-        ld      [DE],   A               ; add the character to the buffer
-        jp      p,      -               ; keep going until buffer full
-        ;-----------------------------------------------------------------------
-        jp      errInvalSym             ; quit with invalid symbol error
-
-        ;-----------------------------------------------------------------------
-@ok:    ld      A,      WORD_LEN        ; max size - characters remaining
-        sub     E                       ;  = length of word
-        ld      E,      WORD_LEN        ; snap back to length byte
-        ld      [DE],   A               ; write word-length byte
         ret
