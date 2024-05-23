@@ -603,12 +603,8 @@ assemble:
         ld      [DE],   A               ; write terminator
         ld      E,      A               ; return addr to start of string
 
-        ; TODO: this routine should push a new FCB to the stack (and shift the
-        ;       return address) so that a unique FCB is used for the new file
-        ;
         call    osFileOpen
-
-        halt
+        call    osFileClose
 
         ; skip any whitespace / comment following the string and return
         ; to the line context (other keywords cannot follow `.i`)
