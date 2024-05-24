@@ -9,8 +9,8 @@ It currently runs on CP/M with plans to make it self-hosting (can assemble itsel
 
 ## ~~Features~~
 
-- No Macros! Copy + Paste is your friend
 - No linker, we have linker at home &rarr; includes
+- No Macros! Copy + Paste is your friend or re-use includes
 - No decimal numbers. Let's face it, you think in hexadecimal anyway
 - No floating point numbers. Have you _tried_ coding floats on an 8-bit CPU??
 - No negative numbers. It's all 1s in 2s compliment
@@ -22,7 +22,7 @@ It currently runs on CP/M with plans to make it self-hosting (can assemble itsel
 
 v80 uses a non-standard syntax designed for parsing simplicity / speed, not compatibility with existing source code.
 
-The basic principle is that v80 can only recognise a word by the first character, so everything must be prefixed with a sigil type or otherwise be easily categorizable, e.g. `a`-`z` = instruction.
+The basic principle is that v80 can only recognise a word by the first character, so everything must be prefixed with a sigil or otherwise be easily categorizable, e.g. `a`-`z` = instruction.
 
     ; v80: ................ zilog:
     ;
@@ -36,47 +36,80 @@ The basic principle is that v80 can only recognise a word by the first character
     call    $FFFF           ; call        $FFFF
     call?nz $FFFF           ; call nz,    $FFFF
     ; ...
-    ; (see "src/test.v80" for full list)
-
-    :label                  ; label define
+    ; (see "src/test_z80.v80" for full list)
 
     #true   $1              ; constant define
 
     ; constants can be redefined, but the value
     ; must be constant (no forward-references)
+    ;
     #true   $0
+
+    ; label define
+    ;
+    :label
 
     ; a hex number at the start of a line
     ; sets the program-counter
+    ;
     $c000
 
     ; or use `$` to set program-counter
     ; using an expression
+    ;
     $   #base + $0100
 
     ; keywords begin with `.`
+    ;
     .b <bytes>
     .w <words>
 
-    ; in expressions, `$` returns curernt program-counter
+    ; in expressions, `$` returns
+    ; current program-counter
+    ;
     .b :label - $
 
+    ; no string escapes, just use numbers
+    ;
+    .b "line 1" $0a "line 2"
+
+    ; unary operators:
+    ; (before value)
+    ;
+    ; <         = lo
+    ; >         = hi
+    ; !         = not (flip all bits)
+    ; -         = neg (flip all bits and +1)
+
+    ; infix operatosr:
+    ;
+    ; + - * /   = add sub mul div
+    ; ^ & | \   = xor and or  mod
+
     ; file includes
+    ;
     .i "file.v80"
 
-    ; no comparison operators!
-    ; expression must evaluate to 0 (true)
-    .if <expr> {
-        ; ...
-    }
+    ; if statements: the expression is evaluated and
+    ; the if passes / skips based on equality with 0
+    ;
+    ?= <expr>   ; only 0 passes
+    ?! <expr>   ; only not-0 passes
+    ?+ <expt>   ; only positive (sign+) passes
+    ?- <expr>   ; only negative (sign-) passes
+        ; if the condition fails, indented lines are
+        ; skipped until first line of equal indent
+    ;   <- end of if statement
 
-    ; signed if -- positive passes, negative fails
-    .is <expr> {
-        ; ...
-    }
+    ; align: skip bytes until the program-counter
+    ; modulo the expression is zero
+    ;
+    .a  $100    ; align to next page
 
-    ; no string escapes, just use numbers
-    .b "line 1" $0a "line 2"
+    ; to skip a specific number of bytes,
+    ; count from the current program-counter!
+    ;
+    .a  $ + $80 ; skip exactly 128 bytes
 
 ### Labels:
 
@@ -143,6 +176,7 @@ The unary operators come before a value:
     !  not
     <  lo-byte
     >  hi-byte
+    -  negate
 
 Standard operators come between values:
 
