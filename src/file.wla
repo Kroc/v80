@@ -38,22 +38,10 @@ parseFile:
         call    getFileNum              ; get file-number for file-name
         ld      [filenum],      A       ; set as current file
 
-        ; copy the file-name to a zero-terminated
-        ; forward string (for the OS)
+        ; copy the file-name to a zero-terminated forward string (for the OS)
         ;
-        push    HL                      ; preserve heap-addr
-        ld      DE,     filename        ; where to copy the file-name
-        ld      HL,     [word]          ; top of word-buffer
-        ld      B,      [HL]            ; first byte is word-length
-        ;-----------------------------------------------------------------------
--       dec     L                       ; move to next char in word-buffer
-        ld      A,      [HL]            ; read char from word-buffer
-        ld      [DE],   A               ; write to forward file-name
-        inc     DE                      ; move to next char in file-name
-        djnz    -                       ; copy all chars this way
-        ;-----------------------------------------------------------------------
-        xor     A                       ; set A to zero
-        ld      [DE],   A               ; add null terminator
+        ld      DE,     [word]
+        call    copyFileName
 
 .IFNDEF DEBUG
         ;///////////////////////////////////////////////////////////////////////
@@ -67,11 +55,36 @@ parseFile:
         call    osPrintChar
 .ENDIF  ;///////////////////////////////////////////////////////////////////////
 
-        pop     HL                      ; restore heap-addr
         ld      DE,     filename        ; return to start of string
         call    osFileOpen              ; switch to new file
         call    assemble                ; assemble its contents
         jp      osFileClose             ; close the file
+
+
+copyFileName:
+;===============================================================================
+; copies a backwards string file-name from the parser,
+; into the filename field (forwards)
+;
+; in:   DE              addr of backwards string, length-byte first
+; out:  HL              (preserved)
+;       A, B, DE        (clobbered)
+;-------------------------------------------------------------------------------
+        push    HL                      ; preserve heap-addr
+        ex      DE,     HL              ; swap DE parameter to HL
+        ld      B,      [HL]            ; first byte is word-length
+        ld      DE,     filename        ; where to copy the file-name
+        ;-----------------------------------------------------------------------
+-       dec     L                       ; move to next char in word-buffer
+        ld      A,      [HL]            ; read char from word-buffer
+        ld      [DE],   A               ; write to forward file-name
+        inc     DE                      ; move to next char in file-name
+        djnz    -                       ; copy all chars this way
+        ;-----------------------------------------------------------------------
+        xor     A                       ; set A to zero
+        ld      [DE],   A               ; add null terminator
+        pop     HL                      ; restore heap-addr
+        ret
 
 
 getFileNum:
