@@ -818,7 +818,8 @@ findSymbol:
 ;
 ; out:  A               non-zero if found. 0 if symbol not found
 ;       zf              zero-flag is set according to the above
-;       BC              if symbol not found, symbol length is returned in BC
+;       BC              if symbol found, BC is addr of symbol length byte
+;                       if symbol not found, BC is the symbol name length
 ;       DE              $0000 if not found, otherwise an addr pointing to
 ;                       the byte following the symbol name (e.g. the value)
 ;       HL              (preserved)
@@ -833,18 +834,10 @@ findSymbol:
         ;=======================================================================
         ; names do not match!
         ;
---      ld      A,      WORD_LEN        ; max symbol size
-        sub     E                       ; - characters remaining
-        ld      C,      A               ; = length of word
-        add     HL,     BC              ; snap back to symbol length field
-        inc     HL                      ; move *up* to length byte
-
-        ; FIXME: the length of the input word needs to be restored
-        ;        as this is the comparison we use against each symbol
-        ld      E,      WORD_LEN
-        ld      A,      [DE]
-        ld      C,      A
-
+--      ld      E,      WORD_LEN        ; return to word-buffer length byte
+        ld      A,      [DE]            ; restore the word-length to BC
+        ld      C,      A               ; ...
+        pop     HL                      ; return symbol length byte
 -       inc     HL                      ; move *up* to link addr lo-byte
 
         ;-----------------------------------------------------------------------
@@ -877,20 +870,22 @@ findSymbol:
 
         ; symbol length matches, check characters:
         ;=======================================================================
+        push    HL                      ; store symbol length addr to snap back
         dec     HL                      ; (skip length byte)
         ld      E,      WORD_LEN        ; start at top of word-buffer
         ;-----------------------------------------------------------------------
--       dec     E                       ; move down a char in word-buffer
+@char:  dec     E                       ; move down a char in word-buffer
         ld      A,      [DE]            ; read char from word-buffer
         cpd                             ; = CP A, [HL]; DEC HL; DEC BC
         jr      nz,     --              ; stop looping if mismatch
-        jp      pe,     -               ; keep looping until chars run out
+        jp      pe,     @char           ; keep looping until chars run out
         ;-----------------------------------------------------------------------
         ; if all characters match we fall through to here
         ;
         ; CPD ensures that HL is pointing to the byte following the symbol-name
         ; -- on a const this is the value, and for labels this is the flag-byte
         ;
+        pop     BC                      ; return symbol-length addr (was HL)
         and     A                       ; A != 0, clear z-flag & carry-flag
 @end:   ex      DE,     HL              ; return last addr as DE
         pop     HL                      ; restore old heap addr
