@@ -44,6 +44,7 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 .INC    "cpm.wla"                       ; CP/M interface
 .INC    "debug.wla"                     ; debug-only functionality
 .INC    "err.wla"                       ; error messages
+.INC    "file.wla"                      ; file input / output
 .INC    "expr.wla"                      ; expression parsing and evaluation
 .INC    "z80.wla"                       ; Z80 parser & opcode binary tree
 
@@ -76,14 +77,6 @@ word:   .ADDR $fc1f                     ; word-buffer (works backwards)
 sp:     .ADDR $fd00                     ; stack pointer backup
 
 char:   .BYTE $00                       ; current input character
-
-; NOTE: these two bytes are specifically grouped together because they
-;       are required by deferred expressions written to the heap,
-;       and are pushed together as a single word
-filenum_col:
-filenum:.BYTE $00                       ; current file number
-col:    .BYTE $00                       ; current column-number in file
-row:    .WORD $0000                     ; current line-number in file
 
 ; heap:
 ;-------------------------------------------------------------------------------
@@ -585,139 +578,53 @@ assemble:
         ;       we could temporarily relocate the code-segment addr (IY) and
         ;       reuse the `.b` bytes parser but we'd need to disallow defers
         ;
-        ; next parameter must be a string. unlike other strings
-        ; this shouldn't be written directly to the code-segment
+        ; next parameter must be a string. unlike other strings this shouldn't
+        ; be written directly to the code-segment but is instead captured in
+        ; the word-buffer (downwards) for searching
         ;
 @i:     call    nextWord                ; skip in-between spaces
         jp      z,      errUnexpEOL     ; error if no parameter!
         cp      CHAR_STR                ; is it a string?
         jp      nz,     errInvalStr     ; error if not a string
-        ld      DE,     [str]           ; get addr of string buffer
+        ld      DE,     [word]          ; get addr of word buffer
         ;-----------------------------------------------------------------------
 -       call    readChar                ; read next character
         jp      z,      errInvalStr     ; sudden EOL/EOF? unterminated string!
         cp      CHAR_STR                ; string terminator?
         jr      z,      +               ; yes, stop reading chars
-        ld      [DE],   A               ; add char to string buffer
-        inc     E                       ; move to next byte in buffer
+        dec     E                       ; move to next byte in word-buffer
+        ld      [DE],   A               ; add char to word-buffer
         jr      -                       ; keep reading
         ;-----------------------------------------------------------------------
-+       xor     A                       ; (set A to zero)
-        ld      [DE],   A               ; write terminator
-        ld      E,      A               ; return addr to start of string
-
-.IFNDEF DEBUG
-        ;///////////////////////////////////////////////////////////////////////
-        ld      A,      '['
-        call    osPrintChar
-        call    osPrintStrZ
-        ld      A,      ':'
-        call    osPrintChar
-        ld      E,      0
-.ENDIF  ;///////////////////////////////////////////////////////////////////////
++       ld      A,      WORD_LEN        ; max size - characters remaining
+        sub     E                       ;  = length of word
+        ld      E,      WORD_LEN        ; snap back to length byte
+        ld      [DE],   A               ; write word-length byte
 
         ; backup the current file number, col & row:
         ;
-        ; we don't have to backup the last read character because `@line`
-        ; doesn't use it before reading another character
+        ; we don't have to backup the last read character because
+        ; `assemble` doesn't use it before reading another character
         ;
         ld      BC,     [filenum_col]   ; file number and col are 1 byte
         push    BC                      ;  each so are batched together
         ld      BC,     [row]           ; the row (line) number is 16-bit
         push    BC                      ; ...
-        call    osFilePush
 
-        ; TODO: define a file-number on the heap, to keep the file name
-        ;       to hand in case of error. file-names could use symbol
-        ;       dictionaries to avoid duplication with includes
+        call    osFilePush              ; preserve OS file data
+        call    parseFile               ; assemble the included file
+        call    osFilePop               ; restore previous OS file data
 
-        call    osFileOpen              ; switch to new file
-        call    assemble                ; assemble its contents
-        call    osFileClose             ; close the file
-
-        call    osFilePop
         pop     BC                      ; pop row (line) number
         ld      [row],  BC              ; restore current file row-number
-        pop     BC                      ; pop file number & line
+        pop     BC                      ; pop file-number & column
         ld      [filenum_col],  BC      ; restore current file column-number
 
-.IFNDEF DEBUG
-        ;///////////////////////////////////////////////////////////////////////
-        ld      A,      ']'
-        call    osPrintChar
-.ENDIF  ;///////////////////////////////////////////////////////////////////////
+        ; TODO: restore the file-name string!
 
         ; skip any whitespace / comment following the file-name and return
         ; to the line context (other keywords cannot follow `.i`)
         jp      @line
-
-
-readChar:
-;===============================================================================
-; reads the next character in the file:
-; current row and column are maintained
-;
-; out:  A               ASCII code. 0 = end-of-file
-;       zf              zero-flag is set *both* for end-of-file and newline!
-;       [char]          the character is also written to RAM
-;       BC, DE, HL      (preserved)
-;-------------------------------------------------------------------------------
--       call    osGetChar               ; read a char from file
-        ld      [char], A               ; retain returned character
-.IFDEF  DEBUG
-        ;///////////////////////////////////////////////////////////////////////
-        ;push    AF
-        ;call    osPrintChar             ; print each character as we receive it
-        ;pop     AF                      ; (zero-flag must be preserved)
-.ENDIF  ;///////////////////////////////////////////////////////////////////////
-        ret     z                       ; return on end-of-file
-
-        ; check for end-of-line:
-        ;-----------------------------------------------------------------------
-        cp      ASCII_CR                ; /r is always ignored,
-        jr      z, -                    ;  don't advance row/col, get next char
-
-        exx                             ; must preserve HL & DE
-        ld      HL',    col             ; prepare to increment column number
-
-        cp      ASCII_LF                ; /n is newline
-        jr      z,      @row            ; handle newline
-        cp      ASCII_TAB               ; /t is tab
-        jr      z,      @tab            ; handle tab
-
-        ; increment column number:
-        ;-----------------------------------------------------------------------
-        ; WARN: we do not cap the column number -- keep lines to 80 cols!
-        ;       when a line exceeds 255 chars, the 256th character will
-        ;       be treated as end-of-file!
-        ;
-@col:   inc     [HL']
-        exx                             ; restore HL/DE
-        ret
-
-        ;-----------------------------------------------------------------------
-        ; increment line-number:
-        ;
-@row:   ld      DE',    [row]           ; 16-bit load,
-        inc     DE'                     ;  and increment,
-        ld      [row],  DE'             ;  and write
-        ld      [HL'],  0               ; reset column number
-
-        exx                             ; restore HL/DE
-        ret                             ; return z-flag set for newline/EOF
-
-        ;-----------------------------------------------------------------------
-        ; handle tab-character:
-        ;
-@tab:   dec     A                       ; \t = 9, so change to 8 (width of tab)
-        add     [HL']                   ; add 8 to current column
-        and     %11111000               ; clip to every 8th column
-        ld      [HL'],  A               ; update column number
-        ld      A,      ASCII_SPC       ; return a single space instead
-        ld      [char], A               ; update retained value to match
-
-        exx                             ; restore HL/DE
-        ret
 
 
 nextWord:
@@ -911,9 +818,9 @@ findSymbol:
 ;
 ; out:  A               non-zero if found. 0 if symbol not found
 ;       zf              zero-flag is set according to the above
-;       BC              if symbol found, symbol name length is returned in BC
-;       DE              $0000 if not found, otherwise an addr pointing
-;                       to the byte following the symbol name (e.g. the value)
+;       BC              if symbol not found, symbol length is returned in BC
+;       DE              $0000 if not found, otherwise an addr pointing to
+;                       the byte following the symbol name (e.g. the value)
 ;       HL              (preserved)
 ;-------------------------------------------------------------------------------
         push    HL                      ; preserve heap addr coming in

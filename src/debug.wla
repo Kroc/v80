@@ -1,7 +1,7 @@
 ; v80, (C) Kroc Camen 2023-2024, MIT License
 ; debug only code
 ;
-.BLOCK  "debug"
+.BLOCK  "code-debug"
 
 ; these macros have to be defined, even if debugging is not enabled, so that
 ; assembly can still succeed with debugging off where these macros occur

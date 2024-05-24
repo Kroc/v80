@@ -1,0 +1,199 @@
+; v80, (C) Kroc Camen 2023-2024, MIT License
+; file input / ouput routines
+;
+.block  "code-file"
+
+; the name of each file assembled needs to be kept in case of error.
+; a deferred expression could error long after a file has been assembled and
+; closed. files are given an index number and their name is stored as a symbol
+; on the heap. this avoids duplicating names for files included multiple times
+;
+file:   .ADDR $000                      ; addr of last file-name
+
+; NOTE: these two bytes are specifically grouped together because they
+;       are required by deferred expressions written to the heap,
+;       and are pushed together as a single word
+filenum_col:
+filenum:.BYTE $00                       ; current file-number
+col:    .BYTE $00                       ; current column-number in file
+row:    .WORD $0000                     ; current line-number in file
+
+filenum_max:
+        .BYTE $00                       ; next file-number to use
+filename:
+        .BYTE "            ", 0         ; current file-name (8.3)
+
+
+parseFile:
+;===============================================================================
+; opens a file and assembles it:
+;
+; in:   [word]          file-name must be present in the word-buffer
+;       HL              (preserved)
+;-------------------------------------------------------------------------------
+        ; check if this file name is already known and has a file-number:
+        ; if an include file is used many times (like a macro), we don't
+        ; want the heap bloated with repeated instances of the filename
+        ;
+        call    getFileNum              ; get file-number for file-name
+        ld      [filenum],      A       ; set as current file
+
+        ; copy the file-name to a zero-terminated
+        ; forward string (for the OS)
+        ;
+        push    HL                      ; preserve heap-addr
+        ld      DE,     filename        ; where to copy the file-name
+        ld      HL,     [word]          ; top of word-buffer
+        ld      B,      [HL]            ; first byte is word-length
+        ;-----------------------------------------------------------------------
+-       dec     L                       ; move to next char in word-buffer
+        ld      A,      [HL]            ; read char from word-buffer
+        ld      [DE],   A               ; write to forward file-name
+        inc     DE                      ; move to next char in file-name
+        djnz    -                       ; copy all chars this way
+        ;-----------------------------------------------------------------------
+        xor     A                       ; set A to zero
+        ld      [DE],   A               ; add null terminator
+
+.IFNDEF DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        ;ld      A,      [filenum]
+        ;call    printHexByte
+        ;ld      A,      ':'
+        ;call    osPrintChar
+        ld      DE,     filename
+        call    osPrintStrZ
+        ld      A,      ':'
+        call    osPrintChar
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+
+        pop     HL                      ; restore heap-addr
+        ld      DE,     filename        ; return to start of string
+        call    osFileOpen              ; switch to new file
+        call    assemble                ; assemble its contents
+        jp      osFileClose             ; close the file
+
+
+getFileNum:
+;===============================================================================
+; search for a file-name and returns the file-number:
+;
+; if the file-name isn't known, the name is pushed on the heap
+; and a file-number is assigned and returned
+;
+; in:   [word]          file-name must be in word-buffer
+;       HL              current heap addr
+; out:  A               file-number
+;       HL              heap addr is advanced if file-name is pushed
+;-------------------------------------------------------------------------------
+        ld      DE,     file            ; use the file dictionary entry
+        call    findSymbol              ; search for the file in word-buffer
+        jr      z,      @add            ; if not found, add it
+
+        ; file-name found, the byte at DE contains the file-number
+        ; (the last byte of the file-name record in the dictionary)
+        ;
+        ld      A,      [DE]            ; return file-number
+        ret
+
+        ; push a new file-name record to the heap:
+        ;=======================================================================
+        ; link this file-name to the previous one:
+        ;
+@add:   ld      DE,     [file]          ; read prev file-name addr
+        dec     HL                      ; pre-decrement heap to empty byte
+        ld      [HL],   D               ; write prev file-name addr hi-byte
+        dec     HL                      ; (this is the heap addr we want)
+        ld      [HL],   E               ; write prev file-name addr lo-byte
+        ld      [file], HL              ; update entry point with heap addr
+
+        ; copy the file-name to the heap:
+        ; note that BC is set to the file-name length by `findSymbol`
+        ;
+        ld      DE,     [word]          ; get word-buffer addr
+        inc     C                       ; length +1 to include the length-byte
+
+        ; note that LDDR is post-decrement (copy-then-decrement), whereas
+        ; the heap is pre-decrement like the stack (decrement-then-copy)
+        ; -- decrement HL once to adjust for this before the copy
+        ;
+        dec     HL                      ; adjust heap for post-decrement copy
+        ex      DE,     HL              ; copy goes *from* [HL] *to* [DE]...
+        lddr                            ; copy BC bytes *from* [HL] *to* [DE]!
+        ld      HL,     [filenum_max]   ; the next highest file-number free
+        ld      A,      [HL]            ; use this file-number
+        inc     [HL]                    ; increment next file-number to use
+        ex      DE,     HL              ; swap back to heap in HL
+        ld      [HL],   A               ; set file-number in file-name record
+
+        ret
+
+
+readChar:
+;===============================================================================
+; reads the next character in the file:
+; current row and column are maintained
+;
+; out:  A               ASCII code. 0 = end-of-file
+;       zf              zero-flag is set *both* for end-of-file and newline!
+;       [char]          the character is also written to RAM
+;       BC, DE, HL      (preserved)
+;-------------------------------------------------------------------------------
+-       call    osGetChar               ; read a char from file
+        ld      [char], A               ; retain returned character
+.IFDEF  DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        ;push    AF
+        ;call    osPrintChar             ; print each character as we receive it
+        ;pop     AF                      ; (zero-flag must be preserved)
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+        ret     z                       ; return on end-of-file
+
+        ; check for end-of-line:
+        ;-----------------------------------------------------------------------
+        cp      ASCII_CR                ; /r is always ignored,
+        jr      z, -                    ;  don't advance row/col, get next char
+
+        exx                             ; must preserve HL & DE
+        ld      HL',    col             ; prepare to increment column number
+
+        cp      ASCII_LF                ; /n is newline
+        jr      z,      @row            ; handle newline
+        cp      ASCII_TAB               ; /t is tab
+        jr      z,      @tab            ; handle tab
+
+        ; increment column number:
+        ;-----------------------------------------------------------------------
+        ; WARN: we do not cap the column number -- keep lines to 80 cols!
+        ;       when a line exceeds 255 chars, the 256th character will
+        ;       be treated as end-of-file!
+        ;
+@col:   inc     [HL']
+        exx                             ; restore HL/DE
+        ret
+
+        ;-----------------------------------------------------------------------
+        ; increment line-number:
+        ;
+@row:   ld      DE',    [row]           ; 16-bit load,
+        inc     DE'                     ;  and increment,
+        ld      [row],  DE'             ;  and write
+        ld      [HL'],  0               ; reset column number
+
+        exx                             ; restore HL/DE
+        ret                             ; return z-flag set for newline/EOF
+
+        ;-----------------------------------------------------------------------
+        ; handle tab-character:
+        ;
+@tab:   dec     A                       ; \t = 9, so change to 8 (width of tab)
+        add     [HL']                   ; add 8 to current column
+        and     %11111000               ; clip to every 8th column
+        ld      [HL'],  A               ; update column number
+        ld      A,      ASCII_SPC       ; return a single space instead
+        ld      [char], A               ; update retained value to match
+
+        exx                             ; restore HL/DE
+        ret
+
+.endb

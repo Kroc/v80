@@ -203,6 +203,9 @@ osFilePush
 ;
 ; this state can occupy a lot of stack space (36 bytes on CP/M!) which will
 ; limit the maximum nesting depth -- v80 recommends no more than 3 levels
+;
+; out:  HL, DE          (preserved)
+;       A, BC           (clobbered)
 ;-------------------------------------------------------------------------------
         pop     BC                      ; steal the return address!
         exx                             ; put aside input parameters for now
@@ -227,6 +230,12 @@ osFilePush
         push    DE'                     ;  to the stack
         djnz    -                       ; do all bytes
 
+.IFNDEF DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        ld      C',     BDOS_CONOUT     ;
+        ld      E',     '['             ;
+        call    BDOS                    ;
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
         exx                             ; return to input parameters
         push    BC                      ; put return address *after* FCB
         ret
@@ -476,6 +485,12 @@ osFilePop:
         ld      A,      [cpm_fcb.rnd_rec]
         ld      [osGetChar@index+1],    A
 
+.IFNDEF DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        ld      C',     BDOS_CONOUT     ;
+        ld      E',     ']'             ;
+        call    BDOS                    ;
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
         exx                             ; return to input parameters
         push    BC                      ; fix the return address
         ret
