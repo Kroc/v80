@@ -35,6 +35,10 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 .DEF    CHAR_OP_XOR     '^'             ; xor operator
 .DEF    CHAR_OP_MOD     '\'             ; modulo operator
 
+;.DEF    DEBUG                           ; enable debug features
+;.DEF    DEBUG_LABELS                    ; dump label records when defined
+;.DEF    DEBUG_DUMP                      ; dump binary after assemby
+
 ; system:
 ;
 .INC    "cpm.wla"                       ; CP/M interface
@@ -143,6 +147,7 @@ init:
         ld      HL,     [sp]            ; start addr of stack
         call    @print                  ; print next string and value
         call    osPrintCRLF             ; end of line
+        call    osPrintCRLF             ; ...
 
         ; how do you measure the maximum depth of the stack
         ; used during program execution?
@@ -187,8 +192,9 @@ init:
 
         ; assemble the source file
         ;=======================================================================
-        ld      HL,     [heap]          ; where symbols / expressions go
-        call    assembleFile
+        call    osParams                ; open the input file
+        ld      HL,     [heap]          ; set where symbols / expressions go
+        call    assemble                ; begin assembling input file
 
         ; print final stats:
         ;=======================================================================
@@ -294,23 +300,14 @@ init:
         ld      DE,     @bytes          ; append " bytes"
         jp      osPrintLn               ;  and return
 
-@strc   .BYTE   "\r\nCODE : $", 0
+@strc   .BYTE   "\r\n\r\n"
+        .BYTE   "CODE : $", 0
 @strh   .BYTE   "HEAP : $", 0
 @strf   .BYTE   "FREE : $", 0
 @bytes  .BYTE   " bytes", 0
 @strs   .BYTE   "STACK: $00", 0
 @peak   .BYTE   " free", 0
 
-
-assembleFile:
-;===============================================================================
-; assembles a file:
-;
-;-------------------------------------------------------------------------------
-        ; TODO: do the file opening here so that we can do includes
-        call    assemble
-
-        ret
 
 assemble:
 ;===============================================================================
@@ -609,6 +606,16 @@ assemble:
         ld      [DE],   A               ; write terminator
         ld      E,      A               ; return addr to start of string
 
+.IFNDEF DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        ld      A,      '['
+        call    osPrintChar
+        call    osPrintStrZ
+        ld      A,      ':'
+        call    osPrintChar
+        ld      E,      0
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+
         ; backup the current file number, col & row:
         ;
         ; we don't have to backup the last read character because `@line`
@@ -618,15 +625,27 @@ assemble:
         push    BC                      ;  each so are batched together
         ld      BC,     [row]           ; the row (line) number is 16-bit
         push    BC                      ; ...
+        call    osFilePush
+
+        ; TODO: define a file-number on the heap, to keep the file name
+        ;       to hand in case of error. file-names could use symbol
+        ;       dictionaries to avoid duplication with includes
 
         call    osFileOpen              ; switch to new file
         call    assemble                ; assemble its contents
-        call    osFileClose             ; return to previous file
+        call    osFileClose             ; close the file
 
+        call    osFilePop
         pop     BC                      ; pop row (line) number
         ld      [row],  BC              ; restore current file row-number
         pop     BC                      ; pop file number & line
         ld      [filenum_col],  BC      ; restore current file column-number
+
+.IFNDEF DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        ld      A,      ']'
+        call    osPrintChar
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
 
         ; skip any whitespace / comment following the file-name and return
         ; to the line context (other keywords cannot follow `.i`)

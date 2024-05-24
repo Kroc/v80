@@ -126,40 +126,12 @@ boot:
         ld      DE,     @banner         ; print the program banner
         call    osPrintLn
 
-        ; check for an automatic file-reference,
-        ; i.e. a file parameter was passed on the command line
-        ;-----------------------------------------------------------------------
-        ; check filename first-letter in the built-in file-control-block
-        ld      A,      [cpm_fcb.name]
-        and     %01111111               ; (hi-bit might be set)
-        cp      ' '+1                   ; non-visible char? $00-$20?
-        jr      c,      @help           ; show help msg and quit
-
-        ; open the file:
-        ;-----------------------------------------------------------------------
-        xor     A                       ; start reading at record 0
-        ld      [cpm_fcb.cur_rec],      A
-        ld      C,      BDOS_OPEN
-        ld      DE,     cpm_fcb         ; use default FileControlBlock @ $005C
-        call    BDOS
-        and     A                       ; (set flags!)
-        jp      m,      errUndefFile    ; $FF = error
-
-        ld      C,      BDOS_READSEQ    ; read the first sector to pre-populate
-        call    BDOS                    ;  the buffer for the first char read
-
         ; run the program:
         ;-----------------------------------------------------------------------
         jp      init                    ; we will not return from here!
 
         ;-----------------------------------------------------------------------
 @banner .BYTE   "v80 CP/M v0, Kroc Camen 2023-2024", 0
-
-        ;=======================================================================
-@help:  ld      DE,     @@str
-        jp      osPrintStrZ
-
-@@str   .BYTE   "\r\n    V80 SOURCE.V80", 0
 
         ;=======================================================================
         ; CP/M version less than 2.2 -- call BDOS manually for safety
@@ -180,9 +152,44 @@ osQuit:
         jp      BDOS                    ;  the stack, we can just reset
 
 
-osFileOpen:
+osParams:
 ;===============================================================================
-; open a file:
+; process the command-line input parameters:
+;
+;-------------------------------------------------------------------------------
+        ; check for an automatic file-reference,
+        ; i.e. a file parameter was passed on the command line
+        ;
+        ; check filename first-letter in the built-in file-control-block
+        ld      A,      [cpm_fcb.name]
+        and     %01111111               ; (hi-bit might be set)
+        cp      ' '+1                   ; non-visible char? $00-$20?
+        jr      c,      @help           ; show help msg and quit
+
+        ; open the input file:
+        ;-----------------------------------------------------------------------
+        xor     A                       ; start reading at record 0
+        ld      [cpm_fcb.cur_rec],      A
+        ld      C,      BDOS_OPEN
+        ld      DE,     cpm_fcb         ; use default FileControlBlock @ $005C
+        call    BDOS
+        and     A                       ; (set flags!)
+        jp      m,      errUndefFile    ; $FF = error
+        
+        ; read the first sector to pre-populate
+        ; the record buffer for the first char read
+        jp      osGetChar@read
+
+        ;=======================================================================
+@help:  ld      DE,     @@str
+        jp      osPrintStrZ
+
+@@str   .BYTE   "\r\n    V80 SOURCE.V80", 0
+
+
+osFilePush
+;===============================================================================
+; preserve the current open file state on the stack:
 ;
 ; for reasons of code density and simplicity, file reading *must* be nested,
 ; that is, files must be opened and closed in LIFO order so that reads are not
@@ -190,30 +197,18 @@ osFileOpen:
 ; the previously open file. this works fine for source file includes that only
 ; read files start to finish, nesting inwards.
 ;
-; this routines pushes the current file state to the stack, and `osFileClose`
-; restores the previous file state. therefore, `osFileClose` *must* be called
-; at the same stack level as `osFileOpen`
+; this routines pushes the current file state to the stack, and `osFilePop`
+; restores the previous file state. therefore, `osFilePop` *must* be called
+; at the same stack level as `osFilePush`
 ;
 ; this state can occupy a lot of stack space (36 bytes on CP/M!) which will
 ; limit the maximum nesting depth -- v80 recommends no more than 3 levels
-;
-; WARN: this routine is intended for filename strings from v80 source files,
-;       it will NOT work with CP/M-formatted filenames from the command tail
-;       or the default FCB that might have file attributes (hi-bits) set
-;
-; TODO: CP/M-3 has a "parse filename" BDOS function, no.152
-; TODO: support files on other drives? ("A:" prefix)
-;       and user-numbers?? ("0A:" prefix)
-;
-; in:   DE              address of the filename to use, zero-terminated
-; out:  A, BC, DE       (clobbered)
-;       HL              (preserved)
 ;-------------------------------------------------------------------------------
         pop     BC                      ; steal the return address!
         exx                             ; put aside input parameters for now
 
         ; push the current FileControlBlock on the stack:
-        ;-----------------------------------------------------------------------
+        ;
         ; write the current record byte index into the FCB
         ; (in the random record field that isn't used by us)
         ;
@@ -234,9 +229,27 @@ osFileOpen:
 
         exx                             ; return to input parameters
         push    BC                      ; put return address *after* FCB
+        ret
 
+
+osFileOpen:
+;===============================================================================
+; open a file:
+;
+; WARN: this routine is intended for filename strings from v80 source files,
+;       it will NOT work with CP/M-formatted filenames from the command tail
+;       or the default FCB that might have file attributes (hi-bits) set
+;
+; TODO: CP/M-3 has a "parse filename" BDOS function, no.152
+; TODO: support files on other drives? ("A:" prefix)
+;       and user-numbers?? ("0A:" prefix)
+;
+; in:   DE              address of the filename to use, zero-terminated
+; out:  A, BC, DE       (clobbered)
+;       HL              (preserved)
+;-------------------------------------------------------------------------------
         ; copy new file name to the FCB:
-        ;-----------------------------------------------------------------------
+        ;
         push    HL                      ; preserve caller's HL
         ex      DE,     HL              ; swap source filename to HL
 
@@ -420,15 +433,24 @@ osFileOpen:
 
 osFileClose:
 ;===============================================================================
-; closes the currently open file, restoring the position of the previous file:
+; closes the currently open file:
 ;
-; this routine must be called at the same stack level as the last osFileOpen
+; NOTE: files in CP/M do not need to be closed unless written to
+;-------------------------------------------------------------------------------
+        ret
+
+
+osFilePop:
+;===============================================================================
+; restores the position of the previous file:
+;
+; this routine must be called at the same stack level as the last osFilePush
 ; call because the previous file name / position is restored from the stack
 ;
 ; out:  HL              (preserved)
 ;       A, BC, DE       (clobbered)
 ;-------------------------------------------------------------------------------
-        ; restore the FileControlBlock put on the stack by osFileOpen!
+        ; restore the FileControlBlock put on the stack by osFilePush!
         ;
         pop     BC                      ; steal the return address!
         exx                             ; put aside input parameters for now
@@ -455,7 +477,7 @@ osFileClose:
         ld      [osGetChar@index+1],    A
 
         exx                             ; return to input parameters
-        push    BC                      ; put return address *after* FCB
+        push    BC                      ; fix the return address
         ret
 
 
@@ -505,6 +527,15 @@ osGetChar:
         ;=======================================================================
 @next:  ld      [HL'],  <cpm_dma        ; reset the index to $0080
 @read:  push    AF                      ; preserve read character
+
+        ; if debugging is off, print a dot for each sector read;
+        ; this will suffice for a rough progress indicator
+.IFNDEF DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        ld      E',     '.'             ; = character to print
+        ld      C',     BDOS_CONOUT     ; = BDOS function to call
+        call    BDOS                    ; print a dot to screen
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
 
         ld      C',     BDOS_READSEQ    ; select BDOS function number
         ld      DE',    cpm_fcb         ; use default FileControlBlock @ $005C

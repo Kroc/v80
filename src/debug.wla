@@ -1,10 +1,6 @@
 ; v80, (C) Kroc Camen 2023-2024, MIT License
 ; debug only code
 ;
-;.DEF    DEBUG                           ; enable debug features
-;.DEF    DEBUG_LABELS                    ; dump label records when defined
-;.DEF    DEBUG_DUMP                      ; dump binary after assemby
-
 .BLOCK  "debug"
 
 ; these macros have to be defined, even if debugging is not enabled, so that
