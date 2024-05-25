@@ -76,6 +76,14 @@ str:    .ADDR $fc00                     ; string buffer
 word:   .ADDR $fc1f                     ; word-buffer (works backwards)
 sp:     .ADDR $fd00                     ; stack pointer backup
 
+; NOTE: these two bytes are specifically grouped together because they
+;       are required by deferred expressions written to the heap,
+;       and are pushed together as a single word
+param_col:
+param:  .BYTE $00                       ; parameter type / relative-flag
+col:    .BYTE $00                       ; current column-number in file
+row:    .WORD $0000                     ; current line-number in file
+
 char:   .BYTE $00                       ; current input character
 
 ; heap:
@@ -601,26 +609,28 @@ assemble:
         ld      E,      WORD_LEN        ; snap back to length byte
         ld      [DE],   A               ; write word-length byte
 
-        ; backup the current file number, col & row:
+        ; backup the current file-name, col & row:
         ;
         ; we don't have to backup the last read character because
         ; `assemble` doesn't use it before reading another character
         ;
-        ld      BC,     [filenum_col]   ; file number and col are 1 byte
-        push    BC                      ;  each so are batched together
+        ld      BC,     [file]          ; address of current file-name
+        push    BC                      ; ...
         ld      BC,     [row]           ; the row (line) number is 16-bit
         push    BC                      ; ...
+        ld      A,      [col]           ; col is only 1 byte
+        push    AF                      ;  a bit of a waste :|
 
         call    osFilePush              ; preserve OS file data
         call    parseFile               ; assemble the included file
         call    osFilePop               ; restore previous OS file data
 
+        pop     AF                      ; pop column number
+        ld      [col],  A               ; (only 1 byte)
         pop     BC                      ; pop row (line) number
         ld      [row],  BC              ; restore current file row-number
-        pop     BC                      ; pop file-number & column
-        ld      [filenum_col],  BC      ; restore current file column-number
-
-        ; TODO: restore the file-name string!
+        pop     BC                      ; pop file-name addr
+        ld      [file], BC              ; ...
 
         ; skip any whitespace / comment following the file-name and return
         ; to the line context (other keywords cannot follow `.i`)

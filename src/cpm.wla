@@ -201,7 +201,7 @@ osFilePush
 ; restores the previous file state. therefore, `osFilePop` *must* be called
 ; at the same stack level as `osFilePush`
 ;
-; this state can occupy a lot of stack space (36 bytes on CP/M!) which will
+; this state can occupy a lot of stack space (34 bytes on CP/M!) which will
 ; limit the maximum nesting depth -- v80 recommends no more than 3 levels
 ;
 ; out:  HL, DE          (preserved)
@@ -218,11 +218,13 @@ osFilePush
         ld      A,      [osGetChar@index+1]
         ld      [cpm_fcb.rnd_rec],      A
 
-        ; push the entire FCB to the stack (36 bytes!)
+        ; push the FCB to the stack! we don't use random records,
+        ; so the last 2 bytes are excluded to save stack space
+        ;
         ; TODO: we should check a stack overflow won't occur here beforehand
         ;
         ld      HL',    cpm_fcb         ; start addr
-        ld      B',     36/2            ; pushing 36 bytes, 2 at a time
+        ld      B',     34/2            ; pushing 34 bytes, 2 at a time
 -       ld      E',     [HL']           ; read a first byte
         inc     L'                      ;  and combine with
         ld      D',     [HL']           ;  a second byte
@@ -305,8 +307,7 @@ osFileOpen:
 
         ld      A,      <cpm_dma        ; reset the index for reading chars
         ld      [osGetChar@index+1],    A
-        ld      C,      BDOS_READSEQ    ; read the first record from the file
-        call    BDOS                    ; TODO: error?
+        call    osGetChar@read          ; read the first record from the file
 
         pop     HL                      ; (restore caller's HL)
         ret
@@ -464,11 +465,11 @@ osFilePop:
         pop     BC                      ; steal the return address!
         exx                             ; put aside input parameters for now
 
-        ; pull the entire FCB from the stack: (36 bytes!)
-        ; this has to be done in reverse order due to the way the stack works
+        ; pull the FCB from the stack: 34 bytes!
+        ; (reverse order due to the way the stack works)
         ;
-        ld      HL',    cpm_fcb+36      ; destination addr, start at end
-        ld      B',     36/2            ; pulling 36 bytes, 2 at a time
+        ld      HL',    cpm_fcb+34      ; destination addr, start at end
+        ld      B',     34/2            ; pulling 34 bytes, 2 at a time
 -       pop     DE'                     ; pull 2 bytes from stack
         dec     L'                      ; (the reverse order also means
         ld      [HL'],  D'              ;  we write back the hi-byte received

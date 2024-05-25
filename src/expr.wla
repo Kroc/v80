@@ -15,7 +15,6 @@
 ;
 expr:   .ADDR   $fc7f                   ; expr token space (builds downwards)
 defer:  .ADDR   $0000                   ; addr of last deferred expr
-param:  .BYTE   $00                     ; parameter type / relative-flag
 
 
 parseParam:
@@ -157,25 +156,18 @@ nextParam:
 
         ; push the current virtual program-counter
         ; (for calculating relative jumps)
-        push    IX                      ; PC is always stored in IX, not RAM
+        push    IX                      ; PC is always stored in IX
 
         ld      HL,     [row]           ; push the source file
         push    HL                      ;  line-number (16-bits)
-        ld      HL,     [filenum_col]   ; push file-number & column-number
+        ld      HL,     [param_col]     ; push parameter-flags & column-number
         push    HL                      ; (combined because they're 1-byte ea.)
 
-        ;-----------------------------------------------------------------------
-        ld      HL,     0               ; there is no `LD HL, SP` (!?), so
-        add     HL,     SP              ;  it's quicker to just add SP to 0!
-        ld      SP,     [sp]            ; restore stack pointer!
-
-        ; since the expression result is not known we can't validate it and
-        ; we need to skip over the parameter bytes for now. the parameter
-        ; size & rel-flag byte needs to be kept for when the deferred expr
-        ; is reevaluated so it's written to the first reserved byte
+        ; since the expression result is not known we can't validate it and we
+        ; need to skip over the parameter bytes for now. the parameter size &
+        ; rel-flag byte is kept (above) for when the deferred expr is evaluated
         ;
-        ld      A,      [param]         ; read param size + rel-flag byte
-        ld      [IY+$00],       A       ; store it in the reserved byte
+        ld      A,      L               ; (from combined address above)
         and     %01111111               ; strip rel-flag in hi-bit
         inc     IY                      ; step over first byte
         inc     IX                      ; advance program-counter to match
@@ -184,7 +176,12 @@ nextParam:
         inc     IY                      ; step over 2nd byte
         inc     IX                      ; advance program-counter to match
 
-+       ; copy expression bytecode to the heap:
+        ;-----------------------------------------------------------------------
++       ld      HL,     0               ; there is no `LD HL, SP` (!?), so
+        add     HL,     SP              ;  it's quicker to just add SP to 0!
+        ld      SP,     [sp]            ; restore stack pointer!
+
+        ; copy expression bytecode to the heap:
         ;
         ; note that LDDR is post-decrement (copy-then-decrement), whereas
         ; the heap is pre-decrement like the stack (decrement-then-copy)
@@ -226,9 +223,9 @@ parseExpr:
 ;                       read. do not call this routine with whitespace as the
 ;                       last character read!
 ;
-; out:  BC              the result of the expression evaluation. if the expr
-;                       cannot be evaluated and has to be deferred, BC is the
-;                       length of the expression bytecode
+; out:  BC              the result of the expression evaluation.
+;                       if the expr cannot be evaluated and has to be deferred,
+;                       BC is the length of the expression bytecode
 ;       cf              carry-clear indicates success
 ;                       carry-set indicates the expression includes
 ;                       forward-references and couldn't be evaluated
@@ -259,9 +256,6 @@ parseExpr:
 
         ; if the expression contains a forward-reference to a label we won't
         ; be able to evaluate the expression now and it needs to be deferred
-        ;
-        ; NOTE: it is very imporant to be aware that in the case of carry-set,
-        ;       `getLabel` has returned the addr of the label's flag byte in DE
         ;
         jr      c,      +
 
@@ -294,6 +288,9 @@ parseExpr:
         ; any expression that contains a forward-reference to a label causes
         ; the whole expression to be deferred. instead of the label value,
         ; the address of the label's flag-byte in the dictionary is tokenised
+        ;
+        ; NOTE: it is very imporant to be aware that in the case of carry-set,
+        ;       `getLabel` has returned the addr of the label's flag byte in DE
         ;
 +       ld      [HL],   CHAR_LABEL      ; push the label token
         dec     HL                      ; move to next token space

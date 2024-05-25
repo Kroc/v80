@@ -3,23 +3,13 @@
 ;
 .block  "code-file"
 
-; the name of each file assembled needs to be kept in case of error.
-; a deferred expression could error long after a file has been assembled and
-; closed. files are given an index number and their name is stored as a symbol
-; on the heap. this avoids duplicating names for files included multiple times
+; the name of each file needs to be kept in case of error. a deferred
+; expression could error long after a file has been closed and another opened.
+; each file name is stored as a symbol on the heap and its addr is used as a
+; reference. this avoids duplicating names for files included multiple times
 ;
-file:   .ADDR $000                      ; addr of last file-name
-
-; NOTE: these two bytes are specifically grouped together because they
-;       are required by deferred expressions written to the heap,
-;       and are pushed together as a single word
-filenum_col:
-filenum:.BYTE $00                       ; current file-number
-col:    .BYTE $00                       ; current column-number in file
-row:    .WORD $0000                     ; current line-number in file
-
-filenum_max:
-        .BYTE $00                       ; next file-number to use
+file:   .ADDR $0000                     ; addr of current file-name
+files:  .ADDR $0000                     ; dictionary entry point for file-names
 filename:
         .BYTE "            ", 0         ; current file-name (8.3)
 
@@ -31,17 +21,73 @@ parseFile:
 ; in:   [word]          file-name must be present in the word-buffer
 ;       HL              (preserved)
 ;-------------------------------------------------------------------------------
-        ; check if this file name is already known and has a file-number:
+        ; check if this file name is already known:
+        ;
         ; if an include file is used many times (like a macro), we don't
-        ; want the heap bloated with repeated instances of the filename
+        ; want the heap bloated with repeated instances of the same filename
         ;
-        call    getFileNum              ; get file-number for file-name
-        ld      [filenum],      A       ; set as current file
+        ld      DE,     files           ; use the files dictionary
+        call    findSymbol              ; search for file-name in word-buffer
+        jr      nz,     +               ; if found, don't need to add
 
-        ; copy the file-name to a zero-terminated forward string (for the OS)
+        ; add the file-name to the heap:
+        ;-----------------------------------------------------------------------
+        ; link this file-name to the previous one:
         ;
-        ld      DE,     [word]
-        call    copyFileName
+        ld      DE,     [files]         ; read prev addr in files dictionary
+        dec     HL                      ; pre-decrement heap to empty byte
+        ld      [HL],   D               ; write prev file-name addr hi-byte
+        dec     HL                      ; (this is the heap addr we want)
+        ld      [HL],   E               ; write prev file-name addr lo-byte
+        ld      [files],HL              ; update entry point with heap addr
+
+        ; this address is what will be used to uniquely identify the file,
+        ; it has to be returned below in BC to match `findSymbol`
+        push    HL
+
+        ; copy the file-name to the heap:
+        ; note that BC is set to the file-name length by `findSymbol`
+        ;
+        ld      DE,     [word]          ; get word-buffer addr
+        inc     C                       ; length +1 to include the length-byte
+
+        ; note that LDDR is post-decrement (copy-then-decrement), whereas
+        ; the heap is pre-decrement like the stack (decrement-then-copy)
+        ; -- decrement HL once to adjust for this before the copy
+        ;
+        dec     HL                      ; adjust heap for post-decrement copy
+        ex      DE,     HL              ; copy goes *from* [HL] *to* [DE]...
+        lddr                            ; copy BC bytes from [HL] to [DE]!
+        ex      DE,     HL              ; swap back to heap in HL
+        inc     HL                      ; fix heap addr after LDDR copy
+
+        pop     BC                      ; retrieve the file-name record addr
+
+        ; open the file:
+        ;-----------------------------------------------------------------------
++       ld      [file], BC              ; set the current file-name addr
+
+        ; copy the backwards string file-name from the parser,
+        ; into the file-name field (forwards)
+        ;
+        ; TODO: if osFileOpen supported backwards heap strings
+        ;       we could do without this, but is that wise to do?
+        ;
+        ld      DE,     [word]          ; copy from the word-buffer
+        push    HL                      ; preserve heap-addr
+        ex      DE,     HL              ; swap DE parameter to HL
+        ld      B,      [HL]            ; first byte is word-length
+        ld      DE,     filename        ; where to copy the file-name
+        ;-----------------------------------------------------------------------
+-       dec     L                       ; move to next char in word-buffer
+        ld      A,      [HL]            ; read char from word-buffer
+        ld      [DE],   A               ; write to forward file-name
+        inc     DE                      ; move to next char in file-name
+        djnz    -                       ; copy all chars this way
+        ;-----------------------------------------------------------------------
+        xor     A                       ; set A to zero
+        ld      [DE],   A               ; add null terminator
+        pop     HL                      ; restore heap-addr
 
 .IFNDEF DEBUG
         ;///////////////////////////////////////////////////////////////////////
@@ -59,87 +105,6 @@ parseFile:
         call    osFileOpen              ; switch to new file
         call    assemble                ; assemble its contents
         jp      osFileClose             ; close the file
-
-
-copyFileName:
-;===============================================================================
-; copies a backwards string file-name from the parser,
-; into the filename field (forwards)
-;
-; in:   DE              addr of backwards string, length-byte first
-; out:  HL              (preserved)
-;       A, B, DE        (clobbered)
-;-------------------------------------------------------------------------------
-        push    HL                      ; preserve heap-addr
-        ex      DE,     HL              ; swap DE parameter to HL
-        ld      B,      [HL]            ; first byte is word-length
-        ld      DE,     filename        ; where to copy the file-name
-        ;-----------------------------------------------------------------------
--       dec     L                       ; move to next char in word-buffer
-        ld      A,      [HL]            ; read char from word-buffer
-        ld      [DE],   A               ; write to forward file-name
-        inc     DE                      ; move to next char in file-name
-        djnz    -                       ; copy all chars this way
-        ;-----------------------------------------------------------------------
-        xor     A                       ; set A to zero
-        ld      [DE],   A               ; add null terminator
-        pop     HL                      ; restore heap-addr
-        ret
-
-
-getFileNum:
-;===============================================================================
-; search for a file-name and returns the file-number:
-;
-; if the file-name isn't known, the name is pushed on the heap
-; and a file-number is assigned and returned
-;
-; in:   [word]          file-name must be in word-buffer
-;       HL              current heap addr
-; out:  A               file-number
-;       HL              heap addr is advanced if file-name is pushed
-;-------------------------------------------------------------------------------
-        ld      DE,     file            ; use the file dictionary entry
-        call    findSymbol              ; search for the file in word-buffer
-        jr      z,      @add            ; if not found, add it
-
-        ; file-name found, the byte at DE contains the file-number
-        ; (the last byte of the file-name record in the dictionary)
-        ;
-        ld      A,      [DE]            ; return file-number
-        ret
-
-        ; push a new file-name record to the heap:
-        ;=======================================================================
-        ; link this file-name to the previous one:
-        ;
-@add:   ld      DE,     [file]          ; read prev file-name addr
-        dec     HL                      ; pre-decrement heap to empty byte
-        ld      [HL],   D               ; write prev file-name addr hi-byte
-        dec     HL                      ; (this is the heap addr we want)
-        ld      [HL],   E               ; write prev file-name addr lo-byte
-        ld      [file], HL              ; update entry point with heap addr
-
-        ; copy the file-name to the heap:
-        ; note that BC is set to the file-name length by `findSymbol`
-        ;
-        ld      DE,     [word]          ; get word-buffer addr
-        inc     C                       ; length +1 to include the length-byte
-
-        ; note that LDDR is post-decrement (copy-then-decrement), whereas
-        ; the heap is pre-decrement like the stack (decrement-then-copy)
-        ; -- decrement HL once to adjust for this before the copy
-        ;
-        dec     HL                      ; adjust heap for post-decrement copy
-        ex      DE,     HL              ; copy goes *from* [HL] *to* [DE]...
-        lddr                            ; copy BC bytes *from* [HL] *to* [DE]!
-        ld      HL,     [filenum_max]   ; the next highest file-number free
-        ld      A,      [HL]            ; use this file-number
-        inc     [HL]                    ; increment next file-number to use
-        ex      DE,     HL              ; swap back to heap in HL
-        ld      [HL],   A               ; set file-number in file-name record
-
-        ret
 
 
 readChar:

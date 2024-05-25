@@ -156,7 +156,7 @@ emitOpcode:
         ret
 
 .ENDB
-.BLOCK  "opcodes"
+.BLOCK  "data-z80"
 
 ; Z80 opcode table:
 ;===============================================================================
