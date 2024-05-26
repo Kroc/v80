@@ -175,10 +175,10 @@ osParams:
         call    BDOS
         and     A                       ; (set flags!)
         jp      m,      errUndefFile    ; $FF = error
-        
+
         ; read the first sector to pre-populate
         ; the record buffer for the first char read
-        jp      osGetChar@read
+        jp      _readSector
 
         ;=======================================================================
 @help:  ld      DE,     @@str
@@ -218,12 +218,26 @@ osFilePush
         ld      A,      [osGetChar@index+1]
         ld      [cpm_fcb.rnd_rec],      A
 
+        ; CP/M automatically increments the record number after each sector
+        ; read. pre-decrement the current record so that the same record is
+        ; re-read when popped from the stack
+        ;
+        ld      HL',    cpm_fcb.cur_rec ; decrement current record
+        dec     [HL']                   ; if underflow, we need to also
+        jp      po,     +               ;  move to the previous extent
+
+        ; TODO: extent underflow?
+        ; (CPM/3 uses FCB's SR2 byte for larger files)
+        ;
+        ld      L',     <cpm_fcb.extent ; switch to extent field
+        dec     [HL']                   ;  and decrement by 1
+
         ; push the FCB to the stack! we don't use random records,
         ; so the last 2 bytes are excluded to save stack space
         ;
         ; TODO: we should check a stack overflow won't occur here beforehand
         ;
-        ld      HL',    cpm_fcb         ; start addr
++       ld      HL',    cpm_fcb         ; start addr
         ld      B',     34/2            ; pushing 34 bytes, 2 at a time
 -       ld      E',     [HL']           ; read a first byte
         inc     L'                      ;  and combine with
@@ -305,9 +319,7 @@ osFileOpen:
         and     A                       ; OK = 0, file not found = $FF
         jr      nz,     @err            ; error if not zero
 
-        ld      A,      <cpm_dma        ; reset the index for reading chars
-        ld      [osGetChar@index+1],    A
-        call    osGetChar@read          ; read the first record from the file
+        call    _readSector             ; read the first record from the file
 
         pop     HL                      ; (restore caller's HL)
         ret
@@ -474,17 +486,8 @@ osFilePop:
         dec     L'                      ; (the reverse order also means
         ld      [HL'],  D'              ;  we write back the hi-byte received
         dec     L'                      ;  first and then the lo-byte)
-        ld      [HL'],  E'              ;
-        djnz    -                       ;
-
-        ; re-read the last read record from the file:
-        ld      HL',    cpm_fcb.cur_rec ; decrement FCB record number
-        dec     [HL']                   ;  to re-read the last record
-        call    osGetChar@read          ; re-read record and fix for EOF
-
-        ; restore the index used for reading characters:
-        ld      A,      [cpm_fcb.rnd_rec]
-        ld      [osGetChar@index+1],    A
+        ld      [HL'],  E'              ; ...
+        djnz    -                       ; loop all 34 bytes
 
 .IFNDEF DEBUG
         ;///////////////////////////////////////////////////////////////////////
@@ -493,7 +496,14 @@ osFilePop:
         call    BDOS                    ;
 .ENDIF  ;///////////////////////////////////////////////////////////////////////
         exx                             ; return to input parameters
-        push    BC                      ; fix the return address
+        push    BC                      ; restore the return address
+
+        call    _readSector             ; re-read record and fix for EOF
+
+        ; restore the index used for reading characters:
+        ld      A,      [cpm_fcb.rnd_rec]
+        ld      [osGetChar@index+1],    A
+
         ret
 
 
@@ -506,9 +516,6 @@ osGetChar:
 ;       BC, DE, HL      (preserved)
 ;
 ; NOTE: this assumes no other file activity or user-input between reads!
-;
-; TODO: index byte will not be reset when changing file!
-;       this routine needs to multi-task FCBs (store index in FCB?)
 ;-------------------------------------------------------------------------------
         ; get byte:
         ;
@@ -528,21 +535,28 @@ osGetChar:
 
         ; increment index:
         ;-----------------------------------------------------------------------
-        exx                             ; swap to shadow registers
-        ld      HL',    @index+1        ; index is stored *in* the instruction!
-        inc     [HL']                   ; increment index (address above!)
-        call    z,      @next           ; if overflow, fetch next sector
-        exx                             ; (restore register set)
+        ex      AF,     AF'             ; preserve read character
+        ld      A',     [@index+1]      ; get current read index
+        inc     A'                      ; move to next byte in sector
+        jr      z,     +                ; if overflow, fetch next sector
+        ld      [@index+1],     A'      ; update index
+        ex      AF',    AF              ; restore read character
         ret
 
+        ;-----------------------------------------------------------------------
+        ; read next sector:
++       call    _readSector
+        ex      AF',    AF              ; restore read character
+        ret
+
+        ; end-of-file:
         ;-----------------------------------------------------------------------
 @sub:   xor     A                       ; return 0 for EOF, zero-flag set
         ret
 
-        ; read sector:
+_readSector:
         ;=======================================================================
-@next:  ld      [HL'],  <cpm_dma        ; reset the index to $0080
-@read:  push    AF                      ; preserve read character
+        exx                             ; preserve BC/DE/HL
 
         ; if debugging is off, print a dot for each sector read;
         ; this will suffice for a rough progress indicator
@@ -553,22 +567,24 @@ osGetChar:
         call    BDOS                    ; print a dot to screen
 .ENDIF  ;///////////////////////////////////////////////////////////////////////
 
+        ld      A',     <cpm_dma        ; reset read index
+        ld      [osGetChar@index+1],    A'
+
+        ; read 1 sector from disk:
+        ;
         ld      C',     BDOS_READSEQ    ; select BDOS function number
         ld      DE',    cpm_fcb         ; use default FileControlBlock @ $005C
         call    BDOS                    ; do the disk read
-        dec     A                       ; if A is $01, the file has ended and
-        call    z,      @eof            ;  the NEXT char get must return EOF!
+        exx                             ; (restore BC/DE/HL before return)
+        dec     A'                      ; check for A=1, EOF
+        ret     nz                      ; return if no-error
 
-        pop     AF                      ; return read character
-        and     A                       ; don't return zero-flag set
-        ret
-
-        ;-----------------------------------------------------------------------
         ; if an end-of-file occurs at a sector boundary then we need to return
         ; EOF on the *NEXT* call as the last character has already been read:
         ;
-@eof:   ld      A,      ASCII_SUB       ; write the CP/M EOF marker
-        ld      [cpm_dma],      A       ;  to the first byte for next read
+        ld      A',     ASCII_SUB       ; write the CP/M EOF marker
+        ld      [cpm_dma],      A'      ;  to the first byte for next read
+
         ret
 
 
