@@ -511,8 +511,10 @@ osGetChar:
 ;===============================================================================
 ; read an ASCII character from the currently open file:
 ;
-; out:  A               character. 0 = end-of-file
-;       zf              zero-flag is set for end of file
+; out:  A               character read
+;       zf              zero-flag is set for end-of-file. NOTE: the character
+;                       returned for end-of-file might not be NULL! CP/M uses
+;                       ASCII_SUB for file termination
 ;       BC, DE, HL      (preserved)
 ;
 ; NOTE: this assumes no other file activity or user-input between reads!
@@ -531,7 +533,7 @@ osGetChar:
         ; <https://en.wikipedia.org/wiki/Substitute_character>
         ;
         cp      ASCII_SUB               ; is this a CP/M sector padding byte?
-        jr      z,      @sub            ; return A=0, zero-flag set for EOF
+        ret     z                       ; return zero-flag set for EOF
 
         ; increment index:
         ;-----------------------------------------------------------------------
@@ -544,14 +546,8 @@ osGetChar:
         ret
 
         ;-----------------------------------------------------------------------
-        ; read next sector:
-+       call    _readSector
-        ex      AF',    AF              ; restore read character
-        ret
-
-        ; end-of-file:
-        ;-----------------------------------------------------------------------
-@sub:   xor     A                       ; return 0 for EOF, zero-flag set
++       call    _readSector             ; read next sector from disk
+        ex      AF',    AF              ; return read character
         ret
 
 _readSector:
