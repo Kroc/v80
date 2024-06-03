@@ -67,8 +67,8 @@ BDOS_FILLZERO           = 40            ; random-access zero-out
 
 .STRUCT FileControlBlock
         drive           BYTE            ; 0 = default, 1 = A: ... 16 = P:
-        name            DSB 8           ; filename, first 8-letters
-        type            DSB 3           ; filename, extension. NB: no dot!
+        name            DSB 8           ; file-name, first 8-letters
+        type            DSB 3           ; file-name, extension. NB: no dot!
         extent          BYTE            ; extent, for files > 127 records
         rsvrd           WORD            ; reserved
         rec_count       BYTE            ; number of records in extent, 0-127
@@ -127,7 +127,6 @@ boot:
         call    osPrintLn
 
         ; run the program:
-        ;-----------------------------------------------------------------------
         jp      init                    ; we will not return from here!
 
         ;-----------------------------------------------------------------------
@@ -140,7 +139,7 @@ boot:
         ld      C,      BDOS_PRNSTR     ; print using BDOS directly
         jp      BDOS                    ; call BDOS but also return to CCP
 
-        ; string is "$" terminated for compatibility with CP/M <= v2.2
+        ; string is "$" terminated for compatibility with CP/M < v2.2?
 @@str   .BYTE "ERROR: CP/M ", CPM_VER_STR, " or higher required!$"
 
 
@@ -152,39 +151,18 @@ osQuit:
         jp      BDOS                    ;  the stack, we can just reset
 
 
-osParams:
+osGetParams:
 ;===============================================================================
-; process the command-line input parameters:
+; return a null-terminated, forwards string of the command-line parameters:
 ;
+; in CP/M the "command tail", the portion of the command line following the
+; executable name is in the DMA buffer ($0080) by default. it is prefixed by
+; its length, but also null-terminated for us!
+;
+; out:  DE              addr of parameter string
 ;-------------------------------------------------------------------------------
-        ; check for an automatic file-reference,
-        ; i.e. a file parameter was passed on the command line
-        ;
-        ; check filename first-letter in the built-in file-control-block
-        ld      A,      [cpm_fcb.name]
-        and     %01111111               ; (hi-bit might be set)
-        cp      ' '+1                   ; non-visible char? $00-$20?
-        jr      c,      @help           ; show help msg and quit
-
-        ; open the input file:
-        ;-----------------------------------------------------------------------
-        xor     A                       ; start reading at record 0
-        ld      [cpm_fcb.cur_rec],      A
-        ld      C,      BDOS_OPEN
-        ld      DE,     cpm_fcb         ; use default FileControlBlock @ $005C
-        call    BDOS
-        and     A                       ; (set flags!)
-        jp      m,      errUndefFile    ; $FF = error
-
-        ; read the first sector to pre-populate
-        ; the record buffer for the first char read
-        jp      _readSector
-
-        ;=======================================================================
-@help:  ld      DE,     @@str
-        jp      osPrintStrZ
-
-@@str   .BYTE   "\r\n    V80 SOURCE.V80", 0
+        ld      DE,     cpm_dma+1       ; return first char of command tail
+        ret
 
 
 osFilePush
@@ -227,7 +205,7 @@ osFilePush
         jp      po,     +               ;  move to the previous extent
 
         ; TODO: extent underflow?
-        ; (CPM/3 uses FCB's SR2 byte for larger files)
+        ;       (CPM/3 uses FCB's SR2 byte for larger files)
         ;
         ld      L',     <cpm_fcb.extent ; switch to extent field
         dec     [HL']                   ;  and decrement by 1
@@ -261,54 +239,51 @@ osFileOpen:
 ;===============================================================================
 ; open a file:
 ;
-; WARN: this routine is intended for filename strings from v80 source files,
-;       it will NOT work with CP/M-formatted filenames from the command tail
-;       or the default FCB that might have file attributes (hi-bits) set
-;
-; TODO: CP/M-3 has a "parse filename" BDOS function, no.152
+; TODO: CP/M-3 has a "parse file-name" BDOS function, no.152
 ; TODO: support files on other drives? ("A:" prefix)
 ;       and user-numbers?? ("0A:" prefix)
 ;
-; in:   DE              address of the filename to use, zero-terminated
+; in:   DE              addr of the file-name to use, forwards, null-terminated
 ; out:  A, BC, DE       (clobbered)
 ;       HL              (preserved)
 ;-------------------------------------------------------------------------------
-        ; copy new file name to the FCB:
+        ; copy new file-name to the FCB:
         ;
         push    HL                      ; preserve caller's HL
-        ex      DE,     HL              ; swap source filename to HL
+        ex      DE,     HL              ; swap source file-name to HL
 
-        ; prefill the FCB filename/ext with spaces since CP/M filenames have
-        ; the extension separate from the filename which is padded by spaces.
-        ; this is done backwards so DE ends at the beginning of the filename
+        ; prefill the FCB file-name/ext with spaces since CP/M file-names have
+        ; the extension separate from the file-name which is padded by spaces.
+        ; this is done backwards so DE ends at the beginning of the file-name
         ;
-        ld      DE,     cpm_fcb.name+11 ; filename chars 0-10
+        ld      DE,     cpm_fcb.name+11 ; file-name chars 0-10
         ld      B,      11              ; 8.3 but CP/M doesn't store the dot
         ld      A,      ' '             ; spaces (called "blanks" in CP/M?)
 -       dec     E                       ; (the system FCB is in zero-page)
         ld      [DE],   A               ; write a space in the FCB
         djnz    -                       ; blank 11 chars and end at the start
 
-        ; copy & validate filename according to CP/M rules:
+        ; copy & validate file-name according to CP/M rules:
         ; (the parser takes any string)
-        ld      B,      8               ; max filename chars (sans extension)
+        ld      B,      8               ; max file-name chars (sans extension)
         call    @copy                   ; test/fix and copy up to 8 chars
         jr      z,      +               ; if null encountered, no extension
 
         ; copy file extension:
         ; (the dot has already been skipped by `@copy`)
         ;
-        ld      DE,     cpm_fcb.type    ; skip ahead to file-extension field
+        ld      E,      <cpm_fcb.type   ; skip ahead to file-extension field
         ld      B,      3               ; max extension chars (sans dot)
         call    @copy                   ; copy up to 3 chars for extension
         jr      nz,     @err            ; dot not allowed in extensions!
 
-        ; set the remaining fields in the FCB:
+        ; clear the remaining fields in the FCB:
         ;
-+       xor     A                       ; set A to zero
++       xor     A                       ; (set A to zero)
         ld      [cpm_fcb.drive],        A
         ld      [cpm_fcb.extent],       A
         ld      [cpm_fcb.cur_rec],      A
+        ld      [cpm_fcb.rec_count],    A
 
         ; now attempt to open the file:
         ; (CP/M will check if the file exists)
@@ -319,10 +294,16 @@ osFileOpen:
         and     A                       ; OK = 0, file not found = $FF
         jr      nz,     @err            ; error if not zero
 
-        call    _readSector             ; read the first record from the file
+.IFNDEF DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        ld      DE,     [str]
+        call    osPrintStrZ
+        ld      A,      ':'
+        call    osPrintChar
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
 
         pop     HL                      ; (restore caller's HL)
-        ret
+        jp      _readSector             ; read the first record from the file
 
         ; test, fix & copy chars to FCB:
         ;=======================================================================
@@ -342,8 +323,8 @@ osFileOpen:
         inc     E                       ;  and move to next char
         djnz    @copy                   ; loop until all chars copied
         ;-----------------------------------------------------------------------
-        ; if all chars are copied, the next char *must* be a dot (filename)
-        ; or the null-terminator (filename or extension)
+        ; if all chars are copied, the next char *must* be a dot (file-name)
+        ; or the null-terminator (file-name or extension)
         ;
         ld      A,      [HL]            ; read ahead next character
         and     A                       ; set flags -- check for 0
@@ -355,13 +336,13 @@ osFileOpen:
 +       and     A                       ; clear zero-flag for dot
         ret                             ; (A is last char code)
 
-        ; test / fix char for CP/M filenames:
+        ; test / fix char for CP/M file-names:
         ;=======================================================================
         ; the CP/M manual says that the following characters are not
-        ; allowed in filenames: < > = , ! | * ? & / $ [ ] ( ) . : ; \ + -
+        ; allowed in file-names: < > = , ! | * ? & / $ [ ] ( ) . : ; \ + -
         ;
         ; (note that whilst the dot is used as the separator for the
-        ;  file extension, multiple dots cannot occur in a filename!)
+        ;  file extension, multiple dots cannot occur in a file-name!)
         ;
         ; with such a long list it is perhaps clearer to state the
         ; non-alphanum characters that _are_ valid: " # % ' @ ^ _ ` { } ~
@@ -384,7 +365,7 @@ osFileOpen:
         ;   $2E  .     $3E  >     $4E  N  |  $5E  ^  <  $6E  n  |  $7E  ~  <
         ;   $2F  /     $3F  ?     $4F  O  |  $5F  _  |  $6F  o  |  $7F  ⌂   
         ;
-        ; the CP/M file-system is upper-case only so we must fix filenames
+        ; the CP/M file-system is upper-case only so we must fix file-names
         ; coming from source code. we expect v80 source files to use lower-
         ; case names so we optimise for that case, handling them first
         ;
@@ -413,8 +394,8 @@ osFileOpen:
 @lt_a:  cp      '@'                     ; ASCII code @ or above?
         jr      c,      @lt_at          ; no, handle codes below @ (numbers)
         cp      'Z'+1                   ; ASCII code below upper-case Z?
-        ret     nc                      ; upper-case A-Z is valid as-is
-        cp      '^'                     ; but above upper-case Z, only
+        ret     c                       ; upper-case A-Z is valid as-is
+        cp      '^'                     ;  but above upper-case Z, only
         ret     nc                      ;  "^", "_" and "`" are valid, and
         jr      @err                    ;  "[", "|" and "]" are invalid
 
@@ -448,7 +429,7 @@ osFileOpen:
         ; ...
 
         ;=======================================================================
-        ; hard error for filenames containing invalid characters
+        ; hard error for file-names containing invalid characters
         ;
 @err:   jp      errUndefFile
 
@@ -563,8 +544,8 @@ _readSector:
         call    BDOS                    ; print a dot to screen
 .ENDIF  ;///////////////////////////////////////////////////////////////////////
 
-        ld      A',     <cpm_dma        ; reset read index
-        ld      [osGetChar@index+1],    A'
+        ld      A,      <cpm_dma        ; reset read index
+        ld      [osGetChar@index+1],    A
 
         ; read 1 sector from disk:
         ;
@@ -572,14 +553,14 @@ _readSector:
         ld      DE',    cpm_fcb         ; use default FileControlBlock @ $005C
         call    BDOS                    ; do the disk read
         exx                             ; (restore BC/DE/HL before return)
-        dec     A'                      ; check for A=1, EOF
+        dec     A                       ; check for A=1, EOF
         ret     nz                      ; return if no-error
 
         ; if an end-of-file occurs at a sector boundary then we need to return
         ; EOF on the *NEXT* call as the last character has already been read:
         ;
-        ld      A',     ASCII_SUB       ; write the CP/M EOF marker
-        ld      [cpm_dma],      A'      ;  to the first byte for next read
+        ld      A,      ASCII_SUB       ; write the CP/M EOF marker
+        ld      [cpm_dma],      A       ;  to the first byte for next read
 
         ret
 

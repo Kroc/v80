@@ -1,8 +1,6 @@
 ; v80, (C) Kroc Camen 2023-2024, MIT License
 ; error stuff
 ;
-; TODO: with any error, print out file name, line & col number
-;
 .BLOCK  "code-err"
 
 _errmsg:
@@ -36,6 +34,7 @@ _errmsg:
 .DEF    ERR_UNEXP_EOL           12      ; unexpected end-of-line / file
         .ADDR   @unexp_eol
 ;-------------------------------------------------------------------------------
+@err            .BYTE "\r\n\r\nERROR: ",0
 @inval_expr     .BYTE "Invalid expression!", 0
 @inval_ins      .BYTE "Invalid CPU instruction!", 0
 @inval_key      .BYTE "Invalid keyword!", 0
@@ -116,10 +115,15 @@ err:
 ; print an error message and quit:
 ;
 ; in:   A               error number (an index to the errmsg table)
+; out:  -               program terminates!
 ;===============================================================================
         add     A,      A               ; double index number for table lookup
         ld      C,      A               ; load into BC
         ld      B,      0               ;  for 16-bit add
+
+        ld      DE,     _errmsg@err     ; print two newlines and a leading
+        call    osPrintStrZ             ;  "ERROR:" string (preserves BC)
+
         ld      HL,     _errmsg         ; err msg lookup table
         add     HL,     BC              ; offset into table
         ld      E,      [HL]            ; get string addr lo-byte
@@ -129,11 +133,62 @@ err:
         ; fallthrough
         ; ...
 
-printQuit:
+errPrintQuit:
 ;===============================================================================
-; (print string and quit to OS)
+; (print error string and quit to OS)
+;
+; in:   DE              address of error string, zero-terminated, to print
+; out:  -               program terminates!
 ;-------------------------------------------------------------------------------
+        call    osPrintLn               ; print passed error-string
+
+        ; if the file-name addr is $0000 this is not a parsing error,
+        ; such as the command line parameter file-name not being found
+        ;
+        ld      A,      [file+1]        ; file-names are pushed to the heap
+        and     A                       ;  so it is sufficient to check only
+        jp      z,      osQuit          ;  if the hi-byte is $00
+
+        ; print file-name, line number and column:
+        ; TODO: decimal output for line/col numbers
+        ;
+        ld      DE,     @file
         call    osPrintStrZ
+
+        ; print file-name:
+        ld      DE,     [file]          ; addr of current file-name
+        call    printHeapStr            ; print the backwards string
+
+        ; print line number and column:
+        ld      DE,     @row
+        call    osPrintStrZ
+        ld      BC,     [row]
+        call    printHexWord
+        ld      DE,     @col
+        call    osPrintStrZ
+        ld      A,      [col]
+        call    printHexByte
+
         jp      osQuit
+
+@file   .BYTE   " FILE: ", 0
+@row    .BYTE   "\r\n LINE: $", 0
+@col    .BYTE   " COL: $", 0
+
+
+printHeapStr:
+;===============================================================================
+; print a backwards, length-prefixed string:
+;
+; in:   DE              string addr, first byte is length
+;-------------------------------------------------------------------------------
+        ld      A,      [DE]            ; get string length
+        ld      B,      A               ; use as char counter
+        ;-----------------------------------------------------------------------
+-       dec     DE                      ; (move to next char in string)
+        ld      A,      [DE]            ; read a character
+        call    osPrintChar             ;  and print it
+        djnz    -                       ;  for all chars in string
+        ret
 
 .ENDB

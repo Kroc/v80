@@ -51,7 +51,7 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 .BLOCK  "code"
 ;===============================================================================
 ; memory map:
-;                                             | str->       128 |
+;                                                      | str->  |
 ;   +-----+-----------------------------------+--------+--------+---------+
 ;   | v80 | code->                     <-heap | <-word | <-expr | <-stack |
 ;   +-----+-----------------------------------+--------+--------+---------+
@@ -60,8 +60,8 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 ;       heap:   symbols and other in-flight data goes here; builds downwards
 ;       word:   a buffer for capturing words (symbol names); builds downwards
 ;       expr:   expressions are tokenised here; builds downwards
+;       str:    forward buffer for reading include file-names
 ;       stack:  usual Z80 stack; builds downwards
-;       str:    forward buffer for reading include filenames
 ;
 .DEF    WORD_LEN        31              ; maximum symbol name length
 .DEF    STACK_SLOTS     64              ; maximum size of stack (*2 for bytes)
@@ -72,19 +72,19 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 ; (these addresses are set during initialisation,
 ;  the values here are only examples based on RunCPM)
 ;
-str:    .ADDR $fc00                     ; string buffer
-word:   .ADDR $fc1f                     ; word-buffer (works backwards)
-sp:     .ADDR $fd00                     ; stack pointer backup
+word:   .ADDR   $fc1f                   ; word-buffer (backwards)
+str:    .ADDR   $fc7f                   ; string buffer (forwards)
+sp:     .ADDR   $fd00                   ; stack pointer backup
 
 ; NOTE: these two bytes are specifically grouped together because they
 ;       are required by deferred expressions written to the heap,
 ;       and are pushed together as a single word
 param_col:
-param:  .BYTE $00                       ; parameter type / relative-flag
-col:    .BYTE $00                       ; current column-number in file
-row:    .WORD $0000                     ; current line-number in file
+param:  .BYTE   $00                     ; parameter type / relative-flag
+col:    .BYTE   $00                     ; current column-number in file
+row:    .WORD   $0000                   ; current line-number in file
 
-char:   .BYTE $00                       ; current input character
+char:   .BYTE   $00                     ; current input character
 
 ; heap:
 ;-------------------------------------------------------------------------------
@@ -98,7 +98,7 @@ char:   .BYTE $00                       ; current input character
 ; is decremented first before writing a value, ergo the heap addr points
 ; to a currently occupied byte on the heap
 ;
-heap:   .ADDR $fc00                     ; current position on the heap
+heap:   .ADDR   $fc00                   ; current position on the heap
 
 ; dictionaries:
 ;-------------------------------------------------------------------------------
@@ -116,8 +116,8 @@ heap:   .ADDR $fc00                     ; current position on the heap
 ;  ...data | addr |             (heap extends downwards)
 ; - - -----+------+
 ;
-label:  .ADDR $000                      ; addr of last label dictionary-entry
-const:  .ADDR $000                      ; addr of last const dictionary-entry
+label:  .ADDR   $000                    ; addr of last label dictionary-entry
+const:  .ADDR   $000                    ; addr of last const dictionary-entry
 
 
 init:
@@ -131,24 +131,13 @@ init:
         add     HL,     SP              ; stack address, e.g. $FD00
         ld      [sp],   HL              ; (save value for printing later)
         dec     H                       ; go down a page e.g. $FD00 > $FC00
-        ld      [str],  HL              ; temp string buffer starts here
         ld      [heap], HL              ; this will also be the top of the heap
         ld      L,      WORD_LEN        ; max word-length for word buffer,
         ld      [word], HL              ;  (word buffer works downwards)
-        ld      L,  $ff-(STACK_SLOTS*2) ; the expr token space starts
-        ld      [expr], HL              ;  under the stack and works down
-
-        ; print addresses:
-        ;
-        ld      DE,     @addrc          ; start with "CODE @ ..."
-        ld      HL,     code            ; start addr of code-segment
-        call    @print                  ; print string and value
-        ld      HL,     [heap]          ; start addr of heap
-        call    @print                  ; print next string and value
-        ld      HL,     [sp]            ; start addr of stack
-        call    @print                  ; print next string and value
-        call    osPrintCRLF             ; end of line
-        call    osPrintCRLF             ; ...
+        inc     L                       ; the string buffer is shared with the
+        ld      [str],  HL              ;  expr buffer. the string buffer works
+        ld      L,      $7f             ;  forwards and the expr buffer starts
+        ld      [expr], HL              ;  under the stack and works downwards
 
         ; how do you measure the maximum depth of the stack
         ; used during program execution?
@@ -191,11 +180,55 @@ init:
         ;
         ld      IY,     code            ; code-segment address
 
-        ; assemble the source file
+        ; print addresses:
+        ;
+        ld      DE,     @addrc          ; start with "CODE @ ..."
+        ld      HL,     code            ; start addr of code-segment
+        call    @print                  ; print string and value
+        ld      HL,     [heap]          ; start addr of heap
+        call    @print                  ; print next string and value
+        ld      HL,     [sp]            ; start addr of stack
+        call    @print                  ; print next string and value
+        call    osPrintCRLF
+        call    osPrintCRLF
+
+        ; parse input parameters:
         ;=======================================================================
-        call    osParams                ; open the input file
-        ld      HL,     [heap]          ; set where symbols / expressions go
-        call    assemble                ; begin assembling input file
+        ; retrieve the command line parameters from the OS:
+        ; (forwards, null-terminated string)
+        ;
+        call    osGetParams             ; return string in DE
+
+        ; read the first word; v80 does not support spaces in file-names
+        ; for the purposes of cross-compatibility with 8-bit systems
+        ;
+        dec     DE                      ; (compensate for pre-decrement loop)
+        ;-----------------------------------------------------------------------
+-       inc     DE                      ; move to next char in command line
+        ld      A,      [DE]            ; read char from command line
+        and     A                       ; is it a null-terminator?
+        jp      z,      @help           ; null-terminator before any parameter!
+        cp      ASCII_SPC+1             ; is it <=ASCII space (tab)
+        jr      c,      -               ; skip any spaces/tabs
+        ;-----------------------------------------------------------------------
+        ld      HL,     [str]           ; copy parameter to string-buffer
+        jr      +                       ; jump into loop (optimises exit cond.)
+        ;-----------------------------------------------------------------------
+-       ld      [HL],   A               ; write char to string-buffer
+        inc     L                       ; move to next char in string-buffer
++       ld      A,      [DE]            ; read char from command line
+        inc     DE                      ; (move to next char)
+        cp      ASCII_SPC+1             ; is it <=ASCII space (tab, null)
+        jr      nc,     -               ; if not keep going
+        ;-----------------------------------------------------------------------
+        ld      [HL],   0               ; append null terminator
+        ld      HL,     [str]           ; rewind string-buffer to start
+        ex      DE,     HL              ; use new string (DE) as file-name
+
+        ; assemble the source file:
+        ;=======================================================================
+        ld      HL,     [heap]          ; start the heap (file-name is pushed)
+        call    parseFile               ; assemble!
 
         ; print final stats:
         ;=======================================================================
@@ -280,11 +313,19 @@ init:
         jp      osQuit                  ; jump to CP/M to quit the program
 
         ;=======================================================================
+@help:  ld      DE,     @@str
+        call    osPrintStrZ
+        jp      osQuit
+
+@@str   .BYTE   "    V80 SOURCE.V80", 0
+
+        ;=======================================================================
 @code   .WORD   $0000                   ; size of code-segment
 @free   .WORD   $0000                   ; free RAM between code and heap
 @heap   .WORD   $0000                   ; size of heap
 @stack  .WORD   $0000                   ; bytes stack used (peak)
 
+        ; print calculated address:
         ;-----------------------------------------------------------------------
 @print: call    osPrintStrZ             ; print string passed in DE
         ld      A,      H               ; print HL in hi-lo byte order
@@ -296,6 +337,7 @@ init:
 @addrh  .BYTE   ", HEAP @ $", 0
 @addrs  .BYTE   ", STACK @ $", 0
 
+        ; print a string and append "bytes":
         ;-----------------------------------------------------------------------
 @size:  call    @print                  ; print string (DE) and value (HL)
         ld      DE,     @bytes          ; append " bytes"
@@ -417,8 +459,8 @@ assemble:
 
         ; line context:
         ;=======================================================================
-        ; at the beginning of the line labels, constants and
-        ; the program-counter can be defined, but nowhere else
+        ; at the beginning of the line, labels, constants and
+        ; the program-counter can be defined but nowhere else
         ;
 @line:  call    nextWord                ; find first character
         jr      z,      @nleof          ; did we hit newline or end-of-file?
@@ -594,20 +636,19 @@ assemble:
         jp      z,      errUnexpEOL     ; error if no parameter!
         cp      CHAR_STR                ; is it a string?
         jp      nz,     errInvalStr     ; error if not a string
-        ld      DE,     [word]          ; get addr of word buffer
+        ld      DE,     [str]           ; get addr of forwards string-buffer
         ;-----------------------------------------------------------------------
 -       call    readChar                ; read next character
         jp      z,      errInvalStr     ; sudden EOL/EOF? unterminated string!
         cp      CHAR_STR                ; string terminator?
         jr      z,      +               ; yes, stop reading chars
-        dec     E                       ; move to next byte in word-buffer
         ld      [DE],   A               ; add char to word-buffer
+        inc     E                       ; move to next byte in string-buffer
         jr      -                       ; keep reading
         ;-----------------------------------------------------------------------
-+       ld      A,      WORD_LEN        ; max size - characters remaining
-        sub     E                       ;  = length of word
-        ld      E,      WORD_LEN        ; snap back to length byte
-        ld      [DE],   A               ; write word-length byte
++       xor     A                       ; add null terminator
+        ld      [DE],   A               ; ...
+        ld      DE,     [str]           ; rewind addr to start of string
 
         ; backup the current file-name, col & row:
         ;
@@ -653,10 +694,11 @@ nextWord:
 ;       whitespace on the next line -- if you want to skip to the next non-
 ;       whitespace character, call the routine again after a newline!
 ;
-; out:  A               ASCII code, 0 = end-of-file
+; out:  A               ASCII code
 ;       zf              zero-flag is set for "no word", i.e. when the line
 ;                       ends before another valid word. check A for newline
-;                       or end-of-file (0) to differentiate those
+;                       (ASCII_LF) to differentiate those. end-of-file might
+;                       NOT be null! (e.g. CP/M uses ASCII_SUB)
 ;-------------------------------------------------------------------------------
 -       call    readChar                ; read a character (returns z-flag)
         ret     z                       ; return z-flag set if newline/EOF
@@ -890,12 +932,19 @@ findSymbol:
         jr      nz,     --              ; stop looping if mismatch
         jp      pe,     @char           ; keep looping until chars run out
         ;-----------------------------------------------------------------------
-        ; if all characters match we fall through to here
+        ; if all characters match we fall through to here. CPD ensures
+        ; that HL is pointing to the byte following the symbol-name
         ;
-        ; CPD ensures that HL is pointing to the byte following the symbol-name
-        ; -- on a const this is the value, and for labels this is the flag-byte
+        ; the addr of the byte following (downwards) the symbol-name
+        ; is returned in DE  -- on a const this is the value (hi-byte),
+        ; and for labels this is the flag-byte
         ;
-        pop     BC                      ; return symbol-length addr (was HL)
+        ;          ---+---+---+---+---+---+---+---+-----+------+
+        ;  < heap     | ? | l | o | b | m | y | s | len | link |
+        ;          ---+---+---+---+---+---+---+---+-----+------+
+        ;             ^ DE                        ^ BC
+        ;
+        pop     BC                      ; return symbol-length addr
         and     A                       ; A != 0, clear z-flag & carry-flag
 @end:   ex      DE,     HL              ; return last addr as DE
         pop     HL                      ; restore old heap addr
@@ -976,11 +1025,11 @@ pushLabel:
         ; the heap addr is in the right place
         ;
         dec     HL                      ; pre-decrement heap to empty byte
-        ld      A,      IXH             ; ..
-        ld      [HL],   A               ; .
+        ld      A,      IXH             ; virtual program-counter hi-byte
+        ld      [HL],   A               ; ...
         dec     HL                      ; pre-decrement heap to empty byte
-        ld      A,      IXL             ; ..
-        ld      [HL],   A               ; .
+        ld      A,      IXL             ; virtual program-counter lo-byte
+        ld      [HL],   A               ; ...
 
 .IFDEF  DEBUG_LABELS
         ;///////////////////////////////////////////////////////////////////////
@@ -1109,6 +1158,21 @@ parseInstruction:
         jp      emitOpcode
 
 
+printHexWord:
+;===============================================================================
+; print a word as hexadecimal:
+;
+; in:   BC              word to print
+; out:  BC              (preserved)
+;       A               (clobbered)
+;-------------------------------------------------------------------------------
+        ld      A,      B
+        call    printHexByte
+        ld      A,      C
+
+        ; fallthrough
+        ; ...
+
 printHexByte:
 ;===============================================================================
 ; print a byte as hexadecimal:
@@ -1120,10 +1184,11 @@ printHexByte:
         push    BC                      ; preserve BC coming in
         call    getHexByte              ; convert A to hexadecimal digits B,C
         ld      A,      B               ; print hi-byte first
-        call    osPrintChar
+        call    osPrintChar             ; ...
         ld      A,      C               ; print lo-byte next
         pop     BC                      ; (restore BC going out)
-        jp      osPrintChar
+        jp      osPrintChar             ; ...
+
 
 getHexByte:
 ;===============================================================================

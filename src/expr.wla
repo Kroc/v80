@@ -150,7 +150,7 @@ nextParam:
         push    HL                      ; write to heap
         ld      [defer],SP              ; write heap addr to the entry point!
 
-        ; push the current code-segment position; this is where
+        ; push the current code-segment address; this is where
         ; the expression result will be filled in after evaluation
         push    IY
 
@@ -158,6 +158,8 @@ nextParam:
         ; (for calculating relative jumps)
         push    IX                      ; PC is always stored in IX
 
+        ld      HL,     [file]          ; push the file ID
+        push    HL                      ;  (addr of file-name symbol record)
         ld      HL,     [row]           ; push the source file
         push    HL                      ;  line-number (16-bits)
         ld      HL,     [param_col]     ; push parameter-flags & column-number
@@ -185,8 +187,6 @@ nextParam:
         ;
         ; note that LDDR is post-decrement (copy-then-decrement), whereas
         ; the heap is pre-decrement like the stack (decrement-then-copy)
-        ;
-        ; TODO: create a shared routine for doing LDDR?
         ;
         dec     HL                      ; fix heap addr for copy-then-DEC
         ld      DE,     [expr]
