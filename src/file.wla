@@ -12,31 +12,33 @@ file:   .ADDR $0000                     ; addr of current file-name
 files:  .ADDR $0000                     ; dictionary entry point for file-names
 
 
-parseFile:
+assembleFile:
 ;===============================================================================
 ; opens a file and assembles it:
 ;
 ; in:   DE              addr of file-name string, forwards, null-terminated
-;                       this is currently assumed to be [str]
+;                       -- currently assumed to be [str]
 ;       HL              (preserved)
 ;-------------------------------------------------------------------------------
+        call    osFileOpen              ; use the OS to open the file
+
         ; search the file-name dictionary and return the address
         ; of the file-name record (in BC), adding it if not present
-        call    getFileID
-
-        ; preserve new file-name addr until *after* attempting to open it
-        ; so that if the file is not found, the source of the error is
-        ; reported as the file+line containing the file include
-        push    BC
-
-        ld      DE,     [str]           ; return to start of string
-        call    osFileOpen              ; switch to new file
-
-        pop     BC                      ; restore file-name addr
+        ;
+        ; this is done *after* opening the file so that if the file
+        ; is missing, the source of the error is reported as the
+        ; file+line containing the include statement
+        ;
+        ld      DE,     [str]           ; rewind to start of string
+        call    getFileID               ; search for or add file-name
         ld      [file], BC              ; set current file-name addr
 
         call    assemble                ; assemble its contents
-        jp      osFileClose             ; close the file
+        call    osFileClose             ; close the file
+
+        ; WARN: this cannot be optimised into a JP due to
+        ;       osFileClose doing stack manipulation
+        ret
 
 
 getFileID:

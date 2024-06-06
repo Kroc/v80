@@ -69,10 +69,10 @@ BDOS_FILLZERO           = 40            ; random-access zero-out
         drive           BYTE            ; 0 = default, 1 = A: ... 16 = P:
         name            DSB 8           ; file-name, first 8-letters
         type            DSB 3           ; file-name, extension. NB: no dot!
-        extent          BYTE            ; extent, for files > 127 records
+        extent          BYTE            ; extent, for files > 128 records
         rsvrd           WORD            ; reserved
         rec_count       BYTE            ; number of records in extent, 0-127
-        data            DSB 16          ; depends on usage
+        data            DSB 16          ; internal use -- directory record?
         cur_rec         BYTE            ; current record number
         rnd_rec         FARADDR         ; optional random record number
 .ENDST
@@ -151,7 +151,7 @@ osQuit:
         jp      BDOS                    ;  the stack, we can just reset
 
 
-osGetParams:
+osGetParamString:
 ;===============================================================================
 ; return a null-terminated, forwards string of the command-line parameters:
 ;
@@ -159,85 +159,27 @@ osGetParams:
 ; executable name is in the DMA buffer ($0080) by default. it is prefixed by
 ; its length, but also null-terminated for us!
 ;
+; be warned -- the command-tail is overwritten by the first sector read,
+; meaning that the output file-name must be saved before opening the input file
+;
 ; out:  DE              addr of parameter string
 ;-------------------------------------------------------------------------------
         ld      DE,     cpm_dma+1       ; return first char of command tail
         ret
 
 
-osFilePush
+osFileOpen:
 ;===============================================================================
-; preserve the current open file state on the stack:
+; open a file:
 ;
 ; for reasons of code density and simplicity, file reading *must* be nested,
 ; that is, files must be opened and closed in LIFO order so that reads are not
 ; interleved; if a file is opened it must be closed before you can return to
 ; the previously open file. this works fine for source file includes that only
-; read files start to finish, nesting inwards.
-;
-; this routines pushes the current file state to the stack, and `osFilePop`
-; restores the previous file state. therefore, `osFilePop` *must* be called
-; at the same stack level as `osFilePush`
+; read files start to finish, nesting inwards
 ;
 ; this state can occupy a lot of stack space (34 bytes on CP/M!) which will
 ; limit the maximum nesting depth -- v80 recommends no more than 3 levels
-;
-; out:  HL, DE          (preserved)
-;       A, BC           (clobbered)
-;-------------------------------------------------------------------------------
-        pop     BC                      ; steal the return address!
-        exx                             ; put aside input parameters for now
-
-        ; push the current FileControlBlock on the stack:
-        ;
-        ; write the current record byte index into the FCB
-        ; (in the random record field that isn't used by us)
-        ;
-        ld      A,      [osGetChar@index+1]
-        ld      [cpm_fcb.rnd_rec],      A
-
-        ; CP/M automatically increments the record number after each sector
-        ; read. pre-decrement the current record so that the same record is
-        ; re-read when popped from the stack
-        ;
-        ld      HL',    cpm_fcb.cur_rec ; decrement current record
-        dec     [HL']                   ; if underflow, we need to also
-        jp      po,     +               ;  move to the previous extent
-
-        ; TODO: extent underflow?
-        ;       (CPM/3 uses FCB's SR2 byte for larger files)
-        ;
-        ld      L',     <cpm_fcb.extent ; switch to extent field
-        dec     [HL']                   ;  and decrement by 1
-
-        ; push the FCB to the stack! we don't use random records,
-        ; so the last 2 bytes are excluded to save stack space
-        ;
-        ; TODO: we should check a stack overflow won't occur here beforehand
-        ;
-+       ld      HL',    cpm_fcb         ; start addr
-        ld      B',     34/2            ; pushing 34 bytes, 2 at a time
--       ld      E',     [HL']           ; read a first byte
-        inc     L'                      ;  and combine with
-        ld      D',     [HL']           ;  a second byte
-        inc     L'                      ;  before pushing
-        push    DE'                     ;  to the stack
-        djnz    -                       ; do all bytes
-
-.IFNDEF DEBUG
-        ;///////////////////////////////////////////////////////////////////////
-        ld      C',     BDOS_CONOUT     ;
-        ld      E',     '['             ;
-        call    BDOS                    ;
-.ENDIF  ;///////////////////////////////////////////////////////////////////////
-        exx                             ; return to input parameters
-        push    BC                      ; put return address *after* FCB
-        ret
-
-
-osFileOpen:
-;===============================================================================
-; open a file:
 ;
 ; TODO: CP/M-3 has a "parse file-name" BDOS function, no.152
 ; TODO: support files on other drives? ("A:" prefix)
@@ -247,24 +189,79 @@ osFileOpen:
 ; out:  A, BC, DE       (clobbered)
 ;       HL              (preserved)
 ;-------------------------------------------------------------------------------
-        ; copy new file-name to the FCB:
+        ; allocate a new FileControlBlock on the stack:
         ;
-        push    HL                      ; preserve caller's HL
-        ex      DE,     HL              ; swap source file-name to HL
+        pop     BC                      ; steal the return address!
+        exx                             ; put aside input parameters for now
+
+        ; preserve the current FileControlBlock address under
+        ; the new one to return to it once the file closes
+        ;
+        ; also write the current record byte index into the FCB
+        ; (in the random record field that isn't used by us)
+        ;
+        ld      HL',    [_readSector@fcb+1]
+        push    HL'                     ; backup previous FCB addr
+        ld      A,      L'              ; FCB+33 is random-record byte
+        add     33                      ;  we use to backup the read index
+        ld      L',     A               ;  (random records are not used)
+        ld      A,      [osGetChar@index+1]
+        ld      [HL'],  A
+
+        ; CP/M automatically increments the record number after each sector
+        ; read. pre-decrement the current record so that the same record is
+        ; re-read when restored from the stack
+        ;
+        ; TODO: does the rec_count need zeroing?
+        dec     HL'                     ; current record byte is no.32
+        dec     [HL']                   ; if underflow, we need to also
+        jp      po,     +               ;  move to the previous extent
+
+        ; TODO: extent underflow? there are 32 extents (0-31)
+        ;       (CPM/3 uses FCB's SR2 byte for larger files,
+        ;        this would be needed for files > 2MB)
+        ;
+        ld      A,      L               ; extent field is byte 12
+        sub     20                      ; (subtract 20 from addr)
+        ld      L,      A               ; ...
+        dec     [HL']                   ;  and decrement by 1
+
+        ; construct an empty FileControlBlock on the stack,
+        ; working backwards (we don't use random records so
+        ; the last 2 bytes are excluded to save stack space)
+        ;
+        ; TODO: we should check a stack overflow
+        ;       won't occur here beforehand
+        ;
++       ld      DE',    0               ; fill the last 22 bytes with zeroes
+        ld      B',     22/2            ; (half because pushing 2 bytes)
+-       push    DE'                     ; push 2 zeroes to the stack
+        djnz    -                       ; ...
 
         ; prefill the FCB file-name/ext with spaces since CP/M file-names have
-        ; the extension separate from the file-name which is padded by spaces.
-        ; this is done backwards so DE ends at the beginning of the file-name
+        ; the extension separate from the file-name which is padded by spaces
         ;
-        ld      DE,     cpm_fcb.name+11 ; file-name chars 0-10
-        ld      B,      11              ; 8.3 but CP/M doesn't store the dot
-        ld      A,      ' '             ; spaces (called "blanks" in CP/M?)
--       dec     E                       ; (the system FCB is in zero-page)
-        ld      [DE],   A               ; write a space in the FCB
-        djnz    -                       ; blank 11 chars and end at the start
+        ld      B',     10/2            ; fill next 10 chars with spaces
+        ld      DE,     $2020           ; (two spaces)
+-       push    DE'                     ; file-name is space-padded
+        djnz    -                       ; ...
+        ld      E',     0               ; 1st byte = 0 (D) & 2nd = SPC (E)
+        push    DE'                     ;  as file-name begins on 2nd FCB byte
 
+        ; (the current stack-position is now the start of a new, empty, FCB)
+
+        exx                             ; return to input parameters
+        ld      [@fcb], SP              ; backup current stack-position (FCB)
+        push    BC                      ; restore the return address!
+        push    HL                      ; (preserve caller's HL)
+
+        ; copy new file-name (DE) to the new FCB (HL):
+        ;-----------------------------------------------------------------------
         ; copy & validate file-name according to CP/M rules:
         ; (the parser takes any string)
+        ;
+        ld      HL,     [@fcb]          ; retrieve new FCB addr
+        inc     HL                      ; skip FCB drive byte
         ld      B,      8               ; max file-name chars (sans extension)
         call    @copy                   ; test/fix and copy up to 8 chars
         jr      z,      +               ; if null encountered, no extension
@@ -272,24 +269,18 @@ osFileOpen:
         ; copy file extension:
         ; (the dot has already been skipped by `@copy`)
         ;
-        ld      E,      <cpm_fcb.type   ; skip ahead to file-extension field
+        ld      HL,     [@fcb]          ; skip ahead to file-extension field
+        ld      BC,     9               ;  (byte no.9 in the FCB)
+        add     HL,     BC              ;  ...
         ld      B,      3               ; max extension chars (sans dot)
         call    @copy                   ; copy up to 3 chars for extension
         jr      nz,     @err            ; dot not allowed in extensions!
 
-        ; clear the remaining fields in the FCB:
-        ;
-+       xor     A                       ; (set A to zero)
-        ld      [cpm_fcb.drive],        A
-        ld      [cpm_fcb.extent],       A
-        ld      [cpm_fcb.cur_rec],      A
-        ld      [cpm_fcb.rec_count],    A
-
         ; now attempt to open the file:
         ; (CP/M will check if the file exists)
         ;-----------------------------------------------------------------------
-        ld      C,     BDOS_OPEN        ; BDOS function number
-        ld      DE,    cpm_fcb          ; address of the FileControlBlock
++       ld      C,     BDOS_OPEN        ; BDOS function number
+        ld      DE,    [@fcb]           ; address of the FileControlBlock
         call    BDOS                    ; call BDOS -> BIOS etc.
         and     A                       ; OK = 0, file not found = $FF
         jr      nz,     @err            ; error if not zero
@@ -302,8 +293,12 @@ osFileOpen:
         call    osPrintChar
 .ENDIF  ;///////////////////////////////////////////////////////////////////////
 
+        ld      HL,     [@fcb]          ; update FCB addr for reading sectors
+        ld      [_readSector@fcb+1],    HL
         pop     HL                      ; (restore caller's HL)
         jp      _readSector             ; read the first record from the file
+
+@fcb    .ADDR   $0000
 
         ; test, fix & copy chars to FCB:
         ;=======================================================================
@@ -312,25 +307,25 @@ osFileOpen:
         ;       zf                      zf-set   = reached a null
         ;                               zf-clear = reached a dot
         ;-----------------------------------------------------------------------
-@copy:  ld      A,      [HL]            ; read a source character
-        inc     HL                      ; move to next source character
+@copy:  ld      A,      [DE]            ; read a source character
+        inc     DE                      ; move to next source character
         and     A                       ; (set zero-flag)
         ret     z                       ; return zf-set on null-terminator
         cp      '.'                     ; is it a dot? (file/ext separator)
         jr      z,      +               ; if yes, return zf-clear instead
         call    @valid                  ; test/fix char (will err on invalid)
-        ld      [DE],   A               ; write fixed char to FCB
-        inc     E                       ;  and move to next char
+        ld      [HL],   A               ; write fixed char to FCB
+        inc     HL                      ;  and move to next char
         djnz    @copy                   ; loop until all chars copied
         ;-----------------------------------------------------------------------
         ; if all chars are copied, the next char *must* be a dot (file-name)
         ; or the null-terminator (file-name or extension)
         ;
-        ld      A,      [HL]            ; read ahead next character
+        ld      A,      [DE]            ; read ahead next character
         and     A                       ; set flags -- check for 0
         ret     z                       ; if null return zf-set
         cp      '.'                     ; check for dot
-        inc     HL                      ; (skip over the dot for extension)
+        inc     DE                      ; (skip over the dot for extension)
         jr      nz,     @err            ; not null or dot -- too many chars!
         ;-----------------------------------------------------------------------
 +       and     A                       ; clear zero-flag for dot
@@ -437,54 +432,36 @@ osFileOpen:
 osFileClose:
 ;===============================================================================
 ; closes the currently open file:
+; (and return to the previously open file)
 ;
-; NOTE: files in CP/M do not need to be closed unless written to
-;-------------------------------------------------------------------------------
-        ret
-
-
-osFilePop:
-;===============================================================================
-; restores the position of the previous file:
-;
-; this routine must be called at the same stack level as the last osFilePush
-; call because the previous file name / position is restored from the stack
+; this routine must be called at the same stack level as the last osFileOpen
+; call because the previous FileControlBlock is restored from the stack
 ;
 ; out:  HL              (preserved)
 ;       A, BC, DE       (clobbered)
 ;-------------------------------------------------------------------------------
-        ; restore the FileControlBlock put on the stack by osFilePush!
+        pop     BC                      ; steal our return address!
+
+        ; discard the current FileControlBlock on the stack:
         ;
-        pop     BC                      ; steal the return address!
-        exx                             ; put aside input parameters for now
+        ex      DE,     HL              ; (put aside current caller's HL)
+        ld      HL,     34              ; move the stack pointer up 34 bytes
+        add     HL,     SP              ;  throwing away the FileControlBlock
+        ld      SP,     HL              ;  from the currently open file
+        ex      DE,     HL              ; (restore caller's HL)
 
-        ; pull the FCB from the stack: 34 bytes!
-        ; (reverse order due to the way the stack works)
-        ;
-        ld      HL',    cpm_fcb+34      ; destination addr, start at end
-        ld      B',     34/2            ; pulling 34 bytes, 2 at a time
--       pop     DE'                     ; pull 2 bytes from stack
-        dec     L'                      ; (the reverse order also means
-        ld      [HL'],  D'              ;  we write back the hi-byte received
-        dec     L'                      ;  first and then the lo-byte)
-        ld      [HL'],  E'              ; ...
-        djnz    -                       ; loop all 34 bytes
-
-.IFNDEF DEBUG
-        ;///////////////////////////////////////////////////////////////////////
-        ld      C',     BDOS_CONOUT     ;
-        ld      E',     ']'             ;
-        call    BDOS                    ;
-.ENDIF  ;///////////////////////////////////////////////////////////////////////
-        exx                             ; return to input parameters
-        push    BC                      ; restore the return address
-
-        call    _readSector             ; re-read record and fix for EOF
-
-        ; restore the index used for reading characters:
-        ld      A,      [cpm_fcb.rnd_rec]
+        ; re-read last file's current sector:
+        ;-----------------------------------------------------------------------
+        pop     DE                      ; restore previous FCB
+        ld      [_readSector@fcb+1],    DE
+        call    _readSector             ; re-read the previous file's sector
+        ld      A,      E               ; restore the read index
+        add     A,      33              ;  that was written to byte 33
+        ld      E,      A               ;  of the FCB
+        ld      A,      [DE]            ;  ...
         ld      [osGetChar@index+1],    A
 
+        push    BC                      ; (restore our return address)
         ret
 
 
@@ -550,7 +527,7 @@ _readSector:
         ; read 1 sector from disk:
         ;
         ld      C',     BDOS_READSEQ    ; select BDOS function number
-        ld      DE',    cpm_fcb         ; use default FileControlBlock @ $005C
+@fcb    ld      DE',    cpm_fcb         ; select FileControlBlock
         call    BDOS                    ; do the disk read
         exx                             ; (restore BC/DE/HL before return)
         dec     A                       ; check for A=1, EOF

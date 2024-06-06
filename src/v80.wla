@@ -167,19 +167,6 @@ init:
         djnz    -                       ; loop all stack pushes
         ld      SP,     [sp]            ; restore stack pointer
 
-        ; the virtual program-counter is permanently pinned to IX since
-        ; it's a value that needs to be incremented often but not read
-        ; back too often. this avoids a bunch of HL/DE register swapping
-        ;
-        ld      IX,     $0100           ; virtual program-counter
-
-        ; the code-segment address (where assembled binary code goes)
-        ; is pinned to IY. as with the virtual program-counter, despite
-        ; the IY register being slower to utilise, it is used sparingly
-        ; and avoids costly register swapping
-        ;
-        ld      IY,     code            ; code-segment address
-
         ; print addresses:
         ;
         ld      DE,     @addrc          ; start with "CODE @ ..."
@@ -197,38 +184,32 @@ init:
         ; retrieve the command line parameters from the OS:
         ; (forwards, null-terminated string)
         ;
-        call    osGetParams             ; return string in DE
+        call    osGetParamString        ; return string in DE
 
         ; read the first word; v80 does not support spaces in file-names
         ; for the purposes of cross-compatibility with 8-bit systems
         ;
-        dec     DE                      ; (compensate for pre-decrement loop)
-        ;-----------------------------------------------------------------------
--       inc     DE                      ; move to next char in command line
-        ld      A,      [DE]            ; read char from command line
-        and     A                       ; is it a null-terminator?
+        call    getParam                ; get the first parameter (if present)
         jp      z,      @help           ; null-terminator before any parameter!
-        cp      ASCII_SPC+1             ; is it <=ASCII space (tab)
-        jr      c,      -               ; skip any spaces/tabs
-        ;-----------------------------------------------------------------------
-        ld      HL,     [str]           ; copy parameter to string-buffer
-        jr      +                       ; jump into loop (optimises exit cond.)
-        ;-----------------------------------------------------------------------
--       ld      [HL],   A               ; write char to string-buffer
-        inc     L                       ; move to next char in string-buffer
-+       ld      A,      [DE]            ; read char from command line
-        inc     DE                      ; (move to next char)
-        cp      ASCII_SPC+1             ; is it <=ASCII space (tab, null)
-        jr      nc,     -               ; if not keep going
-        ;-----------------------------------------------------------------------
-        ld      [HL],   0               ; append null terminator
-        ld      HL,     [str]           ; rewind string-buffer to start
-        ex      DE,     HL              ; use new string (DE) as file-name
+        ex      DE,     HL              ; use new string as file-name
 
         ; assemble the source file:
         ;=======================================================================
+        ; the virtual program-counter is permanently pinned to IX since
+        ; it's a value that needs to be incremented often but not read
+        ; back too often. this avoids a bunch of HL/DE register swapping
+        ;
+        ld      IX,     $0100           ; virtual program-counter
+
+        ; the code-segment address (where assembled binary code goes)
+        ; is pinned to IY. as with the virtual program-counter, despite
+        ; the IY register being slower to utilise, it is used sparingly
+        ; and avoids costly register swapping
+        ;
+        ld      IY,     code            ; code-segment address
+
         ld      HL,     [heap]          ; start the heap (file-name is pushed)
-        call    parseFile               ; assemble!
+        call    assembleFile            ; assemble!
 
         ; print final stats:
         ;=======================================================================
@@ -350,6 +331,41 @@ init:
 @bytes  .BYTE   " bytes", 0
 @strs   .BYTE   "STACK: $00", 0
 @peak   .BYTE   " free", 0
+
+
+getParam:
+;===============================================================================
+; in:   DE              addr of command-line parameter string, null-terminated
+; out:  HL              addr of captured parameter, null-terminated
+;       DE              addr in command-line string will have been advanced
+;       zf              zero-flag is set if null-terminator occurs before any
+;                       characters are captured! if this happens, the value
+;                       of DE & HL are *invalid*, as is the captured string
+;       BC              (preserved)
+;       A               (clobbered)
+;-------------------------------------------------------------------------------
+        dec     DE                      ; (compensate for pre-decrement loop)
+        ;-----------------------------------------------------------------------
+-       inc     DE                      ; move to next char in command line
+        ld      A,      [DE]            ; read char from command line
+        and     A                       ; is it a null-terminator?
+        ret     z                       ; null-terminator before any parameter!
+        cp      ASCII_SPC+1             ; is it <=ASCII space (tab)
+        jr      c,      -               ; skip any spaces/tabs
+        ;-----------------------------------------------------------------------
+        ld      HL,     [str]           ; copy parameter to string-buffer
+        jr      +                       ; jump into loop (optimises exit cond.)
+        ;-----------------------------------------------------------------------
+-       ld      [HL],   A               ; write char to string-buffer
+        inc     L                       ; move to next char in string-buffer
++       ld      A,      [DE]            ; read char from command line
+        inc     DE                      ; (move to next char)
+        cp      ASCII_SPC+1             ; is it <=ASCII space (tab, null)
+        jr      nc,     -               ; if not keep going
+        ;-----------------------------------------------------------------------
+        ld      [HL],   0               ; append null terminator
+        ld      HL,     [str]           ; rewind string-buffer to start
+        ret
 
 
 assemble:
@@ -630,7 +646,7 @@ assemble:
         ;
         ; next parameter must be a string. unlike other strings this shouldn't
         ; be written directly to the code-segment but is instead captured in
-        ; the word-buffer (downwards) for searching
+        ; the string-buffer
         ;
 @i:     call    nextWord                ; skip in-between spaces
         jp      z,      errUnexpEOL     ; error if no parameter!
@@ -662,9 +678,17 @@ assemble:
         ld      A,      [col]           ; col is only 1 byte
         push    AF                      ;  a bit of a waste :|
 
-        call    osFilePush              ; preserve OS file data
-        call    parseFile               ; assemble the included file
-        call    osFilePop               ; restore previous OS file data
+.IFNDEF DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        ld      A,      '['
+        call    osPrintChar
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+        call    assembleFile            ; assemble the included file
+.IFNDEF DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        ld      A,      ']'
+        call    osPrintChar
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
 
         pop     AF                      ; pop column number
         ld      [col],  A               ; (only 1 byte)
