@@ -15,10 +15,8 @@ It currently runs on CP/M with plans to make it self-hosting (can assemble itsel
 - No floating point numbers. Have you _tried_ coding floats on an 8-bit CPU??
 - No negative numbers. It's all 1s in 2s compliment
 - No shift operators. Multiply/divide by powers of 2
-- true = 0, like how a CPU _actually_ works.  
-  search your heart, you know it to be true
-
-## Syntax
+- No comparison operators -- we use the zero-flag here
+- No commas. Commas were a mistake
 
 v80 uses a non-standard syntax designed for parsing simplicity / speed, not compatibility with existing source code.
 
@@ -28,7 +26,7 @@ The basic principle is that v80 can only recognise a word by the first character
     ;
     adc   $ff               ; adc $ff
     adc.a                   ; adc A,      A
-    adc.hl.bc               ; adc HL,     BC
+    adc.hl+bc               ; adc HL,     BC
     adc*hl                  ; adc A,      [HL]
     adc*ix  $00             ; adc [IX+$00]
     bit7.a                  ; bit 7,      A
@@ -111,46 +109,42 @@ The basic principle is that v80 can only recognise a word by the first character
     ;
     .a  $ + $80 ; skip exactly 128 bytes
 
-### Labels:
+## Syntax
 
-Labels begin with a colon.
+### Numbers:
 
-    :label
+Only hexadecimal numbers are supported, prefixed with `$`, 1-4 digits.
 
-Labels can begin with a number; in fact, almost any character is game as only whitespace is considered the end of a label name, although you should avoid going too far. `a`-`z`, `0`-`9` and `_` are recommended.
+    $8
+    $ff
+    $38f
+    $ffff
 
-    :1
+### Virtual Program-Counter:
 
-A line that 'begins' with a label name, that is, before any keyword, defines the label as having the current Program Counter.
+The virtual program-counter starts at `$0000`.  
+A line that begins with a number sets the virtual program-counter to that value.
 
-Labels cannot be redefined. All labels must be unique.
+    $0100                   ; sets PC to $0100
 
-### Constants:
+Unlike other assemblers, changing the virtual program-counter **does not** fill the binary with padded space.
 
-A constant is a reusable value given a name.
-A line that begins with constant name defines a constant:
+    $0100                   ; sets PC to $0100
+            .b  $1 $2 $3    ; writes 3 bytes to the code-segment
+    $4000                   ; sets PC to $4000
+            .w  $code       ; writes bytes 4 & 5 of code-segment!
 
-    #true   0
+A special value, `$` without any digits, always returns the current virutal program-counter.
 
-Constant names can begin with a number:
+    $0100                   ; sets PC to $0100
+            .w  $           ; writes $00, $01 to the code-segment
 
-(the parser is very basic and considers everything between `#` and whitespace to be the constant name, although you should try stick to `a`-`z`, `0`-`9` & `_`)
+To set the virtual program-counter using an expression, label or constant, begin a line with a `$` followed by the expression / value:
 
-    #1      $31         ; ASCII "1"
+    #boot   $0100           ; define #boot to equal $0100
+    $       #boot           ; sets the PC to $0100
 
-Constants _can_ be redefined, but their _value_ must be constant!  
-That is, a constant cannot use a forward-reference or undefined constant.
-
-    :1
-    #back   :1          ; OK!
-
-    :2
-    #back   :2          ; OK!
-
-    #fwd    :3          ; invalid! `:3` is unknown
-    :3
-
-### keywords:
+### bytes / words:
 
 Use `.b` & `.w` to write bytes and words to the assembled binary.
 
@@ -163,20 +157,70 @@ Once either keyword is encountered, expressions will be read until the end of th
 
 An expression can be described as:
 
->   an optional unary operator followed by a value,  
+>   optional unary operator(s) followed by a value,  
 >   optionally followed by an operator and another expression
 
 With a _value_ being any word that evaluates to a number;  
 i.e. number literals, labels, or constants.
 
+### includes:
+
+Use `.i` to include another v80 source file.
+
+    .i  "include.v80"
+
+An include file can be reused multiple times. Each time, it will be re-parsed meaning that constant redefines will be applied, allowing for a macro-like application:
+
+    #count  #count + 1      ; increment a counter
+            .b  #count      ; a different number each time included
+
+Includes can be nested but it's recommended to not exceed 3 levels.  
+No sanity checks are done for recursive includes. Don't do that.
+
+### Labels:
+
+Labels begin with a colon.
+
+    :label
+
+Labels can begin with a number; in fact, almost any character is game as only whitespace is considered the end of a label name, although you should avoid going too far. `a`-`z`, `0`-`9` and `_` are recommended.
+
+    :1
+
+A line that 'begins' with a label name, that is, before any keyword, defines the label as having the current virtual program-counter.
+
+Labels cannot be redefined.  
+All labels must be unique.
+
+### Constants:
+
+A constant is a reusable value given a name.  
+A line that begins with constant name, followed by an expression, defines a constant:
+
+    #true   0
+
+Constant names can begin with a number:
+
+(the parser is very basic and considers everything between `#` and whitespace to be the constant name, although you should try stick to `a`-`z`, `0`-`9` & `_`)
+
+    #1      $31         ; ASCII "1"
+
+Constants _can_ be redefined, but the expression used cannot refer to a forward-reference or undefined constant.
+
+    :1
+    #back   :1          ; OK!
+
+    #fwd    :2          ; invalid! `:2` is unknown
+    :2
+
 ### Operators:
 
 The unary operators come before a value:
 
-    !  not
-    <  lo-byte
-    >  hi-byte
-    -  negate
+    !  not      = flip all bits, e.g. !$ff = $00
+    <  lo       = lower byte only, e.g. <$aabb = $bb
+    >  hi       = upper byte only, e.g. >$aabb = $aa
+    -  neg      = flip all bits and +1, e.g. -$1 = $ff
 
 Standard operators come between values:
 
@@ -184,9 +228,9 @@ Standard operators come between values:
     -  subtract
     *  multiply
     /  divide (integer)
+    \  modulo
     &  and
     |  or
     ^  xor
-    %  modulo
 
-There are no shift operators, simply because the parser can only handle single-character operators and couldn't distinguish `>` and `>>`. To do shifts, multiply or divide by powers of 2, e.g. `* 2` = `<< 1`, `/ 8` = `>> 3`. Also, there's no power / exponentiation operator :P
+There are no shift operators. To do shifts, multiply or divide by powers of 2, e.g. `* 2` = `<< 1`, `/ 8` = `>> 3`. Powers of 2 are up to you. There are no power / exponentiation operators.

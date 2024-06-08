@@ -141,7 +141,7 @@ init:
 
         ; how do you measure the maximum depth of the stack
         ; used during program execution?
-        ;-----------------------------------------------------------------------
+        ;
         ; you could record the stack depth every time you push, or at least
         ; often enough, but that slows down execution. rather, we can write
         ; an initial value to every stack space and after execution we can
@@ -179,27 +179,20 @@ init:
         call    osPrintCRLF
         call    osPrintCRLF
 
-        ; parse input parameters:
-        ;=======================================================================
-        ; retrieve the command line parameters from the OS:
-        ; (forwards, null-terminated string)
-        ;
-        call    osGetParamString        ; return string in DE
-
-        ; read the first word; v80 does not support spaces in file-names
-        ; for the purposes of cross-compatibility with 8-bit systems
-        ;
-        call    getParam                ; get the first parameter (if present)
-        jp      z,      @help           ; null-terminator before any parameter!
-        ex      DE,     HL              ; use new string as file-name
-
         ; assemble the source file:
         ;=======================================================================
+        ; parse the command-line parameters and return an addr (DE) to the
+        ; input file-name as a forwards, null-terminated string but also set
+        ; the output file-name privately -- we leave all command-line parsing
+        ; to the OS due to differing file-system limitations
+        ;
+        call    osParseParameters
+
         ; the virtual program-counter is permanently pinned to IX since
         ; it's a value that needs to be incremented often but not read
         ; back too often. this avoids a bunch of HL/DE register swapping
         ;
-        ld      IX,     $0100           ; virtual program-counter
+        ld      IX,     $0000           ; virtual program-counter
 
         ; the code-segment address (where assembled binary code goes)
         ; is pinned to IY. as with the virtual program-counter, despite
@@ -209,7 +202,7 @@ init:
         ld      IY,     code            ; code-segment address
 
         ld      HL,     [heap]          ; start the heap (file-name is pushed)
-        call    assembleFile            ; assemble!
+        call    assembleFile            ; assemble! (DE is file-name str addr)
 
         ; print final stats:
         ;=======================================================================
@@ -294,13 +287,6 @@ init:
         jp      osQuit                  ; jump to CP/M to quit the program
 
         ;=======================================================================
-@help:  ld      DE,     @@str
-        call    osPrintStrZ
-        jp      osQuit
-
-@@str   .BYTE   "    V80 SOURCE.V80", 0
-
-        ;=======================================================================
 @code   .WORD   $0000                   ; size of code-segment
 @free   .WORD   $0000                   ; free RAM between code and heap
 @heap   .WORD   $0000                   ; size of heap
@@ -331,41 +317,6 @@ init:
 @bytes  .BYTE   " bytes", 0
 @strs   .BYTE   "STACK: $00", 0
 @peak   .BYTE   " free", 0
-
-
-getParam:
-;===============================================================================
-; in:   DE              addr of command-line parameter string, null-terminated
-; out:  HL              addr of captured parameter, null-terminated
-;       DE              addr in command-line string will have been advanced
-;       zf              zero-flag is set if null-terminator occurs before any
-;                       characters are captured! if this happens, the value
-;                       of DE & HL are *invalid*, as is the captured string
-;       BC              (preserved)
-;       A               (clobbered)
-;-------------------------------------------------------------------------------
-        dec     DE                      ; (compensate for pre-decrement loop)
-        ;-----------------------------------------------------------------------
--       inc     DE                      ; move to next char in command line
-        ld      A,      [DE]            ; read char from command line
-        and     A                       ; is it a null-terminator?
-        ret     z                       ; null-terminator before any parameter!
-        cp      ASCII_SPC+1             ; is it <=ASCII space (tab)
-        jr      c,      -               ; skip any spaces/tabs
-        ;-----------------------------------------------------------------------
-        ld      HL,     [str]           ; copy parameter to string-buffer
-        jr      +                       ; jump into loop (optimises exit cond.)
-        ;-----------------------------------------------------------------------
--       ld      [HL],   A               ; write char to string-buffer
-        inc     L                       ; move to next char in string-buffer
-+       ld      A,      [DE]            ; read char from command line
-        inc     DE                      ; (move to next char)
-        cp      ASCII_SPC+1             ; is it <=ASCII space (tab, null)
-        jr      nc,     -               ; if not keep going
-        ;-----------------------------------------------------------------------
-        ld      [HL],   0               ; append null terminator
-        ld      HL,     [str]           ; rewind string-buffer to start
-        ret
 
 
 assemble:

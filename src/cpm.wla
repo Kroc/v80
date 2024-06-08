@@ -130,7 +130,8 @@ boot:
         jp      init                    ; we will not return from here!
 
         ;-----------------------------------------------------------------------
-@banner .BYTE   "v80 CP/M v0, Kroc Camen 2023-2024", 0
+@banner .BYTE   "v80 CP/M v0.0 - github.com/kroc/v80\r\n"
+        .BYTE   "(C) Kroc Camen 2023-2024, MIT License", 0
 
         ;=======================================================================
         ; CP/M version less than 2.2 -- call BDOS manually for safety
@@ -151,20 +152,96 @@ osQuit:
         jp      BDOS                    ;  the stack, we can just reset
 
 
-osGetParamString:
+osParseParameters:
 ;===============================================================================
-; return a null-terminated, forwards string of the command-line parameters:
+; parse the command-line parameters:
 ;
-; in CP/M the "command tail", the portion of the command line following the
-; executable name is in the DMA buffer ($0080) by default. it is prefixed by
-; its length, but also null-terminated for us!
+; return an address to a forwards, null-terminated string of the input
+; file-name and also read or generate the output file-name and store
+; it privately (the OS does the binary write-out by itself)
 ;
-; be warned -- the command-tail is overwritten by the first sector read,
-; meaning that the output file-name must be saved before opening the input file
-;
-; out:  DE              addr of parameter string
+; out:  DE              addr of input file-name, forwards, null-terminated
 ;-------------------------------------------------------------------------------
-        ld      DE,     cpm_dma+1       ; return first char of command tail
+        ; search for a first parameter: (input file-name)
+        ;
+        ; in CP/M the "command tail", the portion of the command line following
+        ; the executable name is in the DMA buffer ($80) by default. the first
+        ; byte is the length, but the string is also null-terminated
+        ;
+        ; WARN: the command-tail in the DMA buffer is overwritten by the first
+        ;       sector read of a file so we must copy the parameters out!
+        ;
+        ld      HL,     cpm_dma+1       ; begin search from 1st char
+        ld      DE,     _infile         ; copy to here
+        call    _getParam               ; look for / copy 1st parameter
+        jr      z,      @help           ; if none, show help text
+
+        ; the optional 2nd param sets the output file-name:
+        ;
+        ld      DE,     _outfile        ; this time, copy here
+        call    _getParam               ; look for a 2nd parameter
+        jr      nz,     +               ; if output file-name given, skip
+
+        ; TODO: create the output file-name from the input
+
++       ld      DE,     _infile         ; return input param str addr
+        ret
+
+        ;=======================================================================
+@help:  ld      DE,     @@str
+        call    osPrintStrZ
+        jp      osQuit
+
+@@str   .BYTE   "    V80 FILE.V80 [FILE.COM]", 0
+
+_infile:                                ; command-line input file-name param
+        .BYTE   "            ", 0       ;
+_outfile:                               ; command-line output file-name param
+        .BYTE   "            ", 0       ;
+
+_getParam:
+;===============================================================================
+; finds and copies a command-line parameter:
+;
+; this routine walks along the command tail and finds the start of a parameter
+; word (any non-space chars) which will be copied to the destination addr (DE)
+;
+; for CP/M a limit of 12 characters is imposed as CP/M files must be in 8.3
+; format, even though CP/M doesn't store the "." internally meaning that the
+; file-name could still be invalid if the dot is missing or in the wrong place
+; -- these checks are done when opening the file
+;
+; in:   HL              addr of command-line string, null-terminated
+;       DE              addr of space to copy parameter to, up to 12 characters
+;                       will be copied and a null-terminator appended
+; out:  HL              the string addr is advanced according to the param
+;       zf              zero-flag is set if null-terminator occurs before any
+;                       characters are captured! if this happens, the value
+;                       of DE & HL are *invalid*
+;       DE              (preserved) -- rewound to the start of the param str
+;       A, BC           (clobbered)
+;-------------------------------------------------------------------------------
+        ld      BC,     13              ; reset char limit
+        .BYTE   $e6                     ; skip next instructionl $E6 = AND $..
+        ;-----------------------------------------------------------------------
+-       inc     L                       ; move to next char in command tail
+        ld      A,      [HL]            ; read char from command tail
+        and     A                       ; is it a null-terminator?
+        ret     z                       ; null-terminator before any parameter!
+        cp      ASCII_SPC+1             ; is it <=ASCII space (tab)
+        jr      c,      -               ; skip any spaces/tabs
+        ;-----------------------------------------------------------------------
+        push    DE                      ; start of param str will be returned
+        ld      A,      ASCII_SPC+1     ; pre-load comparison (spc, tab, null)
+        ;-----------------------------------------------------------------------
+-       ldi                             ; = LD [DE], HL; INC DE; INC HL; DEC BC
+        jp      po,     errUndefFile    ; error if copied 13th char w/o NULL
+        cp      [HL]                    ; is char <=ASCII space (inc. tab, null)
+        jr      c,      -               ; if not keep going
+        ;-----------------------------------------------------------------------
+        ld      A,      0               ; patch in null terminator
+        ld      [DE],   A               ; (mustn't set zero-flag!)
+        pop     DE                      ; return start of param str
         ret
 
 
@@ -575,7 +652,7 @@ osPrintChar:
 ; prints a single ASCII character:
 ;
 ; in:   A               input character
-; out:  A, BC|DE|HL     (preserved)
+; out:  A, BC, DE, HL   (preserved)
 ;-------------------------------------------------------------------------------
         exx                             ; swap to shadow registers
 
