@@ -203,37 +203,21 @@ init:
 
         ld      HL,     [heap]          ; start the heap (file-name is pushed)
         call    assembleFile            ; assemble! (DE is file-name str addr)
-        push    HL                      ; (preserve final heap addr)
 
         ; TODO: 2nd pass!
 
-        ; TODO: calc final stats here so heap-addr is no longer needed
-
-        ; output file:
-        ;=======================================================================
-        ; the output file-name is already known to the OS which read it
-        ; from the command-line parameters during osParseParameters
-        ;
-        ld      HL,     code            ; = code-segment start addr
-        push    IY                      ; transfer code-segment end addr
-        pop     DE                      ;  to DE for file write
-        call    osSaveCode              ; defer all writing work to the OS
-
-        ; print final stats:
-        ;=======================================================================
+        ; calculate final stats:
         ;
         ; +----------------+----------------------+---------------+
         ; | code-segment-> |     <-free RAM->     | <-heap        |
         ; +----------------+----------------------+---------------+
         ; ^ code           ^ IY                   ^ HL            ^ [heap]
         ;
-        pop     HL                      ; (restore final heap addr, HL)
-        ex      DE,     HL              ; put current heap address aside
-        xor     A                       ; (clear carry)
-
         ; size of the heap:
         ; (works downwards from top of RAM)
         ;
+        xor     A                       ; (clear carry)
+        ex      DE,     HL              ; swap heap end-address to DE
         ld      HL,     [heap]          ; get heap starting address (high!)
         sbc     HL,     DE              ; calculate end-start difference
         ld      [@heap],HL              ; save value for printing later
@@ -280,8 +264,18 @@ init:
         rla                             ; * 2 for bytes
         ld      [@stack],       A       ; save value for printing later
 
-        ; print results:
+        ; output file:
+        ;=======================================================================
+        ; the output file-name is already known to the OS which read it
+        ; from the command-line parameters during osParseParameters
         ;
+        ld      HL,     code            ; = code-segment start addr
+        push    IY                      ; transfer code-segment end addr
+        pop     DE                      ;  to DE for file write
+        call    osSaveCode              ; defer all writing work to the OS
+
+        ; print final stats:
+        ;-----------------------------------------------------------------------
         ld      DE,     @strc           ; string to print ("CODE")
         ld      HL,     [@code]         ; value to print (code size)
         call    @size                   ; ...
