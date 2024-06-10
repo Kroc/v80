@@ -1,5 +1,5 @@
 ; v80, (C) Kroc Camen 2023-2024, MIT License
-; expression parsing / evaulation
+; expression parsing / evaluation
 ;
 ; TODO: support combined unary operators (e.g. `!<`)
 ;       will work in eval but needs parser support
@@ -289,7 +289,7 @@ parseExpr:
         ; the whole expression to be deferred. instead of the label value,
         ; the address of the label's flag-byte in the dictionary is tokenised
         ;
-        ; NOTE: it is very imporant to be aware that in the case of carry-set,
+        ; NOTE: it is very important to be aware that in the case of carry-set,
         ;       `getLabel` has returned the addr of the label's flag byte in DE
         ;
 +       ld      [HL],   CHAR_LABEL      ; push the label token
@@ -309,7 +309,7 @@ parseExpr:
         ;
         ; calculate length of expression; this is needed to defer the expr
         ; to the heap. the bytecode is ordered *downwards* in memory, so the
-        ; difference from the end address to the starting adress is the length
+        ; difference from the end address to the starting address is the length
         ;
         ; the expr buffer runs from $xx7F downwards to $xx20
         ; so an 8-bit subtraction is sufficient
@@ -511,7 +511,7 @@ evalExpr:
         jr      z,      @mul            ; ...
         cp      CHAR_OP_AND             ; bitwise AND operator?
         jr      z,      @and            ; ...
-        cp      CHAR_OP_OR              ; bitiwse OR operator?
+        cp      CHAR_OP_OR              ; bitwise OR operator?
         jr      z,      @or             ; ...
         cp      CHAR_OP_XOR             ; bitwise XOR operator?
         jr      z,      @xor            ; ...
@@ -592,7 +592,7 @@ evalExpr:
         rl      E                       ; shift DE up by 1 bit
         rl      D                       ; 
         jr      nc,     +               ; if the popped bit is 1
-        add     HL,     BC              ;  then add the multipler
+        add     HL,     BC              ;  then add the multiplier
         jr      nc,     +
         inc     DE
 +       dec     A

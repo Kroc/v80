@@ -1,5 +1,5 @@
 ; v80, (C) Kroc Camen 2023-2024, MIT License
-; file input / ouput routines
+; file input / output routines
 ;
 .block  "code-file"
 
@@ -20,7 +20,7 @@ assembleFile:
 ;                       -- currently assumed to be [str]
 ;       HL              (preserved)
 ;-------------------------------------------------------------------------------
-        call    osFileOpen              ; use the OS to open the file
+        call    osFileOpen              ; use the OS to open the file (DE)
 
         ; search the file-name dictionary and return the address
         ; of the file-name record (in BC), adding it if not present
@@ -182,7 +182,7 @@ readChar:
         ;-----------------------------------------------------------------------
         ; increment line-number:
         ;
-        ; TODO: line-number should be set to 1 by default
+        ; FIXME: line-number should be set to 1 by default
         ;
 @row:   ld      DE',    [row]           ; 16-bit load,
         inc     DE'                     ;  and increment,

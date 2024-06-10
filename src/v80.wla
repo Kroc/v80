@@ -37,7 +37,7 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 
 ;.DEF    DEBUG                           ; enable debug features
 ;.DEF    DEBUG_LABELS                    ; dump label records when defined
-;.DEF    DEBUG_DUMP                      ; dump binary after assemby
+;.DEF    DEBUG_DUMP                      ; dump binary after assembly
 
 ; system:
 ;
@@ -151,7 +151,7 @@ init:
         ; the only value you can almost guarantee will never be pushed to the
         ; stack is... the address of the stack itself! For example, if the
         ; stack is at $FC80 then you won't ever see $FC80 stored there
-        ; -- this is programatically useless
+        ; -- this is programmatically useless
         ;
         ; therefore we fill each stack space with its own address and after
         ; execution check for stack positions that have changed, revealing
@@ -176,8 +176,8 @@ init:
         call    @print                  ; print next string and value
         ld      HL,     [sp]            ; start addr of stack
         call    @print                  ; print next string and value
-        call    osPrintCRLF
-        call    osPrintCRLF
+        call    osPrintNewline
+        call    osPrintNewline
 
         ; assemble the source file:
         ;=======================================================================
@@ -203,6 +203,21 @@ init:
 
         ld      HL,     [heap]          ; start the heap (file-name is pushed)
         call    assembleFile            ; assemble! (DE is file-name str addr)
+        push    HL                      ; (preserve final heap addr)
+
+        ; TODO: 2nd pass!
+
+        ; TODO: calc final stats here so heap-addr is no longer needed
+
+        ; output file:
+        ;=======================================================================
+        ; the output file-name is already known to the OS which read it
+        ; from the command-line parameters during osParseParameters
+        ;
+        ld      HL,     code            ; = code-segment start addr
+        push    IY                      ; transfer code-segment end addr
+        pop     DE                      ;  to DE for file write
+        call    osSaveCode              ; defer all writing work to the OS
 
         ; print final stats:
         ;=======================================================================
@@ -212,6 +227,7 @@ init:
         ; +----------------+----------------------+---------------+
         ; ^ code           ^ IY                   ^ HL            ^ [heap]
         ;
+        pop     HL                      ; (restore final heap addr, HL)
         ex      DE,     HL              ; put current heap address aside
         xor     A                       ; (clear carry)
 
@@ -226,8 +242,8 @@ init:
         ; (size between end of code-segment and end-of-heap)
         ;
         ex      DE,     HL              ; return last heap addr to HL
-        push    IY                      ; swap code-segment last address
-        pop     DE                      ;  into DE for SBC HL, DE
+        ld      D,      IYH             ; copy code-segment last address
+        ld      E,      IYL             ;  into DE for SBC HL, DE
         sbc     HL,     DE              ; calculate end-start difference
         ld      [@free],HL              ; save value for printing later
 
@@ -576,7 +592,7 @@ assemble:
         ;
 @str:   ld      A,      [param]         ; a string cannot be a part of 
         cp      2                       ;  a list of words! (i.e. `.w` keyword)
-        jp      z,      errInvalExpr    ; TODO: better error message for this
+        jp      z,      errInvalExpr    ; FIXME: better error message for this
         ;-----------------------------------------------------------------------
 -       call    readChar                ; read next character
         jp      z,      errInvalStr     ; sudden EOL/EOF? unterminated string!
@@ -822,7 +838,7 @@ getLabel:
         ld      C,      [HL]            ; return BC = symbol value
 
         ; the address of the last byte of the label record is returned in DE.
-        ; when we need to upate the label value we can just walk up the bytes
+        ; when we need to update the label value we can just walk up the bytes
         ;
         ;          | DE
         ;          v---------+------+---+---+---+---+---+---+-----+------+
@@ -1202,6 +1218,11 @@ getHexByte:
 ; this is where the assembled code will be placed;
 ; anything beyond this point will be overwritten
 ;
+; CP/M writes files in 128-byte sectors requiring us to pad the end of
+; the file to the next 128-bytes, thus the align here to make that easier
+;
+.ALIGN  $80
+
 code:
 ;-------------------------------------------------------------------------------
 ; WARNING: ANYTHING PLACED AFTER HERE WILL BE OVERWRITTEN

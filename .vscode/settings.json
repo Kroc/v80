@@ -39,14 +39,15 @@
         "wla-dx-asm"
     ],
     "cSpell.words": [
-        "BDOS",
+        "alphanum",
         "Camen",
-        "djnz"
+        "kroc"
     ],
     "spellright.language": [
         "en"
     ],
     "spellright.documentTypes": [
+        "wla-dx-asm",
         "markdown",
         "latex",
         "plaintext",
@@ -56,5 +57,47 @@
         "wla-dx-asm": {
             "parser": "code"
         }
-    }
+    },
+    "cSpell.allowCompoundWords": true,
+    "cSpell.caseSensitive": true,
+    "evenbettercomments.tags": [
+        {
+            "tag": "TODO:",
+            "color": "#FF8C00",
+            "overline": false,
+            "strikethrough": false,
+            "underline": false,
+            "backgroundColor": "transparent",
+            "bold": false,
+            "italic": false
+        },{
+            "tag": "FIXME:",
+            "color": "#FF2D00",
+            "overline": false,
+            "strikethrough": false,
+            "underline": false,
+            "backgroundColor": "transparent",
+            "bold": false,
+            "italic": false
+        },{
+            "tag": "in:",
+            "color": "#98C379",
+            "overline": false,
+            "strikethrough": false,
+            "underline": false,
+            "backgroundColor": "transparent",
+            "bold": false,
+            "italic": false
+          },{
+            "tag": "out:",
+            "color": "#98C379",
+            "overline": false,
+            "strikethrough": false,
+            "underline": false,
+            "backgroundColor": "transparent",
+            "bold": false,
+            "italic": false
+          }
+    ],
+    "evenbettercomments.highlightTagOnly": true
 }

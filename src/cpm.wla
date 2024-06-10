@@ -1,6 +1,22 @@
 ; v80, (C) Kroc Camen 2023-2024, MIT License
 ; CP/M-2.2 interface
 ;
+; each supported operating system must implement this interface:
+; (see routine headers below for details)
+;
+;       boot                            bootstrap, first code run
+;       osQuit                          quit app and return to the OS
+;       osParseParameters               parse the command-line parameters
+;       osFileOpen                      open file (read-only)
+;       osFileClose                     close file (read-only)
+;       osSaveCode                      save binary to file-name parsed
+;                                       in osParseParameters
+;       osGetChar                       read char from current open file
+;       osPrintLn                       print null-terminated string + newline
+;       osPrintNewline                  print a newline (sys/OS-dependant)
+;       osPrintChar                     print a single character
+;       osPrintStrZ                     print a null-terminated string
+;
 ; memory layout:
 ;-------------------------------------------------------------------------------
 .MEMORYMAP
@@ -24,6 +40,9 @@ TBASE                   = $0100         ; start of transient program area
 ; BDOS calls:
 BDOS                    = $0005         ; call address to access BDOS
 
+; details of the CP/M 2.2 interface gleaned from here:
+; http://www.gaby.de/cpm/manuals/archive/cpm22htm/ch5.htm
+;
 ; function:             ; C = ?         ; notes:
 BDOS_RESET              = 0             ; system reset
 BDOS_CONIN              = 1             ; console input
@@ -161,9 +180,8 @@ osParseParameters:
 ; it privately (the OS does the binary write-out by itself)
 ;
 ; out:  DE              addr of input file-name, forwards, null-terminated
+;       A, BC, HL       (clobbered)
 ;-------------------------------------------------------------------------------
-        ; search for a first parameter: (input file-name)
-        ;
         ; in CP/M the "command tail", the portion of the command line following
         ; the executable name is in the DMA buffer ($80) by default. the first
         ; byte is the length, but the string is also null-terminated
@@ -171,31 +189,80 @@ osParseParameters:
         ; WARN: the command-tail in the DMA buffer is overwritten by the first
         ;       sector read of a file so we must copy the parameters out!
         ;
+        ; search for a first parameter: (input file-name)
+        ;-----------------------------------------------------------------------
         ld      HL,     cpm_dma+1       ; begin search from 1st char
         ld      DE,     _infile         ; copy to here
         call    _getParam               ; look for / copy 1st parameter
         jr      z,      @help           ; if none, show help text
 
         ; the optional 2nd param sets the output file-name:
-        ;
+        ;-----------------------------------------------------------------------
         ld      DE,     _outfile        ; this time, copy here
         call    _getParam               ; look for a 2nd parameter
-        jr      nz,     +               ; if output file-name given, skip
+        jr      nz,     @out            ; if output file-name specified, skip
 
-        ; TODO: create the output file-name from the input
+        ; no output file-name specified --
+        ; create one from the input file-name:
+        ;
+        ld      B,      8               ; copy up-to the first 8 chars
+        ld      HL,     _infile         ;  from the input file-name
+        ;-----------------------------------------------------------------------
+-       ld      A,      [HL]            ; read a source character
+        inc     HL                      ; move to next source character
+        and     A                       ; (set zero-flag)
+        jr      z,      +               ; stop copying at null-terminator
+        cp      '.'                     ; is it a dot? (file/ext separator)
+        jr      z,      +               ; also stop copying at dot
+        ld      [DE],   A               ; write fixed char to output file-name
+        inc     DE                      ;  and move to next char
+        djnz    -                       ; loop until all chars copied
+        ;-----------------------------------------------------------------------
++       ld      BC,     5               ; now append ".com", NULL, the default
+        ld      HL,     @com            ;  file extension assumed for CP/M
+        ldir                            ; = copy BC bytes from HL to DE
+        ld      DE,     _outfile        ; restore DE to start of file-name str
 
-+       ld      DE,     _infile         ; return input param str addr
-        ret
+        ; use the default FCB for the output file:
+        ;-----------------------------------------------------------------------
+        ; clear the default FCB:
+        ;
+@out:   ld      A,      ASCII_SPC       ; write spaces to FCB file-name
+        ld      HL,     cpm_fcb+1       ; (file-name starts on 2nd byte)
+        ld      B,      11              ; the 8.3 dot is not stored
+-       ld      [HL],   A               ; write a space
+        inc     L                       ; move to next char
+        djnz    -                       ; loop for 11 chars
+        xor     A                       ; zero the other fields
+        ld      [cpm_fcb.drive],        A
+        ld      B,      24              ; a further 24 bytes
+-       ld      [HL],   A               ; write a zero
+        inc     L                       ; move to next field
+        djnz    -                       ; zero all remaining fields
+
+        ; parse the output file-name into the default FCB
+        ; that will be used after assembling to output the binary
+        ;
+        ld      HL,     cpm_fcb         ; default FCB addr
+        call    _setFCBFileName         ; configure FCB for output file
+
+        ld      DE,     _infile         ; return input param str addr
+        ret                             ; ...
+
+        ;-----------------------------------------------------------------------
+@com    .BYTE   ".COM", 0               ; default output file-name extension
 
         ;=======================================================================
-@help:  ld      DE,     @@str
-        call    osPrintStrZ
-        jp      osQuit
+@help:  ld      DE,     @@str           ; no parameters!
+        call    osPrintStrZ             ; print the command usage
+        jp      osQuit                  ;  and quit
 
 @@str   .BYTE   "    V80 FILE.V80 [FILE.COM]", 0
 
 _infile:                                ; command-line input file-name param
         .BYTE   "            ", 0       ;
+        .BYTE   ASCII_CR, ASCII_LF      ; (space saving trick when we
+        .BYTE   ASCII_CR, ASCII_LF      ;  print the output file-name)
 _outfile:                               ; command-line output file-name param
         .BYTE   "            ", 0       ;
 
@@ -207,22 +274,23 @@ _getParam:
 ; word (any non-space chars) which will be copied to the destination addr (DE)
 ;
 ; for CP/M a limit of 12 characters is imposed as CP/M files must be in 8.3
-; format, even though CP/M doesn't store the "." internally meaning that the
+; format, even though CP/M doesn't store the "." internally, meaning that the
 ; file-name could still be invalid if the dot is missing or in the wrong place
 ; -- these checks are done when opening the file
 ;
 ; in:   HL              addr of command-line string, null-terminated
 ;       DE              addr of space to copy parameter to, up to 12 characters
 ;                       will be copied and a null-terminator appended
-; out:  HL              the string addr is advanced according to the param
+;
+; out:  HL              the string addr is advanced according to the param read
 ;       zf              zero-flag is set if null-terminator occurs before any
-;                       characters are captured! if this happens, the value
-;                       of DE & HL are *invalid*
+;                       characters are captured!
 ;       DE              (preserved) -- rewound to the start of the param str
 ;       A, BC           (clobbered)
+;       -               halts with error if file-name exceeds 12 chars
 ;-------------------------------------------------------------------------------
         ld      BC,     13              ; reset char limit
-        .BYTE   $e6                     ; skip next instructionl $E6 = AND $..
+        .BYTE   $e6                     ; skip next instruction; $E6 = AND $..
         ;-----------------------------------------------------------------------
 -       inc     L                       ; move to next char in command tail
         ld      A,      [HL]            ; read char from command tail
@@ -234,7 +302,7 @@ _getParam:
         push    DE                      ; start of param str will be returned
         ld      A,      ASCII_SPC+1     ; pre-load comparison (spc, tab, null)
         ;-----------------------------------------------------------------------
--       ldi                             ; = LD [DE], HL; INC DE; INC HL; DEC BC
+-       ldi                             ; LD [DE], [HL]; INC DE; INC HL; DEC BC
         jp      po,     errUndefFile    ; error if copied 13th char w/o NULL
         cp      [HL]                    ; is char <=ASCII space (inc. tab, null)
         jr      c,      -               ; if not keep going
@@ -251,7 +319,7 @@ osFileOpen:
 ;
 ; for reasons of code density and simplicity, file reading *must* be nested,
 ; that is, files must be opened and closed in LIFO order so that reads are not
-; interleved; if a file is opened it must be closed before you can return to
+; interleaved; if a file is opened it must be closed before you can return to
 ; the previously open file. this works fine for source file includes that only
 ; read files start to finish, nesting inwards
 ;
@@ -263,24 +331,30 @@ osFileOpen:
 ;       and user-numbers?? ("0A:" prefix)
 ;
 ; in:   DE              addr of the file-name to use, forwards, null-terminated
-; out:  A, BC, DE       (clobbered)
+; out:  SP              stack is manipulated -- do not JP to this routine!
 ;       HL              (preserved)
+;       A, BC, DE       (clobbered)
 ;-------------------------------------------------------------------------------
         ; allocate a new FileControlBlock on the stack:
         ;
         pop     BC                      ; steal the return address!
         exx                             ; put aside input parameters for now
 
-        ; preserve the current FileControlBlock address under
-        ; the new one to return to it once the file closes
-        ;
-        ; also write the current record byte index into the FCB
-        ; (in the random record field that isn't used by us)
+        ; preserve the current FileControlBlock address under the new one
+        ; to return to it once the file closes. if this is the first file
+        ; being opened, we do not need to backup the sector char index
         ;
         ld      HL',    [_readSector@fcb+1]
         push    HL'                     ; backup previous FCB addr
+        xor     A                       ; set A to zero
+        cp      H'                      ; is hi-byte of FCB in zero-page? 
+        jr      z,      +               ; if yes, skip over rewind record
+
+        ; also write the current record byte index into the FCB
+        ; (in the random record field that isn't used by us)
+        ;
         ld      A,      L'              ; FCB+33 is random-record byte
-        add     33                      ;  we use to backup the read index
+        add     A,      33              ;  we use to backup the read index
         ld      L',     A               ;  (random records are not used)
         ld      A,      [osGetChar@index+1]
         ld      [HL'],  A
@@ -298,9 +372,9 @@ osFileOpen:
         ;       (CPM/3 uses FCB's SR2 byte for larger files,
         ;        this would be needed for files > 2MB)
         ;
-        ld      A,      L               ; extent field is byte 12
-        sub     20                      ; (subtract 20 from addr)
-        ld      L,      A               ; ...
+        ld      A,      L'              ; extent field is byte 12
+        sub     A,      20              ; (subtract 20 from addr)
+        ld      L',      A              ; ...
         dec     [HL']                   ;  and decrement by 1
 
         ; construct an empty FileControlBlock on the stack,
@@ -318,58 +392,45 @@ osFileOpen:
         ; prefill the FCB file-name/ext with spaces since CP/M file-names have
         ; the extension separate from the file-name which is padded by spaces
         ;
+        ; FIXME: _setFCBFilename does space padding, so no need to do this here
+        ;
         ld      B',     10/2            ; fill next 10 chars with spaces
         ld      DE,     $2020           ; (two spaces)
 -       push    DE'                     ; file-name is space-padded
         djnz    -                       ; ...
-        ld      E',     0               ; 1st byte = 0 (D) & 2nd = SPC (E)
+        ld      E',     0               ; 1st byte = 0 (E) & 2nd = SPC (D)
         push    DE'                     ;  as file-name begins on 2nd FCB byte
 
         ; (the current stack-position is now the start of a new, empty, FCB)
 
-        exx                             ; return to input parameters
         ld      [@fcb], SP              ; backup current stack-position (FCB)
+        exx                             ; return to input parameters
         push    BC                      ; restore the return address!
         push    HL                      ; (preserve caller's HL)
 
-        ; copy new file-name (DE) to the new FCB (HL):
-        ;-----------------------------------------------------------------------
-        ; copy & validate file-name according to CP/M rules:
-        ; (the parser takes any string)
+        ; copy new file-name (DE) to the new FCB:
         ;
         ld      HL,     [@fcb]          ; retrieve new FCB addr
-        inc     HL                      ; skip FCB drive byte
-        ld      B,      8               ; max file-name chars (sans extension)
-        call    @copy                   ; test/fix and copy up to 8 chars
-        jr      z,      +               ; if null encountered, no extension
+        call    _setFCBFileName         ; copy and validate file-name to FCB
 
-        ; copy file extension:
-        ; (the dot has already been skipped by `@copy`)
-        ;
-        ld      HL,     [@fcb]          ; skip ahead to file-extension field
-        ld      BC,     9               ;  (byte no.9 in the FCB)
-        add     HL,     BC              ;  ...
-        ld      B,      3               ; max extension chars (sans dot)
-        call    @copy                   ; copy up to 3 chars for extension
-        jr      nz,     @err            ; dot not allowed in extensions!
+.IFNDEF DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        call    osPrintStrZ             ; print file-name (DE)
+        ld      A,      ':'             ;  and a colon
+        call    osPrintChar             ;  ...
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
 
         ; now attempt to open the file:
         ; (CP/M will check if the file exists)
         ;-----------------------------------------------------------------------
-+       ld      C,     BDOS_OPEN        ; BDOS function number
-        ld      DE,    [@fcb]           ; address of the FileControlBlock
+        ld      C,      BDOS_OPEN       ; BDOS function number
+        ex      DE,     HL              ; DE = address of the FileControlBlock
         call    BDOS                    ; call BDOS -> BIOS etc.
         and     A                       ; OK = 0, file not found = $FF
-        jr      nz,     @err            ; error if not zero
+        jp      nz,     errUndefFile    ; error if not zero
 
-.IFNDEF DEBUG
-        ;///////////////////////////////////////////////////////////////////////
-        ld      DE,     [str]
-        call    osPrintStrZ
-        ld      A,      ':'
-        call    osPrintChar
-.ENDIF  ;///////////////////////////////////////////////////////////////////////
-
+        ; read file's first sector:
+        ;
         ld      HL,     [@fcb]          ; update FCB addr for reading sectors
         ld      [_readSector@fcb+1],    HL
         pop     HL                      ; (restore caller's HL)
@@ -377,22 +438,56 @@ osFileOpen:
 
 @fcb    .ADDR   $0000
 
+_setFCBFileName:
+;===============================================================================
+; prepares a CP/M FileControlBlock from a file-name string:
+;
+; in:   HL              addr of FCB structure, e.g. $5C (default CP/M FCB)
+;       DE              addr of file-name string, forwards, null-terminated
+; out:  HL, DE          (preserved)
+;       A, BC           (clobbered)
+;-------------------------------------------------------------------------------
+        ld      [HL],   0               ; set default drive code
+        inc     HL                      ; next byte is start of FCB file-name
+        push    DE                      ; preserve start addr of file-name str
+
+        ; copy & validate file-name according to CP/M rules:
+        ;
+        ld      B,      8               ; max file-name chars (sans extension)
+        call    @copy                   ; test/fix and copy up to 8 chars
+        jr      z,      +               ; if null encountered, no extension
+
+        ; copy file extension:
+        ; (the dot has already been skipped by `@copy`)
+        ;
+        ld      B,      3               ; max extension chars (sans dot)
+        call    @copy                   ; copy up to 3 chars for extension
+        jr      nz,     @err            ; dot not allowed in extensions!
+
+        ; return start of FCB addr:
++       ld      BC,     -12             ; (use negative add to avoid SBC)
+        add     HL,     BC              ; rewind HL to start of FCB addr
+        pop     DE                      ; restore file-name str start addr
+        ret
+
         ; test, fix & copy chars to FCB:
         ;=======================================================================
-        ; in:   B                       max. number of chars to copy
+        ; in:   B                       max. number of chars to copy; remaining
+        ;                               chars are padded with spaces
         ; out:  A                       last character read
         ;       zf                      zf-set   = reached a null
         ;                               zf-clear = reached a dot
+        ;       -                       any invalid char halts with error
         ;-----------------------------------------------------------------------
 @copy:  ld      A,      [DE]            ; read a source character
         inc     DE                      ; move to next source character
         and     A                       ; (set zero-flag)
-        ret     z                       ; return zf-set on null-terminator
+        jr      z,      +               ; stop copying at null-terminator
         cp      '.'                     ; is it a dot? (file/ext separator)
-        jr      z,      +               ; if yes, return zf-clear instead
+        jr      z,      +               ; stop copying at dot
         call    @valid                  ; test/fix char (will err on invalid)
         ld      [HL],   A               ; write fixed char to FCB
-        inc     HL                      ;  and move to next char
+        inc     L                       ;  and move to next char
         djnz    @copy                   ; loop until all chars copied
         ;-----------------------------------------------------------------------
         ; if all chars are copied, the next char *must* be a dot (file-name)
@@ -404,8 +499,14 @@ osFileOpen:
         cp      '.'                     ; check for dot
         inc     DE                      ; (skip over the dot for extension)
         jr      nz,     @err            ; not null or dot -- too many chars!
+        and     A                       ; set | clear zero-flag for null | dot
+        ret                             ; ...
++       ;-----------------------------------------------------------------------
+-       ld      [HL],   ASCII_SPC       ; fill remaining characters with space
+        inc     L                       ; (without changing last char in A)
+        djnz    -                       ; ...
         ;-----------------------------------------------------------------------
-+       and     A                       ; clear zero-flag for dot
+        and     A                       ; set | clear zero-flag for null | dot
         ret                             ; (A is last char code)
 
         ; test / fix char for CP/M file-names:
@@ -514,7 +615,8 @@ osFileClose:
 ; this routine must be called at the same stack level as the last osFileOpen
 ; call because the previous FileControlBlock is restored from the stack
 ;
-; out:  HL              (preserved)
+; out:  SP              stack is manipulated -- do not JP to this routine!
+;       HL              (preserved)
 ;       A, BC, DE       (clobbered)
 ;-------------------------------------------------------------------------------
         pop     BC                      ; steal our return address!
@@ -529,7 +631,13 @@ osFileClose:
 
         ; re-read last file's current sector:
         ;-----------------------------------------------------------------------
-        pop     DE                      ; restore previous FCB
+        ; if closing the first file opened, there is no FCB to restore
+        ;
+        pop     DE                      ; pop previous FCB addr
+        xor     A                       ; (set A to zero)
+        cp      D                       ; is hi-byte of FCB in zero-page?
+        jr      z,      +               ; skip sector re-read if last file out
+
         ld      [_readSector@fcb+1],    DE
         call    _readSector             ; re-read the previous file's sector
         ld      A,      E               ; restore the read index
@@ -538,8 +646,105 @@ osFileClose:
         ld      A,      [DE]            ;  ...
         ld      [osGetChar@index+1],    A
 
-        push    BC                      ; (restore our return address)
++       push    BC                      ; (restore our return address)
         ret
+
+
+osSaveCode:
+;===============================================================================
+; saves the code-segment memory region in one go:
+;
+; the output file-name was captured to `_outfile` when parsing the command-line
+; parameters (`osParseParameters`)
+;
+; in:   HL              start addr of code-segment to save
+;       DE              end addr of  code-segment to save
+; out:  *               (clobbered)
+;-------------------------------------------------------------------------------
+        ; CP/M 2.2 only measures file sizes in 128 byte sectors
+        ; so we pad the binary with zeroes up to the next sector
+        ;
+        ld      [@loop+1],      HL      ; inject start addr into write-loop
+        ex      DE,     HL              ; swap end addr to HL for padding
+        jr      +                       ; jump into loop (optimises exit cond.)
+        ;-----------------------------------------------------------------------
+-       ld      [HL],   NULL            ; append a null byte
+        inc     HL                      ; increment end addr
++       ld      A,      L               ; check if the lo-byte addr
+        and     %01111111               ;  is $00 or $80 (every 128 bytes)
+        jr      nz,     -               ; if not, keep padding
+
+.IFNDEF DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        ld      DE,     _outfile-4      ; print output file-name (with some
+        call    osPrintStrZ             ;  line-breaks placed beforehand)
+        ld      A,      ':'             ; (note HL & BC are preserved)
+        call    osPrintChar             ; ...
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+
+        ex      DE,     HL              ; transfer end-addr to DE for later
+        ld      BC,     128             ; pre-load sector size for later
+        exx                             ; preserve DE & BC for now
+
+        ; the default CP/M FileControlBlock has already been configured
+        ; for the output file. we need to check if the file already exists!
+        ;
+        ld      C',     BDOS_OPEN       ; check if the file exists
+        ld      DE',    cpm_fcb         ;  by trying to open it
+        call    BDOS                    ; ...
+        and     A                       ; OK = 0, file not found = $FF
+        jr      nz,     +               ; skip ahead if file doesn't exist
+
+        ; the output file already exists on disk,
+        ; delete it before recreating it:
+        ;
+        ld      C',     BDOS_DEL        ; select delete-file function
+        call    BDOS                    ; (for output file-name)
+
+        ; output binary to disk:
+        ;-----------------------------------------------------------------------
+        ; TODO: pad output with NULL?
+        ;
++       ld      C',     BDOS_MAKEFILE   ; create new, blank output file
+        call    BDOS                    ; (note: equivalent to a BDOS open)
+        and     A                       ; OK = 0. does CP/M return otherwise?
+        jp      nz,     errUndefFile    ; TODO: out of disk-space error?
+
+        ; for CP/M 2.2 we must write 128 bytes at a time which requires
+        ; setting the DMA address and moving it 128 bytes forward after
+        ; each write
+        ;
+        ; TODO: CP/M 3 has multi-sector write
+        ;-----------------------------------------------------------------------
+@loop   ld      DE',    $0000           ; current position in binary
+        ld      C',     BDOS_SETDMA     ; set the DMA addr to the addr
+        call    BDOS                    ;  to write 128 bytes from
+        ld      DE',    cpm_fcb         ; default FCB defines output file
+        ld      C',     BDOS_WRITESEQ   ; write 1 sector (128 bytes)
+        call    BDOS                    ;  of data...
+        and     A                       ; TODO: out of disk-space error?
+.IFNDEF DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        ld      E',     '.'             ; for every sector written
+        ld      C',     BDOS_CONIO      ;  print a dot
+        call    BDOS                    ; ...
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+        exx                             ; restore end-addr (HL)
+        ld      HL,     [@loop+1]       ; get current addr in binary
+        add     HL,     BC              ; move to next sector (BC=128)
+        ld      [@loop+1],      HL      ; inject addr into loop for write
+        sbc     HL,     DE              ; have we finished? (addresses equal)
+        exx                             ; (swap back to BDOS registers)
+        jr      nz,     @loop           ; if not, go write next sector
+
+        ; close file:
+        ;-----------------------------------------------------------------------
+        ld      C,      BDOS_SETDMA     ; reset default DMA address
+        ld      DE,     cpm_dma         ; (not required but wise to do)
+        call    BDOS                    ; ...
+        ld      C,      BDOS_CLOSE      ; files written to must be
+        ld      DE,     cpm_fcb         ;  explicitly closed in CP/M
+        jp      BDOS                    ; ...
 
 
 osGetChar:
@@ -633,7 +838,7 @@ osPrintLn:
         ; fallthrough
         ; ...
 
-osPrintCRLF:
+osPrintNewline:
 ;===============================================================================
 ; print a newline!
 ;

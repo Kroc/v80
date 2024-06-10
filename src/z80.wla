@@ -167,13 +167,13 @@ emitOpcode:
 ;       CB    op                ; implied, CB-extended
 ;             op nn             ; immediate, 8-bit
 ;             op nn nn          ; immediate, 16-bit
-;    ED       op nn nn          ; immedaite, 16-bit, ED-extended
+;    ED       op nn nn          ; immediate, 16-bit, ED-extended
 ;             op rr             ; immediate, relative
 ; DD|FD       op                ; IXY implied
 ; DD|FD       op oo             ; IXY offset
 ; DD|FD CB oo op                ; IXY offset, CB-extended (the cursed opcode!)
 ; DD|FD       op oo nn          ; IXY offset, immediate -- 2 parameters!
-; DD|FD       op nn nn          ; IXY implied, immedaite, 16-bit
+; DD|FD       op nn nn          ; IXY implied, immediate, 16-bit
 ;
 ; opcode flags byte:
 ;-------------------------------------------------------------------------------

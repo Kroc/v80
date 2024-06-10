@@ -79,7 +79,7 @@ The basic principle is that v80 can only recognise a word by the first character
     ; !         = not (flip all bits)
     ; -         = neg (flip all bits and +1)
 
-    ; infix operatosr:
+    ; infix operators:
     ;
     ; + - * /   = add sub mul div
     ; ^ & | \   = xor and or  mod
@@ -93,7 +93,7 @@ The basic principle is that v80 can only recognise a word by the first character
     ;
     ?= <expr>   ; only 0 passes
     ?! <expr>   ; only not-0 passes
-    ?+ <expt>   ; only positive (sign+) passes
+    ?+ <expr>   ; only positive (sign+) passes
     ?- <expr>   ; only negative (sign-) passes
         ; if the condition fails, indented lines are
         ; skipped until first line of equal indent
@@ -134,7 +134,7 @@ Unlike other assemblers, changing the virtual program-counter **does not** fill 
     $4000                   ; sets PC to $4000
             .w  $code       ; writes bytes 4 & 5 of code-segment!
 
-A special value, `$` without any digits, always returns the current virutal program-counter.
+A special value, `$` without any digits, always returns the current virtual program-counter.
 
     $0100                   ; sets PC to $0100
             .w  $           ; writes $00, $01 to the code-segment
