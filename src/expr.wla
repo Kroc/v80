@@ -10,10 +10,14 @@
 ; expression bytecode:
 ;-------------------------------------------------------------------------------
 ; calculations are compiled into bytecode to allow for later evaluation,
-; i.e. for deferred calculations where a symbol is not yet known
-; (note that the actual address is filled in at runtime)
+; i.e. for deferred calculations where a symbol is not yet known.
+; the expr bytecode buffer appears before the code-segment
 ;
-expr:   .ADDR   $fc7f                   ; expr token space (builds downwards)
+;   +-----+--------+--------+-------+------- - - -
+;   | v80 | <-word | <-expr | str-> | code->
+;   +-----+--------+--------+-------+------- - - -
+;         |     32       96   128   |       
+;
 defer:  .ADDR   $0000                   ; addr of last deferred expr
 
 
@@ -757,12 +761,11 @@ parseHexNumber:
         ; try to read up to 4 digits; the 5th character
         ; must be whitespace or newline / end-of-file!
         ;
-        ; the bottom of the word-buffer is used for temporary bytes
-        ; (e.g. $FC00..) as we know this is page-aligned and can use
-        ; INC E instead of INC DE
+        ; the bottom of the word-buffer is used for temporary bytes as
+        ; we know this is page-aligned and can use INC E instead of INC DE
         ;
         ld      BC,     5<<8            ; B=5, C=0
-        ld      DE,     [str]           ; where to write the bytes
+        ld      DE,     buffers         ; where to write the bytes
         ;-----------------------------------------------------------------------
 -       call    readChar                ; read a char from file
         cp      ASCII_SPC+1             ; ASCII space or below?
@@ -776,7 +779,7 @@ parseHexNumber:
         jp      errInvalNum
 
         ;-----------------------------------------------------------------------
-+       ld      DE,     [str]           ; go back to the start of the number
++       ld      E,      <buffers        ; go back to the start of the number
 
         ; number of digits in hex number is reversed;
         ; B=1 for 4 digits, B=2 for 3 digits, B=3 for 2 digits and B=4 for 1,

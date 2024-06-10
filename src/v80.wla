@@ -15,7 +15,6 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 
 ; syntax:
 ;
-.DEF    CHAR_END         0              ; general terminator
 .DEF    CHAR_COMMENT    ';'             ; comment
 .DEF    CHAR_KEYWORD    '.'             ; keyword
 .DEF    CHAR_HEX        '$'             ; hexadecimal literal or PC
@@ -39,10 +38,49 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 ;.DEF    DEBUG_LABELS                    ; dump label records when defined
 ;.DEF    DEBUG_DUMP                      ; dump binary after assembly
 
-; system:
-;
-.INC    "cpm.wla"                       ; CP/M interface
+.INC    "cpm.wla"                       ; CP/M bootstrap and interface
 .INC    "debug.wla"                     ; debug-only functionality
+
+; memory map:
+;
+;   +-----+------+------+-----+-------------------------------+---------+
+;   | v80 | word | expr | str | code->                 <-heap | <-stack |
+;   +-----+------+------+-----+-------------------------------+---------+
+;         | <-32   <-96   128 |                               |     256
+;
+;       v80:    the v80 assembler
+;       word:   a buffer for capturing words (symbol names); builds downwards
+;       expr:   expressions are tokenised here; builds downwards
+;       str:    forward buffer for reading strings, file-names
+;       code:   source code is assembled here
+;       heap:   symbols and other in-flight data goes here; builds downwards
+;       stack:  usual Z80 stack; builds downwards
+;
+.DEF    WORD_LEN        31              ; maximum symbol name length
+
+; the word buffer is used to capture symbol names. it works backwards with
+; the first byte being the word-length. it must start at a page boundary
+; because the lo-byte addr is assumed to be $00...$1F for optimisation
+;
+word            = buffers + WORD_LEN    ; e.g. $1000...$101F (32 bytes)
+
+; calculations are compiled into bytecode to allow for later evaluation,
+; i.e. for deferred calculations where a symbol is not yet known
+;
+expr            = buffers + 127         ; e.g. $1020...$107F (96 bytes)
+
+; the string buffer is used to capture forwards strings
+; e.g. file-names used in include keywords
+;
+str             = buffers + 128         ; e.g. $1080...$10FF (128 bytes)
+
+; CP/M writes files in 128-byte sectors requiring us to pad the end of the file
+; to the next 128-bytes, thus the align above ensures that the code-segment is
+; aligned to a $00 or $80 address after the buffers (256 bytes)
+;
+code            = buffers + 256         ; e.g. $1100
+
+;===============================================================================
 .INC    "err.wla"                       ; error messages
 .INC    "file.wla"                      ; file input / output
 .INC    "expr.wla"                      ; expression parsing and evaluation
@@ -50,34 +88,8 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 
 .BLOCK  "code"
 ;===============================================================================
-; memory map:
-;                                                      | str->  |
-;   +-----+-----------------------------------+--------+--------+---------+
-;   | v80 | code->                     <-heap | <-word | <-expr | <-stack |
-;   +-----+-----------------------------------+--------+--------+---------+
-;                                                   32       96       128
-;       code:   source code is assembled here
-;       heap:   symbols and other in-flight data goes here; builds downwards
-;       word:   a buffer for capturing words (symbol names); builds downwards
-;       expr:   expressions are tokenised here; builds downwards
-;       str:    forward buffer for reading include file-names
-;       stack:  usual Z80 stack; builds downwards
-;
-.DEF    WORD_LEN        31              ; maximum symbol name length
-.DEF    STACK_SLOTS     64              ; maximum size of stack (*2 for bytes)
-
-; the bottom of the word buffer, just above the heap, can be used
-; as temporary space for a few bytes (so their use can't overlap)
-;
-; (these addresses are set during initialisation,
-;  the values here are only examples based on RunCPM)
-;
-word:   .ADDR   $fc1f                   ; word-buffer (backwards)
-str:    .ADDR   $fc7f                   ; string buffer (forwards)
-sp:     .ADDR   $fd00                   ; stack pointer backup
-
 ; NOTE: these two bytes are specifically grouped together because they
-;       are required by deferred expressions written to the heap,
+;       are required by deferred expressions written to the heap
 ;       and are pushed together as a single word
 param_col:
 param:  .BYTE   $00                     ; parameter type / relative-flag
@@ -91,13 +103,15 @@ char:   .BYTE   $00                     ; current input character
 ; as assembly progresses, the dictionary of symbols and deferred expressions
 ; will be built up on the heap. it works downwards from the top of memory
 ; in order to maximise the available space before the assembled binary
-; and heap collide. during initialisation the heap will be placed 256 bytes
+; and heap collide. during initialisation the heap will be placed 512 bytes
 ; below the stack at the top of memory, giving enough room for the stack
+; and other buffers
 ;
 ; like the stack, the heap is pre-decrement meaning that the heap address
 ; is decremented first before writing a value, ergo the heap addr points
 ; to a currently occupied byte on the heap
 ;
+sp:     .ADDR   $fd00                   ; stack pointer backup
 heap:   .ADDR   $fc00                   ; current position on the heap
 
 ; dictionaries:
@@ -127,17 +141,15 @@ init:
         ; this *assumes* the stack is completely empty,
         ; i.e. at $FD00 rather than $FCFE
         ;
+        ;   - - - -------+------------------+
+        ;         <-heap |          <-stack |
+        ;   - - - -------+------------------+
+        ;
         ld      HL,     $0000           ; oddly, there's no `ld HL, SP`!
         add     HL,     SP              ; stack address, e.g. $FD00
         ld      [sp],   HL              ; (save value for printing later)
-        dec     H                       ; go down a page e.g. $FD00 > $FC00
-        ld      [heap], HL              ; this will also be the top of the heap
-        ld      L,      WORD_LEN        ; max word-length for word buffer,
-        ld      [word], HL              ;  (word buffer works downwards)
-        inc     L                       ; the string buffer is shared with the
-        ld      [str],  HL              ;  expr buffer. the string buffer works
-        ld      L,      $7f             ;  forwards and the expr buffer starts
-        ld      [expr], HL              ;  under the stack and works downwards
+        dec     H                       ; go down 1 page (e.g. $FD00 > $FC00)
+        ld      [heap], HL              ; this will be the top of the heap
 
         ; how do you measure the maximum depth of the stack
         ; used during program execution?
@@ -157,10 +169,8 @@ init:
         ; execution check for stack positions that have changed, revealing
         ; the deepest push to the stack during execution!
         ;
-        ld      [sp],   SP              ; backup stack pointer
-        ld      HL,     0               ; load HL with the stack pointer
-        add     HL,     SP              ; (oddly, there's no `ld HL, SP`!)
-        ld      B,      STACK_SLOTS     ; number of slots allocated to stack
+        ld      HL,     [sp]            ; load HL with the stack pointer
+        ld      B,      256/2           ; number of slots in stack, 2 bytes ea.
 -       dec     HL                      ; decrement HL first to match the
         dec     HL                      ;  stack-pointer after it pushes HL
         push    HL                      ;  (stack is decrement-then-copy)
@@ -249,7 +259,7 @@ init:
         ; 
         ld      HL,     0               ; load HL with the stack pointer
         add     HL,     SP              ; (oddly, there's no `ld HL, SP`!)
-        ld      BC,     STACK_SLOTS     ; begin at the top, report remaining
+        ld      BC,     256/2           ; begin at the top, report remaining
         ;-----------------------------------------------------------------------
 -       dec     HL                      ; (decrement into hi-byte)
         ld      A,      H               ; compare hi-byte first
@@ -362,7 +372,7 @@ assemble:
 
         ; push the const name:
         ex      DE,     HL              ; copy goes *from* [HL] *to* [DE]...
-        ld      HL,     [word]          ; get word-buffer addr
+        ld      HL,     word            ; get word-buffer addr
         inc     C                       ; length +1 to include the length-byte
 
         ; note that LDDR is post-decrement (copy-then-decrement), whereas
@@ -609,11 +619,13 @@ assemble:
         ; be written directly to the code-segment but is instead captured in
         ; the string-buffer
         ;
+        ; FIXME: protect against strings > 127 bytes
+        ;
 @i:     call    nextWord                ; skip in-between spaces
         jp      z,      errUnexpEOL     ; error if no parameter!
         cp      CHAR_STR                ; is it a string?
         jp      nz,     errInvalStr     ; error if not a string
-        ld      DE,     [str]           ; get addr of forwards string-buffer
+        ld      DE,     str             ; addr of forwards string-buffer $xx80
         ;-----------------------------------------------------------------------
 -       call    readChar                ; read next character
         jp      z,      errInvalStr     ; sudden EOL/EOF? unterminated string!
@@ -625,7 +637,7 @@ assemble:
         ;-----------------------------------------------------------------------
 +       xor     A                       ; add null terminator
         ld      [DE],   A               ; ...
-        ld      DE,     [str]           ; rewind addr to start of string
+        ld      E,      <str            ; rewind addr to start of string
 
         ; backup the current file-name, col & row:
         ;
@@ -720,12 +732,12 @@ readWord:
 ;       `DEC E` instead of `DEC DE`
 ;
 ; out:  A               length of word
-;       DE              DE is set to the first byte (length) of `[word]`
+;       DE              DE is set to the first byte (length) of `word`
 ;       [char]          the last character read will always be some kind
 ;                       of whitespace -- space, newline or end-of-file
 ;       HL              (preserved)
 ;-------------------------------------------------------------------------------
-        ld      DE,     [word]          ; top of word-buffer, e.g $FC1F
+        ld      DE,     word            ; top of word-buffer
         jr      +                       ; (first character already read)
         ;-----------------------------------------------------------------------
 -       call    readChar                ; read char from input file
@@ -740,7 +752,7 @@ readWord:
         ;-----------------------------------------------------------------------
 @ok:    ld      A,      WORD_LEN        ; max size - characters remaining
         sub     E                       ;  = length of word
-        ld      E,      WORD_LEN        ; snap back to length byte
+        ld      E,      <word           ; snap back to length byte
         ld      [DE],   A               ; write word-length byte
         ret
 
@@ -850,7 +862,7 @@ findSymbol:
 ; in:   DE              dictionary entry point: an addr that contains the
 ;                       addr of the last symbol added to the dictionary,
 ;                       i.e. `label` for labels & `const` for constants
-;       [word]          the symbol name needs to already be in the
+;       word            the symbol name needs to already be in the
 ;                       word-buffer, e.g. after calling `readWord`
 ;
 ; out:  A               non-zero if found. 0 if symbol not found
@@ -862,7 +874,7 @@ findSymbol:
 ;       HL              (preserved)
 ;-------------------------------------------------------------------------------
         push    HL                      ; preserve heap addr coming in
-        ld      HL,     [word]          ; start of word buffer
+        ld      HL,     word            ; start of word buffer
         ld      C,      [HL]            ; first byte is name length
         ld      B,      0               ; load this into BC
         ex      DE,     HL              ; DE = word buffer, HL = dict. addr
@@ -954,7 +966,7 @@ pushLabel:
 ; in:   cf              carry-flag set indicates a forward-reference!
 ;       HL              heap position to write new label
 ;       BC              word-length (set by `readWord`)
-;       [word]          the label is assumed to be in the word-buffer,
+;       word            the label is assumed to be in the word-buffer,
 ;                       i.e. after calling `readWord`
 ; out:  HL              heap position is advanced (downwards!)
 ;       A, BC, DE       (clobbered)
@@ -972,7 +984,7 @@ pushLabel:
         ; push the label name:
         ; (these instructions don't modify carry...)
         ;
-        ld      DE,     [word]          ; get word-buffer addr
+        ld      DE,     word            ; word-buffer addr
         inc     C                       ; length +1 to include the length-byte
 
         ; note that LDDR is post-decrement (copy-then-decrement), whereas
@@ -1207,18 +1219,14 @@ getHexByte:
         ret
 .ENDB
 
-; * * *   C O D E   S E G M E N T   * * *
-;===============================================================================
-; this is where the assembled code will be placed;
-; anything beyond this point will be overwritten
-;
-; CP/M writes files in 128-byte sectors requiring us to pad the end of
-; the file to the next 128-bytes, thus the align here to make that easier
-;
-.ALIGN  $80
+end_of_v80:                             ; where code ends before align padding
 
-code:
+; buffers:
+;===============================================================================
+.ALIGN $100                             ; align to page
+
 ;-------------------------------------------------------------------------------
 ; WARNING: ANYTHING PLACED AFTER HERE WILL BE OVERWRITTEN
 
+buffers:
 ;///////////////////////////////////////////////////////////////////////////////

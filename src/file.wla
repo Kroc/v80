@@ -17,7 +17,7 @@ assembleFile:
 ; opens a file and assembles it:
 ;
 ; in:   DE              addr of file-name string, forwards, null-terminated
-;                       -- currently assumed to be [str]
+;                       -- currently assumed to be the string buffer
 ;       HL              (preserved)
 ;-------------------------------------------------------------------------------
         call    osFileOpen              ; use the OS to open the file (DE)
@@ -29,7 +29,7 @@ assembleFile:
         ; is missing, the source of the error is reported as the
         ; file+line containing the include statement
         ;
-        ld      DE,     [str]           ; rewind to start of string
+        ld      DE,     str             ; rewind to start of string
         call    getFileID               ; search for or add file-name
         ld      [file], BC              ; set current file-name addr
 
@@ -65,7 +65,7 @@ getFileID:
         ;       will have to be resolved for later versions of v80
         ;
         push    HL                      ; preserve current heap-addr
-        ld      HL,     [word]          ; destination is word-buffer
+        ld      HL,     word            ; destination is word-buffer
         jr      +                       ; jump into loop (skip length-byte)
         ;-----------------------------------------------------------------------
 -       ld      A,      [DE]            ; read char from string-buffer
@@ -110,7 +110,7 @@ getFileID:
         ; copy the file-name to the heap:
         ; note that BC is set to the file-name length by `findSymbol`
         ;
-        ld      DE,     [word]          ; get word-buffer addr
+        ld      DE,     word            ; word-buffer addr ($xx00)
         ld      A,      [DE]            ; get symbol length
         dec     E                       ; (move past length byte)
         dec     HL                      ; pre-decrement the heap
