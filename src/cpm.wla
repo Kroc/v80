@@ -225,20 +225,15 @@ osParseParameters:
 
         ; use the default FCB for the output file:
         ;-----------------------------------------------------------------------
-        ; clear the default FCB:
+        ; clear the default FCB. we can zero the whole thing as
+        ; _setFCBFileName will pad the file-name field with spaces
         ;
-@out:   ld      A,      ASCII_SPC       ; write spaces to FCB file-name
-        ld      HL,     cpm_fcb+1       ; (file-name starts on 2nd byte)
-        ld      B,      11              ; the 8.3 dot is not stored
--       ld      [HL],   A               ; write a space
-        inc     L                       ; move to next char
-        djnz    -                       ; loop for 11 chars
-        xor     A                       ; zero the other fields
-        ld      [cpm_fcb.drive],        A
-        ld      B,      24              ; a further 24 bytes
--       ld      [HL],   A               ; write a zero
-        inc     L                       ; move to next field
-        djnz    -                       ; zero all remaining fields
+@out:   xor     A                       ; set A to zero
+        ld      HL,     cpm_fcb         ; start of FileControlBlock
+        ld      B,      36              ; clear 36 bytes
+-       ld      [HL],   A               ; clear one byte
+        inc     L                       ; move to next byte
+        djnz    -                       ; loop for whole FCB
 
         ; parse the output file-name into the default FCB
         ; that will be used after assembling to output the binary
@@ -377,29 +372,17 @@ osFileOpen:
         ld      L',      A              ; ...
         dec     [HL']                   ;  and decrement by 1
 
-        ; construct an empty FileControlBlock on the stack,
-        ; working backwards (we don't use random records so
-        ; the last 2 bytes are excluded to save stack space)
+        ; construct an empty FileControlBlock on the stack, working backwards
+        ; (we don't use random records so the last 2 bytes are excluded to save
+        ; stack space). we can zero all fields as _setFCBFileName will pad the
+        ; file-name field with spaces
         ;
-        ; TODO: we should check a stack overflow
-        ;       won't occur here beforehand
+        ; TODO: we should check a stack overflow won't occur here beforehand
         ;
-+       ld      DE',    0               ; fill the last 22 bytes with zeroes
-        ld      B',     22/2            ; (half because pushing 2 bytes)
++       ld      DE',    0               ; fill 34 bytes with zeroes
+        ld      B',     34/2            ; (half because pushing 2 bytes)
 -       push    DE'                     ; push 2 zeroes to the stack
         djnz    -                       ; ...
-
-        ; prefill the FCB file-name/ext with spaces since CP/M file-names have
-        ; the extension separate from the file-name which is padded by spaces
-        ;
-        ; FIXME: _setFCBFilename does space padding, so no need to do this here
-        ;
-        ld      B',     10/2            ; fill next 10 chars with spaces
-        ld      DE,     $2020           ; (two spaces)
--       push    DE'                     ; file-name is space-padded
-        djnz    -                       ; ...
-        ld      E',     0               ; 1st byte = 0 (E) & 2nd = SPC (D)
-        push    DE'                     ;  as file-name begins on 2nd FCB byte
 
         ; (the current stack-position is now the start of a new, empty, FCB)
 
@@ -703,8 +686,6 @@ osSaveCode:
 
         ; output binary to disk:
         ;-----------------------------------------------------------------------
-        ; TODO: pad output with NULL?
-        ;
 +       ld      C',     BDOS_MAKEFILE   ; create new, blank output file
         call    BDOS                    ; (note: equivalent to a BDOS open)
         and     A                       ; OK = 0. does CP/M return otherwise?
@@ -729,7 +710,7 @@ osSaveCode:
         ld      C',     BDOS_CONIO      ;  print a dot
         call    BDOS                    ; ...
 .ENDIF  ;///////////////////////////////////////////////////////////////////////
-        exx                             ; restore end-addr (HL)
+        exx                             ; restore end-addr (DE)
         ld      HL,     [@loop+1]       ; get current addr in binary
         add     HL,     BC              ; move to next sector (BC=128)
         ld      [@loop+1],      HL      ; inject addr into loop for write
