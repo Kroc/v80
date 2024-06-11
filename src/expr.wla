@@ -232,9 +232,9 @@ parseExpr:
 ;                       read. do not call this routine with whitespace as the
 ;                       last character read!
 ;
-; out:  BC              the result of the expression evaluation.
-;                       if the expr cannot be evaluated and has to be deferred,
-;                       BC is the length of the expression bytecode
+; out:  BC              the result of the expression evaluation. if the expr
+;                       cannot be evaluated and has to be deferred, BC is the
+;                       length of the expression bytecode
 ;       cf              carry-clear indicates success
 ;                       carry-set indicates the expression includes
 ;                       forward-references and couldn't be evaluated

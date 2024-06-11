@@ -87,16 +87,6 @@ code            = buffers + 256         ; e.g. $1100
 
 .BLOCK  "code"
 ;===============================================================================
-; NOTE: these two bytes are specifically grouped together because they
-;       are required by deferred expressions written to the heap
-;       and are pushed together as a single word
-param_col:
-param:  .BYTE   $00                     ; parameter type / relative-flag
-col:    .BYTE   $00                     ; current column-number in file
-row:    .WORD   $0000                   ; current line-number in file
-
-char:   .BYTE   $00                     ; current input character
-
 ; heap:
 ;-------------------------------------------------------------------------------
 ; as assembly progresses, the dictionary of symbols and deferred expressions
@@ -139,6 +129,16 @@ const:  .ADDR   $000                    ; addr of last const dictionary-entry
 ;
 file:   .ADDR $0000                     ; addr of current file-name
 files:  .ADDR $0000                     ; dictionary entry point for file-names
+
+; NOTE: these two bytes are specifically grouped together because they
+;       are required by deferred expressions written to the heap
+;       and are pushed together as a single word
+param_col:
+param:  .BYTE   $00                     ; parameter type / relative-flag
+col:    .BYTE   $00                     ; current column-number in file
+row:    .WORD   $0001                   ; current line-number in file
+
+char:   .BYTE   $00                     ; current input character
 
 
 main:
@@ -351,7 +351,9 @@ assembleFile:
 ; opens a file and assembles it:
 ;
 ; in:   DE              addr of file-name string, forwards, null-terminated
-;       HL              (preserved)
+;       HL              current heap addr
+; out:  HL              (preserved) -- stuff may be pushed to heap
+;       A, BC, DE       (clobbered)
 ;-------------------------------------------------------------------------------
         call    osFileOpen              ; use the OS to open the file (DE)
 
@@ -364,6 +366,14 @@ assembleFile:
         ;
         call    getFileID               ; search for or add file-name (DE)
         ld      [file], BC              ; set current file-name addr
+
+        ; reset line & column number when changing file:
+        ;
+        xor     A                       ; (set A to zero)
+        ld      [col],  A               ; reset column number
+        ld      B,      A               ; line number however
+        ld      C,      1               ;  defaults to 1
+        ld      [row],  BC              ; ...
 
         call    @line                   ; run the parsing loop
         call    osFileClose             ; close the file
