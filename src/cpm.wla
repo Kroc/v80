@@ -298,7 +298,7 @@ _getParam:
         ld      A,      ASCII_SPC+1     ; pre-load comparison (spc, tab, null)
         ;-----------------------------------------------------------------------
 -       ldi                             ; LD [DE], [HL]; INC DE; INC HL; DEC BC
-        jp      po,     errUndefFile    ; error if copied 13th char w/o NULL
+        jp      po,     errInvalFile    ; error if copied 13th char w/o NULL
         cp      [HL]                    ; is char <=ASCII space (inc. tab, null)
         jr      c,      -               ; if not keep going
         ;-----------------------------------------------------------------------
@@ -429,6 +429,7 @@ _setFCBFileName:
 ;       DE              addr of file-name string, forwards, null-terminated
 ; out:  HL, DE          (preserved)
 ;       A, BC           (clobbered)
+;       -               any invalid char halts with error
 ;-------------------------------------------------------------------------------
         ld      [HL],   0               ; set default drive code
         inc     HL                      ; next byte is start of FCB file-name
@@ -587,7 +588,7 @@ _setFCBFileName:
         ;=======================================================================
         ; hard error for file-names containing invalid characters
         ;
-@err:   jp      errUndefFile
+@err:   jp      errInvalFile
 
 
 osFileClose:

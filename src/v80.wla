@@ -652,7 +652,7 @@ assembleFile:
 @i:     call    nextWord                ; skip in-between spaces
         jp      z,      errUnexpEOL     ; error if no parameter!
         cp      CHAR_STR                ; is it a string?
-        jp      nz,     errInvalStr     ; error if not a string
+        jp      nz,     errInvalFile    ; error if not a string
         ld      DE,     str             ; addr of forwards string-buffer $xx80
         ;-----------------------------------------------------------------------
 -       call    readChar                ; read next character
@@ -876,7 +876,7 @@ getFileID:
         ; word-buffer, backwards, to do a symbol search. if the file-name is
         ; not known it's added to the heap in this backwards form
         ;
-        ; WARN: this places a limit of 31 characters on the file-name even
+        ; FIXME this places a limit of 31 characters on the file-name even
         ;       though we can read a much longer string. this is acceptable
         ;       for CP/M but Agon MOS / Zeal support subdirectories. this
         ;       will have to be resolved for later versions of v80
@@ -893,7 +893,7 @@ getFileID:
 +       dec     L                       ; move to next char in word-buffer
         jp      po,     -               ; loop for max. 31 chars (L >= 0)
         ;-----------------------------------------------------------------------
-        jp      errUndefFile            ; error if string > 31 chars
+        jp      errInvalFile            ; error if string > 31 chars
 
         ; the length of the string has to be written
         ; at the topmost byte of the word-buffer
@@ -1044,7 +1044,7 @@ getLabel:
         ;
         ;          | DE
         ;          v---------+------+---+---+---+---+---+---+-----+------+
-        ;  < heap  | lo | hi | flag | l | e | b | a | l | : | len | link |
+        ;  <-heap  | lo | hi | flag | l | e | b | a | l | : | len | link |
         ;          +---------+------+---+---+---+---+---+---+-----+------+
         ;
         ex      DE,     HL              ; return last addr in DE
@@ -1079,7 +1079,7 @@ findSymbol:
         ;=======================================================================
         ; names do not match!
         ;
---      ld      E,      WORD_LEN        ; return to word-buffer length byte
+--      ld      E,      <word           ; return to word-buffer length byte
         ld      A,      [DE]            ; restore the word-length to BC
         ld      C,      A               ; ...
         pop     HL                      ; return symbol length byte
@@ -1117,7 +1117,7 @@ findSymbol:
         ;=======================================================================
         push    HL                      ; store symbol length addr to snap back
         dec     HL                      ; (skip length byte)
-        ld      E,      WORD_LEN        ; start at top of word-buffer
+        ld      E,      <word           ; start at top of word-buffer
         ;-----------------------------------------------------------------------
 @char:  dec     E                       ; move down a char in word-buffer
         ld      A,      [DE]            ; read char from word-buffer

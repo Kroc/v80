@@ -9,37 +9,43 @@ _errmsg:
 ;-------------------------------------------------------------------------------
 .DEF    ERR_INVAL_EXPR          0       ; invalid expression
         .ADDR   @inval_expr
-.DEF    ERR_INVAL_INS           1       ; invalid CPU instruction
+.DEF    ERR_INVAL_FILE          1       ; invalid file-name
+        .ADDR   @inval_file
+.DEF    ERR_INVAL_INS           2       ; invalid CPU instruction
         .ADDR   @inval_ins
-.DEF    ERR_INVAL_KEY           2       ; invalid keyword
+.DEF    ERR_INVAL_KEY           3       ; invalid keyword
         .ADDR   @inval_key
-.DEF    ERR_INVAL_NUM           3       ; invalid number
+.DEF    ERR_INVAL_NUM           4       ; invalid number
         .ADDR   @inval_num
-.DEF    ERR_INVAL_STR           4       ; invalid string
+.DEF    ERR_INVAL_STR           5       ; invalid string
         .ADDR   @inval_str
-.DEF    ERR_INVAL_SYM           5       ; invalid symbol
+.DEF    ERR_INVAL_SYM           6       ; invalid symbol
         .ADDR   @inval_sym
-.DEF    ERR_RANGE_JUMP          6       ; out-of-range relative jump
+.DEF    ERR_RANGE_JUMP          7       ; out-of-range relative jump
         .ADDR   @range_jump
-.DEF    ERR_REDEF_LABEL         7       ; label redefined
+.DEF    ERR_REDEF_LABEL         8       ; label redefined
         .ADDR   @redef_label
-.DEF    ERR_UNDEF_CONST         8       ; const undefined
+.DEF    ERR_UNDEF_CONST         9       ; const undefined
         .ADDR   @undef_const
-.DEF    ERR_UNDEF_FILE          9       ; file not found
+.DEF    ERR_UNDEF_FILE          10      ; file not found
         .ADDR   @undef_file
-.DEF    ERR_UNDEF_LABEL         10      ; label undefined
+.DEF    ERR_UNDEF_LABEL         11      ; label undefined
         .ADDR   @undef_label
-.DEF    ERR_UNEXP_DEFER         11      ; label cannot be deferred here
+.DEF    ERR_UNEXP_DEFER         12      ; label cannot be deferred here
         .ADDR   @unexp_defer
-.DEF    ERR_UNEXP_EOL           12      ; unexpected end-of-line / file
+.DEF    ERR_UNEXP_EOL           13      ; unexpected end-of-line / file
         .ADDR   @unexp_eol
 ;-------------------------------------------------------------------------------
+; TODO: provide extended error message descriptions in an external file,
+;       loading and printing them rather than storing them here
+;
 @err            .BYTE "\r\n\r\nERROR: ",0
 @inval_expr     .BYTE "Invalid expression!", 0
+@inval_file     .BYTE "Invalid file-name!", 0
 @inval_ins      .BYTE "Invalid CPU instruction!", 0
 @inval_key      .BYTE "Invalid keyword!", 0
 @inval_num      .BYTE "Invalid hexadecimal number!", 0
-@inval_str      .BYTE "Unterminated string!", 0
+@inval_str      .BYTE "Invalid string!", 0
 @inval_sym      .BYTE "Invalid symbol name!", 0
 @range_jump     .BYTE "Relative jump too far!", 0
 @redef_label    .BYTE "Labels cannot be redefined!", 0
@@ -58,6 +64,10 @@ _errmsg:
 errInvalExpr:
         ;-----------------------------------------------------------------------
         xor     A                       ; = ERR_INVAL_EXPR
+        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+errInvalFile:
+        ;-----------------------------------------------------------------------
+        ld      A,      ERR_INVAL_FILE  ; err code for invalid file-name
         .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
 errInvalIns:
         ;-----------------------------------------------------------------------
