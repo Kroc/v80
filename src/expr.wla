@@ -255,7 +255,7 @@ parseExpr:
         ; the heap so we can't write the expr on the heap at the same time!
         ;
         push    HL                      ; preserve heap addr
-        ld      HL,     [expr]          ; addr of expr bytecode space
+        ld      HL,     expr            ; addr of expr bytecode space
         xor     A                       ; set A to zero
         ld      [@flag],A               ; clear 'defer' flag
         ld      A,      [char]          ; get current unused input char
@@ -330,7 +330,7 @@ parseExpr:
         ; so an 8-bit subtraction is sufficient
         ;
 @defer: ld      B,      A               ; B must be 0 (LDDR uses BC)
-        ld      A,      [expr]          ; start with highest addr (expr-start)
+        ld      A,      <expr           ; start with highest addr (expr-start)
         sub     A,      L               ; subtract lowest addr (expr-end)
         ld      C,      A               ; this is the expr length (1-based)
         pop     HL                      ; restore heap addr to HL
@@ -463,7 +463,7 @@ parseExpr:
         jr      c,      @defer          ; do not evaluate forward-refs!
 
         pop     HL                      ; restore heap addr to HL
-        ld      DE,     [expr]          ; eval expr from temp bytecode space
+        ld      DE,     expr            ; eval expr from temp bytecode space
 
         ; fallthrough to evaluate the expr
         ; ...
@@ -481,7 +481,7 @@ evalExpr:
 ; TODO: with some rearranging, we might be able to keep the running-total
 ;       in HL and use DE for the value (better for EX DE, HL + ADD|SBC HL, DE)
 ;
-; in:   DE              addr of expr (could be [`expr`] or on the heap!)
+; in:   DE              addr of expr (could be `expr` or on the heap!)
 ; out:  BC              result value
 ;       HL              (preserved)
 ;       A, DE           (clobbered)
