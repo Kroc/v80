@@ -9,11 +9,11 @@ It currently runs on CP/M with plans to make it self-hosting (can assemble itsel
 
 ## ~~Features~~
 
-- No linker, we have linker at home &rarr; includes
+- No linker, we have linker at home → includes
 - No Macros! Copy + Paste is your friend or re-use includes
 - No decimal numbers. Let's face it, you think in hexadecimal anyway
+- $FFFF is the largest number in the universe
 - No floating point numbers. Have you _tried_ coding floats on an 8-bit CPU??
-- No negative numbers. It's all 1s in 2s compliment
 - No shift operators. Multiply/divide by powers of 2
 - No comparison operators -- we use the zero-flag here
 - No commas. Commas were a mistake
@@ -36,7 +36,7 @@ The basic principle is that v80 can only recognise a word by the first character
     call    $FFFF           ; call        $FFFF
     call?nz $FFFF           ; call nz,    $FFFF
     ; ...
-    ; (see "src/test_z80.v80" for full list)
+    ; (see "test/z80.v80" for full list)
 
     #true   $1              ; constant define
 
