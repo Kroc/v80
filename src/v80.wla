@@ -351,7 +351,6 @@ assembleFile:
 ; opens a file and assembles it:
 ;
 ; in:   DE              addr of file-name string, forwards, null-terminated
-;                       -- currently assumed to be the string buffer
 ;       HL              (preserved)
 ;-------------------------------------------------------------------------------
         call    osFileOpen              ; use the OS to open the file (DE)
@@ -363,8 +362,7 @@ assembleFile:
         ; is missing, the source of the error is reported as the
         ; file+line containing the include statement
         ;
-        ld      DE,     str             ; rewind to start of string
-        call    getFileID               ; search for or add file-name
+        call    getFileID               ; search for or add file-name (DE)
         ld      [file], BC              ; set current file-name addr
 
         call    @line                   ; run the parsing loop
@@ -647,7 +645,7 @@ assembleFile:
         ; be written directly to the code-segment but is instead captured in
         ; the string-buffer
         ;
-        ; FIXME: protect against strings > 127 bytes
+        ; FIXME protect against strings > 127 bytes
         ;
 @i:     call    nextWord                ; skip in-between spaces
         jp      z,      errUnexpEOL     ; error if no parameter!

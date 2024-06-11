@@ -42,15 +42,15 @@ nextParam:
 ; in:   HL              current heap position -- if the expression is deferred
 ;                       it will be copied to the heap
 ;       [param]         the param size & rel-flag byte must be set
-;                       (see parseParam above)
+;                       (e.g. parseParam above)
 ;
 ; out:  BC              expr value. if deferred, BC is length of expr bytecode
 ;       HL              heap addr will be modified if expr is deferred
 ;       A, DE           (clobbered)
 ;-------------------------------------------------------------------------------
         ; parse the next expression and evaluate it. if it contains a
-        ; forward-reference, the parameter cannot be validated (yet)
-        ; and it'll be pushed to the heap for later
+        ; forward-reference, the parameter cannot be evaluated (yet)
+        ; and it'll be pushed to the heap for later evaluation
         ;
         call    nextExpr                ; parse and evaluate expression
         jr      c,      @defer          ; defer to heap? (note early exit)
@@ -62,17 +62,24 @@ nextParam:
         jr      c,      @rel            ; handle relative jump parameter
         rra                             ; correct param byte from above shift
 
-        ; write the result to the code-segment
-        ;
+        ; write lo-byte of result:
         ld      [IY+$00],       C       ; write value lo-byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
 
-        ; TODO: error for 16-bit value in 8-bit parameter
-        dec     A
-        ret     z
+        ; is this a 16-bit parameter?
+        dec     A                       ; decement byte count; if it's not 0
+        jr      nz,      +              ;  then it was 2, do upper-byte
 
-        ld      [IY+$00],       B       ; write value hi-byte
+        ; 8-bit parameter, but is the result 16-bit? (parameter overflow)
+        ; note that A = 0 due to above check falling through
+        ;
+        or      B                       ; are any bits in hi-byte 1?
+        jp      nz,     errRangeIns     ; out-of-range instruction parameter!
+
+        ; write upper-byte of 16-bit result:
+        ;
++       ld      [IY+$00],       B       ; write value hi-byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
 
@@ -116,14 +123,14 @@ nextParam:
         ; therefore we expect A = H. compare sets flags without changing A,
         ; allowing us to do two tests using the same A value!
         cp      H
-        jp      nz,     errRangeJump    ; err if hi-byte is not 'empty'
+        jp      nz,     errRangeIns     ; err if hi-byte is not 'empty'
 
         ; because the relative-distance byte is signed, we expect its sign
         ; to match that of the result -- a forward jump can only produce
         ; a positive distance; if the lo-byte is negative it's a positive
         ; distance that's too large (>127, i.e. hi-bit set)
         xor     L
-        jp      m,      errRangeJump    ; if sign bits differ, error
+        jp      m,      errRangeIns     ; if sign bits differ, error
 
         ; output relative-distance byte:
         ;-----------------------------------------------------------------------
@@ -193,10 +200,10 @@ nextParam:
         ; the heap is pre-decrement like the stack (decrement-then-copy)
         ;
         dec     HL                      ; fix heap addr for copy-then-DEC
-        ld      DE,     [expr]
-        ex      DE,     HL
+        ld      DE,     [expr]          ; ...
+        ex      DE,     HL              ; ...
         lddr                            ; copy BC bytes *from* [HL] *to* [DE]!
-        ex      DE,     HL
+        ex      DE,     HL              ; ...
         inc     HL                      ; fix heap addr after copy
 
         ret

@@ -18,6 +18,8 @@ It currently runs on CP/M with plans to make it self-hosting (can assemble itsel
 - No comparison operators -- we use the zero-flag here
 - No commas. Commas were a mistake
 
+v80 has a fixed level of complexity; one day it will be Finished™ rather than expanding forever. v80 can be used to write a better assembler with macros and everything.
+
 v80 uses a non-standard syntax designed for parsing simplicity / speed, not compatibility with existing source code.
 
 The basic principle is that v80 can only recognise a word by the first character, so everything must be prefixed with a sigil or otherwise be easily categorizable, e.g. `a`-`z` = instruction.

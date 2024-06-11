@@ -327,8 +327,8 @@ osFileOpen:
 ;
 ; in:   DE              addr of the file-name to use, forwards, null-terminated
 ; out:  SP              stack is manipulated -- do not JP to this routine!
-;       HL              (preserved)
-;       A, BC, DE       (clobbered)
+;       HL, DE          (preserved)
+;       A, BC           (clobbered)
 ;-------------------------------------------------------------------------------
         ; allocate a new FileControlBlock on the stack:
         ;
@@ -390,8 +390,10 @@ osFileOpen:
         exx                             ; return to input parameters
         push    BC                      ; restore the return address!
         push    HL                      ; (preserve caller's HL)
+        push    DE                      ; (preserve file-name addr)
 
         ; copy new file-name (DE) to the new FCB:
+        ; (note _setFCBFileName preserves HL & DE)
         ;
         ld      HL,     [@fcb]          ; retrieve new FCB addr
         call    _setFCBFileName         ; copy and validate file-name to FCB
@@ -416,6 +418,7 @@ osFileOpen:
         ;
         ld      HL,     [@fcb]          ; update FCB addr for reading sectors
         ld      [_readSector@fcb+1],    HL
+        pop     DE                      ; (restore file-name addr)
         pop     HL                      ; (restore caller's HL)
         jp      _readSector             ; read the first record from the file
 

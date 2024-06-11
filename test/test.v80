@@ -24,8 +24,8 @@ $	$ + $0100
 ; .b and .w keywords output bytes / words to the code-segment
 ;
 :w	.w :w			; simple back-reference
-	.w :b			; forward reference to a label
-:b	.b >:w			; back reference to a label
+	.w :b			; forward reference to a label, deferred expr
+:b	.b :w			; back reference to a label
 	.b <:b			; label address should be known now
 
 ; a string is simply a series of bytes
