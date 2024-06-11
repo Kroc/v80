@@ -4,7 +4,7 @@
 ; each supported operating system must implement this interface:
 ; (see routine headers below for details)
 ;
-;       boot                            bootstrap, first code run
+;       osBoot                          bootstrap, always first code run
 ;       osQuit                          quit app and return to the OS
 ;       osParseParameters               parse the command-line parameters
 ;       osFileOpen                      open file (read-only)
@@ -115,7 +115,7 @@ cpm_dma                 DSB 128
 .BANK 0 SLOT "TPA"
 .ORGA TBASE
 
-boot:
+osBoot:
 ;===============================================================================
         ; check CP/M version -- it's not likely we're going to be running
         ; on CP/M-1 but this same check will be required for a CP/M-3 version
@@ -146,7 +146,7 @@ boot:
         call    osPrintLn
 
         ; run the program:
-        jp      init                    ; we will not return from here!
+        jp      main                    ; we will not return from here!
 
         ;-----------------------------------------------------------------------
 @banner .BYTE   "v80 CP/M v0.0 - github.com/kroc/v80\r\n"

@@ -82,7 +82,6 @@ code            = buffers + 256         ; e.g. $1100
 
 ;===============================================================================
 .INC    "err.wla"                       ; error messages
-.INC    "file.wla"                      ; file input / output
 .INC    "expr.wla"                      ; expression parsing and evaluation
 .INC    "z80.wla"                       ; Z80 parser & opcode binary tree
 
@@ -133,13 +132,21 @@ heap:   .ADDR   $fc00                   ; current position on the heap
 label:  .ADDR   $000                    ; addr of last label dictionary-entry
 const:  .ADDR   $000                    ; addr of last const dictionary-entry
 
+; the name of each file needs to be kept in case of error. a deferred
+; expression could error long after a file has been closed and another opened.
+; each file name is stored as a symbol on the heap and its addr is used as a
+; reference. this avoids duplicating names for files included multiple times
+;
+file:   .ADDR $0000                     ; addr of current file-name
+files:  .ADDR $0000                     ; dictionary entry point for file-names
 
-init:
+
+main:
 ;===============================================================================
-        ; initialise addresses:
-        ;-----------------------------------------------------------------------
-        ; this *assumes* the stack is completely empty,
-        ; i.e. at $FD00 rather than $FCFE
+        ; initialise stack / heap:
+        ;
+        ; this *assumes* the stack is completely empty, i.e. at $FD00 rather
+        ; than $FCFE. the OS bootstrap *must* JP to main instead of CALL!
         ;
         ;   - - - -------+------------------+
         ;         <-heap |          <-stack |
@@ -339,12 +346,33 @@ init:
 @peak   .BYTE   " free", 0
 
 
-assemble:
+assembleFile:
 ;===============================================================================
-; NOTE: we avoid using calls here where possible because scopes are linear
-;       and we don't want to pressure the stack too much (it's small)
+; opens a file and assembles it:
+;
+; in:   DE              addr of file-name string, forwards, null-terminated
+;                       -- currently assumed to be the string buffer
+;       HL              (preserved)
 ;-------------------------------------------------------------------------------
-        jr      @line                   ; jump into parsing loop
+        call    osFileOpen              ; use the OS to open the file (DE)
+
+        ; search the file-name dictionary and return the address
+        ; of the file-name record (in BC), adding it if not present
+        ;
+        ; this is done *after* opening the file so that if the file
+        ; is missing, the source of the error is reported as the
+        ; file+line containing the include statement
+        ;
+        ld      DE,     str             ; rewind to start of string
+        call    getFileID               ; search for or add file-name
+        ld      [file], BC              ; set current file-name addr
+
+        call    @line                   ; run the parsing loop
+        call    osFileClose             ; close the file
+
+        ; WARN: this cannot be optimised into a JP due to
+        ;       osFileClose doing stack manipulation
+        ret
 
         ;=======================================================================
         ; define constant:
@@ -754,6 +782,174 @@ readWord:
         sub     E                       ;  = length of word
         ld      E,      <word           ; snap back to length byte
         ld      [DE],   A               ; write word-length byte
+        ret
+
+
+readChar:
+;===============================================================================
+; reads the next character in the file:
+; current row and column are maintained
+;
+; out:  A               ASCII code. 0 = end-of-file
+;       zf              zero-flag is set *both* for end-of-file and newline!
+;       [char]          the character is also written to RAM
+;       BC, DE, HL      (preserved)
+;-------------------------------------------------------------------------------
+-       call    osGetChar               ; read a char from file
+        ld      [char], A               ; retain returned character
+.IFDEF  DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        ;push    AF
+        ;call    osPrintChar             ; print each character as we receive it
+        ;pop     AF                      ; (zero-flag must be preserved)
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+        ret     z                       ; return on end-of-file
+
+        ; check for end-of-line:
+        ;-----------------------------------------------------------------------
+        cp      ASCII_CR                ; /r is always ignored,
+        jr      z, -                    ;  don't advance row/col, get next char
+
+        exx                             ; must preserve HL & DE
+        ld      HL',    col             ; prepare to increment column number
+
+        cp      ASCII_LF                ; /n is newline
+        jr      z,      @row            ; handle newline
+        cp      ASCII_TAB               ; /t is tab
+        jr      z,      @tab            ; handle tab
+
+        ; increment column number:
+        ;-----------------------------------------------------------------------
+        ; WARN: we do not cap the column number -- keep lines to 80 cols!
+        ;       when a line exceeds 255 chars, the 256th character will
+        ;       be treated as end-of-file!
+        ;
+@col:   inc     [HL']
+        exx                             ; restore HL/DE
+        ret
+
+        ;-----------------------------------------------------------------------
+        ; increment line-number:
+        ;
+        ; FIXME: line-number should be set to 1 by default
+        ;
+@row:   ld      DE',    [row]           ; 16-bit load,
+        inc     DE'                     ;  and increment,
+        ld      [row],  DE'             ;  and write
+        ld      [HL'],  0               ; reset column number
+
+        exx                             ; restore HL/DE
+        ret                             ; return z-flag set for newline/EOF
+
+        ;-----------------------------------------------------------------------
+        ; handle tab-character:
+        ;
+@tab:   dec     A                       ; \t = 9, so change to 8 (width of tab)
+        add     [HL']                   ; add 8 to current column
+        and     %11111000               ; clip to every 8th column
+        ld      [HL'],  A               ; update column number
+        ld      A,      ASCII_SPC       ; return a single space instead
+        ld      [char], A               ; update retained value to match
+        and     A                       ; ensure zero-flag is clear!
+
+        exx                             ; restore HL/DE
+        ret
+
+
+getFileID:
+;===============================================================================
+; find, and if it doesn't exist, add a file-name to the heap:
+;
+; in:   DE              addr of file-name string, forwards, null-terminated
+; out:  BC              addr of file-name record (backwards), length-byte
+;       DE              addr of byte following the file-name in the record
+;                       (for storing arbitrary data in the file-name record)
+;       HL              if unknown, the file-name string is pushed to the heap
+;       A               (clobbered)
+;
+;                    ---+---+---+---+---+---+---+---+---+---+-----+------+
+;            < heap     | ? | e | m | a | n | e | l | i | f | len | link |
+;                    ---+---+---+---+---+---+---+---+---+---+-----+------+
+;                    DE ^   ^ HL (if file-name pushed)      ^ BC
+;-------------------------------------------------------------------------------
+        ; copy the forwards string file-name from the string-buffer into the
+        ; word-buffer, backwards, to do a symbol search. if the file-name is
+        ; not known it's added to the heap in this backwards form
+        ;
+        ; WARN: this places a limit of 31 characters on the file-name even
+        ;       though we can read a much longer string. this is acceptable
+        ;       for CP/M but Agon MOS / Zeal support subdirectories. this
+        ;       will have to be resolved for later versions of v80
+        ;
+        push    HL                      ; preserve current heap-addr
+        ld      HL,     word            ; destination is word-buffer
+        jr      +                       ; jump into loop (skip length-byte)
+        ;-----------------------------------------------------------------------
+-       ld      A,      [DE]            ; read char from string-buffer
+        and     A                       ; check for null terminator (set flags)
+        jr      z,      ++              ; stop copying at null terminator
+        ld      [HL],   A               ; write to backwards word-buffer
+        inc     E                       ; move to next char in string-buffer
++       dec     L                       ; move to next char in word-buffer
+        jp      po,     -               ; loop for max. 31 chars (L >= 0)
+        ;-----------------------------------------------------------------------
+        jp      errUndefFile            ; error if string > 31 chars
+
+        ; the length of the string has to be written
+        ; at the topmost byte of the word-buffer
+        ;
+++      ld      A,      WORD_LEN        ; max size - characters remaining
+        sub     L                       ;  = length of word
+        ld      L,      WORD_LEN        ; snap back to length byte
+        ld      [HL],   A               ; write word-length byte
+        pop     HL                      ; restore heap-addr
+
+        ; check if this file name is already known:
+        ;
+        ; if an include file is used many times (like a macro), we don't
+        ; want the heap bloated with repeated instances of the same file-name
+        ;
+        ld      DE,     files           ; use the files dictionary
+        call    findSymbol              ; search for file-name in word-buffer
+        ret     nz                      ; if found, return the ID
+
+        ; add the file-name to the heap:
+        ;=======================================================================
+        ; link this file-name to the previous one: (for searching)
+        ;
+@add:   ld      DE,     [files]         ; read prev addr in files dictionary
+        dec     HL                      ; pre-decrement heap to empty byte
+        ld      [HL],   D               ; write prev file-name addr hi-byte
+        dec     HL                      ; (this is the heap addr we want)
+        ld      [HL],   E               ; write prev file-name addr lo-byte
+        ld      [files],HL              ; update entry point with heap addr
+
+        ; copy the file-name to the heap:
+        ; note that BC is set to the file-name length by `findSymbol`
+        ;
+        ld      DE,     word            ; word-buffer addr ($xx00)
+        ld      A,      [DE]            ; get symbol length
+        dec     E                       ; (move past length byte)
+        dec     HL                      ; pre-decrement the heap
+        ld      [HL],   A               ; push symbol length
+
+        ; this address is what will be used to identify the file-name,
+        ; it has to be returned in BC (below) to match `findSymbol` behaviour
+        push    HL
+
+        ; note that LDDR is post-decrement (copy-then-decrement), whereas
+        ; the heap is pre-decrement like the stack (decrement-then-copy)
+        ; -- decrement HL once to adjust for this before the copy
+        ;
+        dec     HL                      ; adjust heap for post-decrement copy
+        ex      DE,     HL              ; copy goes *from* [HL] *to* [DE]...
+        lddr                            ; copy BC bytes from [HL] to [DE]!
+        ex      DE,     HL              ; swap back to heap in HL
+        ld      D,      H               ; the byte following the file-name str
+        ld      E,      L               ;  is returned in DE like `findSymbol`
+        inc     HL                      ; fix heap addr after LDDR copy
+
+        pop     BC                      ; return the file-name addr
         ret
 
 
