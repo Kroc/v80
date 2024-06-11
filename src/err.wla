@@ -169,14 +169,17 @@ errPrintQuit:
         ld      DE,     [file]          ; addr of current file-name
         call    printHeapStr            ; print the backwards string
 
-        ; print line number and column:
+        ; print start-of-word line number and column:
+        ; (this is not the same as the line/col of last char read
+        ;  which could be the end-of-line after an expression)
+        ;
         ld      DE,     @row
         call    osPrintStrZ
-        ld      BC,     [row]
+        ld      BC,     [wrow]
         call    printHexWord
         ld      DE,     @col
         call    osPrintStrZ
-        ld      A,      [col]
+        ld      A,      [wcol]
         call    printHexByte
 
         jp      osQuit

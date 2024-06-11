@@ -169,6 +169,12 @@ nextParam:
         ; (for calculating relative jumps)
         push    IX                      ; PC is always stored in IX
 
+        ; TODO: line/col is useless here as they will be from the end of the
+        ;       expr, not the start! need separate start-of-expr line/col.
+        ;       even then, we should really store the start-of-word col number
+        ;       for each expr token instead so the error can point to the
+        ;       specific token
+        ;
         ld      HL,     [file]          ; push the file ID
         push    HL                      ;  (addr of file-name symbol record)
         ld      HL,     [row]           ; push the source file

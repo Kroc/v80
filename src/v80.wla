@@ -127,18 +127,24 @@ const:  .ADDR   $000                    ; addr of last const dictionary-entry
 ; each file name is stored as a symbol on the heap and its addr is used as a
 ; reference. this avoids duplicating names for files included multiple times
 ;
-file:   .ADDR $0000                     ; addr of current file-name
-files:  .ADDR $0000                     ; dictionary entry point for file-names
+file:   .ADDR   $0000                   ; addr of current file-name
+files:  .ADDR   $0000                   ; dictionary entry point for file-names
 
 ; NOTE: these two bytes are specifically grouped together because they
 ;       are required by deferred expressions written to the heap
 ;       and are pushed together as a single word
 param_col:
 param:  .BYTE   $00                     ; parameter type / relative-flag
-col:    .BYTE   $00                     ; current column-number in file
-row:    .WORD   $0001                   ; current line-number in file
+col:    .BYTE   $00                     ; last char read column-number
+row:    .WORD   $0000                   ; last char read line-number
 
-char:   .BYTE   $00                     ; current input character
+char:   .BYTE   $00                     ; last char read from input
+
+; the line-number / column reported on error should be at the start
+; of a word, not at the last read character which could be a newline
+;
+wcol:   .BYTE   $00                     ; column number to report on err
+wrow:   .WORD   $0000                   ; line number to report on err
 
 
 main:
@@ -368,6 +374,8 @@ assembleFile:
         ld      [file], BC              ; set current file-name addr
 
         ; reset line & column number when changing file:
+        ; (the call to @line will call nextWord which will
+        ;  set the start-of-word line/col number for us)
         ;
         xor     A                       ; (set A to zero)
         ld      [col],  A               ; reset column number
@@ -677,8 +685,10 @@ assembleFile:
 
         ; backup the current file-name, col & row:
         ;
-        ; we don't have to backup the last read character because
-        ; `assemble` doesn't use it before reading another character
+        ; we don't have to backup the last read character because assembleFile
+        ; doesn't use it before reading another character nor do we backup the
+        ; start-of-word line/col numbers as nextWord will set these after the
+        ; return from the included file
         ;
         ld      BC,     [file]          ; address of current file-name
         push    BC                      ; ...
@@ -732,6 +742,8 @@ nextWord:
 ;                       ends before another valid word. check A for newline
 ;                       (ASCII_LF) to differentiate those. end-of-file might
 ;                       NOT be null! (e.g. CP/M uses ASCII_SUB)
+;       HL, DE          (preserved)
+;       BC              (clobbered)
 ;-------------------------------------------------------------------------------
 -       call    readChar                ; read a character (returns z-flag)
         ret     z                       ; return z-flag set if newline/EOF
@@ -748,9 +760,19 @@ nextWord:
         jr      z,      -               ; also, keep reading if space
 
         cp      CHAR_COMMENT            ; is this the start of a comment?
-        ret     nz                      ; if not, quit quickly
+        jr      z,      +               ; if yes, skip comment
 
-        ; skip over a comment until the newline / end-of-line:
+        ; start of a word, update the line/col number for errors
+        ;
+        ld      BC,     [row]           ; copy current line number
+        ld      [wrow], BC              ;  to start-of-word line-number
+        ex      AF,     AF'             ; preserve read character
+        ld      A',     [col]           ; copy current column number
+        ld      [wcol], A'              ;  to start-of-word column-number
+        ex      AF',    AF              ; restore read character
+        ret
+
++       ; skip over a comment until the newline / end-of-line:
         ;
 -       call    readChar                ; read a character (returns z-flag)
         jr      nz,     -               ; read until newline / end-of-file
@@ -838,8 +860,6 @@ readChar:
 
         ;-----------------------------------------------------------------------
         ; increment line-number:
-        ;
-        ; FIXME: line-number should be set to 1 by default
         ;
 @row:   ld      DE',    [row]           ; 16-bit load,
         inc     DE'                     ;  and increment,
