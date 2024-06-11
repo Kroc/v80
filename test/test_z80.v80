@@ -1,5 +1,7 @@
+; v80 test file; z80 instructions:
+;===============================================================================
 	; v80			; z80				; opcodes
-	;
+	;-----------------------------------------------------------------------
 :adc	adc*hl			; adc	A,	[HL]		;    8E
 	adc*ix	$00		; adc	A,	[IX+$00]	; DD 8E 00
 	adc*iy	$00		; adc	A,	[IY+$00]	; FD 8E 00
@@ -19,7 +21,7 @@
 	adc.hl+de		; adc	HL,	DE		; ED 5A
 	adc.hl+hl		; adc	HL,	HL		; ED 6A
 	adc.hl+sp		; adc	HL,	SP		; ED 7A
-
+	;-----------------------------------------------------------------------
 :add	add*hl			; add	A,	[HL]		;    86
 	add*ix	$00		; add	A,	[IX+$00]	; DD 86 00
 	add*iy	$00		; add	A,	[IY+$00]	; FD 86 00
@@ -47,7 +49,7 @@
 	add.iy+de		; add	IY,	DE		; FD 19
 	add.iy+iy		; add	IY,	IY		; FD 29
 	add.iy+sp		; add	IY,	SP		; FD 39
-
+	;-----------------------------------------------------------------------
 :and	and*hl			; and	A,	[HL]		;    A6
 	and*ix	$00		; and	A,	[IX+$00]	; DD A6 00
 	and*iy	$00		; and	A,	[IY+$00]	; FD A6 00
@@ -63,7 +65,7 @@
 	and.ixl			; and	A,	IXL		; DD A5
 	and.iyh			; and	A,	IYH		; FD A4
 	and.iyl			; and	A,	IYL		; FD A5
-
+	;-----------------------------------------------------------------------
 :bit	bit0*hl			; bit	0,	[HL]		;    CB 46
 	bit0*ix	$00		; bit	0,	[IX+$00]	; DD CB 00 46
 	bit0*iy	$00		; bit	0,	[IY+$00]	; FD CB 00 46
@@ -144,7 +146,7 @@
 	bit7.e			; bit	7,	E		;    CB 7B
 	bit7.h			; bit	7,	H		;    CB 7C
 	bit7.l			; bit	7,	L		;    CB 7D
-
+	;-----------------------------------------------------------------------
 :call	call	$FF00		; call	$FF00			;    CD 00 FF
 	call?nz	$FF00		; call	nz,	$FF00		;    C4 00 FF
 	call?z	$FF00		; call	z,	$FF00		;    CC 00 FF
@@ -154,9 +156,9 @@
 	call?pe	$FF00		; call	pe,	$FF00		;    EC 00 FF
 	call?p	$FF00		; call	p,	$FF00		;    F4 00 FF
 	call?m	$FF00		; call	m,	$FF00		;    FC 00 FF
-
+	;-----------------------------------------------------------------------
 :ccf	ccf			; ccf				;    3F
-
+	;-----------------------------------------------------------------------
 :cp	cp*hl			; cp	A,	[HL]		;    BE
 	cp*ix	$00		; cp	A,	[IX+$00]	; DD BE 00
 	cp*iy	$00		; cp	A,	[IY+$00]	; FD BE 00
@@ -172,17 +174,17 @@
 	cp.ixl			; cp	A,	IXL		; DD BD
 	cp.iyh			; cp	A,	IYH		; FD BC
 	cp.iyl			; cp	A,	IYL		; FD BD
-
+	;-----------------------------------------------------------------------
 :cpd	cpd			; cpd				; ED A9
 	cpdr			; cpdr				; ED B9
-
+	;-----------------------------------------------------------------------
 :cpi	cpi			; cpi				; ED A1
 	cpir			; cpir				; ED B1
-
+	;-----------------------------------------------------------------------
 :cpl	cpl			; cpl				;    2F
-
+	;-----------------------------------------------------------------------
 :daa	daa			; daa				;    27
-
+	;-----------------------------------------------------------------------
 :dec	dec*hl			; dec	[HL]			;    35
 	dec*ix	$00		; dec	[IX+$00]		; DD 35 00
 	dec*iy	$00		; dec	[IY+$00]		; FD 35 00
@@ -203,26 +205,26 @@
 	dec.ix			; dec	IX			; DD 2B
 	dec.iy			; dec	IY			; FD 2B
 	dec.sp			; dec	SP			;    3B
-
+	;-----------------------------------------------------------------------
 :di	di			; di				;    F3
-
+	;-----------------------------------------------------------------------
 :djnz	djnz	$		; djnz	*			;    10 00?
-
+	;-----------------------------------------------------------------------
 :ei	ei			; ei				;    FB
-
+	;-----------------------------------------------------------------------
 :ex	ex*sp.hl		; ex	[SP],	HL		;    E3
 	ex*sp.ix		; ex	[SP],	IX		; DD E3
 	ex*sp.iy		; ex	[SP],	IY		; FD E3
 	ex.af.af		; ex	AF,	AF		;    08
 	ex.de.hl		; ex	DE,	HL		;    EB
 	exx			; exx				;    D9
-
+	;-----------------------------------------------------------------------
 :halt	halt			; halt				;    76
-
+	;-----------------------------------------------------------------------
 :im	im0			; im	0			; ED 46
 	im1			; im	1			; ED 56
 	im2			; im	2			; ED 5E
-
+	;-----------------------------------------------------------------------
 :in	in.a*	$00		; in	A,	[$00]		;    DB 00
 	in.a*c			; in	A,	[C]		; ED 78
 	in.b*c			; in	B,	[C]		; ED 40
@@ -231,7 +233,7 @@
 	in.e*c			; in	E,	[C]		; ED 58
 	in.h*c			; in	H,	[C]		; ED 60
 	in.l*c			; in	L,	[C]		; ED 68
-
+	;-----------------------------------------------------------------------
 :inc	inc*hl			; inc	[HL]			;    34
 	inc*ix	$00		; inc	[IX+$00]		; DD 34 00
 	inc*iy	$00		; inc	[IY+$00]		; FD 34 00
@@ -252,13 +254,13 @@
 	inc.ix			; inc	IX			; DD 23
 	inc.iy			; inc	IY			; FD 23
 	inc.sp			; inc	SP			;    33
-
+	;-----------------------------------------------------------------------
 :ind	ind			; ind				; ED AA
 	indr			; indr				; ED BA
-
+	;-----------------------------------------------------------------------
 :ini	ini			; ini				; ED A2
 	inir			; inir				; ED B2
-
+	;-----------------------------------------------------------------------
 :jp	jp	$FF00		; jp	$FF00			;    C3 00 FF
 	jp*hl			; jp	[HL]			;    E9
 	jp*ix			; jp	[IX]			; DD E9
@@ -271,13 +273,13 @@
 	jp?pe	$FF00		; jp	pe,	$FF00		;    EA 00 FF
 	jp?p	$FF00		; jp	p,	$FF00		;    F2 00 FF
 	jp?m	$FF00		; jp	m,	$FF00		;    FA 00 FF
-
+	;-----------------------------------------------------------------------
 :jr	jr	$		; jr	*			;    18 00?
 	jr?nz	$		; jr	nz,	*		;    20 00?
 	jr?z	$		; jr	z,	*		;    28 00?
 	jr?nc	$		; jr	nc,	*		;    30 00?
 	jr?c	$		; jr	c,	*		;    38 00?
-
+	;-----------------------------------------------------------------------
 :ld	ld*bc.a			; ld	[BC],	A		;    02
 	ld*de.a			; ld	[DE],	A		;    12
 	ld*hl	$00		; ld	[HL],	$00		;    36 00
@@ -481,17 +483,17 @@
 
 	ld.i.a			; ld	I,	A		; ED 47
 	ld.r.a			; ld	R,	A		; ED 4F
-
+	;-----------------------------------------------------------------------
 :ldd	ldd			; ldd				; ED A8
 	lddr			; lddr				; ED B8
-
+	;-----------------------------------------------------------------------
 :ldi	ldi			; ldi				; ED A0
 	ldir			; ldir				; ED B0
-
+	;-----------------------------------------------------------------------
 :neg	neg			; neg				; ED 44
-
+	;-----------------------------------------------------------------------
 :nop	nop			; nop				;    00
-
+	;-----------------------------------------------------------------------
 :or	or*hl			; or	A,	[HL]		;    B6
 	or*ix	$00		; or	A,	[IX+$00]	; DD B6 00
 	or*iy	$00		; or	A,	[IX+$00]	; FD B6 00
@@ -507,7 +509,7 @@
 	or.ixl			; or	A,	IXL		; DD B5
 	or.iyh			; or	A,	IYH		; FD B4
 	or.iyl			; or	A,	IYL		; FD B5
-
+	;-----------------------------------------------------------------------
 :out	out*.a	$00		; out	[$00],	A		;    D3 00
 	out*c.a			; out	[C],	A		; ED 79
 	out*c.b			; out	[C],	B		; ED 41
@@ -516,27 +518,27 @@
 	out*c.e			; out	[C],	E		; ED 59
 	out*c.h			; out	[C],	H		; ED 61
 	out*c.l			; out	[C],	L		; ED 69
-
+	;-----------------------------------------------------------------------
 :outd	outd			; outd				; ED AB
 	otdr			; otdr				; ED BB
-
+	;-----------------------------------------------------------------------
 :outi	outi			; outi				; ED A3
 	otir			; otir				; ED B3
-
+	;-----------------------------------------------------------------------
 :push	push.af			; push	AF			;    F5
 	push.bc			; push	BC			;    C5
 	push.de			; push	DE			;    D5
 	push.hl			; push	HL			;    E5
 	push.ix			; push	IX			; DD E5
 	push.iy			; push	IY			; FD E5
-
+	;-----------------------------------------------------------------------
 :pop	pop.af			; pop	AF			;    F1
 	pop.bc			; pop	BC			;    C1
 	pop.de			; pop	DE			;    D1
 	pop.hl			; pop	HL			;    E1
 	pop.ix			; pop	IX			; DD E1
 	pop.iy			; pop	IY			; FD E1
-
+	;-----------------------------------------------------------------------
 :res	res0*hl			; res	0,	[HL]		;    CB 86
 	res0*ix	$00		; res	0,	[IX+$00]	; DD CB 00 86
 	res0*iy	$00		; res	0,	[IY+$00]	; FD CB 00 86
@@ -617,7 +619,7 @@
 	res7.e			; res	7,	E		;    CB BB
 	res7.h			; res	7,	H		;    CB BC
 	res7.l			; res	7,	L		;    CB BD
-
+	;-----------------------------------------------------------------------
 :ret	ret			; ret				;    C9
 	ret?nz			; ret	nz			;    C0
 	ret?z			; ret	z			;    C8
@@ -629,7 +631,7 @@
 	ret?m			; ret	m			;    F8
 	retn			; retn				; ED 45
 	reti			; reti				; ED 4D
-
+	;-----------------------------------------------------------------------
 :rl	rl*hl			; rl	[HL]			;    CB 16
 	rl*ix	$00		; rl	[IX+$00]		; DD CB 00 16
 	rl*iy	$00		; rl	[IY+$00]		; FD CB 00 16
@@ -653,7 +655,7 @@
 	rlc.h			; rlc	H			;    CB 04
 	rlc.l			; rlc	L			;    CB 05
 	rld			; rld				; ED 6F
-
+	;-----------------------------------------------------------------------
 :rr	rr*hl			; rr	[HL]			;    CB 1E
 	rr*ix	$00		; rr	[IX+$00]		; DD CB 00 1E
 	rr*iy	$00		; rr	[IY+$00]		; FD CB 00 1E
@@ -677,7 +679,7 @@
 	rrc.h			; rrc	H			;    CB 0C
 	rrc.l			; rrc	L			;    CB 0D
 	rrd			; rrd				; ED 67
-
+	;-----------------------------------------------------------------------
 :rst	rst0			; rst	$00			;    C7
 	rst8			; rst	$08			;    CF
 	rst10			; rst	$10			;    D7
@@ -686,7 +688,7 @@
 	rst28			; rst	$28			;    EF
 	rst30			; rst	$30			;    F7
 	rst38			; rst	$38			;    FF
-
+	;-----------------------------------------------------------------------
 :sbc	sbc*hl			; sbc	A,	[HL]		;    9E
 	sbc*ix	$00		; sbc	A,	[iX+$00]	; DD 9E 00
 	sbc*iY	$00		; sbc	A,	[iX+$00]	; FD 9E 00
@@ -706,9 +708,9 @@
 	sbc.hl.de		; sbc	HL,	DE		; ED 52
 	sbc.hl.hl		; sbc	HL,	HL		; ED 62
 	sbc.hl.sp		; sbc	HL,	SP		; ED 72
-
+	;-----------------------------------------------------------------------
 :scf	scf			; scf				;    37
-
+	;-----------------------------------------------------------------------
 :set	set0*hl			; set	0,	[HL]		;    CB 86
 	set0*ix	$00		; set	0,	[IX+$00]	; DD CB 00 86
 	set0*iy	$00		; set	0,	[IY+$00]	; FD CB 00 86
@@ -789,7 +791,7 @@
 	set7.e			; set	7,	E		;    CB BB
 	set7.h			; set	7,	H		;    CB BC
 	set7.l			; set	7,	L		;    CB BD
-
+	;-----------------------------------------------------------------------
 :sla	sla*hl			; sla	[HL]			;    CB 26
 	sla*ix	$00		; sla	[IX+$00]		; DD CB 00 26
 	sla*iy	$00		; sla	[IY+$00]		; FD CB 00 26
@@ -800,7 +802,7 @@
 	sla.e			; sla	E			;    CB 23
 	sla.h			; sla	H			;    CB 24
 	sla.l			; sla	L			;    CB 25
-
+	;-----------------------------------------------------------------------
 :sra	sra*hl			; sra	[HL]			;    CB 2E
 	sra*ix	$00		; sra	[IX+$00]		; DD CB 00 2E
 	sra*iy	$00		; sra	[IY+$00]		; FD CB 00 2E
@@ -811,7 +813,7 @@
 	sra.e			; sra	E			;    CB 2B
 	sra.h			; sra	H			;    CB 2C
 	sra.l			; sra	L			;    CB 2D
-
+	;-----------------------------------------------------------------------
 :srl	srl*hl			; srl	[HL]			;    CB 3E
 	srl*ix	$00		; srl	[IX+$00]		; DD CB 00 3E
 	srl*iy	$00		; srl	[IY+$00]		; FD CB 00 3E
@@ -822,7 +824,7 @@
 	srl.e			; srl	E			;    CB 3B
 	srl.h			; srl	H			;    CB 3C
 	srl.l			; srl	L			;    CB 3D
-
+	;-----------------------------------------------------------------------
 :sub	sub*hl			; sub	A, 	[HL]		;    96
 	sub*ix	$00		; sub	A,	[IX+$00]	; DD 96 00
 	sub*iy	$00		; sub	A,	[IY+$00]	; FD 96 00
@@ -838,7 +840,7 @@
 	sub.ixl			; sub	A,	IXL		; DD 95
 	sub.iyh			; sub	A,	IYH		; FD 94
 	sub.iyl			; sub	A,	IYL		; FD 95
-
+	;-----------------------------------------------------------------------
 :xor	xor*hl			; xor	A, 	[HL]		;    AE
 	xor*ix	$00		; xor	A,	[IX+$00]	; DD AE 00
 	xor*iy	$00		; xor	A,	[IY+$00]	; FD AE 00
