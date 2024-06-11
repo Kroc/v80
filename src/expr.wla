@@ -182,12 +182,10 @@ nextParam:
         ;
         ld      A,      L               ; (from combined address above)
         and     %01111111               ; strip rel-flag in hi-bit
-        inc     IY                      ; step over first byte
+-       inc     IY                      ; step over byte in code-segment
         inc     IX                      ; advance program-counter to match
         dec     A                       ; is there another byte?
-        jr      z,      +               ; if not, skip ahead
-        inc     IY                      ; step over 2nd byte
-        inc     IX                      ; advance program-counter to match
+        jr      nz,      -              ; if yes, skip another byte
 
         ;-----------------------------------------------------------------------
 +       ld      HL,     0               ; there is no `LD HL, SP` (!?), so
