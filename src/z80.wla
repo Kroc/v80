@@ -22,7 +22,7 @@ emitOpcode:
 
         ; single opcode, no params:
         ;-----------------------------------------------------------------------
-        ld      [IY+$00],       C       ; emit opcode byte
+        ld      [IY+0], C               ; emit opcode byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
 
@@ -42,14 +42,14 @@ emitOpcode:
         ;
         and     %00100010               ; bit 5&1 = $22 ($ED) or $00 ($CB)
         add     $cb                     ; $CB+$00 = $CB or $CB+$22 = $ED
-        ld      [IY+$00],       A       ; emit $CB|$ED prefix byte
+        ld      [IY+0], A               ; emit $CB|$ED prefix byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
 
         ; at this point, all parameters (if any) follow the opcode,
         ; so we can output the opcode now and forget it
         ;-----------------------------------------------------------------------
-+       ld      [IY+$00],       C       ; emit opcode byte
++       ld      [IY+0], C               ; emit opcode byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
         ;-----------------------------------------------------------------------
@@ -81,7 +81,7 @@ emitOpcode:
         ;
 @ixy:   and     %00100000               ; isolate bit 5
         or      %11011101               ; map to $DD (IX) or $FD (IY)
-        ld      [IY+$00],       A       ; emit IX|IY prefix byte
+        ld      [IY+0], A               ; emit IX|IY prefix byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
 
@@ -95,7 +95,7 @@ emitOpcode:
         ; at this point, all parameters (if any) follow the opcode,
         ; so we can output the opcode now and forget it
         ;-----------------------------------------------------------------------
-        ld      [IY+$00],       C       ; emit opcode byte
+        ld      [IY+0], C               ; emit opcode byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
         ;-----------------------------------------------------------------------
@@ -140,7 +140,7 @@ emitOpcode:
         ; IX|IY + $CB is the edge-case that keeps on giving: at all other
         ; times the IX|IY offset byte follows the opcode, but not here!
         ;
-@cb:    ld      [IY+$00],       $cb     ; emit $CB prefix byte
+@cb:    ld      [IY+0], $cb             ; emit $CB prefix byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
         push    BC                      ; keep opcode until emit time
@@ -149,7 +149,7 @@ emitOpcode:
         call    parseParam              ;  write the value to the code-segment
 
         pop     BC                      ; retrieve delayed opcode
-        ld      [IY+$00],       C       ; emit opcode byte
+        ld      [IY+0], C               ; emit opcode byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
 

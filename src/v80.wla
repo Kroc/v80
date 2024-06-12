@@ -122,21 +122,16 @@ heap:   .ADDR   $fc00                   ; current position on the heap
 label:  .ADDR   $000                    ; addr of last label dictionary-entry
 const:  .ADDR   $000                    ; addr of last const dictionary-entry
 
-; the name of each file needs to be kept in case of error. a deferred
-; expression could error long after a file has been closed and another opened.
-; each file name is stored as a symbol on the heap and its addr is used as a
-; reference. this avoids duplicating names for files included multiple times
+; the name of each file needs to be kept in case of error. a deferred expr
+; could error long after a file has been closed and another opened. each file-
+; name is stored as a symbol on the heap and its addr is used as a reference.
+; this avoids duplicating names for files included multiple times
 ;
 file:   .ADDR   $0000                   ; addr of current file-name
 files:  .ADDR   $0000                   ; dictionary entry point for file-names
 
-; NOTE: these two bytes are specifically grouped together because they
-;       are required by deferred expressions written to the heap
-;       and are pushed together as a single word
-param_col:
-param:  .BYTE   $00                     ; parameter type / relative-flag
-col:    .BYTE   $00                     ; last char read column-number
-row:    .WORD   $0000                   ; last char read line-number
+ccol:   .BYTE   $00                     ; last char read column-number
+crow:   .WORD   $0000                   ; last char read line-number
 
 char:   .BYTE   $00                     ; last char read from input
 
@@ -378,10 +373,10 @@ assembleFile:
         ;  set the start-of-word line/col number for us)
         ;
         xor     A                       ; (set A to zero)
-        ld      [col],  A               ; reset column number
+        ld      [ccol], A               ; reset column number
         ld      B,      A               ; line number however
         ld      C,      1               ;  defaults to 1
-        ld      [row],  BC              ; ...
+        ld      [crow], BC              ; ...
 
         call    @line                   ; run the parsing loop
         call    osFileClose             ; close the file
@@ -646,7 +641,7 @@ assembleFile:
         jp      z,      errInvalStr     ; sudden EOL/EOF? unterminated string!
         cp      CHAR_STR                ; string terminator?
         jr      z,      --              ; yes, check for next string/expr
-        ld      [IY+$00],       A       ; emit byte to code-segment
+        ld      [IY+0], A               ; emit byte to code-segment
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
         jr      -                       ; keep reading
@@ -692,9 +687,9 @@ assembleFile:
         ;
         ld      BC,     [file]          ; address of current file-name
         push    BC                      ; ...
-        ld      BC,     [row]           ; the row (line) number is 16-bit
+        ld      BC,     [crow]          ; the row (line) number is 16-bit
         push    BC                      ; ...
-        ld      A,      [col]           ; col is only 1 byte
+        ld      A,      [ccol]          ; col is only 1 byte
         push    AF                      ;  a bit of a waste :|
 
 .IFNDEF DEBUG
@@ -710,9 +705,9 @@ assembleFile:
 .ENDIF  ;///////////////////////////////////////////////////////////////////////
 
         pop     AF                      ; pop column number
-        ld      [col],  A               ; (only 1 byte)
+        ld      [ccol], A               ; (only 1 byte)
         pop     BC                      ; pop row (line) number
-        ld      [row],  BC              ; restore current file row-number
+        ld      [crow], BC              ; restore current file row-number
         pop     BC                      ; pop file-name addr
         ld      [file], BC              ; ...
 
@@ -764,10 +759,10 @@ nextWord:
 
         ; start of a word, update the line/col number for errors
         ;
-        ld      BC,     [row]           ; copy current line number
+        ld      BC,     [crow]          ; copy current line number
         ld      [wrow], BC              ;  to start-of-word line-number
         ex      AF,     AF'             ; preserve read character
-        ld      A',     [col]           ; copy current column number
+        ld      A',     [ccol]          ; copy current column number
         ld      [wcol], A'              ;  to start-of-word column-number
         ex      AF',    AF              ; restore read character
         ret
@@ -841,7 +836,7 @@ readChar:
         jr      z, -                    ;  don't advance row/col, get next char
 
         exx                             ; must preserve HL & DE
-        ld      HL',    col             ; prepare to increment column number
+        ld      HL',    ccol            ; prepare to increment column number
 
         cp      ASCII_LF                ; /n is newline
         jr      z,      @row            ; handle newline
@@ -861,9 +856,9 @@ readChar:
         ;-----------------------------------------------------------------------
         ; increment line-number:
         ;
-@row:   ld      DE',    [row]           ; 16-bit load,
+@row:   ld      DE',    [crow]          ; 16-bit load,
         inc     DE'                     ;  and increment,
-        ld      [row],  DE'             ;  and write
+        ld      [crow], DE'             ;  and write
         ld      [HL'],  0               ; reset column number
 
         exx                             ; restore HL/DE

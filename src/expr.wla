@@ -20,6 +20,18 @@
 ;
 defer:  .ADDR   $0000                   ; addr of last deferred expr
 
+; the starting line/column number of an expr is recorded because the whole
+; expression is parsed before evaluation so an error in evaluation may give
+; the line/col number of the next word or line
+;
+; NOTE: these two bytes are specifically grouped together because they
+;       are required by deferred expressions written to the heap
+;       and are pushed together as a single word
+param_ecol:
+param:  .BYTE   $00                     ; parameter type / relative-flag
+ecol:   .BYTE   $00                     ; start-of-expr column number
+erow:   .WORD   $0000                   ; start-of-expr line number
+
 
 parseParam:
 ;===============================================================================
@@ -63,7 +75,7 @@ nextParam:
         rra                             ; correct param byte from above shift
 
         ; write lo-byte of result:
-        ld      [IY+$00],       C       ; write value lo-byte
+        ld      [IY+0], C               ; write value lo-byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
 
@@ -79,7 +91,7 @@ nextParam:
 
         ; write upper-byte of 16-bit result:
         ;
-+       ld      [IY+$00],       B       ; write value hi-byte
++       ld      [IY+0], B               ; write value hi-byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
 
@@ -136,7 +148,7 @@ nextParam:
         ;-----------------------------------------------------------------------
         ; (note the virtual program-counter, IX, has already been incremented)
         ;
-        ld      [IY+$00],       L       ; write relative distance byte
+        ld      [IY+0], L               ; write relative distance byte
         inc     IY                      ; move to next byte in code-segment
         ex      DE,     HL              ; restore heap-addr to HL
         ret
@@ -169,17 +181,15 @@ nextParam:
         ; (for calculating relative jumps)
         push    IX                      ; PC is always stored in IX
 
-        ; TODO: line/col is useless here as they will be from the end of the
-        ;       expr, not the start! need separate start-of-expr line/col.
-        ;       even then, we should really store the start-of-word col number
-        ;       for each expr token instead so the error can point to the
-        ;       specific token
+        ; push the starting line/column number of the expression
+        ; -- if an error occurs during evaluation in the 2nd pass
+        ;    these line/col numbers will be used for the error
         ;
         ld      HL,     [file]          ; push the file ID
         push    HL                      ;  (addr of file-name symbol record)
-        ld      HL,     [row]           ; push the source file
+        ld      HL,     [erow]          ; push the source file
         push    HL                      ;  line-number (16-bits)
-        ld      HL,     [param_col]     ; push parameter-flags & column-number
+        ld      HL,     [param_ecol]    ; push parameter-flags & column-number
         push    HL                      ; (combined because they're 1-byte ea.)
 
         ; since the expression result is not known we can't validate it and we
@@ -204,7 +214,7 @@ nextParam:
         ; the heap is pre-decrement like the stack (decrement-then-copy)
         ;
         dec     HL                      ; fix heap addr for copy-then-DEC
-        ld      DE,     [expr]          ; ...
+        ld      DE,     expr            ; ...
         ex      DE,     HL              ; ...
         lddr                            ; copy BC bytes *from* [HL] *to* [DE]!
         ex      DE,     HL              ; ...
@@ -250,11 +260,21 @@ parseExpr:
 ;       A, DE           (clobbered)
 ;       HL              (preserved)
 ;-------------------------------------------------------------------------------
-        ; expressions are tokenised into a space below the stack. this is
-        ; because any forward-references to labels will need to be pushed to
-        ; the heap so we can't write the expr on the heap at the same time!
-        ;
         push    HL                      ; preserve heap addr
+
+        ; capture the starting line/col number of the expression,
+        ; if an error doesn't occur during parsing, these values
+        ; we be used for errors during evaluation
+        ;
+        ld      BC,     [wrow]          ; current start-of-word line number
+        ld      [erow], BC              ; backup for current expression
+        ld      A,      [wcol]          ; current start-of-word column number
+        ld      [ecol], A               ; backup for current expression
+
+        ; expressions are tokenised into a buffer below the code-segment. this
+        ; is because any forward-references to labels will need to be pushed
+        ; to the heap so we can't write the expr on the heap at the same time!
+        ;
         ld      HL,     expr            ; addr of expr bytecode space
         xor     A                       ; set A to zero
         ld      [@flag],A               ; clear 'defer' flag
@@ -461,6 +481,14 @@ parseExpr:
         sla     A                       ; pop the hi-bit off into carry
         ld      [HL],   A               ; end expr with null terminator
         jr      c,      @defer          ; do not evaluate forward-refs!
+
+        ; before evaluation, set the line / column number reported
+        ; in errors to the ones at the start of the expression
+        ;
+        ld      BC,     [erow]          ; get line-number at start of expr
+        ld      [wrow], BC              ; set line number used for errors
+        ld      A,      [ecol]          ; get column-number at start of expr
+        ld      [wcol], A               ; set col number used for error
 
         pop     HL                      ; restore heap addr to HL
         ld      DE,     expr            ; eval expr from temp bytecode space
