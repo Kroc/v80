@@ -9,7 +9,7 @@
 ; a hexadecimal number first on the line
 ; sets the virtual program-counter
 ;
-$0000
+$0000	:boot			; label may follow PC
 
 ; start the line with `$` to set the virtual program-counter
 ; using an expression. be aware that forward-references to

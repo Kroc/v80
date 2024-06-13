@@ -491,18 +491,11 @@ assembleFile:
 @line:  call    nextWord                ; find first character
         jr      z,      @nleof          ; did we hit newline or end-of-file?
 
-        ; first character determines the word type:
-        ;
-        cp      CHAR_LABEL              ; is label?
-        jr      z,      @label          ; define a label
-        cp      CHAR_CONST              ; is constant?
-        jr      z,      @const          ; define a constant
-
         ; a hexadecimal number at the start of a line
         ; defines the virtual program-counter
         ;
         cp      CHAR_HEX                ; hexadecimal literal?
-        jr      nz,     @body           ; if not, skip to body context
+        jr      nz,     +               ; if not, skip over setting PC
 
         ; set the virtual program-counter:
         ;-----------------------------------------------------------------------
@@ -524,16 +517,28 @@ assembleFile:
         ld      IXL,    C               ; change the virtual program-counter
         ld      IXH,    B               ;  to the number given
 
-        ; fallthrough to check for following statements
+        ; after the virtual program counter is set,
+        ; a label or const can still be defined
+        ; e.g.
+        ;       $0100   :boot           ; defines :boot as $0100
         ;
-        ; TODO: we should probably allow a label following the PC,
-        ;       e.g.
-        ;               $c000   :label  ret
+        call    nextWord                ; find next character
+        jr      z,      @nleof          ; did we hit newline or end-of-file?
+
+        ; are we defining a label or constant?
+        ;
++       cp      CHAR_LABEL              ; is label?
+        jr      z,      @label          ; define a label
+        cp      CHAR_CONST              ; is constant?
+        jr      z,      @const          ; define a constant
+
+        ; if no label or constant, fallthrough to body
+        ; context for keywords / instructions etc.
         ; ...
 
         ; body context:
         ;=======================================================================
-        ; labels and the program-counter must be defined first on the line and
+        ; the program-counter and labels must be defined first on the line and
         ; after those, instructions and keywords are allowed. this is known as
         ; the body context and multiple instructions / keywords can occur until
         ; either a comment or the end of the line
@@ -581,7 +586,7 @@ assembleFile:
         ; words:
         ;-----------------------------------------------------------------------
 @w:     ld      A,              2       ; set parameter size to 2 (words)
-        jr      +                       ; TODO: use a skip opcode here?
+        jr      +                       ; (skip bytes)
         ;-----------------------------------------------------------------------
         ; bytes:
         ;-----------------------------------------------------------------------
