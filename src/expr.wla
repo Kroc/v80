@@ -1,8 +1,6 @@
 ; v80, (C) Kroc Camen 2023-2024, MIT License
 ; expression parsing / evaluation
 ;
-; TODO: support combined unary operators (e.g. `!<`)
-;       will work in eval but needs parser support
 ; TODO: parentheses
 ;
 .BLOCK  "code-expr"
@@ -373,39 +371,33 @@ parseExpr:
         ; unary operators:
         ;=======================================================================
         ; an expression must begin with either a value,
-        ; or a unary operator and a value
+        ; or unary operator(s) and a value
         ;
         ; unary operators can always precede values,
         ; even after an operator, e.g. `$10 + <:label`
         ;
+        ; unary operators can be stacked, e.g. `!<#value`
+        ;
 @unary: cp      CHAR_OP_LO              ; lo-byte operator?
-        jr      z,      +               ; a value must follow a unary operator
+        jr      z,      @next           ; add unary operator and check again
         ;-----------------------------------------------------------------------
         cp      CHAR_OP_HI              ; hi-byte operator?
-        jr      z,      +               ; a value must follow a unary operator
+        jr      z,      @next           ; add unary operator and check again
         ;-----------------------------------------------------------------------
         cp      CHAR_OP_NOT             ; not operator?
-        jr      z,      +               ; a value must follow a unary operator
+        jr      z,      @next           ; add unary operator and check again
         ;-----------------------------------------------------------------------
         cp      CHAR_OP_NEG             ; negate operator?
-        jr      nz,     @value          ; no unary operators, check for values
-
-        ; a unary operator has been added,
-        ; read the next character:
-+       ld      [HL],   A               ; push a unary operator token
-        dec     HL                      ; move to next token space
-
-        ; TODO: support multiple unary operators without separating space
-        ;
-        call    nextWord                ; read first character of the next word
-        jp      z,      errUnexpEOL     ; newline/EOF = unexpected expr end!
-
-        ; after a unary operator, a value must follow
+        jr      z,      @next           ; add unary operator and check again
+        ;-----------------------------------------------------------------------
+        ; values:
+        ;=======================================================================
+        ; after unary operator(s), a value *must* follow
         ;
 @value: cp      CHAR_HEX                ; hexadecimal sigil?
-        jr      z,      @hex            ;
+        jr      z,      @hex            ; ...
         cp      CHAR_LABEL              ; a label?
-        jr      z,      @label          ;
+        jr      z,      @label          ; ...
         cp      CHAR_CONST              ; a constant?
         jp      nz,     errUnexpEOL     ; no? expression has no value!!
 
@@ -416,7 +408,7 @@ parseExpr:
         ; constant?
         ;-----------------------------------------------------------------------
 @const: call    getConst                ; try get the constant's value
-        jp      z,      errUndefConst   ; exprssion contains undefined const!
+        jp      z,      errUndefConst   ; expression contains undefined const!
         ;-----------------------------------------------------------------------
         ; hexadecimal literal?
         ;-----------------------------------------------------------------------
@@ -440,15 +432,12 @@ parseExpr:
         ;-----------------------------------------------------------------------
         ; operators:
         ;=======================================================================
-        ; check for end-of-line / end-of-file after the value!
-        ;
-@op:    ld      A,      [char]          ; last read character
-        cp      ASCII_SPC               ; ASCII<32 = newline (or end-of-file)?
-        jr      c,      @end
-
         ; a value has been added, check for the presence of an operator:
         ; if there's no operator, the expression ends here
         ;
+@op:    ld      A,      [char]          ; last read character
+        cp      ASCII_SPC               ; ASCII<32 = newline (or end-of-file)?
+        jr      c,      @end            ; no op? expression ends here
         call    nextWord                ; read first character of the next word
         jr      z,      @end            ; end expr at newline / end-of-file
 
@@ -690,9 +679,9 @@ evalValue:
         ; take fast-path for values without a unary operator
         ;
         cp      CHAR_HEX                ; number literal?
-        jr      z,      @hex            ;
+        jr      z,      @hex            ; ...
         cp      CHAR_LABEL              ; a label? (that was deferred)
-        jr      z,      @label          ;
+        jr      z,      @label          ; ...
 
         ; we don't care what unary operator is present, we'll need
         ; the value first, so store the unary operator until later
@@ -708,7 +697,7 @@ evalValue:
         cp      CHAR_OP_HI              ; hi-byte unary operator?
         jr      z,      @hi             ; ...
         cp      CHAR_OP_NEG             ; negate unary operator?
-        jr      z,      @neg
+        jr      z,      @neg            ; ...
 
         ; ...
 

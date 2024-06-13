@@ -824,9 +824,9 @@ readChar:
         ld      [char], A               ; retain returned character
 .IFDEF  DEBUG
         ;///////////////////////////////////////////////////////////////////////
-        ;push    AF
-        ;call    osPrintChar             ; print each character as we receive it
-        ;pop     AF                      ; (zero-flag must be preserved)
+        push    AF
+        call    osPrintChar             ; print each character as we receive it
+        pop     AF                      ; (zero-flag must be preserved)
 .ENDIF  ;///////////////////////////////////////////////////////////////////////
         ret     z                       ; return on end-of-file
 
