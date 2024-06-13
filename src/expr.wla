@@ -538,34 +538,29 @@ evalExpr:
 ;       evaluation will now succeed -- any label that is still undefined
 ;       at evaluation time is a hard error!
 ;
-; TODO: with some rearranging, we might be able to keep the running-total
-;       in HL and use DE for the value (better for EX DE, HL + ADD|SBC HL, DE)
-;
 ; in:   HL              addr of expr (could be `expr` or on the heap!)
 ; out:  BC              result value
-;       HL              expr addr is decremented by the tokens read
-;       DE              (preserved)
-;       A               (clobbered)
+;       HL              expr addr is decremented for the tokens read
+;       A, DE           (clobbered)
 ;-------------------------------------------------------------------------------
         ; evaluation consists of a running total (in DE), an operator,
         ; and the next value (in BC). we need to start the expression
         ; with the first value, before any [non-unary] operator
         ;
-        push    DE                      ; for recursion, preseve running-total
         call    evalValue               ; read first value
         ld      D,      B               ; initialise running
-        ld      E,      C               ;   total in DE
+        ld      E,      C               ;   total in HL
 
-        call    @eval
+        call    @op
 
         ld      B,      D               ; copy the final
         ld      C,      E               ;  total to BC
-        pop     DE                      ; restore running-total when recursing
-        xor     A                       ; return carry-clear for success
         ret
 
         ;=======================================================================
-@eval:  ld      A,      [HL]            ; read token type
+        ; TODO: make this return in BC?
+        ;
+@op:    ld      A,      [HL]            ; read token type
         and     A                       ; (set CPU flags!)
         ret     z                       ; end on expr terminator
         cp      CHAR_EXPR_OUT           ; and close parenthesis
@@ -598,13 +593,14 @@ evalExpr:
         ;=======================================================================
         ; divide operator:
         ;-----------------------------------------------------------------------
-@div:   push    HL                      ; preserve expr position
-        call    @dodiv                  ; returns DE divided by BC
-        pop     HL                      ; restore expr position
+@div:   push    HL                      ; preserve token addr
+        call    @dodiv                  ; returns DE divided by BC in DE
+        pop     HL                      ; restore token addr
         ret
 
         ; divide routine used from here:
         ; <http://z80-heaven.wikidot.com/math#toc15>
+        ; divide DE by BC, result in DE, remainder in HL
         ;
 @dodiv: ld      A,      16              ; number of bit-shifts to do
         ld      HL,     0               ; initialise remainder
@@ -624,32 +620,32 @@ evalExpr:
         ;-----------------------------------------------------------------------
         ; modulo operator:
         ;-----------------------------------------------------------------------
-@mod:   push    HL                      ; preserve expr position
-        call    @dodiv                  ; returns DE divided by BC
+@mod:   push    HL                      ; preserve token addr
+        call    @dodiv                  ; returns DE / BC, remainder in HL
         ex      DE,     HL              ; swap remainder to DE
-        pop     HL                      ; restore expr position
-        ret                             ; continue evaluating
+        pop     HL                      ; restore token addr
+        ret
         ;-----------------------------------------------------------------------
         ; add operator:
         ;-----------------------------------------------------------------------
         ; TODO: err on overflow?
-@add:   ex      DE,     HL              ; switch running total to HL
+@add:   ex      DE,     HL              ; swap token addr to DE
         add     HL,     BC              ; add value to total
-        ex      DE,     HL              ; swap expr addr back to HL
-        ret                             ; continue evaluating
+        ex      DE,     HL              ; restore token addr to HL
+        ret
         ;-----------------------------------------------------------------------
         ; subtract operator:
         ;-----------------------------------------------------------------------
         ; TODO: err on underflow?
-@sub:   ex      DE,     HL              ; switch running total to HL
+@sub:   ex      DE,     HL              ; swap token addr to DE
         sbc     HL,     BC              ; subtract value from total
-        ex      DE,     HL              ; swap expr addr back to HL
+        ex      DE,     HL              ; restore token addr to HL
         ret                             ; continue evaluating
         ;-----------------------------------------------------------------------
         ; multiply operator:
         ;-----------------------------------------------------------------------
         ; TODO: err on overflow?
-@mul:   push    HL                      ; preserve expr position
+@mul:   push    HL                      ; preserve token addr
 
         ; multiply routine used from here:
         ; <http://z80-heaven.wikidot.com/math#toc4>
@@ -672,7 +668,7 @@ evalExpr:
         jr      nz,     -
 
         ex      DE,     HL              ; result goes in DE
-        pop     HL                      ; restore expr position
+        pop     HL                      ; restore token addr
         ret
         ;-----------------------------------------------------------------------
         ; bitwise AND operator:
@@ -705,6 +701,12 @@ evalExpr:
         ld      E,      A               ; .
         ret                             ; continue evaluating
 
+        ;=======================================================================
+-       push    DE                      ; preserve running total
+        call    evalExpr                ; return nested expr value
+        pop     DE                      ; restore running total
+        ret                             ; expr result in BC
+
 
 evalValue:
 ;===============================================================================
@@ -714,7 +716,9 @@ evalValue:
 ; - if present, unary operator(s) are applied before return
 ; - parentheses are evaluated recursively
 ;
-; out:  BC              
+; out:  BC              value
+;       HL, DE          (preserved) -- token addr (HL) is advanced
+;       A               (clobbered)
 ;-------------------------------------------------------------------------------
         ld      A,      [HL]            ; read token type
         dec     HL                      ; move to next token space
@@ -727,7 +731,7 @@ evalValue:
         jr      z,      @label          ; ...
 
         cp      CHAR_EXPR_IN            ; check for parenthesis
-        jp      z,      evalExpr        ; return nested expr value
+        jr      z,      -
 
         ; we don't care what unary operator is present, we'll need
         ; the value first, so store the unary operator until later
@@ -784,11 +788,10 @@ evalValue:
         ;=======================================================================
         ; read a number literal:
         ;-----------------------------------------------------------------------
-@hex:   ld      B,      [HL]
-        dec     HL
-        ld      C,      [HL]
-        dec     HL
-
+@hex:   ld      B,      [HL]            ; the selection of registers used for
+        dec     HL                      ;  evaluation (HL/DE/BC) was chosen to
+        ld      C,      [HL]            ;  ensure reading number literals was
+        dec     HL                      ;  no slower than this
         ret
 
         ;-----------------------------------------------------------------------
@@ -798,24 +801,26 @@ evalValue:
         ; so the only labels that remain at evaluation are forward-references:
         ; the token value contains the address of the label's flag-byte
         ;
-@label: push    DE                      ; preserve running total
-
-        xor     A                       ; (set A to zero, clear carry-flag)
-        ld      E,      [HL]            ; read label flag-byte addr into DE
+        ; the selection of registers for evaluation are entirely chosen to
+        ; optimise for reading labels in expressions, beside number literals
+        ;
+@label: xor     A                       ; set A to zero for flag-byte check
+        ld      D,      [HL]            ; read label flag-byte addr hi-byte
         dec     HL                      ; ...
-        ld      D,      [HL]            ; ..
-        dec     HL                      ; .
-        ex      DE,     HL              ; switch flag-byte addr to HL
-        or      A,      [HL]            ; is the flag byte 0? (=fwd-ref!)
-        jp      z,      errUndefLabel   ; label was never defined!
-        dec     HL                      ; skip over flag byte
-        ld      C,      [HL]            ; read label value into BC
-        dec     HL                      ; ..
-        ld      B,      [HL]            ; .
-        ex      DE,     HL              ; switch back to expr addr in HL
-
-        pop     DE                      ; restore running total
+        ld      E,      [HL]            ; read label flag-byte addr lo-byte
+        dec     HL                      ; (we must preserve this token addr)
+        ex      DE,     HL              ; label addr in HL, token addr in DE
+        or      [HL]                    ; is label flag-byte zero?
+        jr      z,      @err            ; error if label was never defined!
+        dec     HL                      ; move past label flag-byte
+        ld      B,      [HL]            ; get label value hi-byte
+        dec     HL                      ; ...
+        ld      C,      [HL]            ; get label value lo-byte
+        ex      DE,     HL              ; restore token addr to HL
         ret
+
+        ; (a JR here was used to save cycles for every label read)
+@err:   jp      errUndefLabel
 
 
 parseHexNumber:
