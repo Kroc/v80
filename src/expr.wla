@@ -1,8 +1,6 @@
 ; v80, (C) Kroc Camen 2023-2024, MIT License
 ; expression parsing / evaluation
 ;
-; TODO: parentheses
-;
 .BLOCK  "code-expr"
 
 ; expression bytecode:
@@ -42,7 +40,7 @@ parseParam:
 ;-------------------------------------------------------------------------------
         ld      [param],        A
 
-        ; fallthrough
+        ; fall through
         ; ...
 
 nextParam:
@@ -233,7 +231,7 @@ nextExpr:
         cp      ASCII_SPC+1             ; non-visible character?
         jp      c,      errUnexpEOL     ; error if end-of-line / end-of-file
 
-        ; fallthrough
+        ; fall through
         ; ...
 
 parseExpr:
@@ -269,18 +267,21 @@ parseExpr:
         ld      A,      [wcol]          ; current start-of-word column number
         ld      [ecol], A               ; backup for current expression
 
+        xor     A                       ; set A to zero
+        ld      [@flag],A               ; clear 'defer' flag
+        ld      [@nest],A               ; clear parenthesis depth-count
+
         ; expressions are tokenised into a buffer below the code-segment. this
         ; is because any forward-references to labels will need to be pushed
         ; to the heap so we can't write the expr on the heap at the same time!
         ;
         ld      HL,     expr            ; addr of expr bytecode space
-        xor     A                       ; set A to zero
-        ld      [@flag],A               ; clear 'defer' flag
         ld      A,      [char]          ; get current unused input char
         jr      @unary                  ; jump into the parsing loop
 
         ;-----------------------------------------------------------------------
 @flag   .BYTE   $00                     ; defer flag
+@nest   .BYTE   $00                     ; parenthesis nested depth counter
 
         ;=======================================================================
         ; label?
@@ -338,34 +339,29 @@ parseExpr:
         jr      @op                     ; an operator can follow a label
 
         ;=======================================================================
-        ; (exit-route for forward-references:)
-        ;
-        ; calculate length of expression; this is needed to defer the expr
-        ; to the heap. the bytecode is ordered *downwards* in memory, so the
-        ; difference from the end address to the starting address is the length
-        ;
-        ; the expr buffer runs from $xx7F downwards to $xx20
-        ; so an 8-bit subtraction is sufficient
-        ;
-@defer: ld      B,      A               ; B must be 0 (LDDR uses BC)
-        ld      A,      <expr           ; start with highest addr (expr-start)
-        sub     A,      L               ; subtract lowest addr (expr-end)
-        ld      C,      A               ; this is the expr length (1-based)
-        pop     HL                      ; restore heap addr to HL
+        ; open parenthesis:
+        ;-----------------------------------------------------------------------
+@paren: ex      DE,     HL              ; put HL aside
+        ld      HL,     @nest           ; address of our counter
+        inc     [HL]                    ; increment it by one
+        ex      DE,     HL              ; return HL to token space
 
-        ; because the expression could not be evaluated
-        ; we must return carry-flag set to indicate no-value
-        scf
-        ret
+        ; with the parenthesis open,
+        ; fall through to new expr
+        ; ...
 
-        ;=======================================================================
-        ; add an operator and fall-through to the next operand:
+        ;-----------------------------------------------------------------------
+        ; add token and fall through to the next operand:
         ;
 @next:  ld      [HL],   A               ; push token in A to expr
         dec     HL                      ; move to next token space
 
         call    nextWord                ; read first character of the next word
         jp      z,      errUnexpEOL     ; newline/EOF = unexpected expr end!
+
+        ; fall through to check if a unary
+        ; operator preceeds a value
+        ; ...
 
         ;-----------------------------------------------------------------------
         ; unary operators:
@@ -394,14 +390,17 @@ parseExpr:
         ;=======================================================================
         ; after unary operator(s), a value *must* follow
         ;
-@value: cp      CHAR_HEX                ; hexadecimal sigil?
+@value: cp      CHAR_EXPR_IN            ; parenthesis?
+        jr      z,      @paren          ; handle nested expression!
+
+        cp      CHAR_HEX                ; hexadecimal sigil?
         jr      z,      @hex            ; ...
         cp      CHAR_LABEL              ; a label?
         jr      z,      @label          ; ...
         cp      CHAR_CONST              ; a constant?
         jp      nz,     errUnexpEOL     ; no? expression has no value!!
 
-        ; fallthrough to const-handling
+        ; fall through to const-handling
         ; ...
 
         ;-----------------------------------------------------------------------
@@ -413,7 +412,7 @@ parseExpr:
         ; hexadecimal literal?
         ;-----------------------------------------------------------------------
         ; (micro-optimisation: the zero-flag conditional here is to allow
-        ;  the fall-through from above to skip this one instruction)
+        ;  the fall through from above to skip this one instruction)
         ;
 @hex:   call    z,      parseHexNumber  ; parse the hex number into BC
 
@@ -458,7 +457,25 @@ parseExpr:
         cp      CHAR_OP_DIV             ; divide operator?
         jr      z,      @next           ; ...
 
-        ; whatever it is, it isn't an operator;
+        ; closing parenthesis?
+        ;-----------------------------------------------------------------------
+        cp      CHAR_EXPR_OUT           ; check for closing parenthesis
+        jr      nz,     @end            ; if not, expr has ended
+
+        ex      DE,     HL              ; put HL aside
+        ld      HL,     @nest           ; address of our counter
+        dec     [HL]                    ; decrement it by one
+        ex      DE,     HL              ; return HL to token space
+        ld      [HL],   A               ; push close parenthesis token
+        dec     HL                      ; move to next token space
+
+        ; once a parenthesis is closed we expect either an operator,
+        ; to extend the expression, or the end of the expression to occur
+        ;
+        call    nextWord                ; read first character of the next word
+        jr      nz,     @op             ; if it's not EOL/EOF, check for op
+
+        ; whatever it is, it isn't an operator or closing parenthesis;
         ; fall through and terminate the expression
         ; ...
 
@@ -466,7 +483,11 @@ parseExpr:
         ;=======================================================================
         ; TODO: check for heap spill here?
         ;
-@end:   ld      A,      [@flag]         ; get the defer flag
+@end:   ld      A,      [@nest]         ; get parenthesis nested depth
+        and     A                       ; check for zero (set flags)
+        jp      nz,     errInvalExpr    ; parenthesis aren't matched!
+
+        ld      A,      [@flag]         ; get the defer flag
         sla     A                       ; pop the hi-bit off into carry
         ld      [HL],   A               ; end expr with null terminator
         jr      c,      @defer          ; do not evaluate forward-refs!
@@ -479,11 +500,33 @@ parseExpr:
         ld      A,      [ecol]          ; get column-number at start of expr
         ld      [wcol], A               ; set col number used for error
 
-        pop     HL                      ; restore heap addr to HL
-        ld      DE,     expr            ; eval expr from temp bytecode space
+        ld      HL,     expr            ; eval expr from temp bytecode space
+        call    evalExpr                ; return expr result in BC
 
-        ; fallthrough to evaluate the expr
-        ; ...
+        pop     HL                      ; restore heap addr to HL
+        ret
+
+        ;=======================================================================
+        ; (exit-route for forward-references:)
+        ;
+        ; calculate length of expression; this is needed to defer the expr
+        ; to the heap. the bytecode is ordered *downwards* in memory, so the
+        ; difference from the end address to the starting address is the length
+        ;
+        ; the expr buffer runs from $xx7F downwards to $xx20
+        ; so an 8-bit subtraction is sufficient
+        ;
+@defer: ld      B,      A               ; B must be 0 (LDDR uses BC)
+        ld      A,      <expr           ; start with highest addr (expr-start)
+        sub     A,      L               ; subtract lowest addr (expr-end)
+        ld      C,      A               ; this is the expr length (1-based)
+        pop     HL                      ; restore heap addr to HL
+
+        ; because the expression could not be evaluated
+        ; we must return carry-flag set to indicate no-value
+        scf
+        ret
+
 
 evalExpr:
 ;===============================================================================
@@ -498,37 +541,35 @@ evalExpr:
 ; TODO: with some rearranging, we might be able to keep the running-total
 ;       in HL and use DE for the value (better for EX DE, HL + ADD|SBC HL, DE)
 ;
-; in:   DE              addr of expr (could be `expr` or on the heap!)
+; in:   HL              addr of expr (could be `expr` or on the heap!)
 ; out:  BC              result value
-;       HL              (preserved)
-;       A, DE           (clobbered)
+;       HL              expr addr is decremented by the tokens read
+;       DE              (preserved)
+;       A               (clobbered)
 ;-------------------------------------------------------------------------------
-        ; we won't need to push anything new to the heap during evaluation
-        ; so we preserve the current heap position
-        push    HL
-@expr:  ex      DE,     HL              ; use HL for reading tokens for now
-
         ; evaluation consists of a running total (in DE), an operator,
         ; and the next value (in BC). we need to start the expression
         ; with the first value, before any [non-unary] operator
         ;
+        push    DE                      ; for recursion, preseve running-total
         call    evalValue               ; read first value
-        ld      E,      C               ; initialise running
-        ld      D,      B               ;  total in DE
+        ld      D,      B               ; initialise running
+        ld      E,      C               ;   total in DE
 
         call    @eval
 
-        ld      C,      E               ; copy the final
-        ld      B,      D               ;  total to BC
+        ld      B,      D               ; copy the final
+        ld      C,      E               ;  total to BC
+        pop     DE                      ; restore running-total when recursing
         xor     A                       ; return carry-clear for success
-        pop     HL                      ; restore heap position
-
         ret
 
         ;=======================================================================
 @eval:  ld      A,      [HL]            ; read token type
         and     A                       ; (set CPU flags!)
         ret     z                       ; end on expr terminator
+        cp      CHAR_EXPR_OUT           ; and close parenthesis
+        ret     z                       ; ...
         push    AF                      ; keep operator until after value
 
         dec     HL                      ; move to next token space
@@ -620,7 +661,7 @@ evalExpr:
         ;
         ld      HL,     0               ; HL is lower 16-bits of 32-bit result
         ld      A,      16              ; number of bit shifts to do
--       add     HL,     HL
+-       add     HL,     HL              ;
         rl      E                       ; shift DE up by 1 bit
         rl      D                       ; 
         jr      nc,     +               ; if the popped bit is 1
@@ -671,7 +712,9 @@ evalValue:
 ;
 ; read the next value from expr bytecode and returns it in BC:
 ; - if present, unary operator(s) are applied before return
-; - TODO: parentheses are evaluated recursively
+; - parentheses are evaluated recursively
+;
+; out:  BC              
 ;-------------------------------------------------------------------------------
         ld      A,      [HL]            ; read token type
         dec     HL                      ; move to next token space
@@ -682,6 +725,9 @@ evalValue:
         jr      z,      @hex            ; ...
         cp      CHAR_LABEL              ; a label? (that was deferred)
         jr      z,      @label          ; ...
+
+        cp      CHAR_EXPR_IN            ; check for parenthesis
+        jp      z,      evalExpr        ; return nested expr value
 
         ; we don't care what unary operator is present, we'll need
         ; the value first, so store the unary operator until later
@@ -766,8 +812,8 @@ evalValue:
         ld      C,      [HL]            ; read label value into BC
         dec     HL                      ; ..
         ld      B,      [HL]            ; .
-
         ex      DE,     HL              ; switch back to expr addr in HL
+
         pop     DE                      ; restore running total
         ret
 

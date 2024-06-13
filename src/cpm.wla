@@ -585,7 +585,7 @@ _setFCBFileName:
         ret     z
 
         ; if none of the above,
-        ; fallthrough to error
+        ; fall through to error
         ; ...
 
         ;=======================================================================
@@ -811,7 +811,7 @@ _readSector:
 
 osPrintLn:
 ;===============================================================================
-; prints a null-terminated string and appends a newline: (CRLF)
+; prints a null-terminated string and appends a newline:
 ;
 ; in:   DE              string-addr, must be 0-terminated
 ; out:  DE              DE is advanced according to the length of the string
@@ -820,7 +820,7 @@ osPrintLn:
 ;-------------------------------------------------------------------------------
         call    osPrintStrZ
 
-        ; fallthrough
+        ; fall through
         ; ...
 
 osPrintNewline:
@@ -830,11 +830,11 @@ osPrintNewline:
 ; out:  BC, DE, HL      (preserved)
 ;       A               (clobbered)
 ;-------------------------------------------------------------------------------
-        ld      A,      ASCII_CR
-        call    osPrintChar
-        ld      A,      ASCII_LF
+        ld      A,      ASCII_CR        ; NOTE: on CP/M newlines are CRLF,
+        call    osPrintChar             ;  which is where MS-DOS / Windows
+        ld      A,      ASCII_LF        ;  got it from!
 
-        ; fallthrough
+        ; fall through
         ; ...
 
 osPrintChar:

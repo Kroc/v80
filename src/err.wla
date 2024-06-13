@@ -61,7 +61,7 @@ _errmsg:
 
 ; print error message and quit:
 ;===============================================================================
-; this is a fall-through 'ladder' that sets A to the value based on entrypoint.
+; this is a fall through 'ladder' that sets A to the value based on entrypoint.
 ; opcode $21 is manually inserted to skip the next LD A instruction and so on.
 ; 
 errInvalExpr:
@@ -124,7 +124,7 @@ errUnexpEOL:
         ;-----------------------------------------------------------------------
         ld      A,      ERR_UNEXP_EOL   ; err code for unexpected end-of-line
 
-        ; fallthrough
+        ; fall through
         ; ...
 
 err:
@@ -147,7 +147,7 @@ err:
         inc     HL                      ; ...
         ld      D,      [HL]            ; get string addr hi-byte
 
-        ; fallthrough
+        ; fall through
         ; ...
 
 errPrintQuit:
@@ -194,21 +194,5 @@ errPrintQuit:
 @file   .BYTE   " FILE: ", 0
 @row    .BYTE   "\r\n LINE: $", 0
 @col    .BYTE   " COL: $", 0
-
-
-printHeapStr:
-;===============================================================================
-; print a backwards, length-prefixed string:
-;
-; in:   DE              string addr, first byte is length
-;-------------------------------------------------------------------------------
-        ld      A,      [DE]            ; get string length
-        ld      B,      A               ; use as char counter
-        ;-----------------------------------------------------------------------
--       dec     DE                      ; (move to next char in string)
-        ld      A,      [DE]            ; read a character
-        call    osPrintChar             ;  and print it
-        djnz    -                       ;  for all chars in string
-        ret
 
 .ENDB
