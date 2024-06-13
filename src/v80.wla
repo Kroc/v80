@@ -634,8 +634,8 @@ assembleFile:
         ; written directly to the code-segment
         ;
 @str:   ld      A,      [param]         ; a string cannot be a part of 
-        cp      2                       ;  a list of words! (i.e. `.w` keyword)
-        jp      z,      errInvalExpr    ; FIXME: better error message for this
+        cp      2                       ;  a list of words!
+        jp      z,      errRangeStr     ;  (i.e. `.w` keyword)
         ;-----------------------------------------------------------------------
 -       call    readChar                ; read next character
         jp      z,      errInvalStr     ; sudden EOL/EOF? unterminated string!

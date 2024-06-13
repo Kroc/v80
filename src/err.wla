@@ -23,17 +23,19 @@ _errmsg:
         .ADDR   @inval_sym
 .DEF    ERR_RANGE_INS           7       ; out-of-range instruction parameter
         .ADDR   @range_ins
-.DEF    ERR_REDEF_LABEL         8       ; label redefined
+.DEF    ERR_RANGE_STR           8       ; `.w` does not support strings
+        .ADDR   @range_ins
+.DEF    ERR_REDEF_LABEL         9       ; label redefined
         .ADDR   @redef_label
-.DEF    ERR_UNDEF_CONST         9       ; const undefined
+.DEF    ERR_UNDEF_CONST         10      ; const undefined
         .ADDR   @undef_const
-.DEF    ERR_UNDEF_FILE          10      ; file not found
+.DEF    ERR_UNDEF_FILE          11      ; file not found
         .ADDR   @undef_file
-.DEF    ERR_UNDEF_LABEL         11      ; label undefined
+.DEF    ERR_UNDEF_LABEL         12      ; label undefined
         .ADDR   @undef_label
-.DEF    ERR_UNEXP_DEFER         12      ; label cannot be deferred here
+.DEF    ERR_UNEXP_DEFER         13      ; label cannot be deferred here
         .ADDR   @unexp_defer
-.DEF    ERR_UNEXP_EOL           13      ; unexpected end-of-line / file
+.DEF    ERR_UNEXP_EOL           14      ; unexpected end-of-line / file
         .ADDR   @unexp_eol
 ;-------------------------------------------------------------------------------
 ; TODO: provide extended error message descriptions in an external file,
@@ -48,6 +50,7 @@ _errmsg:
 @inval_str      .BYTE "Invalid string!", 0
 @inval_sym      .BYTE "Invalid symbol name!", 0
 @range_ins      .BYTE "Expression too large for 8-bit instruction parameter!", 0
+@range_str      .BYTE ".w cannot take strings!", 0
 @redef_label    .BYTE "Labels cannot be redefined!", 0
 @undef_const    .BYTE "Undefined constant!", 0
 @undef_file     .BYTE "File not found!", 0
@@ -92,6 +95,10 @@ errInvalSym:
 errRangeIns:
         ;-----------------------------------------------------------------------
         ld      A,      ERR_RANGE_INS   ; err code for out-of-range parameter
+        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+errRangeStr:
+        ;-----------------------------------------------------------------------
+        ld      A,      ERR_RANGE_STR   ; err code for string with .w
         .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
 errRedefLabel:
         ;-----------------------------------------------------------------------
