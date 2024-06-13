@@ -148,12 +148,9 @@ osBoot:
         ; run the program:
         jp      main                    ; we will not return from here!
 
-        ; TODO: what if the console output of v80 was a v80 symbol file?
-        ;       i.e. make these lines appear as comments and output v80
-        ;       compatible symbol listing to show progress...
         ;-----------------------------------------------------------------------
-@banner .BYTE   "v80 CP/M v0.0 - github.com/kroc/v80\r\n"
-        .BYTE   "(C) Kroc Camen 2023-2024, MIT License", 0
+@banner .BYTE   "; v80 CP/M v0.0 - github.com/kroc/v80\r\n"
+        .BYTE   "; (C) Kroc Camen 2023-2024, MIT License", 0
 
         ;=======================================================================
         ; CP/M version less than 2.2 -- call BDOS manually for safety
