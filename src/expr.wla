@@ -538,51 +538,57 @@ evalExpr:
 ;       evaluation will now succeed -- any label that is still undefined
 ;       at evaluation time is a hard error!
 ;
-; in:   HL              addr of expr (could be `expr` or on the heap!)
-; out:  BC              result value
-;       HL              expr addr is decremented for the tokens read
-;       A, DE           (clobbered)
+; in:   HL              addr of expr tokens
+; out:  DE              result value
+;       HL              token addr is decremented for the tokens read
+;       A, BC           (clobbered)
 ;-------------------------------------------------------------------------------
-        ; evaluation consists of a running total (in DE), an operator,
-        ; and the next value (in BC). we need to start the expression
-        ; with the first value, before any [non-unary] operator
-        ;
-        call    evalValue               ; read first value
-        ld      D,      B               ; initialise running
-        ld      E,      C               ;   total in HL
+        call    evalValue               ; get left-hand operand in BC
+        ld      D,      B               ; should there be no operator
+        ld      E,      C               ;  value will be returned in DE
 
-        call    @op
-
-        ld      B,      D               ; copy the final
-        ld      C,      E               ;  total to BC
-        ret
-
-        ;=======================================================================
-        ; TODO: make this return in BC?
-        ;
-@op:    ld      A,      [HL]            ; read token type
+        ld      A,      [HL]            ; read token type
         and     A                       ; (set CPU flags!)
         ret     z                       ; end on expr terminator
-        cp      CHAR_EXPR_OUT           ; and close parenthesis
-        ret     z                       ; ...
-        push    AF                      ; keep operator until after value
-
         dec     HL                      ; move to next token space
-        call    evalValue               ; get value before applying operator
+        cp      CHAR_EXPR_OUT           ; close parenthesis?
+        ret     z                       ; also end of current expr
 
-        pop     AF                      ; restore operator before the value
+        ; an operator follows:
+        ;-----------------------------------------------------------------------
+        push    DE                      ; remember the left-hand operand
+        push    AF                      ;  and the chosen operator
+
+        ; get right-hand operand in BC. be aware that due to parenthesis
+        ; this call can recurse some depth -- only HL (token addr)
+        ; will be preserved throughout
+        ;
+        call    evalValue               ; get right-hand operand in BC
+
+        pop     AF                      ; restore chosen operator
+        ex      DE,     HL              ; put token-addr aside in DE
+        pop     HL                      ; restore left-hand operand to HL
+
         cp      CHAR_OP_ADD             ; add operator?
         jr      z,      @add            ; ...
         cp      CHAR_OP_SUB             ; subtract operator?
         jr      z,      @sub            ; ...
-        cp      CHAR_OP_MUL             ; multiply operator?
-        jr      z,      @mul            ; ...
+
         cp      CHAR_OP_AND             ; bitwise AND operator?
         jr      z,      @and            ; ...
         cp      CHAR_OP_OR              ; bitwise OR operator?
         jr      z,      @or             ; ...
         cp      CHAR_OP_XOR             ; bitwise XOR operator?
         jr      z,      @xor            ; ...
+
+        ; the multiply / divide / modulo
+        ; operators use a lot of registers
+        ;
+        push    DE                      ; preserve token addr
+        ex      DE,     HL              ; swap left-hand operand to DE
+
+        cp      CHAR_OP_MUL             ; multiply operator?
+        jr      z,      @mul            ; ...
         cp      CHAR_OP_MOD             ; modulo operator?
         jr      z,      @mod            ; ...
 
@@ -593,8 +599,7 @@ evalExpr:
         ;=======================================================================
         ; divide operator:
         ;-----------------------------------------------------------------------
-@div:   push    HL                      ; preserve token addr
-        call    @dodiv                  ; returns DE divided by BC in DE
+@div:   call    @dodiv                  ; returns DE divided by BC in DE
         pop     HL                      ; restore token addr
         ret
 
@@ -620,42 +625,25 @@ evalExpr:
         ;-----------------------------------------------------------------------
         ; modulo operator:
         ;-----------------------------------------------------------------------
-@mod:   push    HL                      ; preserve token addr
-        call    @dodiv                  ; returns DE / BC, remainder in HL
-        ex      DE,     HL              ; swap remainder to DE
+@mod:   call    @dodiv                  ; returns DE / BC, remainder in HL
+        ex      DE,     HL              ; return remainder in DE
         pop     HL                      ; restore token addr
         ret
-        ;-----------------------------------------------------------------------
-        ; add operator:
-        ;-----------------------------------------------------------------------
-        ; TODO: err on overflow?
-@add:   ex      DE,     HL              ; swap token addr to DE
-        add     HL,     BC              ; add value to total
-        ex      DE,     HL              ; restore token addr to HL
-        ret
-        ;-----------------------------------------------------------------------
-        ; subtract operator:
-        ;-----------------------------------------------------------------------
-        ; TODO: err on underflow?
-@sub:   ex      DE,     HL              ; swap token addr to DE
-        sbc     HL,     BC              ; subtract value from total
-        ex      DE,     HL              ; restore token addr to HL
-        ret                             ; continue evaluating
         ;-----------------------------------------------------------------------
         ; multiply operator:
         ;-----------------------------------------------------------------------
         ; TODO: err on overflow?
-@mul:   push    HL                      ; preserve token addr
-
+        ;
         ; multiply routine used from here:
         ; <http://z80-heaven.wikidot.com/math#toc4>
+        ; multiplies DE by BC, result in DEHL
         ;
         ; TODO: we don't need the upper 16-bits of a 32-bit result so this
         ;       might be able to be simplified further; we could add the
         ;       multiplier in A as we shift bits off DE and after 8-bits,
         ;       swap A to H and loop again, i.e. do two 8*8-bit multiplies
         ;
-        ld      HL,     0               ; HL is lower 16-bits of 32-bit result
+@mul:   ld      HL,     0               ; HL is lower 16-bits of 32-bit result
         ld      A,      16              ; number of bit shifts to do
 -       add     HL,     HL              ;
         rl      E                       ; shift DE up by 1 bit
@@ -667,45 +655,60 @@ evalExpr:
 +       dec     A
         jr      nz,     -
 
-        ex      DE,     HL              ; result goes in DE
+        ex      DE,     HL              ; return lower 16-bits in DE
         pop     HL                      ; restore token addr
+        ret
+        ;-----------------------------------------------------------------------
+        ; add operator:
+        ;-----------------------------------------------------------------------
+        ; TODO: err on overflow?
+@add:   add     HL,     BC              ; add value to total
+        ex      DE,     HL              ; return value in DE, token-addr in HL
+        ret
+        ;-----------------------------------------------------------------------
+        ; subtract operator:
+        ;-----------------------------------------------------------------------
+        ; TODO: err on underflow?
+@sub:   sbc     HL,     BC              ; subtract value from total
+        ex      DE,     HL              ; return value in DE, token-addr in HL
         ret
         ;-----------------------------------------------------------------------
         ; bitwise AND operator:
         ;-----------------------------------------------------------------------
-@and:   ld      A,      D               ; bitwise AND hi-bytes together
+@and:   ld      A,      H               ; bitwise AND hi-bytes together
         and     A,      B               ; ..
         ld      D,      A               ; .
-        ld      A,      E               ; bitwise AND lo-bytes together
+        ld      A,      L               ; bitwise AND lo-bytes together
         and     A,      C               ; ..
         ld      E,      A               ; .
-        ret                             ; continue evaluating
+        ret
         ;-----------------------------------------------------------------------
         ; bitwise OR operator:
         ;-----------------------------------------------------------------------
-@or:    ld      A,      D               ; bitwise OR hi-bytes together
+@or:    ld      A,      H               ; bitwise OR hi-bytes together
         or      A,      B               ; ..
         ld      D,      A               ; .
-        ld      A,      E               ; bitwise OR lo-bytes together
+        ld      A,      L               ; bitwise OR lo-bytes together
         or      A,      C               ; ..
         ld      E,      A               ; .
-        ret                             ; continue evaluating
+        ret
         ;-----------------------------------------------------------------------
         ; bitwise XOR operator:
         ;-----------------------------------------------------------------------
-@xor:   ld      A,      D               ; bitwise XOR hi-bytes together
+@xor:   ld      A,      H               ; bitwise XOR hi-bytes together
         xor     A,      B               ; ..
         ld      D,      A               ; .
-        ld      A,      E               ; bitwise XOR lo-bytes together
+        ld      A,      L               ; bitwise XOR lo-bytes together
         xor     A,      C               ; ..
         ld      E,      A               ; .
-        ret                             ; continue evaluating
+        ret
 
+        ; open parenthesis:
         ;=======================================================================
--       push    DE                      ; preserve running total
-        call    evalExpr                ; return nested expr value
-        pop     DE                      ; restore running total
-        ret                             ; expr result in BC
+-       call    evalExpr                ; return nested expr value in DE
+        ld      B,      D               ; return result in BC
+        ld      C,      E               ;  as expected by evalValue
+        ret
 
 
 evalValue:
@@ -716,9 +719,10 @@ evalValue:
 ; - if present, unary operator(s) are applied before return
 ; - parentheses are evaluated recursively
 ;
+; in:   HL              current address in expr tokens
 ; out:  BC              value
-;       HL, DE          (preserved) -- token addr (HL) is advanced
-;       A               (clobbered)
+;       HL              token addr is decremented for tokens read
+;       A, DE           (clobbered)
 ;-------------------------------------------------------------------------------
         ld      A,      [HL]            ; read token type
         dec     HL                      ; move to next token space
@@ -731,7 +735,7 @@ evalValue:
         jr      z,      @label          ; ...
 
         cp      CHAR_EXPR_IN            ; check for parenthesis
-        jr      z,      -
+        jr      z,      -               ; recurse for parens
 
         ; we don't care what unary operator is present, we'll need
         ; the value first, so store the unary operator until later
@@ -739,7 +743,12 @@ evalValue:
 
         ; recurse, fetching the value that follows --
         ; this allows for multiple unary operators per value
-        call    evalValue
+        ;
+        ; a minor optimisation hinges on the very fact that THIS routine
+        ; returns its value in BC but evalExpr returns in DE; we do the
+        ; copy from DE to BC at the same time as doing the unary operators
+        ;
+        call    evalValue               ; WARN: returns value in DE!
 
         pop     AF                      ; restore the unary operator
         cp      CHAR_OP_LO              ; lo-byte unary operator?
@@ -753,22 +762,23 @@ evalValue:
 
         ; NOT unary operator:
         ;-----------------------------------------------------------------------
-@not:   ld      A,      B               ; invert bits in B
-        cpl                             ; ..
-        ld      B,      A               ; .
-        ld      A,      C               ; invert bits in C
-        cpl                             ; ..
-        ld      C,      A               ; .
+@not:   ld      A,      D               ; invert bits in D
+        cpl                             ; ...
+        ld      B,      A               ; but return in B
+        ld      A,      E               ; invert bits in E
+        cpl                             ; ...
+        ld      C,      A               ; but return in C
         ret
         ;-----------------------------------------------------------------------
         ; LO-byte unary operator:
         ;-----------------------------------------------------------------------
 @lo:    ld      B,      0               ; clear the hi-byte
+        ld      C,      E               ; return BC instead of DE
         ret
         ;-----------------------------------------------------------------------
         ; HI-byte unary operator:
         ;-----------------------------------------------------------------------
-@hi:    ld      C,      B               ; swap the hi-byte into the lo-byte
+@hi:    ld      C,      D               ; copy the hi-byte into the lo-byte
         ld      B,      0               ;  and clear the hi-byte
         ret
         ;-----------------------------------------------------------------------
@@ -778,11 +788,11 @@ evalValue:
         ; <www.smspower.org/Development/Z80ProgrammingTechniques#x16bitNeg>
         ;
 @neg:   xor     A                       ; set A to zero and clear flags
-        sub     C                       ; do 0-C
-        ld      C,      A               ; .
+        sub     E                       ; do 0-E
+        ld      C,      A               ; but return in C
         sbc     A,      A               ; set A to 0 or -1 based on carry
-        sub     B                       ; do 0-B (+carry)
-        ld      B,      A               ; .
+        sub     D                       ; do 0-D (+carry)
+        ld      B,      A               ; but return in B
         ret                             ; WARN: carry may be set!
 
         ;=======================================================================
@@ -802,7 +812,8 @@ evalValue:
         ; the token value contains the address of the label's flag-byte
         ;
         ; the selection of registers for evaluation are entirely chosen to
-        ; optimise for reading labels in expressions, beside number literals
+        ; optimise for reading labels in expressions, beside number literals;
+        ; this span comes first and register use elsewhere works around it
         ;
 @label: xor     A                       ; set A to zero for flag-byte check
         ld      D,      [HL]            ; read label flag-byte addr hi-byte
@@ -816,10 +827,10 @@ evalValue:
         ld      B,      [HL]            ; get label value hi-byte
         dec     HL                      ; ...
         ld      C,      [HL]            ; get label value lo-byte
-        ex      DE,     HL              ; restore token addr to HL
-        ret
+        ex      DE,     HL              ; restore token addr to HL      ;(78)
+        ret                             ; return label value in BC      ;cycles
 
-        ; (a JR here was used to save cycles for every label read)
+        ; (a JR above was used to save 3 cycles for every label read)
 @err:   jp      errUndefLabel
 
 
