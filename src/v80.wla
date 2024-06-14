@@ -223,12 +223,10 @@ main:
         ;
         ld      IY,     code            ; code-segment address
 
-        ld      HL,     [heap]          ; start the heap (file-name is pushed)
+        ld      HL,     [heap]          ; start the heap
         call    assembleFile            ; assemble! (DE is file-name str addr)
 
-        ; TODO: 2nd pass!
-
-        ; calculate final stats:
+        ; assembly complete, calculate RAM usage:
         ;
         ; +----------------+----------------------+---------------+
         ; | code-segment-> |     <-free RAM->     | <-heap        |
@@ -261,15 +259,25 @@ main:
         sbc     HL,     DE              ; calculate end-start difference
         ld      [@code+1],      HL      ; save value for printing later
 
-        ; how deep is your stack?
+        ; 2nd pass!
+        ;-----------------------------------------------------------------------
+        ; (actually more like 1.5 because we aren't reading the code again)
         ;
+        ; we calculate the stats above first becasue no more data will need
+        ; to be written to the heap and we want to re-use HL for the 2nd pass
+        ;
+        ld      HL,     [defer]         ; start of deferred expr chain
+        call    @expr                   ; re-evaluate deferred expressions
+
+        ; how deep is your stack?
+        ;-----------------------------------------------------------------------
         ; since counting towards zero is faster on Z80 we start at the top and
         ; walk down the stack slots checking if each contains its own address
         ;
         ; WARN: this code assumes that stack is at its top (e.g. $FD00),
         ;       because this code is in the top-most init routine
         ; 
-        ld      HL,     0               ; load HL with the stack pointer
+@end:   ld      HL,     0               ; load HL with the stack pointer
         add     HL,     SP              ; (oddly, there's no `ld HL, SP`!)
         ld      BC,     256/2           ; begin at the top, report remaining
         ;-----------------------------------------------------------------------
@@ -343,6 +351,71 @@ main:
 @bytes  .BYTE   " bytes", 0
 @strs   .BYTE   "; STACK: $00", 0
 @peak   .BYTE   " free", 0
+
+        ; re-evaluate deferred expressions:
+        ;=======================================================================
+        ; once all files are assembled, any labels not defined in earlier
+        ; experssions should have their values by now. we walk the deferred
+        ; expressions attempting to evaluate them and patch their values
+        ; into the code-segment
+        ;
+        ; - - - -+--------------+-------+-----+-----+------+----+------+------+
+        ; <-heap | <expr> ¦ len | param | col | row | file | pc | code | link |
+        ; - - - -+--------------+-------+-----+-----+------+----+------+------+
+        ;
+        ;       link            addr to next deferred expr in chain
+        ;       code            addr in code-segment to write value when known
+        ;       pc              virtual program-counter at the time
+        ;       file            addr to file-name record
+        ;       row             line number of expr
+        ;       col             column number of expr
+        ;       param           parameter & flag-byte for value
+        ;       len             length of expression bytecode
+        ;       expr            expression bytecode
+        ;
+        ; follow this link, but finish if it's $0000
+        ;
+@expr:  ld      A,      [HL]            ; read next expr addr, lo-byte
+        inc     HL                      ; move *up* to link addr hi-byte
+        ld      H,      [HL]            ; read next expr addr, hi-byte
+        ld      L,      A               ; (complete the addr)
+        or      H                       ; is the link addr $0000?
+        ret     z                       ; return at end of chain
+
+        push    HL
+
+        ; set the code-segment addr and virtual
+        ; program-counter for the deferred expr:
+        ;
+        call    @word                   ; get the code-segment addr
+        ld      IYH,    B               ;  from the deferred expression
+        ld      IYL,    C               ;  and set current code-segment addr
+        call    @word                   ; likewise get and set
+        ld      IXH,    B               ;  the virtual program-counter
+        ld      IXL,    C               ;  from the deferred expression
+
+        call    @word                   ; if the expr errors during evaluation
+        ld      [file], BC              ;  return the file, line and column
+        call    @word                   ;  numbers of the deferred expr
+        ld      [erow], BC              ; ...
+        call    @word                   ;
+        ld      [param_ecol],   BC      ;
+
+        dec     HL                      ; lastly, the addr of the expr bytecode
+        call    evalExpr                ; evaluate! returns result in DE
+
+        ; FIXME patch in result -- this should be reusing nextParam which
+        ;       has the logic but will need reworking to be reused in 2nd pass
+        ;
+        pop     HL
+        jr      @expr
+
+        ;-----------------------------------------------------------------------
+@word:  dec     HL                      ; pop a word off the heap into BC
+        ld      B,      [HL]            ; (used for pulling fields from
+        dec     HL                      ;  the deferred expr record)
+        ld      C,      [HL]            ; ...
+        ret
 
 
 assembleFile:
