@@ -174,7 +174,7 @@ errPrintQuit:
 
         ; print file-name:
         ld      DE,     [file]          ; addr of current file-name
-        call    printHeapStr            ; print the backwards string
+        call    printSymbolName         ; print the backwards string
 
         ; print start-of-word line number and column:
         ; (this is not the same as the line/col of last char read
@@ -183,16 +183,16 @@ errPrintQuit:
         ld      DE,     @row
         call    osPrintStrZ
         ld      BC,     [wrow]
-        call    printHexWord
+        call    printHexNumber
         ld      DE,     @col
         call    osPrintStrZ
         ld      A,      [wcol]
-        call    printHexByte
+        call    printHexNumber
 
         jp      osQuit
 
 @file   .BYTE   " FILE: ", 0
-@row    .BYTE   "\r\n LINE: $", 0
-@col    .BYTE   " COL: $", 0
+@row    .BYTE   "\r\n LINE: ", 0
+@col    .BYTE   " COL: ", 0
 
 .ENDB

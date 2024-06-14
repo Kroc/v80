@@ -1,7 +1,5 @@
 ; v80 test file
 ;
-.i	"z80.v80"
-
 #true	$1			; define constant
 #true	#true - $1		; redefine constant
 #thing	!<-#true		; multiple unary operators
@@ -14,7 +12,7 @@
 ; a hexadecimal number first on the line
 ; sets the virtual program-counter
 ;
-$0000	:boot			; label may follow PC
+$0100	:boot			; label may follow PC
 
 ; start the line with `$` to set the virtual program-counter
 ; using an expression. be aware that forward-references to
@@ -32,3 +30,7 @@ $	( $ + $0100 )		; parenthesis require internal spaces
 ; a string is simply a series of bytes
 ;
 	.b "hello, world" $00
+
+; include file:
+;
+.i	"z80.v80"

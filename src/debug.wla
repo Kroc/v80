@@ -216,8 +216,6 @@ _printLabel:
         push    DE
         push    HL
 
-        ex      DE,     HL              ; use DE for label record addr
-
         ; label addr:
         ;-----------------------------------------------------------------------
         ld      HL,     @line+1         ; position in prepared string
@@ -319,6 +317,7 @@ _printLabel:
 ;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 .IFDEF  DEBUG_DUMP
         ;///////////////////////////////////////////////////////////////////////
+        ld      DE,     \1
         call    _dumpCode
 .ENDIF  ;///////////////////////////////////////////////////////////////////////
 ;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -336,7 +335,6 @@ _dumpCode:
         ;
         push    IY                      ; code-segment end address
         pop     HL                      ; transfer to HL for SBC HL, DE
-        ld      DE,     code            ; code-segment start address
         xor     A                       ; clear carry
         sbc     HL,     DE              ; HL = HL - DE
         ex      DE,     HL              ; swap length to DE, start addr to HL

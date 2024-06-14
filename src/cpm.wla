@@ -16,6 +16,7 @@
 ;       osPrintNewline                  print a newline (sys/OS-dependant)
 ;       osPrintChar                     print a single character
 ;       osPrintStrZ                     print a null-terminated string
+;       osPrintSpaces                   print a bunch of spaces
 ;
 ; memory layout:
 ;-------------------------------------------------------------------------------
@@ -256,8 +257,6 @@ osParseParameters:
 
 _infile:                                ; command-line input file-name param
         .BYTE   "            ", 0       ;
-        .BYTE   ASCII_CR, ASCII_LF      ; (space saving trick when we
-        .BYTE   ASCII_CR, ASCII_LF      ;  print the output file-name)
 _outfile:                               ; command-line output file-name param
         .BYTE   "            ", 0       ;
 
@@ -397,13 +396,6 @@ osFileOpen:
         ;
         ld      HL,     [@fcb]          ; retrieve new FCB addr
         call    _setFCBFileName         ; copy and validate file-name to FCB
-
-.IFNDEF DEBUG
-        ;///////////////////////////////////////////////////////////////////////
-        call    osPrintStrZ             ; print file-name (DE)
-        ld      A,      ':'             ;  and a colon
-        call    osPrintChar             ;  ...
-.ENDIF  ;///////////////////////////////////////////////////////////////////////
 
         ; now attempt to open the file:
         ; (CP/M will check if the file exists)
@@ -661,14 +653,6 @@ osSaveCode:
         and     %01111111               ;  is $00 or $80 (every 128 bytes)
         jr      nz,     -               ; if not, keep padding
 
-.IFNDEF DEBUG
-        ;///////////////////////////////////////////////////////////////////////
-        ld      DE,     _outfile-4      ; print output file-name (with some
-        call    osPrintStrZ             ;  line-breaks placed beforehand)
-        ld      A,      ':'             ; (note HL & BC are preserved)
-        call    osPrintChar             ; ...
-.ENDIF  ;///////////////////////////////////////////////////////////////////////
-
         ex      DE,     HL              ; transfer end-addr to DE for later
         ld      BC,     128             ; pre-load sector size for later
         exx                             ; preserve DE & BC for now
@@ -708,12 +692,7 @@ osSaveCode:
         ld      C',     BDOS_WRITESEQ   ; write 1 sector (128 bytes)
         call    BDOS                    ;  of data...
         and     A                       ; TODO: out of disk-space error?
-.IFNDEF DEBUG
-        ;///////////////////////////////////////////////////////////////////////
-        ld      E',     '.'             ; for every sector written
-        ld      C',     BDOS_CONIO      ;  print a dot
-        call    BDOS                    ; ...
-.ENDIF  ;///////////////////////////////////////////////////////////////////////
+
         exx                             ; restore end-addr (DE)
         ld      HL,     [@loop+1]       ; get current addr in binary
         add     HL,     BC              ; move to next sector (BC=128)
@@ -777,22 +756,11 @@ osGetChar:
 
 _readSector:
         ;=======================================================================
-        exx                             ; preserve BC/DE/HL
-
-        ; if debugging is off, print a dot for each sector read;
-        ; this will suffice for a rough progress indicator
-.IFNDEF DEBUG
-        ;///////////////////////////////////////////////////////////////////////
-        ld      E',     '.'             ; = character to print
-        ld      C',     BDOS_CONOUT     ; = BDOS function to call
-        call    BDOS                    ; print a dot to screen
-.ENDIF  ;///////////////////////////////////////////////////////////////////////
-
         ld      A,      <cpm_dma        ; reset read index
         ld      [osGetChar@index+1],    A
 
         ; read 1 sector from disk:
-        ;
+        exx                             ; preserve BC/DE/HL
         ld      C',     BDOS_READSEQ    ; select BDOS function number
 @fcb    ld      DE',    cpm_fcb         ; select FileControlBlock
         call    BDOS                    ; do the disk read
@@ -871,39 +839,48 @@ osPrintStrZ:
         exx                             ; swap to shadow registers
 
         ld      E',     A               ; BDOS param for character
-        ld      C',     BDOS_CONIO      ; BDOS function to use
+        ld      C',     BDOS_CONOUT     ; BDOS function to use
         call    BDOS                    ; print character!
 
         exx                             ; return to normal registers
         jr      -                       ; keep looping until null-terminator
 
 
-;osPrintBStr:
+osPrintSpaces:
 ;===============================================================================
-; print a length-prefixed string:
+; print a bunch of spaces:
 ;
-; in:   DE              string-addr, first byte is length in bytes, 1-based
-; out:  DE              DE is advanced according to the length of the string
-;       HL              (preserved)
-;       A, BC           (clobbered)
+; in:   A               number of spaces to print, limited to 32 to match max.
+;                       symbol name length (+1) and not waste too many bytes
+; out:  BC, DE, HL      (preserved)
 ;-------------------------------------------------------------------------------
-;        push    HL                      ; preserve HL coming in
-;        ld      A,      [DE]            ; read string-length
-;        ld      B,      A               ; use as counter
-;        ;----------------------------------------------------------------------
-;-       inc     DE                      ; (move to next byte)
-;        ld      A,      [DE]            ; read a character
-;        exx                             ; swap to shadow registers
-;
-;        ld      E',     A               ; BDOS param for character
-;        ld      C',     BDOS_CONIO      ; BDOS function to use
-;        call    BDOS                    ; print character!
-;
-;        exx                             ; return to normal registers
-;        djnz    -                       ; loop string length
-;        ;----------------------------------------------------------------------
-;        inc     DE                      ; (step over last byte)
-;        pop     HL                      ; restore original HL
-;        ret
-;
+        exx                             ; touch nothing!
+
+        ; printing anything in CP/M is incredibly slow; if setting up BDOS
+        ; calls was not slow enough, each character has to go through a lot
+        ; of logic to handle device mapping and checking for control keys
+        ;
+        ; there is a 'print string' call that avoids calling BDOS for each
+        ; character, BUT THEY CHOSE THE WORST POSSIBLE STRING TERMINATOR, "$".
+        ; this cannot be changed in CP/M 2.2, meaning we cannot reliably print
+        ; arbitrary strings, unless by one character at a time
+        ;
+        ; thankfully, if we only want to print a bunch of spaces then we know
+        ; we won't encounter a "$". this routine does a lot of nonsense to
+        ; print from the middle of a string of spaces based on count
+        ;
+        ld      HL',    @spc+32         ; from the end of the str of spaces
+        ld      C',     A               ; (load count in BC')
+        ld      B',     0               ; ...
+        sbc     HL',    BC'             ; go back BC' bytes from end of str
+        ex      DE',    HL'             ; swap str addr to DE' for CP/M
+        ld      C',     BDOS_PRNSTR     ; use the print-string function
+        call    BDOS                    ; print!
+
+        exx                             ; you saw nothing
+        ret                             ; right?
+
+@spc:   .DSB    32, ASCII_SPC
+        .BYTE   '$'                     ; CP/M string terminator
+
 .ENDB

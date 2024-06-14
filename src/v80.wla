@@ -131,7 +131,7 @@ const:  .ADDR   $000                    ; addr of last const dictionary-entry
 ; name is stored as a symbol on the heap and its addr is used as a reference.
 ; this avoids duplicating names for files included multiple times
 ;
-file:   .ADDR   $0000                   ; addr of current file-name
+file:   .ADDR   $0000                   ; addr of current file-name record
 files:  .ADDR   $0000                   ; dictionary entry point for file-names
 
 ccol:   .BYTE   $00                     ; last char read column-number
@@ -192,12 +192,12 @@ main:
         ; print addresses:
         ;
         ld      DE,     @addrc          ; start with "CODE @ ..."
-        ld      HL,     code            ; start addr of code-segment
-        call    @print                  ; print string and value
-        ld      HL,     [heap]          ; start addr of heap
-        call    @print                  ; print next string and value
-        ld      HL,     [sp]            ; start addr of stack
-        call    @print                  ; print next string and value
+        ld      BC,     code            ; start addr of code-segment
+        call    @echov                  ; print string and value
+        ld      BC,     [heap]          ; start addr of heap
+        call    @echov                  ; print next string and value
+        ld      BC,     [sp]            ; start addr of stack
+        call    @echov                  ; print next string and value
         call    osPrintNewline
         call    osPrintNewline
 
@@ -226,7 +226,7 @@ main:
         ld      HL,     [heap]          ; start the heap
         call    assembleFile            ; assemble! (DE is file-name str addr)
 
-        ; assembly complete, calculate RAM usage:
+        ; 1st pass complete, calculate RAM usage:
         ;
         ; +----------------+----------------------+---------------+
         ; | code-segment-> |     <-free RAM->     | <-heap        |
@@ -306,50 +306,48 @@ main:
 
         ; print final stats:
         ;-----------------------------------------------------------------------
+        call    osPrintNewline
         ld      DE,     @strc           ; string to print ("CODE")
-@code   ld      HL,     $0000           ; value to print (code size)
+@code   ld      BC,     $0000           ; value to print (code size)
         call    @size                   ; ...
         ld      DE,     @strh           ; string to print ("HEAP")
-@heap   ld      HL,     $0000           ; value to print (heap size)
+@heap   ld      BC,     $0000           ; value to print (heap size)
         call    @size                   ; ...
         ld      DE,     @strf           ; string to print ("FREE")
-@free   ld      HL,     $0000           ; value to print (free bytes)
+@free   ld      BC,     $0000           ; value to print (free bytes)
         call    @size                   ; ...
         ld      DE,     @strs           ; string to print ("STACK")
-        call    osPrintStrZ             ; ...
+        call    echoCommentStr          ; ...
 @stack  ld      A,      $0000           ; lastly, the number of bytes free
         call    printHexByte            ;  on the stack at peak usage
         ld      DE,     @peak           ;  i.e. the deepest the stack got,
         call    osPrintLn               ;  not the current level
 
-        .dumpCode                       ; DEBUG_DUMP: hex-dump the code-segment
+        .dumpCode code                  ; DEBUG_DUMP: hex-dump the code-segment
 
         jp      osQuit                  ; jump to CP/M to quit the program
 
         ; print calculated address:
         ;-----------------------------------------------------------------------
-@print: call    osPrintStrZ             ; print string passed in DE
-        ld      A,      H               ; print HL in hi-lo byte order
-        call    printHexByte            ; ...
-        ld      A,      L               ; ..
-        jp      printHexByte            ; .
+@echov: call    osPrintStrZ             ; print string passed in DE
+@word:  jp      printHexNumber          ; print hex number BC with sigil
 
-@addrc  .BYTE   "; CODE @ $", 0
-@addrh  .BYTE   ", HEAP @ $", 0
-@addrs  .BYTE   ", STACK @ $", 0
+@addrc  .BYTE   "; CODE @ ", 0
+@addrh  .BYTE   ", HEAP @ ", 0
+@addrs  .BYTE   ", STACK @ ", 0
 
         ; print a string and append "bytes":
         ;-----------------------------------------------------------------------
-@size:  call    @print                  ; print string (DE) and value (HL)
+@size:  call    echoCommentStr          ; print string (DE) as comment
+        call    printHexNumber          ;  then print value (BC)
         ld      DE,     @bytes          ; append " bytes"
         jp      osPrintLn               ;  and return
 
-@strc   .BYTE   "\r\n\r\n"              ; TODO: this is CP/M specific!!
-        .BYTE   "; CODE : $", 0
-@strh   .BYTE   "; HEAP : $", 0
-@strf   .BYTE   "; FREE : $", 0
+@strc   .BYTE   "CODE : ", 0
+@strh   .BYTE   "HEAP : ", 0
+@strf   .BYTE   "FREE : ", 0
 @bytes  .BYTE   " bytes", 0
-@strs   .BYTE   "; STACK: $00", 0
+@strs   .BYTE   "STACK: $00", 0
 @peak   .BYTE   " free", 0
 
         ; re-evaluate deferred expressions:
@@ -387,18 +385,18 @@ main:
         ; set the code-segment addr and virtual
         ; program-counter for the deferred expr:
         ;
-        call    @word                   ; get the code-segment addr
+        call    popw                    ; get the code-segment addr
         ld      IYH,    B               ;  from the deferred expression
         ld      IYL,    C               ;  and set current code-segment addr
-        call    @word                   ; likewise get and set
+        call    popw                    ; likewise get and set
         ld      IXH,    B               ;  the virtual program-counter
         ld      IXL,    C               ;  from the deferred expression
 
-        call    @word                   ; if the expr errors during evaluation
+        call    popw                    ; if the expr errors during evaluation
         ld      [file], BC              ;  return the file, line and column
-        call    @word                   ;  numbers of the deferred expr
+        call    popw                    ;  numbers of the deferred expr
         ld      [erow], BC              ; ...
-        call    @word                   ;
+        call    popw                    ;
         ld      [param_ecol],   BC      ;
 
         dec     HL                      ; lastly, the addr of the expr bytecode
@@ -411,7 +409,7 @@ main:
         jr      @expr
 
         ;-----------------------------------------------------------------------
-@word:  dec     HL                      ; pop a word off the heap into BC
+popw:   dec     HL                      ; pop a word off the heap into BC
         ld      B,      [HL]            ; (used for pulling fields from
         dec     HL                      ;  the deferred expr record)
         ld      C,      [HL]            ; ...
@@ -427,7 +425,10 @@ assembleFile:
 ; out:  HL              (preserved) -- stuff may be pushed to heap
 ;       A, BC, DE       (clobbered)
 ;-------------------------------------------------------------------------------
+        call    echoCommentNewline
         call    osFileOpen              ; use the OS to open the file (DE)
+        call    echoCommentLn           ; (echo the file-name
+        call    echoCommentBar          ;  and a dividing line)
 
         ; search the file-name dictionary and return the address
         ; of the file-name record (in BC), adding it if not present
@@ -459,19 +460,19 @@ assembleFile:
         ;=======================================================================
         ; define constant:
         ;-----------------------------------------------------------------------
-        ; because constants can be redefined we don't search for the symbol yet
-        ; -- we need the value first! get only the constant name:
-        ;
-@const: call    readWord                ; read symbol name into buffer
-        call    nextExpr                ; try evaluate the following expression
-        jp      c,      errUnexpDefer   ; cannot contain forward-references!
-        push    BC                      ; keep ahold of the const value
+@const: call    readWord                ; read symbol name into word buffer
 
+        ; evaluating the expression that follows may overwrite the word buffer!
+        ; e.g. if a const or label is used in the expr, so we push the const
+        ; name to the heap ahead of time. the expr that follows will push to
+        ; the heap if there's a forward-reference, corrupting the constant,
+        ; but constants cannot use forward-references so it's an error anyway
+        ;
         ld      DE,     const           ; use constant dictionary
         call    findSymbol              ; check if constant already exists
-        jr      nz,     +               ; if yes, skip to writing the value
+        jr      nz,     +               ; if yes, skip pushing name
 
-        ; push a new constant to the heap:
+        ; define new const name on heap:
         ;-----------------------------------------------------------------------
         ld      DE,     [const]         ; read prev const addr
         dec     HL                      ; pre-decrement heap to empty byte
@@ -481,8 +482,10 @@ assembleFile:
         ld      [const],HL              ; update entry point with heap addr
 
         ; push the const name:
+        ; NOTE: findSymbol has returned the length of the const name in BC
+        ;
+        ld      DE,     word            ; copy const name from word-buffer
         ex      DE,     HL              ; copy goes *from* [HL] *to* [DE]...
-        ld      HL,     word            ; get word-buffer addr
         inc     C                       ; length +1 to include the length-byte
 
         ; note that LDDR is post-decrement (copy-then-decrement), whereas
@@ -491,16 +494,39 @@ assembleFile:
         ;
         dec     DE                      ; adjust heap for post-decrement copy
         lddr                            ; copy BC bytes from [HL] to [DE]!
-        ex      DE,     HL              ; swap back to heap in HL
 
-        ; push const value:
-+       pop     BC                      ; get back the const value to set
+        ; DE is the addr at the bottom of the heap where the value of the
+        ; const will be written. copy this to HL and decrement again to
+        ; ensure the heap addr in HL will include the const value
+        ;
+        ld      H,      D               ; LDDR does an additional decrement
+        ld      L,      E               ;  so we save one instruction (:P)
+        inc     DE                      ;  by accomodating for it, correcting
+        dec     HL                      ;  DE up so HL only needs one dec
+
+        ; if the const already existed, DE is the addr
+        ; in the heap of the const's value to overwrite
+        ;
++       push    DE                      ; before parsing value, preserve addr
+
+        ; get const value:
+        ;-----------------------------------------------------------------------
+        call    nextExpr                ; try evaluate the following expression
+        jp      c,      errUnexpDefer   ; cannot contain forward-references!
+
+        pop     DE                      ; restore const addr
+        ex      DE,     HL              ; swap to HL for writing
+
+        dec     HL                      ; pre-decrement heap to empty byte
         ld      [HL],   B               ; because we're writing downwards
         dec     HL                      ;  in RAM, write value hi-byte first
         ld      [HL],   C               ;  followed by value lo-byte
 
-        ; only one constant can be defined per line
-        jr      @line
+        ex      DE,     HL              ; restore real heap addr to HL
+        ld      DE,     [const]         ; echo const name and value
+        call    echoConst               ; ...
+
+        jr      @line                   ; only one const defined per line
 
         ;=======================================================================
         ; define label:
@@ -509,7 +535,8 @@ assembleFile:
 
         ; if the label has been referenced in an expression, but not yet
         ; defined, carry will be set. in this case we want to 'fill in the
-        ; blank' so that deferred expressions using this label can be evaluated
+        ; blank' so that deferred expressions using this label can be
+        ; re-evaluated in the 2nd pass
         ;
         jr      c,      +               ; does it exist as a forward-reference?
         
@@ -770,17 +797,7 @@ assembleFile:
         ld      A,      [ccol]          ; col is only 1 byte
         push    AF                      ;  a bit of a waste :|
 
-.IFNDEF DEBUG
-        ;///////////////////////////////////////////////////////////////////////
-        ld      A,      '['
-        call    osPrintChar
-.ENDIF  ;///////////////////////////////////////////////////////////////////////
         call    assembleFile            ; assemble the included file
-.IFNDEF DEBUG
-        ;///////////////////////////////////////////////////////////////////////
-        ld      A,      ']'
-        call    osPrintChar
-.ENDIF  ;///////////////////////////////////////////////////////////////////////
 
         pop     AF                      ; pop column number
         ld      [ccol], A               ; (only 1 byte)
@@ -788,6 +805,8 @@ assembleFile:
         ld      [crow], BC              ; restore current file row-number
         pop     BC                      ; pop file-name addr
         ld      [file], BC              ; ...
+
+        call    echoCommentBar
 
         ; skip any whitespace / comment following the file-name and return
         ; to the line context (other keywords cannot follow `.i`)
@@ -1262,9 +1281,9 @@ pushLabel:
 ;
 ; in:   cf              carry-flag set indicates a forward-reference!
 ;       HL              heap position to write new label
-;       BC              word-length (set by `readWord`)
+;       BC              word-length (set by `getLabel`)
 ;       word            the label is assumed to be in the word-buffer,
-;                       i.e. after calling `readWord`
+;                       i.e. after calling `getLabel`
 ; out:  HL              heap position is advanced (downwards!)
 ;       A, BC, DE       (clobbered)
 ;-------------------------------------------------------------------------------
@@ -1327,12 +1346,14 @@ pushLabel:
 
 .IFDEF  DEBUG_LABELS
         ;///////////////////////////////////////////////////////////////////////
-        push    HL
-        ld      HL,     [label]         ; addr of last label defined
+        ld      DE,     [label]         ;  if it's not deferred (B=1)
         call    _printLabel             ; dump label definition
-        pop     HL
 .ENDIF  ;///////////////////////////////////////////////////////////////////////
 
+        dec     B                       ; only echo the label
+        ret     nz                      ;  if it's not deferred (B=1)
+        ld      DE,     [label]         ; (`RET` is faster than `CALL`)
+        jp      echoLabel               ; echo label name and value
         ret
 
 
@@ -1452,47 +1473,164 @@ parseInstruction:
         jp      emitOpcode
 
 
-;PrintCommentLn:
+echoCommentBar:
 ;===============================================================================
-; prints a "comment" to screen: i.e. "; " + str + newline
+; echoes a dividing line to the screen:
 ;
-; in:   DE              string-addr, must be 0-terminated
-; out:  DE              DE is advanced according to the length of the string
-;       HL, BC          (preserved)
+; out:  HL, DE, BC      (preserved)
 ;       A               (clobbered)
 ;-------------------------------------------------------------------------------
-;        ld      A,      ';'             ; prefix string with `; `
-;        call    osPrintChar             ; ...
-;        ld      A,      ASCII_SPC       ; ..
-;        call    osPrintChar             ; .
-;        jp      osPrintLn               ; print string from DE + newline
-
-
-printHeapStr:
-;===============================================================================
-; print a backwards, length-prefixed string:
-;
-; in:   DE              string addr, first byte is length
-; out:  DE              string addr is decremented according to length
-;       HL              (preserved)
-;       A, BC           (clobbered)
-;-------------------------------------------------------------------------------
-        ld      A,      [DE]            ; get string length
-        ld      B,      A               ; use as char counter
-        ;-----------------------------------------------------------------------
--       dec     DE                      ; (move to next char in string)
-        ld      A,      [DE]            ; read a character
-        call    osPrintChar             ;  and print it
-        djnz    -                       ;  for all chars in string
+        push    DE
+        ld      DE,     @bar            ; use the pre-defined string below
+        call    osPrintLn               ; faster than repeating osPrintChar :(
+        pop     DE
         ret
 
+@bar:   .BYTE   ";------------------------------------", 0
+
+
+echoCommentLn:
+;===============================================================================
+; echoes a "comment" to screen: i.e. "; " + str + newline
+;
+; in:   DE              string-addr, must be 0-terminated
+; out:  HL, DE, BC      (preserved)
+;       A               (clobbered)
+;-------------------------------------------------------------------------------
+        call    echoCommentStr          ; print string in DE prefixed with "; "
+        jp      osPrintNewline          ; print system-dependant newline
+
+
+echoCommentStr:
+;===============================================================================
+; echoes the opening comment marker and the given string:
+;
+; in:   DE              string-addr, must be 0-terminated
+; out:  HL, DE, BC      (preserved)
+;       A               (clobbered)
+;-------------------------------------------------------------------------------
+        call    echoCommentMarker       ; prefix string with "; "
+        push    DE                      ; preserve string starting addr
+        call    osPrintStrZ             ; echo string in DE
+        pop     DE                      ; restore string starting addr
+        ret                             ; (echo allows string to be reused)
+
+
+echoCommentNewline:
+;===============================================================================
+; echoes an empty comment line, i.e. "; " + newline
+;
+; out:  A               (clobbered)
+;       BC, DE, HL      (preserved)
+;-------------------------------------------------------------------------------
+        call    echoCommentMarker
+        jp      osPrintNewline
+
+
+echoCommentMarker:
+;===============================================================================
+; echoes only an opening comment marker:
+;
+; out:  A               (clobbered)
+;       BC, DE, HL      (preserved)
+;-------------------------------------------------------------------------------
+        ld      A,      CHAR_COMMENT    ; print "; "
+        call    osPrintChar             ; ...
+        ld      A,      ASCII_SPC       ; ..
+        jp      osPrintChar             ; .
+
+
+echoConst:
+;===============================================================================
+; echos a constant name and value:
+;
+; in:   DE              symbol address from dictionary
+; out:  HL              (preserved)
+;       A, BC, DE       (clobbered)
+;-------------------------------------------------------------------------------
+        dec     DE                      ; move to string-length byte
+        call    printSymbolName         ; print symbol name and return length
+        jr      _echoValue              ; print constant value
+
+
+echoLabel:
+;===============================================================================
+; echos a label name and value:
+;
+; in:   DE              symbol address from dictionary
+; out:  HL              (preserved)
+;       A, BC, DE       (clobbered)
+;-------------------------------------------------------------------------------
+        dec     DE                      ; move to string-length byte
+        call    printSymbolName         ; print symbol name and return length
+        dec     DE                      ; skip flag byte in label record
+
+        ; fall through
+        ; ...
+
+_echoValue:
+        ;=======================================================================
+        push    HL                      ; (preserve unrelated HL)
+        
+        ld      A,      WORD_LEN+1
+        sub     C
+        call    osPrintSpaces
+        ex      DE,     HL              ; 
+        call    popw                    ; read value from symbol record
+        call    printHexNumber          ; print value with "$" sigil
+        pop     HL                      ; (restore unrealted HL)
+        jp      osPrintNewline          ; + newline
+
+
+printSymbolName:
+;===============================================================================
+; prints a backwards, length-prefixed symbol name:
+;
+; in:   DE              symbol addr positioned at length byte
+; out:  DE              addr returned is positioned at last char in symbol name
+;       BC              symbol name length
+;       HL              (preserved)
+;       A               (clobbered)                BC (out)
+;                                                  |
+;                - - - -+---+---+---+---+---+---+--V--+------+
+;                <-heap | l | o | b | m | y | s | len | link |
+;                - - - -+---+---+---+---+---+---+-----+------+
+;                       ^ DE (out)              ^ DE (in)
+;
+;-------------------------------------------------------------------------------
+        ex      DE,     HL              ; use HL for compactness
+        ld      B,      [HL]            ; get length of symbol name in B
+        ld      C,      B               ;  and C; after printing B=0
+        ;-----------------------------------------------------------------------
+-       dec     HL                      ; (move to next char in string)
+        ld      A,      [HL]            ; read a character
+        call    osPrintChar             ;  and print it
+        djnz    -                       ;  for all chars in string
+        ;-----------------------------------------------------------------------
+        ex      DE,     HL              ; swap symbol addr to DE
+        ret
+
+
+printHexNumber:
+;===============================================================================
+; print a hexadecimal number with sigil:
+;
+; in:   BC              word to print
+; out:  BC, DE, HL      (preserved)
+;       A               (clobbered)
+;-------------------------------------------------------------------------------
+        ld      A,      CHAR_HEX
+        call    osPrintChar
+
+        ; fall through
+        ; ...
 
 printHexWord:
 ;===============================================================================
 ; print a word as hexadecimal:
 ;
 ; in:   BC              word to print
-; out:  BC              (preserved)
+; out:  BC, DE, HL      (preserved)
 ;       A               (clobbered)
 ;-------------------------------------------------------------------------------
         ld      A,      B
@@ -1507,7 +1645,7 @@ printHexByte:
 ; print a byte as hexadecimal:
 ;
 ; in:   A               byte to print
-; out:  BC              (preserved)
+; out:  BC, DE, HL      (preserved)
 ;       A               (clobbered)
 ;-------------------------------------------------------------------------------
         push    BC                      ; preserve BC coming in
@@ -1525,7 +1663,7 @@ getHexByte:
 ;
 ; in:   A               input byte
 ; out:  BC              ASCII hex digits in hi,lo (printable) order
-;       DE|HL           (preserved)
+;       DE, HL          (preserved)
 ;       A               (clobbered)
 ;-------------------------------------------------------------------------------
         ld      B,      A               ; preserve for 2nd digit
