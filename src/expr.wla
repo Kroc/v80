@@ -171,6 +171,15 @@ nextParam:
         ;       len             length of expression bytecode
         ;       expr            expression bytecode
         ;
+        ; link this expression to the previous one:
+        ;
+@defer: ld      DE,     [defer]         ; read prev defer addr
+        dec     HL                      ; pre-decrement heap to empty byte
+        ld      [HL],   D               ; write prev defer addr hi-byte
+        dec     HL                      ; (this is the heap addr we want)
+        ld      [HL],   E               ; write prev defer addr lo-byte
+        ld      [defer],HL              ; update entry point with heap addr
+
         ; we need to push a bunch of values to the heap and the fastest way
         ; to write 16-bit values easily is... the stack! simply make the heap
         ; into the stack and we can PUSH our stuff on to it!
@@ -179,17 +188,9 @@ nextParam:
         ; push to our heap and then pop the address off when it returns,
         ; which has no effect on the values we're pushing
         ;
-@defer: ld      [sp],   SP              ; backup stack pointer
+        ld      [sp],   SP              ; backup stack pointer
         ld      SP,     HL              ; move stack to heap!
         ;-----------------------------------------------------------------------
-
-        ; link this expression to the previous one:
-        ; (since the heap address is in SP, we can reuse HL)
-        ;
-        ld      HL,     [defer]         ; get previous deferred expr address
-        push    HL                      ; write to heap
-        ld      [defer],SP              ; write heap addr to the entry point!
-
         ; push the current code-segment address; this is where
         ; the expression result will be filled in after evaluation
         push    IY
@@ -541,6 +542,7 @@ parseExpr:
         ld      A,      <expr           ; start with highest addr (expr-start)
         sub     A,      L               ; subtract lowest addr (expr-end)
         ld      C,      A               ; this is the expr length (1-based)
+        inc     C                       ; +1 to include null-terminator
         pop     HL                      ; restore heap addr to HL
 
         ; because the expression could not be evaluated

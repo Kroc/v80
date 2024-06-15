@@ -266,7 +266,7 @@ main:
         ; we calculate the stats above first becasue no more data will need
         ; to be written to the heap and we want to re-use HL for the 2nd pass
         ;
-        ld      HL,     [defer]         ; start of deferred expr chain
+        ld      HL,     defer           ; start of deferred expr chain
         call    @expr                   ; re-evaluate deferred expressions
 
         ; how deep is your stack?
@@ -380,7 +380,7 @@ main:
         or      H                       ; is the link addr $0000?
         ret     z                       ; return at end of chain
 
-        push    HL
+        push    HL                      ; preserve addr to snap back to
 
         ; set the code-segment addr and virtual
         ; program-counter for the deferred expr:
@@ -921,9 +921,9 @@ readChar:
         ld      [char], A               ; retain returned character
 .IFDEF  DEBUG
         ;///////////////////////////////////////////////////////////////////////
-        push    AF
-        call    osPrintChar             ; print each character as we receive it
-        pop     AF                      ; (zero-flag must be preserved)
+        ;push    AF
+        ;call    osPrintChar             ; print each character as we receive it
+        ;pop     AF                      ; (zero-flag must be preserved)
 .ENDIF  ;///////////////////////////////////////////////////////////////////////
         ret     z                       ; return on end-of-file
 
@@ -987,9 +987,9 @@ getFileID:
 ;       HL              if unknown, the file-name string is pushed to the heap
 ;       A               (clobbered)
 ;
-;                    ---+---+---+---+---+---+---+---+---+---+-----+------+
-;            < heap     | ? | e | m | a | n | e | l | i | f | len | link |
-;                    ---+---+---+---+---+---+---+---+---+---+-----+------+
+;              - - - ---+---+---+---+---+---+---+---+---+---+-----+------+
+;            <-heap     | ? | e | m | a | n | e | l | i | f | len | link |
+;              - - - ---+---+---+---+---+---+---+---+---+---+-----+------+
 ;                    DE ^   ^ HL (if file-name pushed)      ^ BC
 ;-------------------------------------------------------------------------------
         ; copy the forwards string file-name from the string-buffer into the
@@ -1095,10 +1095,10 @@ getConst:
         ; the address of the last byte of the const record is returned in DE.
         ; when we want to redefine a constant we can just walk up the bytes
         ;
-        ;          | DE
-        ;          v---------+---+---+---+---+---+---+-----+------+
-        ;  < heap  | lo | hi | t | s | n | o | c | # | len | link |
-        ;          +---------+---+---+---+---+---+---+-----+------+
+        ;         | DE
+        ;  - - - -v---------+---+---+---+---+---+---+-----+------+
+        ;  <-heap | lo | hi | t | s | n | o | c | # | len | link |
+        ;  - - - -+---------+---+---+---+---+---+---+-----+------+
         ;
         ex      DE,     HL              ; swap to HL for reg-loading
         ld      B,      [HL]            ; constant value hi-byte
@@ -1151,8 +1151,6 @@ getLabel:
 
         ; get the label's value:
         ; (this is meaningless for a forward-reference)
-        ; TODO: could we store the virtual program-counter
-        ;       here, saving 2 bytes in the expr record?
         ;
         ex      DE,     HL              ; swap to HL for reg-loading
         ld      B,      [HL]            ; symbol value hi-byte
@@ -1162,10 +1160,10 @@ getLabel:
         ; the address of the last byte of the label record is returned in DE.
         ; when we need to update the label value we can just walk up the bytes
         ;
-        ;          | DE
-        ;          v---------+------+---+---+---+---+---+---+-----+------+
-        ;  <-heap  | lo | hi | flag | l | e | b | a | l | : | len | link |
-        ;          +---------+------+---+---+---+---+---+---+-----+------+
+        ;         | DE
+        ;  - - - -v---------+------+---+---+---+---+---+---+-----+------+
+        ;  <-heap | lo ¦ hi | flag | l | e | b | a | l | : | len | link |
+        ;  - - - -+---------+------+---+---+---+---+---+---+-----+------+
         ;
         ex      DE,     HL              ; return last addr in DE
         ret
@@ -1267,15 +1265,6 @@ findSymbol:
 pushLabel:
 ;===============================================================================
 ; push a new label to the heap:
-; 
-; - the link addr to the previous label
-; - the label name length; here for faster searching
-; - the label name, written right-to-left -- the heap extends downwards!
-; - a flag to indicate a forward-reference:
-;   this happens when a label that does not exist is encountered in an expr,
-;   a placeholder label is added to the heap to be filled in later. this is
-;   necessary for the expr to be deferred until later to reference the label
-; - the label value; the current virtual program-counter
 ;
 ; WARN: does not check if the label already exists!
 ;
@@ -1287,6 +1276,21 @@ pushLabel:
 ; out:  HL              heap position is advanced (downwards!)
 ;       A, BC, DE       (clobbered)
 ;-------------------------------------------------------------------------------
+        ; create a new label record on the heap:
+        ;
+        ;       - - - -+-------+------+---+---+---+---+---+---+-----+------+
+        ;       <-heap | value | flag | l | e | b | a | l | : | len | link |
+        ;       - - - -+-------+------+---+---+---+---+---+---+-----+------+
+        ;
+        ; - the link addr to the previous label
+        ; - the label name length; here for faster searching
+        ; - the label name, written right-to-left -- heap extends downwards!
+        ; - a flag to indicate a forward-reference: this happens when a label
+        ;   that does not exist is encountered in an expr, a placeholder label
+        ;   is added to the heap to be filled in later. this is necessary for
+        ;   the expr to be re-evaluated in the 2nd pass
+        ; - the label value; the current virtual program-counter
+        ;
         ; link this label to the previous one:
         ; (these instructions don't modify carry...)
         ;
@@ -1354,7 +1358,6 @@ pushLabel:
         ret     nz                      ;  if it's not deferred (B=1)
         ld      DE,     [label]         ; (`RET` is faster than `CALL`)
         jp      echoLabel               ; echo label name and value
-        ret
 
 
 parseInstruction:
