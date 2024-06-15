@@ -22,6 +22,7 @@ $	( $ + $0100 )		; parenthesis require internal spaces
 
 ; .b and .w keywords output bytes / words to the code-segment
 ;
+	.w :w
 :w	.w :w			; simple back-reference
 	.w :b			; forward reference to a label, deferred expr
 :b	.b <:w			; back reference to a label

@@ -37,7 +37,6 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 .DEF    CHAR_EXPR_OUT   ')'             ; close parenthesis
 
 ;.DEF    DEBUG                           ; enable debug features
-;.DEF    DEBUG_LABELS                    ; dump label records when defined
 ;.DEF    DEBUG_DUMP                      ; dump binary after assembly
 
 .INC    "cpm.wla"                       ; CP/M bootstrap and interface
@@ -458,6 +457,50 @@ assembleFile:
         ret
 
         ;=======================================================================
+        ; when a label has been referred to in an expression in the past,
+        ; a placeholder is added to the dictionary awaiting definition --
+        ; now that time has come. `getLabel` has returned the addr (DE)
+        ; of the flag-byte of the label record so we can flip the flag
+        ; and fill in the true value of the label
+        ;
+-       ex      DE,     HL              ; (swap label addr to HL)
+        ld      [HL],   1               ; set flag byte to indicate valid value
+        dec     HL                      ; decrement to label value, hi-byte
+        ld      B,      IXL             ; put virtual program-counter, hi-byte
+        ld      [HL],   B               ; ...
+        dec     HL                      ; decrement to label value, lo-byte
+        ld      C,      IXH             ; out virtual program-counter, lo-byte
+        ld      [HL],   C               ; ...
+        ex      DE,     HL              ; (return heap to HL)
+
+        ; FIXME: echo label when value is defined
+
+        jr      @next                   ; return to parsing
+
+        ;=======================================================================
+        ; define label:
+        ;-----------------------------------------------------------------------
+@label: call    getLabel                ; read label name and search for it
+
+        ; if the label has been referenced in an expression, but not yet
+        ; defined, carry will be set. in this case we want to 'fill in the
+        ; blank' so that deferred expressions using this label can be
+        ; re-evaluated in the 2nd pass
+        ;
+        jr      c,      -               ; does it exist as a forward-reference?
+
+        ; zero-flag will be set if the label either does not exist at all,
+        ; or was a forward-reference (we've eliminated forward-references
+        ; first), therefore if the label *does* exist we're trying to
+        ; define a label twice!
+        ;
+        jp      nz,     errRedefLabel   ; cannot redefine labels!
+
+        call    pushLabel               ; define new label on the heap
+
+        jr      @next                   ; return to parsing
+
+        ;=======================================================================
         ; define constant:
         ;-----------------------------------------------------------------------
 @const: call    readWord                ; read symbol name into word buffer
@@ -504,69 +547,41 @@ assembleFile:
         inc     DE                      ;  by accomodating for it, correcting
         dec     HL                      ;  DE up so HL only needs one dec
 
-        ; if the const already existed, DE is the addr
-        ; in the heap of the const's value to overwrite
+        ; get const value:
+        ;-----------------------------------------------------------------------
+        ; if the const already existed, DE is the heap addr of the const's
+        ; value to overwrite, otherwise DE is the *current* heap address
         ;
 +       push    DE                      ; before parsing value, preserve addr
 
-        ; get const value:
-        ;-----------------------------------------------------------------------
         call    nextExpr                ; try evaluate the following expression
         jp      c,      errUnexpDefer   ; cannot contain forward-references!
 
         pop     DE                      ; restore const addr
         ex      DE,     HL              ; swap to HL for writing
-
         dec     HL                      ; pre-decrement heap to empty byte
         ld      [HL],   B               ; because we're writing downwards
         dec     HL                      ;  in RAM, write value hi-byte first
         ld      [HL],   C               ;  followed by value lo-byte
-
         ex      DE,     HL              ; restore real heap addr to HL
-        ld      DE,     [const]         ; echo const name and value
-        call    echoConst               ; ...
+
+        ; echo const name and value:
+        ;-----------------------------------------------------------------------
+        ; echoes as v80 source code, so constant name first,
+        ; padded with spaces, and then the value
+        ;
+        push    BC                      ; value is already in BC, hold for now
+        ld      DE,     [const]         ; return to start of const record
+        dec     DE                      ; decrement to name-length byte
+        call    printSymbolName         ; print const name, length in BC
+        ld      A,      WORD_LEN+1      ; calculate number of spaces to print
+        sub     C                       ;  for const names up to 32 chars
+        call    osPrintSpaces           ; print padding spaces
+        pop     BC                      ; restore const value
+        call    printHexNumber          ;  and print it
+        call    osPrintNewline          ;  + newline
 
         jr      @line                   ; only one const defined per line
-
-        ;=======================================================================
-        ; define label:
-        ;-----------------------------------------------------------------------
-@label: call    getLabel                ; read label name and search for it
-
-        ; if the label has been referenced in an expression, but not yet
-        ; defined, carry will be set. in this case we want to 'fill in the
-        ; blank' so that deferred expressions using this label can be
-        ; re-evaluated in the 2nd pass
-        ;
-        jr      c,      +               ; does it exist as a forward-reference?
-        
-        ; zero-flag will be set if the label either does not exist at all,
-        ; or was a forward-reference (we've eliminated forward-references
-        ; first), therefore if the label *does* exist we're trying to
-        ; define a label twice!
-        ;
-        jp      nz,     errRedefLabel   ; cannot redefine labels!
-
-        call    pushLabel               ; define new label on the heap
-        jr      @next                   ; return to parsing
-
-        ;-----------------------------------------------------------------------
-        ; when a label has been referred to in an expression in the past,
-        ; a placeholder is added to the dictionary awaiting definition --
-        ; now that time has come. `getLabel` has returned the addr (DE)
-        ; of the last byte of the label record so we can walk up the
-        ; bytes and patch in the new value
-        ;
-+       ld      A,      IXL             ; virtual program-counter, lo-byte
-        ld      [DE],   A               ; ...
-        inc     DE                      ; move upwards to value hi-byte
-        ld      A,      IXH             ; virtual program-counter, hi-byte
-        ld      [DE],   A               ; ...
-        inc     DE                      ; move upwards to flag-byte
-        ld      A,      1               ; set flag byte to indicate valid value
-        ld      [DE],   A               ; ...
-
-        jr      @next                   ; return to parsing
 
         ;=======================================================================
         ; distinguish between newline and end-of-file:
@@ -1123,9 +1138,8 @@ getLabel:
 ;       BC              if label found, BC holds its value
 ;                       if label doesn't exist, **BC retains the name length**
 ;       DE              if label is a forward-reference (carry-set), then DE
-;                       is the addr of the lo-byte of the label value --
-;                       this is so that the label value can be patched in by
-;                       stepping DE forwards to the hi-byte and flag-byte
+;                       is the addr of the flag-byte -- this is so that the
+;                       true label value can be patched in
 ;       HL              (preserved)
 ;-------------------------------------------------------------------------------
         call    readWord                ; read label name into word buffer
@@ -1147,11 +1161,10 @@ getLabel:
         ld      A,      [DE]            ; read forward-reference flag byte
         rrca                            ; shift bit 0 into bit 7 AND carry!
         ccf                             ; flip carry so forward-reference = 1
-        dec     DE                      ; step past flag byte
+        ret     c                       ; return early on forward-reference
 
         ; get the label's value:
-        ; (this is meaningless for a forward-reference)
-        ;
+        dec     DE                      ; step past flag byte
         ex      DE,     HL              ; swap to HL for reg-loading
         ld      B,      [HL]            ; symbol value hi-byte
         dec     HL                      ; move to value lo-byte
@@ -1268,7 +1281,8 @@ pushLabel:
 ;
 ; WARN: does not check if the label already exists!
 ;
-; in:   cf              carry-flag set indicates a forward-reference!
+; in:   A               A must be zero (set by `getLabel`)
+;       cf              carry-flag set indicates a forward-reference!
 ;       HL              heap position to write new label
 ;       BC              word-length (set by `getLabel`)
 ;       word            the label is assumed to be in the word-buffer,
@@ -1331,8 +1345,8 @@ pushLabel:
         ; NOTE: LDDR has already decremented HL for us
         ;
         ccf                             ; forward-reference = 0, otherwise 1
-        rl      B                       ; shift carry flag into bit 0
-        ld      [HL],   B               ; B will be 0 or 1
+        rla                             ; shift carry flag into bit 0
+        ld      [HL],   A               ; A will be 0 or 1
 
         ; push the label value (virtual program-counter):
         ; if the label is a forward-reference, this value is ignored
@@ -1342,22 +1356,25 @@ pushLabel:
         ; the heap addr is in the right place
         ;
         dec     HL                      ; pre-decrement heap to empty byte
-        ld      A,      IXH             ; virtual program-counter hi-byte
-        ld      [HL],   A               ; ...
+        ld      B,      IXH             ; virtual program-counter hi-byte
+        ld      [HL],   B               ; ...
         dec     HL                      ; pre-decrement heap to empty byte
-        ld      A,      IXL             ; virtual program-counter lo-byte
-        ld      [HL],   A               ; ...
+        ld      C,      IXL             ; virtual program-counter lo-byte
+        ld      [HL],   C               ; ...
 
-.IFDEF  DEBUG_LABELS
-        ;///////////////////////////////////////////////////////////////////////
-        ld      DE,     [label]         ;  if it's not deferred (B=1)
-        call    _printLabel             ; dump label definition
-.ENDIF  ;///////////////////////////////////////////////////////////////////////
-
-        dec     B                       ; only echo the label
+        dec     A                       ; only echo the label
         ret     nz                      ;  if it's not deferred (B=1)
-        ld      DE,     [label]         ; (`RET` is faster than `CALL`)
-        jp      echoLabel               ; echo label name and value
+
+        ; echo the label as v80 source, address first
+        ; (sets program-counter) followed by the label name:
+        ;=======================================================================
+@echo:  call    printHexNumber          ; print value with "$" sigil
+        ld      A,      ASCII_SPC       ; print a space between
+        call    osPrintChar             ;  addr and label name
+        ld      DE,     [label]         ; return to start of label record
+        dec     DE                      ; decrement to name-length byte
+        call    printSymbolName         ;  and print label name
+        jp      osPrintNewline          ;  + newline
 
 
 parseInstruction:
@@ -1541,48 +1558,6 @@ echoCommentMarker:
         call    osPrintChar             ; ...
         ld      A,      ASCII_SPC       ; ..
         jp      osPrintChar             ; .
-
-
-echoConst:
-;===============================================================================
-; echos a constant name and value:
-;
-; in:   DE              symbol address from dictionary
-; out:  HL              (preserved)
-;       A, BC, DE       (clobbered)
-;-------------------------------------------------------------------------------
-        dec     DE                      ; move to string-length byte
-        call    printSymbolName         ; print symbol name and return length
-        jr      _echoValue              ; print constant value
-
-
-echoLabel:
-;===============================================================================
-; echos a label name and value:
-;
-; in:   DE              symbol address from dictionary
-; out:  HL              (preserved)
-;       A, BC, DE       (clobbered)
-;-------------------------------------------------------------------------------
-        dec     DE                      ; move to string-length byte
-        call    printSymbolName         ; print symbol name and return length
-        dec     DE                      ; skip flag byte in label record
-
-        ; fall through
-        ; ...
-
-_echoValue:
-        ;=======================================================================
-        push    HL                      ; (preserve unrelated HL)
-        
-        ld      A,      WORD_LEN+1
-        sub     C
-        call    osPrintSpaces
-        ex      DE,     HL              ; 
-        call    popw                    ; read value from symbol record
-        call    printHexNumber          ; print value with "$" sigil
-        pop     HL                      ; (restore unrealted HL)
-        jp      osPrintNewline          ; + newline
 
 
 printSymbolName:
