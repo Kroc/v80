@@ -263,7 +263,7 @@ parseExpr:
 ;
 ; in:   HL              current heap addr
 ;       [char]          the first character of the expression is assumed to be
-;                       read. do not call this routine with whitespace as the
+;                       read. DO NOT call this routine with whitespace as the
 ;                       last character read!
 ;
 ; out:  BC              the result of the expression evaluation. if the expr
@@ -275,11 +275,9 @@ parseExpr:
 ;       [char]          depending where an expression ends, the last character
 ;                       read can be either whitespace/EOL/EOF *OR* the first-
 ;                       character of the following word
+;       HL              forward-references to labels are pushed to the heap
 ;       A, DE           (clobbered)
-;       HL              (preserved)
 ;-------------------------------------------------------------------------------
-        push    HL                      ; preserve heap addr
-
         ; capture the starting line/col number of the expression,
         ; if an error doesn't occur during parsing, these values
         ; we be used for errors during evaluation
@@ -289,6 +287,9 @@ parseExpr:
         ld      A,      [wcol]          ; current start-of-word column number
         ld      [ecol], A               ; backup for current expression
 
+        ; if a reference to a label that isn't defined yet is encountered,
+        ; the whole expression has to be deferred until the 2nd pass
+        ;
         xor     A                       ; set A to zero
         ld      [@flag],A               ; clear 'defer' flag
         ld      [@nest],A               ; clear parenthesis depth-count
@@ -297,6 +298,7 @@ parseExpr:
         ; is because any forward-references to labels will need to be pushed
         ; to the heap so we can't write the expr on the heap at the same time!
         ;
+        push    HL                      ; preserve heap addr
         ld      HL,     expr            ; addr of expr bytecode space
         ld      A,      [char]          ; get current unused input char
         jr      @unary                  ; jump into the parsing loop
@@ -308,45 +310,33 @@ parseExpr:
         ;=======================================================================
         ; label?
         ;-----------------------------------------------------------------------
-@label: call    getLabel                ; try get the label's value
-
-        ; if the expression contains a forward-reference to a label we won't
-        ; be able to evaluate the expression now and it needs to be deferred
-        ;
-        jr      c,      +
-
-        ; if the label is known, push a number literal token of its address
-        ; and fall through to looking for a following operator token
-        jr      nz,     @num
-
-        ; this label has not been seen before but because it's in an expression
-        ; this is a forward-reference -- we need to add a placeholder for the
-        ; label on the heap before we can defer the whole expression
-        ;
         ; swap our current position within the token space with the
         ; heap position preserved at the beginning of the routine!
-        ex      [SP],   HL
+@label: ex      [SP],   HL
 
-        ; WARN: `pushLabel` requires the name length in BC which is returned
-        ;       by `getLabel` when a label is a forward-reference / not-found
+        ; this routine does most of the work for us by reading the label's name
+        ; from input, searching for it, and if it doesn't exist automatically
+        ; creating the label as a forward-reference on the heap
         ;
-        scf                             ; set flag indicating forward-reference
-        call    pushLabel               ; define the label name on the heap
-        ld      D,      H               ; HL = last byte of label record
-        ld      E,      L               ; copy HL to DE
-        inc     DE                      ; step back to value hi-byte addr
-        inc     DE                      ; step back to flag-byte addr
+        call    getLabel              ; try get the label's value
 
         ; save updated heap position for return and
         ; swap back to our position in token space
         ex      [SP],   HL
 
-        ; any expression that contains a forward-reference to a label causes
-        ; the whole expression to be deferred. instead of the label value,
-        ; the address of the label's flag-byte in the dictionary is tokenised
+        ; if the label exists and isn't a forward-reference,
+        ; its value is in BC to go into the expr bytecode
+        jr      nc,     @num
+
+        ; this label has not been seen before but because it's in an expression
+        ; this is a forward-reference -- a placeholder for the label has been
+        ; pushed to the heap. any expression that contains a forward-reference
+        ; to a label causes the whole expression to be deferred. instead of
+        ; the label value, the address of the label's flag-byte on the heap
+        ; is tokenised
         ;
         ; NOTE: it is very important to be aware that in the case of carry-set,
-        ;       `getLabel` has returned the addr of the label's flag byte in DE
+        ;       getLabel has returned the addr of the label's flag byte in DE
         ;
 +       ld      [HL],   CHAR_LABEL      ; push the label token
         dec     HL                      ; move to next token space
@@ -363,7 +353,7 @@ parseExpr:
         ;=======================================================================
         ; open parenthesis:
         ;-----------------------------------------------------------------------
-@paren: ex      DE,     HL              ; put HL aside
+@paren: ex      DE,     HL              ; put token addr aside
         ld      HL,     @nest           ; address of our counter
         inc     [HL]                    ; increment it by one
         ex      DE,     HL              ; return HL to token space
@@ -438,7 +428,7 @@ parseExpr:
         ;
 @hex:   call    z,      parseHexNumber  ; parse the hex number into BC
 
-        ; push a literal number token:
+        ; push a number literal token:
         ;-----------------------------------------------------------------------
 @num:   ld      [HL],   CHAR_HEX        ; push a number token
         dec     HL                      ; move to next token space
@@ -523,7 +513,9 @@ parseExpr:
         ld      [wcol], A               ; set col number used for error
 
         ld      HL,     expr            ; eval expr from temp bytecode space
-        call    evalExpr                ; return expr result in BC
+        call    evalExpr                ; returns expr result in DE
+        ld      B,      D               ; return expr result in BC
+        ld      C,      E               ;  as expected elsewhere
 
         pop     HL                      ; restore heap addr to HL
         ret
@@ -543,11 +535,12 @@ parseExpr:
         sub     A,      L               ; subtract lowest addr (expr-end)
         ld      C,      A               ; this is the expr length (1-based)
         inc     C                       ; +1 to include null-terminator
-        pop     HL                      ; restore heap addr to HL
 
         ; because the expression could not be evaluated
         ; we must return carry-flag set to indicate no-value
-        scf
+        ;
+        pop     HL                      ; restore heap addr to HL
+        scf                             ; "set carry-flag"
         ret
 
 
@@ -726,13 +719,6 @@ evalExpr:
         ld      E,      A               ; .
         ret
 
-        ; open parenthesis:
-        ;=======================================================================
--       call    evalExpr                ; return nested expr value in DE
-        ld      B,      D               ; return result in BC
-        ld      C,      E               ;  as expected by evalValue
-        ret
-
 
 evalValue:
 ;===============================================================================
@@ -758,7 +744,7 @@ evalValue:
         jr      z,      @label          ; ...
 
         cp      CHAR_EXPR_IN            ; check for parenthesis
-        jr      z,      -               ; recurse for parens
+        jr      z,      @paren          ; recurse for parens
 
         ; we don't care what unary operator is present, we'll need
         ; the value first, so store the unary operator until later
@@ -817,6 +803,14 @@ evalValue:
         sub     D                       ; do 0-D (+carry)
         ld      B,      A               ; but return in B
         ret                             ; WARN: carry may be set!
+
+        ;=======================================================================
+        ; open parenthesis:
+        ;-----------------------------------------------------------------------
+@paren: call    evalExpr                ; returns nested expr value in DE
+        ld      B,      D               ; return result in BC
+        ld      C,      E               ;  as intended by evalValue
+        ret
 
         ;=======================================================================
         ; read a number literal:

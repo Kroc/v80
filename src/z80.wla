@@ -11,7 +11,8 @@ emitOpcode:
 ;       C               opcode byte
 ;       HL              heap address for any deferred expressions
 ;
-; out:  *               (clobbered)
+; out:  HL              parsing of instruction parameters may push to heap
+;       A, BC, DE       (clobbered)
 ;===============================================================================
         ; the flags byte is a set of flags for Z80-specifics
         ; and what, if any, kind of parameter is required

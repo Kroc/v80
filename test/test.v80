@@ -24,7 +24,7 @@ $	( $ + $0100 )		; parenthesis require internal spaces
 ;
 	.w :w
 :w	.w :w			; simple back-reference
-	.w :b			; forward reference to a label, deferred expr
+	.w :b			;
 :b	.b <:w			; back reference to a label
 	.b <:b			; label address should be known now
 

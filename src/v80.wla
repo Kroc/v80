@@ -265,6 +265,7 @@ main:
         ; we calculate the stats above first becasue no more data will need
         ; to be written to the heap and we want to re-use HL for the 2nd pass
         ;
+        ld      [@iy+1],IY              ; keep code end-addr for output
         ld      HL,     defer           ; start of deferred expr chain
         call    @expr                   ; re-evaluate deferred expressions
 
@@ -298,9 +299,8 @@ main:
         ; the output file-name is already known to the OS which read it
         ; from the command-line parameters during osParseParameters
         ;
-        ld      HL,     code            ; = code-segment start addr
-        push    IY                      ; transfer code-segment end addr
-        pop     DE                      ;  to DE for file write
+        ld      HL,     code            ; code-segment start addr
+@iy     ld      DE,     $0000           ; code-segment end addr patched in here
         call    osSaveCode              ; defer all writing work to the OS
 
         ; print final stats:
@@ -398,7 +398,7 @@ main:
         call    popw                    ;
         ld      [param_ecol],   BC      ;
 
-        dec     HL                      ; lastly, the addr of the expr bytecode
+        dec     HL                      ; lastly, the expr bytecode
         call    evalExpr                ; evaluate! returns result in DE
 
         ; FIXME patch in result -- this should be reusing nextParam which
@@ -457,13 +457,21 @@ assembleFile:
         ret
 
         ;=======================================================================
-        ; when a label has been referred to in an expression in the past,
-        ; a placeholder is added to the dictionary awaiting definition --
-        ; now that time has come. `getLabel` has returned the addr (DE)
-        ; of the flag-byte of the label record so we can flip the flag
-        ; and fill in the true value of the label
+        ; define label:
+        ;-----------------------------------------------------------------------
+        ; read the label name and search for it. if not found, this routine
+        ; will define the label on the heap as a forward-reference (no value)
+        ; and return carry-set. we will fill in the label's true value below
+        ; using the current virtual program-counter
         ;
--       ex      DE,     HL              ; (swap label addr to HL)
+@label: call    getLabel              ; get label value or push as fwd-ref
+        jp      nc,     errRedefLabel   ; cannot redefine labels!
+
+        ; getLabel has returned the addr of the label name length byte (BC)
+        ; and the addr of the flag-byte of the label record (DE) so we can flip
+        ; the flag and fill in the true value of the label
+        ;
+        ex      DE,     HL              ; (swap label addr to HL)
         ld      [HL],   1               ; set flag byte to indicate valid value
         dec     HL                      ; decrement to label value, hi-byte
         ld      B,      IXL             ; put virtual program-counter, hi-byte
@@ -473,30 +481,18 @@ assembleFile:
         ld      [HL],   C               ; ...
         ex      DE,     HL              ; (return heap to HL)
 
-        ; FIXME: echo label when value is defined
-
-        jr      @next                   ; return to parsing
-
-        ;=======================================================================
-        ; define label:
+        ; echo label value & name:
         ;-----------------------------------------------------------------------
-@label: call    getLabel                ; read label name and search for it
-
-        ; if the label has been referenced in an expression, but not yet
-        ; defined, carry will be set. in this case we want to 'fill in the
-        ; blank' so that deferred expressions using this label can be
-        ; re-evaluated in the 2nd pass
+        ; echo the label as v80 source, address first
+        ; (sets program-counter) followed by the label name:
         ;
-        jr      c,      -               ; does it exist as a forward-reference?
-
-        ; zero-flag will be set if the label either does not exist at all,
-        ; or was a forward-reference (we've eliminated forward-references
-        ; first), therefore if the label *does* exist we're trying to
-        ; define a label twice!
-        ;
-        jp      nz,     errRedefLabel   ; cannot redefine labels!
-
-        call    pushLabel               ; define new label on the heap
+        ;call    printHexNumber          ; print value with "$" sigil
+        ;ld      A,      ASCII_SPC       ; print a space between
+        ;call    osPrintChar             ;  addr and label name
+        ;ld      DE,     [label]         ; return to start of label record
+        ;dec     DE                      ; decrement to name-length byte
+        ;call    printSymbolName         ;  and print label name
+        ;call    osPrintNewline          ;  + newline
 
         jr      @next                   ; return to parsing
 
@@ -1060,7 +1056,7 @@ getFileID:
         ld      [files],HL              ; update entry point with heap addr
 
         ; copy the file-name to the heap:
-        ; note that BC is set to the file-name length by `findSymbol`
+        ; note that BC is set to the file-name length by findSymbol
         ;
         ld      DE,     word            ; word-buffer addr ($xx00)
         ld      A,      [DE]            ; get symbol length
@@ -1069,7 +1065,7 @@ getFileID:
         ld      [HL],   A               ; push symbol length
 
         ; this address is what will be used to identify the file-name,
-        ; it has to be returned in BC (below) to match `findSymbol` behaviour
+        ; it has to be returned in BC (below) to match findSymbol behaviour
         push    HL
 
         ; note that LDDR is post-decrement (copy-then-decrement), whereas
@@ -1081,7 +1077,7 @@ getFileID:
         lddr                            ; copy BC bytes from [HL] to [DE]!
         ex      DE,     HL              ; swap back to heap in HL
         ld      D,      H               ; the byte following the file-name str
-        ld      E,      L               ;  is returned in DE like `findSymbol`
+        ld      E,      L               ;  is returned in DE like findSymbol
         inc     HL                      ; fix heap addr after LDDR copy
 
         pop     BC                      ; return the file-name addr
@@ -1129,25 +1125,40 @@ getConst:
 
 getLabel:
 ;===============================================================================
-; reads a label name from input and searches the label dictionary for it:
+; reads a label from input and does a number of things:
 ;
-; out:  A               non-zero if found. 0 if label not found, including
-;                       forward-references that don't have a valid value yet
-;       zf              zero-flag is set according to the above
-;       cf              carry set indicates the label is a forward-reference
-;       BC              if label found, BC holds its value
-;                       if label doesn't exist, **BC retains the name length**
+; if the label exists:
+; - if it's not a forward-reference, its value is returned
+; - for forward-references, carry-set is returned
+;
+; if the label does not exist:
+; - the label is created on the heap as a forward-reference
+;   and carry-set is returned
+;
+; out:  cf              carry set indicates the label is a forward-reference.
+;                       if the label doesn't exist, it is automatically added
+;                       as a forward-reference
+;       BC              - if label found and isn't a fwd-ref, BC is its value
+;                       - if label doesn't exist, it is added as a fwd-ref
+;                         and BC is as returned from findSymbol, which is the
+;                         addr of the name-length byte in the label record
 ;       DE              if label is a forward-reference (carry-set), then DE
-;                       is the addr of the flag-byte -- this is so that the
-;                       true label value can be patched in
+;                       is the addr of the flag-byte
 ;       HL              (preserved)
+;       A               (clobbered)
+;
+;                       | DE    | DE (fwd-ref)                 | BC (fwd-ref)
+;                - - - -v-------v------+---+---+---+---+---+---v-----+------+
+;                <-heap | value | flag | l | e | b | a | l | : | len | link |
+;                - - - -+---^---+------+---+---+---+---+---+---+--^--+------+
+;                           | BC (found)           (not found) BC |
 ;-------------------------------------------------------------------------------
         call    readWord                ; read label name into word buffer
         ld      DE,     label           ; use the label dictionary entry
-        call    findSymbol              ; search for the symbol in word-buffer
-        ret     z                       ; if not found, return 0 & zf-set
+        call    findSymbol              ; search for label from word-buffer
+        jr      z,      @add            ; add the label if doesn't exist
 
-        ; names match! read and return the symbol value:
+        ; label found:
         ;-----------------------------------------------------------------------
         ; the flag byte is used to indicate a forward-reference on a label;
         ; i.e. the label name is known, but doesn't have a value yet. we return
@@ -1163,23 +1174,78 @@ getLabel:
         ccf                             ; flip carry so forward-reference = 1
         ret     c                       ; return early on forward-reference
 
-        ; get the label's value:
+        ; return the label's value in BC:
+        ;-----------------------------------------------------------------------
         dec     DE                      ; step past flag byte
         ex      DE,     HL              ; swap to HL for reg-loading
         ld      B,      [HL]            ; symbol value hi-byte
         dec     HL                      ; move to value lo-byte
         ld      C,      [HL]            ; return BC = symbol value
-
-        ; the address of the last byte of the label record is returned in DE.
-        ; when we need to update the label value we can just walk up the bytes
-        ;
-        ;         | DE
-        ;  - - - -v---------+------+---+---+---+---+---+---+-----+------+
-        ;  <-heap | lo ¦ hi | flag | l | e | b | a | l | : | len | link |
-        ;  - - - -+---------+------+---+---+---+---+---+---+-----+------+
-        ;
         ex      DE,     HL              ; return last addr in DE
         ret
+
+        ; create a new label record on the heap:
+        ;=======================================================================
+        ; (any reference to a label that doesn't exist is a forward-reference)
+        ;
+        ;       - - - -+-------+------+---+---+---+---+---+---+-----+------+
+        ;       <-heap | rsrvd | flag | l | e | b | a | l | : | len | link |
+        ;       - - - -+-------+------+---+---+---+---+---+---+-----+------+
+        ;
+        ; - the link addr to the previous label
+        ; - the label name length; here for faster searching
+        ; - the label name, written right-to-left -- heap extends downwards!
+        ; - a flag to indicate a forward-reference: this happens when a label
+        ;   that does not exist is encountered in an expr, a placeholder label
+        ;   is added to the heap to be filled in later. this is necessary for
+        ;   the expr to be re-evaluated in the 2nd pass
+        ; - two bytes are reserved for the value
+        ;
+        ; link this label to the previous one:
+        ;
+@add:   ld      DE,     [label]         ; read prev label addr
+        dec     HL                      ; pre-decrement heap to empty byte
+        ld      [HL],   D               ; write prev label addr hi-byte
+        dec     HL                      ; (this is the heap addr we want)
+        ld      [HL],   E               ; write prev label addr lo-byte
+        ld      [label],HL              ; update entry point with heap addr
+
+        ; push the label name:
+        ld      DE,     word            ; word-buffer addr
+        inc     C                       ; length +1 to include the length-byte
+
+        ; note that LDDR is post-decrement (copy-then-decrement), whereas
+        ; the heap is pre-decrement like the stack (decrement-then-copy)
+        ; -- decrement HL once to adjust for this before the copy
+        ;
+        dec     HL                      ; adjust heap for post-decrement copy
+        push    HL
+        ex      DE,     HL              ; copy goes *from* [HL] *to* [DE]...
+        lddr                            ; copy BC bytes *from* [HL] *to* [DE]!
+        ex      DE,     HL              ; swap back to heap in HL
+
+        ; push flag to indicate a forward-reference:
+        ;
+        ; the flag byte is designed so that findSymbol will return zero-flag
+        ; set for forward-references, i.e. the label is considered undefined,
+        ; but carry is set to distinguish labels that exist in the dictionary
+        ; vs. those that don't (required for deferring expressions)
+        ;
+        ; the flag is flipped to allow some trickery on read out to return
+        ; A=0 and set both zero-flag AND carry-flag for forward-references
+        ;
+        ; NOTE: LDDR has already decremented HL for us
+        ;
+        ld      [HL],   0               ; forward-reference = 0
+        ld      D,      H               ; addr of flag-byte for forward-
+        ld      E,      L               ;  references is returned in DE
+
+        dec     HL                      ; reserve two bytes on the heap
+        dec     HL                      ;  for the label value
+
+        pop     BC
+        scf                             ; return carry-flag set
+        ret                             ;  for forward-references
 
 
 findSymbol:
@@ -1273,108 +1339,6 @@ findSymbol:
 @end:   ex      DE,     HL              ; return last addr as DE
         pop     HL                      ; restore old heap addr
         ret
-
-
-pushLabel:
-;===============================================================================
-; push a new label to the heap:
-;
-; WARN: does not check if the label already exists!
-;
-; in:   A               A must be zero (set by `getLabel`)
-;       cf              carry-flag set indicates a forward-reference!
-;       HL              heap position to write new label
-;       BC              word-length (set by `getLabel`)
-;       word            the label is assumed to be in the word-buffer,
-;                       i.e. after calling `getLabel`
-; out:  HL              heap position is advanced (downwards!)
-;       A, BC, DE       (clobbered)
-;-------------------------------------------------------------------------------
-        ; create a new label record on the heap:
-        ;
-        ;       - - - -+-------+------+---+---+---+---+---+---+-----+------+
-        ;       <-heap | value | flag | l | e | b | a | l | : | len | link |
-        ;       - - - -+-------+------+---+---+---+---+---+---+-----+------+
-        ;
-        ; - the link addr to the previous label
-        ; - the label name length; here for faster searching
-        ; - the label name, written right-to-left -- heap extends downwards!
-        ; - a flag to indicate a forward-reference: this happens when a label
-        ;   that does not exist is encountered in an expr, a placeholder label
-        ;   is added to the heap to be filled in later. this is necessary for
-        ;   the expr to be re-evaluated in the 2nd pass
-        ; - the label value; the current virtual program-counter
-        ;
-        ; link this label to the previous one:
-        ; (these instructions don't modify carry...)
-        ;
-        ld      DE,     [label]         ; read prev label addr
-        dec     HL                      ; pre-decrement heap to empty byte
-        ld      [HL],   D               ; write prev label addr hi-byte
-        dec     HL                      ; (this is the heap addr we want)
-        ld      [HL],   E               ; write prev label addr lo-byte
-        ld      [label],HL              ; update entry point with heap addr
-
-        ; push the label name:
-        ; (these instructions don't modify carry...)
-        ;
-        ld      DE,     word            ; word-buffer addr
-        inc     C                       ; length +1 to include the length-byte
-
-        ; note that LDDR is post-decrement (copy-then-decrement), whereas
-        ; the heap is pre-decrement like the stack (decrement-then-copy)
-        ; -- decrement HL once to adjust for this before the copy
-        ;
-        ; (these instructions don't modify carry...)
-        ;
-        dec     HL                      ; adjust heap for post-decrement copy
-        ex      DE,     HL              ; copy goes *from* [HL] *to* [DE]...
-        lddr                            ; copy BC bytes *from* [HL] *to* [DE]!
-        ex      DE,     HL              ; swap back to heap in HL
-
-        ; push flag to indicate a forward-reference:
-        ;
-        ; the flag byte is designed so that `findSymbol` will return zero-flag
-        ; set for forward-references, i.e. the label is considered undefined,
-        ; but carry is set to distinguish labels that exist in the dictionary
-        ; vs. those that don't (required for deferring expressions)
-        ;
-        ; the flag is flipped to allow some trickery on read out to return
-        ; A=0 and set both zero-flag AND carry-flag for forward-references
-        ;
-        ; NOTE: LDDR has already decremented HL for us
-        ;
-        ccf                             ; forward-reference = 0, otherwise 1
-        rla                             ; shift carry flag into bit 0
-        ld      [HL],   A               ; A will be 0 or 1
-
-        ; push the label value (virtual program-counter):
-        ; if the label is a forward-reference, this value is ignored
-        ;
-        ; the value comes after the label name to speed up symbol searching
-        ; as the value is only needed once a symbol name is matched and then
-        ; the heap addr is in the right place
-        ;
-        dec     HL                      ; pre-decrement heap to empty byte
-        ld      B,      IXH             ; virtual program-counter hi-byte
-        ld      [HL],   B               ; ...
-        dec     HL                      ; pre-decrement heap to empty byte
-        ld      C,      IXL             ; virtual program-counter lo-byte
-        ld      [HL],   C               ; ...
-
-        dec     A                       ; only echo the label
-        ret     nz                      ;  if it's not deferred (B=1)
-
-        ; echo the label as v80 source, address first
-        ; (sets program-counter) followed by the label name:
-        ;=======================================================================
-@echo:  call    printHexNumber          ; print value with "$" sigil
-        ld      A,      ASCII_SPC       ; print a space between
-        call    osPrintChar             ;  addr and label name
-        ld      DE,     [label]         ; return to start of label record
-        dec     DE                      ; decrement to name-length byte
-        call    printSymbolName         ;  and print label name
-        jp      osPrintNewline          ;  + newline
 
 
 parseInstruction:

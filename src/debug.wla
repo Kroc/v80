@@ -160,24 +160,17 @@ _printA:
 _printBC:
         ;=======================================================================
         push    AF
-        ld      A,      '$'
-        call    osPrintChar             ; (does currently preserve A)
-        ld      A,      B
-        call    printHexByte
-        ld      A,      C
-        call    printHexByte
+        printHexNumber
         pop     AF
         ret
 
 _printHL:
         ;=======================================================================
         push    AF
-        ld      A,      '$'
-        call    osPrintChar
-        ld      A,      H
-        call    printHexByte
-        ld      A,      L
-        call    printHexByte
+        push    BC
+        ld      B,      H
+        ld      C,      L
+        call    printHexNumber
         pop     AF
         ret
 
