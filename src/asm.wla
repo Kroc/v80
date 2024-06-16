@@ -1,0 +1,1048 @@
+; v80, (C) Kroc Camen 2023-2024, MIT License
+; the parsing / assembling loop
+;
+.BLOCK  "code-asm"
+
+
+assembleFile:
+;===============================================================================
+; opens a file and assembles it:
+;
+; in:   DE              addr of file-name string, forwards, null-terminated
+;       HL              current heap addr
+; out:  HL              (preserved) -- stuff may be pushed to heap
+;       A, BC, DE       (clobbered)
+;-------------------------------------------------------------------------------
+        call    echoCommentNewline
+        call    osFileOpen              ; use the OS to open the file (DE)
+        call    echoCommentLn           ; (echo the file-name
+        call    echoCommentBar          ;  and a dividing line)
+
+        ; search the file-name dictionary and return the address
+        ; of the file-name record (in BC), adding it if not present
+        ;
+        ; this is done *after* opening the file so that if the file
+        ; is missing, the source of the error is reported as the
+        ; file+line containing the include statement
+        ;
+        call    getFileID               ; search for or add file-name (DE)
+        ld      [file], BC              ; set current file-name addr
+
+        ; reset line & column number when changing file:
+        ; (the call to @line will call nextWord which will
+        ;  set the start-of-word line/col number for us)
+        ;
+        xor     A                       ; (set A to zero)
+        ld      [ccol], A               ; reset column number
+        ld      B,      A               ; line number however
+        ld      C,      1               ;  defaults to 1
+        ld      [crow], BC              ; ...
+
+        call    @line                   ; run the parsing loop
+        call    osFileClose             ; close the file
+
+        ; WARN: this cannot be optimised into a JP due to
+        ;       osFileClose doing stack manipulation
+        ret
+
+        ;=======================================================================
+        ; define label:
+        ;-----------------------------------------------------------------------
+        ; read the label name and search for it. if not found, this routine
+        ; will define the label on the heap as a forward-reference (no value)
+        ; and return carry-set. we will fill in the label's true value below
+        ; using the current virtual program-counter
+        ;
+@label: call    getLabel              ; get label value or push as fwd-ref
+        jp      nc,     errRedefLabel   ; cannot redefine labels!
+
+        ; getLabel has returned the addr of the label name length byte (BC)
+        ; and the addr of the flag-byte of the label record (DE) so we can flip
+        ; the flag and fill in the true value of the label
+        ;
+        ex      DE,     HL              ; (swap label addr to HL)
+        ld      [HL],   1               ; set flag byte to indicate valid value
+        dec     HL                      ; decrement to label value, hi-byte
+        ld      B,      IXL             ; put virtual program-counter, hi-byte
+        ld      [HL],   B               ; ...
+        dec     HL                      ; decrement to label value, lo-byte
+        ld      C,      IXH             ; out virtual program-counter, lo-byte
+        ld      [HL],   C               ; ...
+        ex      DE,     HL              ; (return heap to HL)
+
+        ; echo label value & name:
+        ;-----------------------------------------------------------------------
+        ; echo the label as v80 source, address first
+        ; (sets program-counter) followed by the label name:
+        ;
+        ;call    printHexNumber          ; print value with "$" sigil
+        ;ld      A,      ASCII_SPC       ; print a space between
+        ;call    osPrintChar             ;  addr and label name
+        ;ld      DE,     [label]         ; return to start of label record
+        ;dec     DE                      ; decrement to name-length byte
+        ;call    printSymbolName         ;  and print label name
+        ;call    osPrintNewline          ;  + newline
+
+        jr      @next                   ; return to parsing
+
+        ;=======================================================================
+        ; define constant:
+        ;-----------------------------------------------------------------------
+@const: call    readWord                ; read symbol name into word buffer
+
+        ; evaluating the expression that follows may overwrite the word buffer!
+        ; e.g. if a const or label is used in the expr, so we push the const
+        ; name to the heap ahead of time. the expr that follows will push to
+        ; the heap if there's a forward-reference, corrupting the constant,
+        ; but constants cannot use forward-references so it's an error anyway
+        ;
+        ld      DE,     const           ; use constant dictionary
+        call    findSymbol              ; check if constant already exists
+        jr      nz,     +               ; if yes, skip pushing name
+
+        ; define new const name on heap:
+        ;-----------------------------------------------------------------------
+        ld      DE,     [const]         ; read prev const addr
+        dec     HL                      ; pre-decrement heap to empty byte
+        ld      [HL],   D               ; write prev const addr hi-byte
+        dec     HL                      ; (this is the heap addr we want)
+        ld      [HL],   E               ; write prev const addr lo-byte
+        ld      [const],HL              ; update entry point with heap addr
+
+        ; push the const name:
+        ; NOTE: findSymbol has returned the length of the const name in BC
+        ;
+        ld      DE,     word            ; copy const name from word-buffer
+        ex      DE,     HL              ; copy goes *from* [HL] *to* [DE]...
+        inc     C                       ; length +1 to include the length-byte
+
+        ; note that LDDR is post-decrement (copy-then-decrement), whereas
+        ; the heap is pre-decrement like the stack (decrement-then-copy)
+        ; -- decrement DE once to adjust for this before the copy
+        ;
+        dec     DE                      ; adjust heap for post-decrement copy
+        lddr                            ; copy BC bytes from [HL] to [DE]!
+
+        ; DE is the addr at the bottom of the heap where the value of the
+        ; const will be written. copy this to HL and decrement again to
+        ; ensure the heap addr in HL will include the const value
+        ;
+        ld      H,      D               ; LDDR does an additional decrement
+        ld      L,      E               ;  so we save one instruction (:P)
+        inc     DE                      ;  by accomodating for it, correcting
+        dec     HL                      ;  DE up so HL only needs one dec
+
+        ; get const value:
+        ;-----------------------------------------------------------------------
+        ; if the const already existed, DE is the heap addr of the const's
+        ; value to overwrite, otherwise DE is the *current* heap address
+        ;
++       push    DE                      ; before parsing value, preserve addr
+
+        call    nextExpr                ; try evaluate the following expression
+        jp      c,      errUnexpDefer   ; cannot contain forward-references!
+
+        pop     DE                      ; restore const addr
+        ex      DE,     HL              ; swap to HL for writing
+        dec     HL                      ; pre-decrement heap to empty byte
+        ld      [HL],   B               ; because we're writing downwards
+        dec     HL                      ;  in RAM, write value hi-byte first
+        ld      [HL],   C               ;  followed by value lo-byte
+        ex      DE,     HL              ; restore real heap addr to HL
+
+        ; echo const name and value:
+        ;-----------------------------------------------------------------------
+        ; echoes as v80 source code, so constant name first,
+        ; padded with spaces, and then the value
+        ;
+        push    BC                      ; value is already in BC, hold for now
+        ld      DE,     [const]         ; return to start of const record
+        dec     DE                      ; decrement to name-length byte
+        call    printSymbolName         ; print const name, length in BC
+        ld      A,      WORD_LEN+1      ; calculate number of spaces to print
+        sub     C                       ;  for const names up to 32 chars
+        call    osPrintSpaces           ; print padding spaces
+        pop     BC                      ; restore const value
+        call    printHexNumber          ;  and print it
+        call    osPrintNewline          ;  + newline
+
+        jr      @line                   ; only one const defined per line
+
+        ;=======================================================================
+        ; distinguish between newline and end-of-file:
+        ;-----------------------------------------------------------------------
+        ; readChar returns zero-flag set for both newline and end-of-file,
+        ; check the ASCII code to differentiate the two
+        ;
+@nleof: cp      ASCII_LF                ; check for newline
+        ret     nz                      ; no? end-of-file -- end assembling
+
+        ; at newline fall through to
+        ; the line-starting context
+        ; ...
+
+        ; line context:
+        ;=======================================================================
+        ; at the beginning of the line, labels, constants and
+        ; the program-counter can be defined but nowhere else
+        ;
+@line:  call    nextWord                ; find first character
+        jr      z,      @nleof          ; did we hit newline or end-of-file?
+
+        ; a hexadecimal number at the start of a line
+        ; defines the virtual program-counter
+        ;
+        cp      CHAR_HEX                ; hexadecimal literal?
+        jr      nz,     +               ; if not, skip over setting PC
+
+        ; set the virtual program-counter:
+        ;-----------------------------------------------------------------------
+        ; there is no "org" statement to set the program counter as with other
+        ; assemblers; if a line begins with a hexadecimal number the virtual
+        ; program-counter is set to that value, e.g.
+        ;
+        ;       $c000   ; PC is now $c000
+        ;
+        ; to set the virtual program-counter using an expression,
+        ; begin the line with a lone `$` followed by the expression, e.g.
+        ;
+        ;       $       #boot + $0100   ; set PC to #boot constant + 256
+        ;
+@pc:    call    parseHexNumber          ; capture the number
+        call    c,      nextExpr        ; if PC, parse the expr that follows
+        jp      c,      errUnexpDefer   ; must be a constant expr!
+
+        ld      IXL,    C               ; change the virtual program-counter
+        ld      IXH,    B               ;  to the number given
+
+        ; after the virtual program counter is set,
+        ; a label or const can still be defined
+        ; e.g.
+        ;       $0100   :boot           ; defines :boot as $0100
+        ;
+        call    nextWord                ; find next character
+        jr      z,      @nleof          ; did we hit newline or end-of-file?
+
+        ; are we defining a label or constant?
+        ;
++       cp      CHAR_LABEL              ; is label?
+        jr      z,      @label          ; define a label
+        cp      CHAR_CONST              ; is constant?
+        jr      z,      @const          ; define a constant
+
+        ; if no label or constant, fall through to body
+        ; context for keywords / instructions etc.
+        ; ...
+
+        ; body context:
+        ;=======================================================================
+        ; the program-counter and labels must be defined first on the line and
+        ; after those, instructions and keywords are allowed. this is known as
+        ; the body context and multiple instructions / keywords can occur until
+        ; either a comment or the end of the line
+        ;
+        ; after a keyword or instruction, parsing returns to the body context
+        ; unless a newline is encountered. in cases where the last-read char
+        ; is whitespace, we need to pickup the next character:
+        ;
+@next:  ld      A,      [char]          ; last read character
+        cp      ASCII_SPC               ; ASCII<32 = newline (or end-of-file)?
+        jr      c,      @nleof          ; switch to line context
+        call    z,      nextWord        ; SPC = find next char (or newline)
+        jr      z,      @nleof          ; did we hit newline or end-of-file?
+
+        ;-----------------------------------------------------------------------
+@body:  cp      CHAR_KEYWORD            ; is this a keyword?
+        jr      z,      @key
+
+        call    parseInstruction        ; if not, must be an instruction
+
+        jr      @next
+
+        ; keywords:
+        ;-----------------------------------------------------------------------
+@key:   call    readChar                ; get next char after the "."
+        jp      z,      errInvalKey     ; no letter follows!?
+        ld      C,      A               ; hold char to check next char first
+        call    readChar                ; get 2nd char
+        cp      ASCII_SPC               ; whitespace must follow!
+        jp      nz,     errInvalKey     ; (i.e. no additional chars)
+
+        ld      A,      C               ; return to first char
+        res     5,      A               ; force upper-case for "a"-"z"
+        cp      'I'                     ; .`i` keyword?
+        jr      z,      @i              ; handle file include
+        cp      'B'                     ; `.b` keyword?
+        jr      z,      @b              ; process bytes
+        cp      'W'                     ; `.w' keyword?
+        jp      nz,     errInvalKey     ; none of the above? invalid keyword!
+
+        ; (fall through to handle words)
+        ; ...
+
+        ;-----------------------------------------------------------------------
+        ; words:
+        ;-----------------------------------------------------------------------
+@w:     ld      A,              2       ; set parameter size to 2 (words)
+        jr      +                       ; (skip bytes)
+        ;-----------------------------------------------------------------------
+        ; bytes:
+        ;-----------------------------------------------------------------------
+@b:     ld      A,              1       ; set parameter size to 1 (bytes)
++       ld      [param],        A       ; save parameter size to reuse
+
+        ; check if either a string OR an expression follows:
+        ;
+--      call    nextWord                ; skip in-between spaces
+        jr      z,      @nleof          ; stop at EOL/EOF
+        cp      A,      CHAR_STR        ; a string?
+        jr      z,      @str            ; process string literal
+
+        ; not a string, parse as an expression and output to code-segment:
+        ; deferred expressions will automatically be pushed to the heap
+        ;
+        call    nextParam
+
+        ; the last character read by expression parsing will be either EOL/EOF,
+        ; where the line ends without any further expressions, or the fist char
+        ; of the following word which may or may not be an expression
+        ;
+        ld      A,      [char]          ; last character read
+-       cp      ASCII_SPC+1             ; any non-visible char must be EOL/EOF
+        jr      c,      @nleof          ; EOL/EOF is always end of keyword
+        cp      CHAR_HEX                ; a hexadecimal literal / PC?
+        jr      z,      --              ; ...
+        cp      CHAR_LABEL              ; a label?
+        jr      z,      --              ; ...
+        cp      CHAR_CONST              ; a constant?
+        jr      z,      --              ; ...
+        cp      CHAR_OP_LO              ; the lo-byte unary operator?
+        jr      z,      --              ; ...
+        cp      CHAR_OP_HI              ; the hi-byte unary operator?
+        jr      z,      --              ; ...
+        cp      CHAR_OP_NOT             ; the not unary operator?
+        jr      z,      --              ; ...
+        cp      CHAR_OP_NEG             ; the negate unary operator
+        jr      z,      --              ; ...
+        cp      CHAR_EXPR_IN            ; a parenthesis
+        jr      z,      --
+
+        ; a word follows, but it's not an expression
+        ; (instructions or another keyword can follow a keyword)
+        jr      @next
+
+        ;-----------------------------------------------------------------------
+        ; string literal:
+        ;-----------------------------------------------------------------------
+        ; it's important to note that a string is not a value and *cannot* be
+        ; a part of an expression or a parameter; it is a series of bytes, so
+        ; strings and expressions are complimentary but mutually-exclusive
+        ;
+@str:   ld      A,      [param]         ; a string cannot be a part of 
+        cp      2                       ;  a list of words!
+        jp      z,      errRangeStr     ;  (i.e. `.w` keyword)
+        ;-----------------------------------------------------------------------
+-       call    readChar                ; read next character
+        jp      z,      errInvalStr     ; sudden EOL/EOF? unterminated string!
+        cp      CHAR_STR                ; string terminator?
+        jr      z,      --              ; yes, check for next string/expr
+        ld      [IY+0], A               ; emit byte to code-segment
+        inc     IY                      ; move to next byte in code-segment
+        inc     IX                      ; increment virtual program-counter
+        jr      -                       ; keep reading
+
+        ;-----------------------------------------------------------------------
+        ; include:
+        ;-----------------------------------------------------------------------
+        ; TODO: should we read ALL bytes until the end of the line, including
+        ;       expressions? where do we store these? (need a 256B temp string)
+        ;       we could temporarily relocate the code-segment addr (IY) and
+        ;       reuse the `.b` bytes parser but we'd need to disallow defers
+        ;
+        ; next parameter must be a string. unlike other strings this shouldn't
+        ; be written directly to the code-segment but is instead captured in
+        ; the string-buffer
+        ;
+        ; FIXME protect against strings > 127 bytes
+        ;
+@i:     call    nextWord                ; skip in-between spaces
+        jp      z,      errUnexpEOL     ; error if no parameter!
+        cp      CHAR_STR                ; is it a string?
+        jp      nz,     errInvalFile    ; error if not a string
+        ld      DE,     str             ; addr of forwards string-buffer $xx80
+        ;-----------------------------------------------------------------------
+-       call    readChar                ; read next character
+        jp      z,      errInvalStr     ; sudden EOL/EOF? unterminated string!
+        cp      CHAR_STR                ; string terminator?
+        jr      z,      +               ; yes, stop reading chars
+        ld      [DE],   A               ; add char to word-buffer
+        inc     E                       ; move to next byte in string-buffer
+        jr      -                       ; keep reading
+        ;-----------------------------------------------------------------------
++       xor     A                       ; add null terminator
+        ld      [DE],   A               ; ...
+        ld      E,      <str            ; rewind addr to start of string
+
+        ; backup the current file-name, col & row:
+        ;
+        ; we don't have to backup the last read character because assembleFile
+        ; doesn't use it before reading another character nor do we backup the
+        ; start-of-word line/col numbers as nextWord will set these after the
+        ; return from the included file
+        ;
+        ld      BC,     [file]          ; address of current file-name
+        push    BC                      ; ...
+        ld      BC,     [crow]          ; the row (line) number is 16-bit
+        push    BC                      ; ...
+        ld      A,      [ccol]          ; col is only 1 byte
+        push    AF                      ;  a bit of a waste :|
+
+        call    assembleFile            ; assemble the included file
+
+        pop     AF                      ; pop column number
+        ld      [ccol], A               ; (only 1 byte)
+        pop     BC                      ; pop row (line) number
+        ld      [crow], BC              ; restore current file row-number
+        pop     BC                      ; pop file-name addr
+        ld      [file], BC              ; ...
+
+        call    echoCommentBar
+
+        ; skip any whitespace / comment following the file-name and return
+        ; to the line context (other keywords cannot follow `.i`)
+        jp      @line
+
+
+nextWord:
+;===============================================================================
+; reads input and skips spaces until either:
+;
+; - the next non-terminating character
+; - a newline or end-of-line character
+; - a comment
+;
+; in the case of a comment, the comment text is skipped over and the next
+; newline / end-of-file is returned instead! therefore this routine
+; MUST NOT be used to skip over whitespace in string literals etc.
+;
+; WARN: this routine will return on newline and that there may be more leading
+;       whitespace on the next line -- if you want to skip to the next non-
+;       whitespace character, call the routine again after a newline!
+;
+; out:  A               ASCII code
+;       zf              zero-flag is set for "no word", i.e. when the line
+;                       ends before another valid word. check A for newline
+;                       (ASCII_LF) to differentiate those. end-of-file might
+;                       NOT be null! (e.g. CP/M uses ASCII_SUB)
+;       HL, DE          (preserved)
+;       BC              (clobbered)
+;-------------------------------------------------------------------------------
+-       call    readChar                ; read a character (returns z-flag)
+        ret     z                       ; return z-flag set if newline/EOF
+
+        ; we need to be careful not to wrongly return z-flag set!
+        ;
+        ; we cannot check for ASCII_SPC+1 ("!") as if this character appears,
+        ; the parser will think the file ended. instead look for space itself
+        ; -- for any ASCII code below we continue looping, and space itself
+        ; is caught with the zero-flag and re-looped
+        ; 
+        cp      ASCII_SPC               ; is ASCII code a space?
+        jr      c,      -               ; keep reading if codes 1-31
+        jr      z,      -               ; also, keep reading if space
+
+        cp      CHAR_COMMENT            ; is this the start of a comment?
+        jr      z,      +               ; if yes, skip comment
+
+        ; start of a word, update the line/col number for errors
+        ;
+        ld      BC,     [crow]          ; copy current line number
+        ld      [wrow], BC              ;  to start-of-word line-number
+        ex      AF,     AF'             ; preserve read character
+        ld      A',     [ccol]          ; copy current column number
+        ld      [wcol], A'              ;  to start-of-word column-number
+        ex      AF',    AF              ; restore read character
+        ret
+
++       ; skip over a comment until the newline / end-of-line:
+        ;
+-       call    readChar                ; read a character (returns z-flag)
+        jr      nz,     -               ; read until newline / end-of-file
+
+        ret
+
+
+readWord:
+;===============================================================================
+; read symbol name:
+;
+; NOTE: the word is written *downwards* in RAM, to match how symbol names are
+;       written on the heap, for faster comparison -- we use the bottom of
+;       a page to hold the incoming word so that we can get away with using
+;       `DEC E` instead of `DEC DE`
+;
+; out:  A               length of word
+;       DE              DE is set to the first byte (length) of `word`
+;       [char]          the last character read will always be some kind
+;                       of whitespace -- space, newline or end-of-file
+;       HL              (preserved)
+;-------------------------------------------------------------------------------
+        ld      DE,     word            ; top of word-buffer
+        jr      +                       ; (first character already read)
+        ;-----------------------------------------------------------------------
+-       call    readChar                ; read char from input file
+        cp      ASCII_SPC+1             ; whitespace or end-of-line/file?
+        jr      c,      @ok             ; (leave loop at whitespace)
++       dec     E                       ; move to next space in buffer
+        ld      [DE],   A               ; add the character to the buffer
+        jp      p,      -               ; keep going until buffer full
+        ;-----------------------------------------------------------------------
+        jp      errInvalSym             ; quit with invalid symbol error
+
+        ;-----------------------------------------------------------------------
+@ok:    ld      A,      WORD_LEN        ; max size - characters remaining
+        sub     E                       ;  = length of word
+        ld      E,      <word           ; snap back to length byte
+        ld      [DE],   A               ; write word-length byte
+        ret
+
+
+readChar:
+;===============================================================================
+; reads the next character in the file:
+; current row and column are maintained
+;
+; out:  A               ASCII code. 0 = end-of-file
+;       zf              zero-flag is set *both* for end-of-file and newline!
+;       [char]          the character is also written to RAM
+;       BC, DE, HL      (preserved)
+;-------------------------------------------------------------------------------
+-       call    osGetChar               ; read a char from file
+        ld      [char], A               ; retain returned character
+.IFDEF  DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        ;push    AF
+        ;call    osPrintChar             ; print each character as we receive it
+        ;pop     AF                      ; (zero-flag must be preserved)
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+        ret     z                       ; return on end-of-file
+
+        ; check for end-of-line:
+        ;-----------------------------------------------------------------------
+        cp      ASCII_CR                ; /r is always ignored,
+        jr      z, -                    ;  don't advance row/col, get next char
+
+        exx                             ; must preserve HL & DE
+        ld      HL',    ccol            ; prepare to increment column number
+
+        cp      ASCII_LF                ; /n is newline
+        jr      z,      @row            ; handle newline
+        cp      ASCII_TAB               ; /t is tab
+        jr      z,      @tab            ; handle tab
+
+        ; increment column number:
+        ;-----------------------------------------------------------------------
+        ; WARN: we do not cap the column number -- keep lines to 80 cols!
+        ;       when a line exceeds 255 chars, the 256th character will
+        ;       be treated as end-of-file!
+        ;
+@col:   inc     [HL']
+        exx                             ; restore HL/DE
+        ret
+
+        ;-----------------------------------------------------------------------
+        ; increment line-number:
+        ;
+@row:   ld      DE',    [crow]          ; 16-bit load,
+        inc     DE'                     ;  and increment,
+        ld      [crow], DE'             ;  and write
+        ld      [HL'],  0               ; reset column number
+
+        exx                             ; restore HL/DE
+        ret                             ; return z-flag set for newline/EOF
+
+        ;-----------------------------------------------------------------------
+        ; handle tab-character:
+        ;
+@tab:   dec     A                       ; \t = 9, so change to 8 (width of tab)
+        add     [HL']                   ; add 8 to current column
+        and     %11111000               ; clip to every 8th column
+        ld      [HL'],  A               ; update column number
+        ld      A,      ASCII_SPC       ; return a single space instead
+        ld      [char], A               ; update retained value to match
+        and     A                       ; ensure zero-flag is clear!
+
+        exx                             ; restore HL/DE
+        ret
+
+
+getFileID:
+;===============================================================================
+; find, and if it doesn't exist, add a file-name to the heap:
+;
+; in:   DE              addr of file-name string, forwards, null-terminated
+; out:  BC              addr of file-name record (backwards), length-byte
+;       DE              addr of byte following the file-name in the record
+;                       (for storing arbitrary data in the file-name record)
+;       HL              if unknown, the file-name string is pushed to the heap
+;       A               (clobbered)
+;
+;              - - - ---+---+---+---+---+---+---+---+---+---+-----+------+
+;            <-heap     | ? | e | m | a | n | e | l | i | f | len | link |
+;              - - - ---+---+---+---+---+---+---+---+---+---+-----+------+
+;                    DE ^   ^ HL (if file-name pushed)      ^ BC
+;-------------------------------------------------------------------------------
+        ; copy the forwards string file-name from the string-buffer into the
+        ; word-buffer, backwards, to do a symbol search. if the file-name is
+        ; not known it's added to the heap in this backwards form
+        ;
+        ; FIXME this places a limit of 31 characters on the file-name even
+        ;       though we can read a much longer string. this is acceptable
+        ;       for CP/M but Agon MOS / Zeal support subdirectories. this
+        ;       will have to be resolved for later versions of v80
+        ;
+        push    HL                      ; preserve current heap-addr
+        ld      HL,     word            ; destination is word-buffer
+        jr      +                       ; jump into loop (skip length-byte)
+        ;-----------------------------------------------------------------------
+-       ld      A,      [DE]            ; read char from string-buffer
+        and     A                       ; check for null terminator (set flags)
+        jr      z,      ++              ; stop copying at null terminator
+        ld      [HL],   A               ; write to backwards word-buffer
+        inc     E                       ; move to next char in string-buffer
++       dec     L                       ; move to next char in word-buffer
+        jp      po,     -               ; loop for max. 31 chars (L >= 0)
+        ;-----------------------------------------------------------------------
+        jp      errInvalFile            ; error if string > 31 chars
+
+        ; the length of the string has to be written
+        ; at the topmost byte of the word-buffer
+        ;
+++      ld      A,      WORD_LEN        ; max size - characters remaining
+        sub     L                       ;  = length of word
+        ld      L,      WORD_LEN        ; snap back to length byte
+        ld      [HL],   A               ; write word-length byte
+        pop     HL                      ; restore heap-addr
+
+        ; check if this file name is already known:
+        ;
+        ; if an include file is used many times (like a macro), we don't
+        ; want the heap bloated with repeated instances of the same file-name
+        ;
+        ld      DE,     files           ; use the files dictionary
+        call    findSymbol              ; search for file-name in word-buffer
+        ret     nz                      ; if found, return the ID
+
+        ; add the file-name to the heap:
+        ;=======================================================================
+        ; link this file-name to the previous one: (for searching)
+        ;
+@add:   ld      DE,     [files]         ; read prev addr in files dictionary
+        dec     HL                      ; pre-decrement heap to empty byte
+        ld      [HL],   D               ; write prev file-name addr hi-byte
+        dec     HL                      ; (this is the heap addr we want)
+        ld      [HL],   E               ; write prev file-name addr lo-byte
+        ld      [files],HL              ; update entry point with heap addr
+
+        ; copy the file-name to the heap:
+        ; note that BC is set to the file-name length by findSymbol
+        ;
+        ld      DE,     word            ; word-buffer addr ($xx00)
+        ld      A,      [DE]            ; get symbol length
+        dec     E                       ; (move past length byte)
+        dec     HL                      ; pre-decrement the heap
+        ld      [HL],   A               ; push symbol length
+
+        ; this address is what will be used to identify the file-name,
+        ; it has to be returned in BC (below) to match findSymbol behaviour
+        push    HL
+
+        ; note that LDDR is post-decrement (copy-then-decrement), whereas
+        ; the heap is pre-decrement like the stack (decrement-then-copy)
+        ; -- decrement HL once to adjust for this before the copy
+        ;
+        dec     HL                      ; adjust heap for post-decrement copy
+        ex      DE,     HL              ; copy goes *from* [HL] *to* [DE]...
+        lddr                            ; copy BC bytes from [HL] to [DE]!
+        ex      DE,     HL              ; swap back to heap in HL
+        ld      D,      H               ; the byte following the file-name str
+        ld      E,      L               ;  is returned in DE like findSymbol
+        inc     HL                      ; fix heap addr after LDDR copy
+
+        pop     BC                      ; return the file-name addr
+        ret
+
+
+getConst:
+;===============================================================================
+; reads a constant name from input and searches the const dictionary for it:
+;
+; out:  A               non-zero if found. 0 if constant not found
+;       zf              zero-flag is set according to the above
+;       BC              if const found, BC holds its value
+;                       if const doesn't exist, **BC retains the name length**
+;       DE              addr of the last byte in the const record,
+;                       i.e. the lo-byte of the const value
+;       HL              (preserved)
+;-------------------------------------------------------------------------------
+        call    readWord                ; read const name into word buffer
+        ld      DE,     const           ; use the constant dictionary entry
+        call    findSymbol              ; search for the const in word-buffer
+        ret     z                       ; if not found, return 0 & zf-set
+
+        ; constant found, return value:
+        ;-----------------------------------------------------------------------
+        ; the address of the last byte of the const record is returned in DE.
+        ; when we want to redefine a constant we can just walk up the bytes
+        ;
+        ;         | DE
+        ;  - - - -v---------+---+---+---+---+---+---+-----+------+
+        ;  <-heap | lo | hi | t | s | n | o | c | # | len | link |
+        ;  - - - -+---------+---+---+---+---+---+---+-----+------+
+        ;
+        ex      DE,     HL              ; swap to HL for reg-loading
+        ld      B,      [HL]            ; constant value hi-byte
+        dec     HL                      ; move to value lo-byte
+        ld      C,      [HL]            ; return BC = constant value
+        ex      DE,     HL              ; return DE = last addr
+
+        ; (note that DEC HL will have cleared the zero-flag
+        ;  as a constant could never end on address $0000)
+        ;
+        ret
+
+
+getLabel:
+;===============================================================================
+; reads a label from input and does a number of things:
+;
+; if the label exists:
+; - if it's not a forward-reference, its value is returned
+; - for forward-references, carry-set is returned
+;
+; if the label does not exist:
+; - the label is created on the heap as a forward-reference
+;   and carry-set is returned
+;
+; out:  cf              carry set indicates the label is a forward-reference.
+;                       if the label doesn't exist, it is automatically added
+;                       as a forward-reference
+;       BC              - if label found and isn't a fwd-ref, BC is its value
+;                       - if label doesn't exist, it is added as a fwd-ref
+;                         and BC is as returned from findSymbol, which is the
+;                         addr of the name-length byte in the label record
+;       DE              if label is a forward-reference (carry-set), then DE
+;                       is the addr of the flag-byte
+;       HL              (preserved)
+;       A               (clobbered)
+;
+;                       | DE    | DE (fwd-ref)                 | BC (fwd-ref)
+;                - - - -v-------v------+---+---+---+---+---+---v-----+------+
+;                <-heap | value | flag | l | e | b | a | l | : | len | link |
+;                - - - -+---^---+------+---+---+---+---+---+---+--^--+------+
+;                           | BC (found)           (not found) BC |
+;-------------------------------------------------------------------------------
+        call    readWord                ; read label name into word buffer
+        ld      DE,     label           ; use the label dictionary entry
+        call    findSymbol              ; search for label from word-buffer
+        jr      z,      @add            ; add the label if doesn't exist
+
+        ; label found:
+        ;-----------------------------------------------------------------------
+        ; the flag byte is used to indicate a forward-reference on a label;
+        ; i.e. the label name is known, but doesn't have a value yet. we return
+        ; this flag in the carry-flag by shifting it out of the byte
+        ;
+        ; for a deferred value the byte is 0; the shift keeps this as zero,
+        ; sets zero-flag and CCF sets the carry-flag accordingly. for a valid
+        ; value the byte is 1; the shift sets carry AND bit 7 (=$80), clearing
+        ; zero-flag and CCF clears the carry
+        ;
+        ld      A,      [DE]            ; read forward-reference flag byte
+        rrca                            ; shift bit 0 into bit 7 AND carry!
+        ccf                             ; flip carry so forward-reference = 1
+        ret     c                       ; return early on forward-reference
+
+        ; return the label's value in BC:
+        ;-----------------------------------------------------------------------
+        dec     DE                      ; step past flag byte
+        ex      DE,     HL              ; swap to HL for reg-loading
+        ld      B,      [HL]            ; symbol value hi-byte
+        dec     HL                      ; move to value lo-byte
+        ld      C,      [HL]            ; return BC = symbol value
+        ex      DE,     HL              ; return last addr in DE
+        ret
+
+        ; create a new label record on the heap:
+        ;=======================================================================
+        ; (any reference to a label that doesn't exist is a forward-reference)
+        ;
+        ;       - - - -+-------+------+---+---+---+---+---+---+-----+------+
+        ;       <-heap | rsrvd | flag | l | e | b | a | l | : | len | link |
+        ;       - - - -+-------+------+---+---+---+---+---+---+-----+------+
+        ;
+        ; - the link addr to the previous label
+        ; - the label name length; here for faster searching
+        ; - the label name, written right-to-left -- heap extends downwards!
+        ; - a flag to indicate a forward-reference: this happens when a label
+        ;   that does not exist is encountered in an expr, a placeholder label
+        ;   is added to the heap to be filled in later. this is necessary for
+        ;   the expr to be re-evaluated in the 2nd pass
+        ; - two bytes are reserved for the value
+        ;
+        ; link this label to the previous one:
+        ;
+@add:   ld      DE,     [label]         ; read prev label addr
+        dec     HL                      ; pre-decrement heap to empty byte
+        ld      [HL],   D               ; write prev label addr hi-byte
+        dec     HL                      ; (this is the heap addr we want)
+        ld      [HL],   E               ; write prev label addr lo-byte
+        ld      [label],HL              ; update entry point with heap addr
+
+        ; push the label name:
+        ld      DE,     word            ; word-buffer addr
+        inc     C                       ; length +1 to include the length-byte
+
+        ; note that LDDR is post-decrement (copy-then-decrement), whereas
+        ; the heap is pre-decrement like the stack (decrement-then-copy)
+        ; -- decrement HL once to adjust for this before the copy
+        ;
+        dec     HL                      ; adjust heap for post-decrement copy
+        push    HL
+        ex      DE,     HL              ; copy goes *from* [HL] *to* [DE]...
+        lddr                            ; copy BC bytes *from* [HL] *to* [DE]!
+        ex      DE,     HL              ; swap back to heap in HL
+
+        ; push flag to indicate a forward-reference:
+        ;
+        ; the flag byte is designed so that findSymbol will return zero-flag
+        ; set for forward-references, i.e. the label is considered undefined,
+        ; but carry is set to distinguish labels that exist in the dictionary
+        ; vs. those that don't (required for deferring expressions)
+        ;
+        ; the flag is flipped to allow some trickery on read out to return
+        ; A=0 and set both zero-flag AND carry-flag for forward-references
+        ;
+        ; NOTE: LDDR has already decremented HL for us
+        ;
+        ld      [HL],   0               ; forward-reference = 0
+        ld      D,      H               ; addr of flag-byte for forward-
+        ld      E,      L               ;  references is returned in DE
+
+        dec     HL                      ; reserve two bytes on the heap
+        dec     HL                      ;  for the label value
+
+        pop     BC
+        scf                             ; return carry-flag set
+        ret                             ;  for forward-references
+
+
+findSymbol:
+;===============================================================================
+; searches for a symbol in a dictionary:
+;
+; in:   DE              dictionary entry point: an addr that contains the
+;                       addr of the last symbol added to the dictionary,
+;                       i.e. `label` for labels & `const` for constants
+;       word            the symbol name needs to already be in the
+;                       word-buffer, e.g. after calling `readWord`
+;
+; out:  A               non-zero if found. 0 if symbol not found
+;       zf              zero-flag is set according to the above
+;       BC              if symbol found, BC is addr of symbol length byte
+;                       if symbol not found, BC is the symbol name length
+;       DE              $0000 if not found, otherwise an addr pointing to
+;                       the byte following the symbol name (e.g. the value)
+;       HL              (preserved)
+;-------------------------------------------------------------------------------
+        push    HL                      ; preserve heap addr coming in
+        ld      HL,     word            ; start of word buffer
+        ld      C,      [HL]            ; first byte is name length
+        ld      B,      0               ; load this into BC
+        ex      DE,     HL              ; DE = word buffer, HL = dict. addr
+        jr      @next                   ; jump into the loop
+
+        ;=======================================================================
+        ; names do not match!
+        ;
+--      ld      E,      <word           ; return to word-buffer length byte
+        ld      A,      [DE]            ; restore the word-length to BC
+        ld      C,      A               ; ...
+        pop     HL                      ; return symbol length byte
+-       inc     HL                      ; move *up* to link addr lo-byte
+
+        ;-----------------------------------------------------------------------
+        ; the link field of a symbol points to      - - -+------+
+        ; the lo-byte of the next symbol's link          | link |
+        ; field in the chain, with the remaining    - - -+--|---+
+        ; fields extending *downwards* in RAM       .-------'
+        ;                                           v
+        ;          ---+---+---+---+---+---+---+-----+------+
+        ;  < heap     | l | o | b | m | y | s | len | link |
+        ;          ---+---+---+---+---+---+---+-----+------+
+        ;
+        ; follow this link, but exit if it's $0000
+        ; (also setting the zero-flag and clearing carry
+        ;  -- did you know that OR cleared carry!??)
+        ;
+@next:  ld      A,      [HL]            ; read next symbol addr, lo-byte
+        inc     HL                      ; move *up* to link addr hi-byte
+        ld      H,      [HL]            ; read next symbol addr, hi-byte
+        ld      L,      A               ; (complete the addr)
+        or      H                       ; is the link addr $0000?
+        jr      z,      @end            ; terminate at end of chain
+
+        ; (HL is now the next symbol addr in the heap)
+
+        dec     HL                      ; move down to length byte
+        ld      A,      [HL]            ; get symbol name length
+        cp      C                       ; compare with word-buffer length
+        jr      nz,      -              ; different? return to link and follow
+
+        ; symbol length matches, check characters:
+        ;=======================================================================
+        push    HL                      ; store symbol length addr to snap back
+        dec     HL                      ; (skip length byte)
+        ld      E,      <word           ; start at top of word-buffer
+        ;-----------------------------------------------------------------------
+@char:  dec     E                       ; move down a char in word-buffer
+        ld      A,      [DE]            ; read char from word-buffer
+        cpd                             ; = CP A, [HL]; DEC HL; DEC BC
+        jr      nz,     --              ; stop looping if mismatch
+        jp      pe,     @char           ; keep looping until chars run out
+        ;-----------------------------------------------------------------------
+        ; if all characters match we fall through to here. CPD ensures
+        ; that HL is pointing to the byte following the symbol-name
+        ;
+        ; the addr of the byte following (downwards) the symbol-name
+        ; is returned in DE  -- on a const this is the value (hi-byte),
+        ; and for labels this is the flag-byte
+        ;
+        ;          ---+---+---+---+---+---+---+---+-----+------+
+        ;  < heap     | ? | l | o | b | m | y | s | len | link |
+        ;          ---+---+---+---+---+---+---+---+-----+------+
+        ;             ^ DE                        ^ BC
+        ;
+        pop     BC                      ; return symbol-length addr
+        and     A                       ; A != 0, clear z-flag & carry-flag
+@end:   ex      DE,     HL              ; return last addr as DE
+        pop     HL                      ; restore old heap addr
+        ret
+
+
+parseInstruction:
+;===============================================================================
+; parse an instruction into opcodes:
+;
+; the CPU-specific module (e.g. "z80.wla") provides a binary tree, `opcodes`,
+; that this routine walks to match instruction names to opcodes and a CPU-
+; specific set of flags that determines which parameters are required
+;
+; in:   A               first character of word to parse
+;       HL              heap addr
+; out:  HL              heap addr is advanced for any expressions deferred
+;       IY              binary code is appended to the code-segment,
+;       IX              and the virtual program-counter is advanced
+;       A, BC|DE        (clobbered)
+;-------------------------------------------------------------------------------
+        ex      DE,     HL              ; swap heap to DE for now
+        ld      HL,     opcodes         ; start at beginning of opcode tree
+
+        ; the first character is already in A
+        set     5,      A               ; force lowercase (see desc. below)
+        jr      +                       ; jump into the parsing loop
+
+        ;=======================================================================
+        ; match; follow the branch:
+        ;-----------------------------------------------------------------------
+        ; once a character matches, the next two bytes are either
+        ; an offset to the next branch to follow, or an opcode pair
+        ;
+@match: inc     HL                      ; step over the matched character
+        ld      C,      [HL]            ; read the offset lo-byte / opcode-byte
+        inc     HL                      ; move to next byte in tree
+        ld      B,      [HL]            ; read the offset hi-byte / opcode-flags
+
+        bit     7,      B               ; is hi-bit of hi-byte set?
+        jr      nz,     @opcode         ; if so, this is an opcode
+
+        ; add the offset to the current position to jump to the new branch:
+        ; NOTE: the offset in the binary tree is reduced by 1 to compensate
+        ; for adding from the hi-byte addr, rather than the lo-byte addr
+        ;
+        add     HL,     BC
+
+        ; get character from input file:
+        ;-----------------------------------------------------------------------
+@char:  call    readChar                ; read from input file
+        cp      ASCII_SPC+1             ; is it whitespace? (hold carry...)
+
+        ; force lowercase, without also affecting
+        ; numbers / [most] punctuation:
+        ;
+        ; this essentially forces ASCII codes 64-95 (@A-Z[\]^_) to codes
+        ; 96-127 (`a-z{|}~) which makes A-Z lowercase with the caveat that
+        ; some punctuation cannot be differentiated "@"<->"`", "[]"<->"{}",
+        ; "\"<->"|" and "^"<->"~" but we aren't using any of those in the
+        ; instruction names anyway
+        ;
+        ; it also means that ASCII codes 0-31 (non-visible) are promoted
+        ; to 32-64 (visible), but we have already checked for ASCII codes
+        ; 32 (space) or below and this is signalled by the carry flag; so
+        ; even though the below instruction would change tab into ")", we
+        ; will undo this afterwards
+        ;
+        set     5,      A               ; force partial lowercase
+        jr      nc,     +               ; was this a non-visible char before?
+        xor     A                       ; any whitespace = end-of-word (0)
+       
++       ; compare with opcode tree:
+        ;-----------------------------------------------------------------------
+-       cp      [HL]                    ; compare input char with tree char
+        jr      z,      @match          ; characters match?
+
+        ; if the hi-bit of the character from the opcode tree is set, it's
+        ; either a continuation character (>128) or the end of a branch (=128).
+        ; in these cases, the result of the compare will always be negative!
+        ;
+        bit     7,      [HL]            ; check bit 7 of character
+        jr      nz,     @cont           ; handle continuation char / end
+
+        ; no match; try the next character:
+        ;-----------------------------------------------------------------------
+        inc     HL
+        inc     HL
+        inc     HL
+        jr      -
+
+        ;-----------------------------------------------------------------------
+        ; handle continuation character / end-of-branch:
+        ;
+        ; a continuation character has no branch -- one character has to
+        ; immediately follow another -- any mismatch is an unknown opcode
+        ;
+@cont:  or      %10000000               ; *add* top bit to input char
+        cp      [HL]                    ; redo comparison with tree
+        jp      nz,     errInvalIns     ; any mismatch is an error!
+        inc     HL                      ; match -- move to next char in tree
+        jr      @char
+
+        ;=======================================================================
+        ; emit opcode(s):
+        ;-----------------------------------------------------------------------
+        ; if a branch ends in an opcode, then no more characters must follow!
+        ;
+@opcode and     A                       ; if the last char is already 0,
+        jr      z,     +                ; then no further check is needed
+
+        call    readChar
+        cp      ASCII_SPC+1             ; is it whitespace (or eof)?
+        jp      nc,     errInvalIns     ; if not, invalid instruction!
+
++       ex      DE,     HL              ; swap heap back to HL
+
+        ; emit the opcode and parse any necessary parameters
+        ; (this routine is in the CPU-specific module, e.g. z80.wla)
+        jp      emitOpcode
+
+.ENDB
