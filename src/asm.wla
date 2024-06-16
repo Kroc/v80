@@ -53,20 +53,21 @@ assembleFile:
         ; and return carry-set. we will fill in the label's true value below
         ; using the current virtual program-counter
         ;
-@label: call    getLabel              ; get label value or push as fwd-ref
+@label: call    getLabel                ; get label value or push as fwd-ref
         jp      nc,     errRedefLabel   ; cannot redefine labels!
 
         ; getLabel has returned the addr of the label name length byte (BC)
-        ; and the addr of the flag-byte of the label record (DE) so we can flip
-        ; the flag and fill in the true value of the label
+        ; and the addr of the flag-byte of the label record (DE) so we can
+        ; flip the flag and fill in the true value of the label
         ;
+        push    BC                      ; we'll  print the label name later
         ex      DE,     HL              ; (swap label addr to HL)
         ld      [HL],   1               ; set flag byte to indicate valid value
         dec     HL                      ; decrement to label value, hi-byte
-        ld      B,      IXL             ; put virtual program-counter, hi-byte
+        ld      B,      IXH             ; put virtual program-counter, hi-byte
         ld      [HL],   B               ; ...
         dec     HL                      ; decrement to label value, lo-byte
-        ld      C,      IXH             ; out virtual program-counter, lo-byte
+        ld      C,      IXL             ; out virtual program-counter, lo-byte
         ld      [HL],   C               ; ...
         ex      DE,     HL              ; (return heap to HL)
 
@@ -75,13 +76,12 @@ assembleFile:
         ; echo the label as v80 source, address first
         ; (sets program-counter) followed by the label name:
         ;
-        ;call    printHexNumber          ; print value with "$" sigil
-        ;ld      A,      ASCII_SPC       ; print a space between
-        ;call    osPrintChar             ;  addr and label name
-        ;ld      DE,     [label]         ; return to start of label record
-        ;dec     DE                      ; decrement to name-length byte
-        ;call    printSymbolName         ;  and print label name
-        ;call    osPrintNewline          ;  + newline
+        call    printHexNumber          ; print value in BC with "$" sigil
+        ld      A,      ASCII_SPC       ; print a space between
+        call    osPrintChar             ;  addr and label name
+        pop     DE                      ; restore label-name addr from earlier
+        call    printSymbolName         ;  and print label name
+        call    osPrintNewline          ;  + newline
 
         jr      @next                   ; return to parsing
 
@@ -121,16 +121,19 @@ assembleFile:
         ; -- decrement DE once to adjust for this before the copy
         ;
         dec     DE                      ; adjust heap for post-decrement copy
+        push    DE                      ; this will be the name-length byte
         lddr                            ; copy BC bytes from [HL] to [DE]!
 
-        ; DE is the addr at the bottom of the heap where the value of the
-        ; const will be written. copy this to HL and decrement again to
-        ; ensure the heap addr in HL will include the const value
+        ; DE is the addr at the bottom of the heap where the const value will
+        ; be written. copy this to HL and decrement again to ensure the heap
+        ; addr in HL will match DE when the the const value is written
         ;
         ld      H,      D               ; LDDR does an additional decrement
         ld      L,      E               ;  so we save one instruction (:P)
         inc     DE                      ;  by accomodating for it, correcting
         dec     HL                      ;  DE up so HL only needs one dec
+
+        pop     BC                      ; for echoing, restore addr of name
 
         ; get const value:
         ;-----------------------------------------------------------------------
@@ -139,6 +142,16 @@ assembleFile:
         ;
 +       push    DE                      ; before parsing value, preserve addr
 
+        ; echo const name:
+        ld      D,      B               ; (findSymbol returns the addr
+        ld      E,      C               ;  of the const name in BC)
+        call    printSymbolName         ; print const name
+        ld      A,      WORD_LEN+1      ; calculate number of spaces to print
+        sub     C                       ;  for const names up to 32 chars
+        call    osPrintSpaces           ; print padding spaces
+
+        ; parse following expression for const value:
+        ;
         call    nextExpr                ; try evaluate the following expression
         jp      c,      errUnexpDefer   ; cannot contain forward-references!
 
@@ -150,20 +163,9 @@ assembleFile:
         ld      [HL],   C               ;  followed by value lo-byte
         ex      DE,     HL              ; restore real heap addr to HL
 
-        ; echo const name and value:
-        ;-----------------------------------------------------------------------
-        ; echoes as v80 source code, so constant name first,
-        ; padded with spaces, and then the value
+        ; echo value:
         ;
-        push    BC                      ; value is already in BC, hold for now
-        ld      DE,     [const]         ; return to start of const record
-        dec     DE                      ; decrement to name-length byte
-        call    printSymbolName         ; print const name, length in BC
-        ld      A,      WORD_LEN+1      ; calculate number of spaces to print
-        sub     C                       ;  for const names up to 32 chars
-        call    osPrintSpaces           ; print padding spaces
-        pop     BC                      ; restore const value
-        call    printHexNumber          ;  and print it
+        call    printHexNumber          ; print const value in BC
         call    osPrintNewline          ;  + newline
 
         jr      @line                   ; only one const defined per line
@@ -226,7 +228,7 @@ assembleFile:
         ; are we defining a label or constant?
         ;
 +       cp      CHAR_LABEL              ; is label?
-        jr      z,      @label          ; define a label
+        jp      z,      @label          ; define a label
         cp      CHAR_CONST              ; is constant?
         jr      z,      @const          ; define a constant
 
@@ -683,7 +685,14 @@ getConst:
 ;                       if const doesn't exist, **BC retains the name length**
 ;       DE              addr of the last byte in the const record,
 ;                       i.e. the lo-byte of the const value
+;                       otherwise $0000 if not found
 ;       HL              (preserved)
+;
+;                       | DE (found)                       | BC (not-found)
+;                - - - -+-------+---+---+---+---+---+---+--V--+------+
+;                <-heap | value | t | s | n | o | c | # | len | link |
+;                - - - -+---^---+---+---+---+---+---+---+-----+------+
+;                           | BC (found)
 ;-------------------------------------------------------------------------------
         call    readWord                ; read const name into word buffer
         ld      DE,     const           ; use the constant dictionary entry
@@ -694,11 +703,6 @@ getConst:
         ;-----------------------------------------------------------------------
         ; the address of the last byte of the const record is returned in DE.
         ; when we want to redefine a constant we can just walk up the bytes
-        ;
-        ;         | DE
-        ;  - - - -v---------+---+---+---+---+---+---+-----+------+
-        ;  <-heap | lo | hi | t | s | n | o | c | # | len | link |
-        ;  - - - -+---------+---+---+---+---+---+---+-----+------+
         ;
         ex      DE,     HL              ; swap to HL for reg-loading
         ld      B,      [HL]            ; constant value hi-byte
@@ -739,8 +743,8 @@ getLabel:
 ;                       | DE    | DE (fwd-ref)                 | BC (fwd-ref)
 ;                - - - -v-------v------+---+---+---+---+---+---v-----+------+
 ;                <-heap | value | flag | l | e | b | a | l | : | len | link |
-;                - - - -+---^---+------+---+---+---+---+---+---+--^--+------+
-;                           | BC (found)           (not found) BC |
+;                - - - -+---^---+------+---+---+---+---+---+---+-----+------+
+;                           | BC
 ;-------------------------------------------------------------------------------
         call    readWord                ; read label name into word buffer
         ld      DE,     label           ; use the label dictionary entry
@@ -808,7 +812,7 @@ getLabel:
         ; -- decrement HL once to adjust for this before the copy
         ;
         dec     HL                      ; adjust heap for post-decrement copy
-        push    HL
+        push    HL                      ; this will be the length byte addr
         ex      DE,     HL              ; copy goes *from* [HL] *to* [DE]...
         lddr                            ; copy BC bytes *from* [HL] *to* [DE]!
         ex      DE,     HL              ; swap back to heap in HL
@@ -832,7 +836,7 @@ getLabel:
         dec     HL                      ; reserve two bytes on the heap
         dec     HL                      ;  for the label value
 
-        pop     BC
+        pop     BC                      ; return length byte addr in BC
         scf                             ; return carry-flag set
         ret                             ;  for forward-references
 
