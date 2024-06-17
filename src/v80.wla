@@ -266,7 +266,7 @@ main:
         ; we calculate the stats above first becasue no more data will need
         ; to be written to the heap and we want to re-use HL for the 2nd pass
         ;
-        ld      [@iy+1],IY              ; keep code end-addr for output
+        ld      [@iy+1],IY              ; save code-segment end-addr for output
         ld      HL,     defer           ; start of deferred expr chain
         call    @expr                   ; re-evaluate deferred expressions
 
@@ -276,7 +276,7 @@ main:
         ; walk down the stack slots checking if each contains its own address
         ;
         ; WARN: this code assumes that stack is at its top (e.g. $FD00),
-        ;       because this code is in the top-most init routine
+        ;       because this code is in the top-most main routine
         ; 
 @end:   ld      HL,     0               ; load HL with the stack pointer
         add     HL,     SP              ; (oddly, there's no `ld HL, SP`!)
@@ -354,12 +354,12 @@ main:
         ;=======================================================================
         ; once all files are assembled, any labels not defined in earlier
         ; experssions should have their values by now. we walk the deferred
-        ; expressions attempting to evaluate them and patch their values
+        ; expressions attempting to evaluate them and patch in their values
         ; into the code-segment
         ;
-        ; - - - -+--------------+-------+-----+-----+------+----+------+------+
-        ; <-heap | <expr> ¦ len | param | col | row | file | pc | code | link |
-        ; - - - -+--------------+-------+-----+-----+------+----+------+------+
+        ; - - - -+------------+-------+-----+-----+------+----+------+------+
+        ; <-heap | expr ¦ len | param | col | row | file | pc | code | link |
+        ; - - - -+------------+-------+-----+-----+------+----+------+------+
         ;
         ;       link            addr to next deferred expr in chain
         ;       code            addr in code-segment to write value when known
@@ -396,17 +396,24 @@ main:
         ld      [file], BC              ;  return the file, line and column
         call    popw                    ;  numbers of the deferred expr
         ld      [erow], BC              ; ...
-        call    popw                    ;
-        ld      [param_ecol],   BC      ;
+        call    popw                    ; ..
+        ld      [param_ecol],   BC      ; .
 
         dec     HL                      ; lastly, the expr bytecode
         call    evalExpr                ; evaluate! returns result in DE
+        ld      B,      D               ; swap to BC for emitParam
+        ld      C,      E               ; ...
 
-        ; FIXME patch in result -- this should be reusing nextParam which
-        ;       has the logic but will need reworking to be reused in 2nd pass
+        ; patch the result into the binary:
         ;
-        pop     HL
-        jr      @expr
+        ; with the code-segement address set, the virtual program-counter,
+        ; the source file / line / column and the parameter byte restored
+        ; we just need to emit the value to the code-segment
+        ;
+        call    emitParam
+
+        pop     HL                      ; snap back to the defer record
+        jr      @expr                   ;  link-field to follow the chain
 
         ;-----------------------------------------------------------------------
 popw:   dec     HL                      ; pop a word off the heap into BC

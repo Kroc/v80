@@ -31,23 +31,12 @@ erow:   .WORD   $0000                   ; start-of-expr line number
 
 parseParam:
 ;===============================================================================
-; read an expression and write it to the code-segment:
+; parse, evaluate and emit an expression to the code-segment:
 ;
 ; in:   A               parameter size & relative-jump flag:
 ;                       set to the number of bytes the parameter must occupy
 ;                       in the code-segment. bit 7 set indicates relative jump
-;       *               see nextParam below for remaining parameters / returns
-;-------------------------------------------------------------------------------
-        ld      [param],        A
-
-        ; fall through
-        ; ...
-
-nextParam:
-;===============================================================================
-; evaluate an expression and write it to the code-segment:
-;
-; in:   HL              current heap position -- if the expression is deferred
+;       HL              current heap position -- if the expression is deferred
 ;                       it will be copied to the heap
 ;       [param]         the param size & rel-flag byte must be set
 ;                       (e.g. parseParam above)
@@ -56,13 +45,34 @@ nextParam:
 ;       HL              heap addr will be modified if expr is deferred
 ;       A, DE           (clobbered)
 ;-------------------------------------------------------------------------------
+        ld      [param],        A
+
+        ; fall through
+        ; ...
+
+nextParam:
+        ;=======================================================================
         ; parse the next expression and evaluate it. if it contains a
         ; forward-reference, the parameter cannot be evaluated (yet)
         ; and it'll be pushed to the heap for later evaluation
         ;
         call    nextExpr                ; parse and evaluate expression
-        jr      c,      @defer          ; defer to heap? (note early exit)
+        jr      c,      _defer          ; defer to heap? (note early exit)
 
+        ; fall through
+        ; ...
+
+emitParam:
+;===============================================================================
+; emit a value to the code-segment:
+;
+; in:   BC              parameter value
+;       [param]         param size & rel-flag byte; this defines the number of
+;                       bytes the value occupies in the code-segment and if the
+;                       value is a relative jump which needs calculating
+; out:  HL              (preserved) -- does not push to heap
+;       A, BC, DE       (clobbered)
+;-------------------------------------------------------------------------------
         ; validate size / value:
         ;-----------------------------------------------------------------------
         ld      A,      [param]         ; retrieve the parameter type
@@ -149,31 +159,31 @@ nextParam:
         ex      DE,     HL              ; restore heap-addr to HL
         ret
 
-        ;=======================================================================
-        ; defer expression:
-        ;
-        ; when an expression contains a reference to a label not yet defined
-        ; the space in the code-segment (byte or word) is reserved and the expr
-        ; is pushed to the heap in a defer record (below) to be re-evaluated
-        ; (2nd pass) after all source-code has been parsed
-        ;
-        ; - - - -+--------------+-------+-----+-----+------+----+------+------+
-        ; <-heap | <expr> ¦ len | param | col | row | file | pc | code | link |
-        ; - - - -+--------------+-------+-----+-----+------+----+------+------+
-        ;
-        ;       link            addr to next deferred expr in chain
-        ;       code            addr in code-segment to write value when known
-        ;       pc              virtual program-counter at the time
-        ;       file            addr to file-name record
-        ;       row             line number of expr
-        ;       col             column number of expr
-        ;       param           parameter & flag-byte for value
-        ;       len             length of expression bytecode
-        ;       expr            expression bytecode
-        ;
-        ; link this expression to the previous one:
-        ;
-@defer: ld      DE,     [defer]         ; read prev defer addr
+
+; defer expression:
+;===============================================================================
+; when an expression contains a reference to a label not yet defined the space
+; in the code-segment (byte or word) is reserved and the expr is pushed to the
+; heap in a defer record (below) to be re-evaluated after all source-code has
+; been parsed
+;
+;        - - - -+--------------+-------+-----+-----+------+----+------+------+
+;        <-heap | <expr> ¦ len | param | col | row | file | pc | code | link |
+;        - - - -+--------------+-------+-----+-----+------+----+------+------+
+;
+;       link    addr to next deferred expr in chain
+;       code    addr in code-segment to write value when known
+;       pc      virtual program-counter at the time
+;       file    addr to file-name record
+;       row     line number of expr
+;       col     column number of expr
+;       param   parameter & flag-byte for value
+;       len     length of expression bytecode
+;       expr    expression bytecode
+;
+; link this expression to the previous one:
+;
+_defer: ld      DE,     [defer]         ; read prev defer addr
         dec     HL                      ; pre-decrement heap to empty byte
         ld      [HL],   D               ; write prev defer addr hi-byte
         dec     HL                      ; (this is the heap addr we want)
