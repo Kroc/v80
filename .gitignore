@@ -11,3 +11,6 @@ __*
 
 # ignore the RunCPM environment
 bin/RunCPM/A/0/*
+# and build files in the NTVCM folder
+bin/ntvcm/*.v80
+bin/ntvcm/*.com
