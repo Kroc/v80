@@ -528,27 +528,28 @@ printDecNumberSpc:
 ;-------------------------------------------------------------------------------
         ; calculate the number of leading spaces:
         ;
+        ld      E,      ' '             ; (reusable space)
         ld      HL,     -10             ; is number greater than 9?
         add     HL,     BC              ; (subtract by adding negative number)
         jr      c,      +               ; if yes, don't print
-        ld      A,      ' '             ;  leading tens-digit space
+        ld      A,      E               ;  leading tens-digit space
         call    osPrintChar             ;  ...
 +       ld      HL,     -100            ; is number greater than 99?
         add     HL,     BC              ; (subtract by adding negative number)
         jr      c,      +               ; if yes, don't print
-        ld      A,      ' '             ;  leading hundreds-digit space
+        ld      A,      E               ;  leading hundreds-digit space
         call    osPrintChar             ;  ...
 +       ld      HL,     -1000           ; is number greater than 999?
         add     HL,     BC              ; (subtract by adding negative number)
         jr      c,      +               ; if yes, don't print
-        ld      A,      ' '             ;  leading thousands-digit space
+        ld      A,      E               ;  leading thousands-digit space
         call    osPrintChar             ;  and thousands separator
-        ld      A,      ' '             ;  ...
+        ld      A,      E               ;  ...
         call    osPrintChar             ;  
 +       ld      HL,     -10000          ; is number greater than 9'999?
         add     HL,     BC              ; (subtract by adding negative number)
         jr      c,      +               ; if yes, don't print
-        ld      A,      ' '             ;  leading ten-thousands-digit space
+        ld      A,      E               ;  leading ten-thousands-digit space
         call    osPrintChar             ;  ...
 
 +       ; fall through
