@@ -318,7 +318,7 @@ osFileOpen:
 ; read files start to finish, nesting inwards
 ;
 ; this state can occupy a lot of stack space (34 bytes on CP/M!) which will
-; limit the maximum nesting depth -- v80 recommends no more than 3 levels
+; limit the maximum nesting depth -- v80 recommends no more than 4 levels
 ;
 ; TODO: CP/M-3 has a "parse file-name" BDOS function, no.152
 ; TODO: support files on other drives? ("A:" prefix)

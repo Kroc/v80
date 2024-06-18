@@ -605,8 +605,8 @@ getFileID:
         ;-----------------------------------------------------------------------
 -       ld      A,      [DE]            ; read char from string-buffer
         and     A                       ; check for null terminator (set flags)
-        jr      z,      ++              ; stop copying at null terminator
         ld      [HL],   A               ; write to backwards word-buffer
+        jr      z,      ++              ; stop copying at null terminator
         inc     E                       ; move to next char in string-buffer
 +       dec     L                       ; move to next char in word-buffer
         jp      po,     -               ; loop for max. 31 chars (L >= 0)
