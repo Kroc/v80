@@ -856,4 +856,3 @@
 	xor.ixl			; xor	A,	IXL		; DD AD
 	xor.iyh			; xor	A,	IYH		; FD AC
 	xor.iyl			; xor	A,	IYL		; FD AD
-	x

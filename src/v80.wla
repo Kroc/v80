@@ -205,7 +205,7 @@ main:
 
         ; assemble the source file:
         ;=======================================================================
-        ; parse the command-line parameters and return an addr (DE) to the
+        ; parse the command-line parameters and return an addr [DE] to the
         ; input file-name as a forwards, null-terminated string but also set
         ; the output file-name privately -- we leave all command-line parsing
         ; to the OS due to differing file-system limitations
@@ -338,7 +338,7 @@ main:
 
         ; print a string and append "bytes":
         ;-----------------------------------------------------------------------
-@size:  call    echoCommentStr          ; print string (DE) as comment
+@size:  call    echoCommentStr          ; print string [DE] as comment
         call    printDecNumberSpc       ; print number with leading spaces
         ld      DE,     @bytes          ; append " bytes"
         jp      osPrintLn               ;  and return
@@ -574,7 +574,7 @@ printDecNumber:
         xor     A                       ; (set A to zero)
         ld      E,      A               ; set leading-zero state
         ld      BC,     -10000          ; subtract 10'000s
-        dec     A                       ; start at 0 (pre-increment)
+        dec     A                       ; start at "0" (with pre-increment)
 -       inc     A                       ; next result digit - 0, 1, 2, etc.
         add     HL,     BC              ; subtract 10'000 (without carry)
         jr      c,      -               ;  keep going for each result >=0

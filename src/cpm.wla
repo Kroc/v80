@@ -265,7 +265,7 @@ _getParam:
 ; finds and copies a command-line parameter:
 ;
 ; this routine walks along the command tail and finds the start of a parameter
-; word (any non-space chars) which will be copied to the destination addr (DE)
+; word (any non-space chars) which will be copied to the destination addr [DE]
 ;
 ; for CP/M a limit of 12 characters is imposed as CP/M files must be in 8.3
 ; format, even though CP/M doesn't store the "." internally, meaning that the
@@ -320,9 +320,10 @@ osFileOpen:
 ; this state can occupy a lot of stack space (34 bytes on CP/M!) which will
 ; limit the maximum nesting depth -- v80 recommends no more than 4 levels
 ;
-; TODO: CP/M-3 has a "parse file-name" BDOS function, no.152
-; TODO: support files on other drives? ("A:" prefix)
-;       and user-numbers?? ("0A:" prefix)
+; NOTE: CP/M-3 has a "parse file-name" BDOS function, no.152
+; FIXME support files on other drives? ("A:" prefix)
+;       and user-numbers?? ("0A:" prefix), this would be difficult
+;       due to user-numbers going up to 15
 ;
 ; in:   DE              addr of the file-name to use, forwards, null-terminated
 ; out:  SP              stack is manipulated -- do not JP to this routine!
@@ -362,7 +363,7 @@ osFileOpen:
         dec     [HL']                   ; if underflow, we need to also
         jp      po,     +               ;  move to the previous extent
 
-        ; TODO: extent underflow? there are 32 extents (0-31)
+        ; FIXME extent underflow? there are 32 extents (0-31)
         ;       (CPM/3 uses FCB's SR2 byte for larger files,
         ;        this would be needed for files > 2MB)
         ;
@@ -376,7 +377,7 @@ osFileOpen:
         ; stack space). we can zero all fields as _setFCBFileName will pad the
         ; file-name field with spaces
         ;
-        ; TODO: we should check a stack overflow won't occur here beforehand
+        ; FIXME: we should check a stack overflow won't occur here beforehand
         ;
 +       ld      DE',    0               ; fill 34 bytes with zeroes
         ld      B',     34/2            ; (half because pushing 2 bytes)
@@ -391,7 +392,7 @@ osFileOpen:
         push    HL                      ; (preserve caller's HL)
         push    DE                      ; (preserve file-name addr)
 
-        ; copy new file-name (DE) to the new FCB:
+        ; copy new file-name [DE] to the new FCB:
         ; (note _setFCBFileName preserves HL & DE)
         ;
         ld      HL,     [@fcb]          ; retrieve new FCB addr
@@ -677,13 +678,13 @@ osSaveCode:
 +       ld      C',     BDOS_MAKEFILE   ; create new, blank output file
         call    BDOS                    ; (note: equivalent to a BDOS open)
         and     A                       ; OK = 0. does CP/M return otherwise?
-        jp      nz,     errUndefFile    ; TODO: out of disk-space error?
+        jp      nz,     errUndefFile    ; FIXME: out of disk-space error?
 
         ; for CP/M 2.2 we must write 128 bytes at a time which requires
         ; setting the DMA address and moving it 128 bytes forward after
         ; each write
         ;
-        ; TODO: CP/M 3 has multi-sector write
+        ; NOTE: CP/M 3 has multi-sector write
         ;-----------------------------------------------------------------------
 @loop   ld      DE',    $0000           ; current position in binary
         ld      C',     BDOS_SETDMA     ; set the DMA addr to the addr
@@ -691,9 +692,9 @@ osSaveCode:
         ld      DE',    cpm_fcb         ; default FCB defines output file
         ld      C',     BDOS_WRITESEQ   ; write 1 sector (128 bytes)
         call    BDOS                    ;  of data...
-        and     A                       ; TODO: out of disk-space error?
+        and     A                       ; FIXME: out of disk-space error?
 
-        exx                             ; restore end-addr (DE)
+        exx                             ; restore end-addr [DE]
         ld      HL,     [@loop+1]       ; get current addr in binary
         add     HL,     BC              ; move to next sector (BC=128)
         ld      [@loop+1],      HL      ; inject addr into loop for write

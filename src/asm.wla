@@ -14,7 +14,7 @@ assembleFile:
 ;       A, BC, DE       (clobbered)
 ;-------------------------------------------------------------------------------
         call    echoCommentNewline
-        call    osFileOpen              ; use the OS to open the file (DE)
+        call    osFileOpen              ; use the OS to open the file [DE]
         call    echoCommentLn           ; (echo the file-name
         call    echoCommentBar          ;  and a dividing line)
 
@@ -25,7 +25,7 @@ assembleFile:
         ; is missing, the source of the error is reported as the
         ; file+line containing the include statement
         ;
-        call    getFileID               ; search for or add file-name (DE)
+        call    getFileID               ; search for or add file-name [DE]
         ld      [file], BC              ; set current file-name addr
 
         ; reset line & column number when changing file:
@@ -56,8 +56,8 @@ assembleFile:
 @label: call    getLabel                ; get label value or push as fwd-ref
         jp      nc,     errRedefLabel   ; cannot redefine labels!
 
-        ; getLabel has returned the addr of the label name length byte (BC)
-        ; and the addr of the flag-byte of the label record (DE) so we can
+        ; getLabel has returned the addr of the label name length byte [BC]
+        ; and the addr of the flag-byte of the label record [DE] so we can
         ; flip the flag and fill in the true value of the label
         ;
         push    BC                      ; we'll  print the label name later

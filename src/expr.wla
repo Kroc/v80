@@ -503,7 +503,7 @@ parseExpr:
 
         ; end of expr:
         ;=======================================================================
-        ; TODO: check for heap spill here?
+        ; FIXME: check for heap spill here?
         ;
 @end:   ld      A,      [@nest]         ; get parenthesis nested depth
         and     A                       ; check for zero (set flags)
@@ -658,7 +658,7 @@ evalExpr:
         ;-----------------------------------------------------------------------
         ; multiply operator:
         ;-----------------------------------------------------------------------
-        ; TODO: err on overflow?
+        ; FIXME: err or warning on overflow?
         ;
         ; multiply routine used from here:
         ; <http://z80-heaven.wikidot.com/math#toc4>
@@ -687,14 +687,14 @@ evalExpr:
         ;-----------------------------------------------------------------------
         ; add operator:
         ;-----------------------------------------------------------------------
-        ; TODO: err on overflow?
+        ; FIXME: err or warning on overflow?
 @add:   add     HL,     BC              ; add value to total
         ex      DE,     HL              ; return value in DE, token-addr in HL
         ret
         ;-----------------------------------------------------------------------
         ; subtract operator:
         ;-----------------------------------------------------------------------
-        ; TODO: err on underflow?
+        ; FIXME: err or warning on underflow?
 @sub:   sbc     HL,     BC              ; subtract value from total
         ex      DE,     HL              ; return value in DE, token-addr in HL
         ret
