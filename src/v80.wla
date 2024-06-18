@@ -133,14 +133,13 @@ const:  .ADDR   $000                    ; addr of last const dictionary-entry
 file:   .ADDR   $0000                   ; addr of current file-name record
 files:  .ADDR   $0000                   ; dictionary entry point for file-names
 
-; lines in v80 source code are hard limited to 127 columns to ensure PC users
-; don't write code that exceeds real 8-bit hardware's limits, although 80 cols
-; is strongly recommended as this is the practical width of many 8-bit systems
+; (char and ccol are combined into a word when pushed
+;  to the stack during file-includes)
 ;
+char_ccol:
+char:   .BYTE   $00                     ; last char read from input
 ccol:   .BYTE   $00                     ; last char read column-number
 crow:   .WORD   $0000                   ; last char read line-number
-
-char:   .BYTE   $00                     ; last char read from input
 
 ; the line-number / column reported on error should be at the start
 ; of a word, not at the last character read, which could be a newline

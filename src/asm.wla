@@ -385,22 +385,17 @@ assembleFile:
 
         ; backup the current file-name, col & row:
         ;
-        ; we don't have to backup the last read character because assembleFile
-        ; doesn't use it before reading another character nor do we backup the
-        ; start-of-word line/col numbers as nextWord will set these after the
-        ; return from the included file
-        ;
         ld      BC,     [file]          ; address of current file-name
         push    BC                      ; ...
         ld      BC,     [crow]          ; the row (line) number is 16-bit
         push    BC                      ; ...
-        ld      A,      [ccol]          ; col is only 1 byte
-        push    AF                      ;  a bit of a waste :|
+        ld      BC,     [char_ccol]     ; last char and column number are
+        push    BC                      ;  combined together to fill a word
 
         call    assembleFile            ; assemble the included file
 
-        pop     AF                      ; pop column number
-        ld      [ccol], A               ; (only 1 byte)
+        pop     BC                      ; pop column number
+        ld      [char_ccol],    BC      ;  and last read char
         pop     BC                      ; pop row (line) number
         ld      [crow], BC              ; restore current file row-number
         pop     BC                      ; pop file-name addr
@@ -542,6 +537,11 @@ readChar:
 
         ; increment column number:
         ;-----------------------------------------------------------------------
+        ; lines in v80 source code are hard limited to 127 columns to ensure
+        ; PC-users don't write code that exceeds real 8-bit hardware's limits,
+        ; although 80 cols is strongly recommended as this is the practical
+        ; width of many 8-bit system's displays
+        ;
 @col:   inc     [HL']                   ; line length is limited to 127 bytes
         jp      m,      errRangeLine    ; 128th char (sign bit) line too long!
         exx                             ; restore HL/DE
