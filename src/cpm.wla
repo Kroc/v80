@@ -810,14 +810,14 @@ osPrintChar:
 ; prints a single ASCII character:
 ;
 ; in:   A               input character
-; out:  A, BC, DE, HL   (preserved)
+; out:  BC, DE, HL      (preserved)
+;       A               (clobbered)
 ;-------------------------------------------------------------------------------
         exx                             ; swap to shadow registers
 
         ld      C',     BDOS_CONOUT     ; = BDOS function to call
         ld      E',     A               ; = character to print
-        ld      L',     A               ; CP/M convention means that
-        call    BDOS                    ;  on BDOS return, A = L
+        call    BDOS                    ; print char
 
         exx                             ; restore register set
         ret

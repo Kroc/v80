@@ -160,7 +160,7 @@ _printA:
 _printBC:
         ;=======================================================================
         push    AF
-        printHexNumber
+        call    printHexNumber
         pop     AF
         ret
 
@@ -187,47 +187,6 @@ _printFlags:
         .printChar 'v'
 +       .printChar ']'
         ret
-;///////////////////////////////////////////////////////////////////////////////
-.ENDIF
-
-.MACRO  .dumpCode
-;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-.IFDEF  DEBUG_DUMP
-        ;///////////////////////////////////////////////////////////////////////
-        ld      DE,     \1
-        call    _dumpCode
-.ENDIF  ;///////////////////////////////////////////////////////////////////////
-;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-.ENDM
-
-.IFDEF  DEBUG_DUMP
-;///////////////////////////////////////////////////////////////////////////////
-
-_dumpCode:
-;===============================================================================
-; hex dump the code-segment:
-;-------------------------------------------------------------------------------
-        ; the number of bytes to dump is the current code-segment
-        ; address sans the start address of the code segment
-        ;
-        push    IY                      ; code-segment end address
-        pop     HL                      ; transfer to HL for SBC HL, DE
-        xor     A                       ; clear carry
-        sbc     HL,     DE              ; HL = HL - DE
-        ex      DE,     HL              ; swap length to DE, start addr to HL
-        ;-----------------------------------------------------------------------
--       ld      A,      [HL]            ; read one byte from the code-segment
-        inc     HL                      ; move to next byte
-        call    printHexByte            ; print byte as two hex digits
-        ld      A,      ' '             ; print separating space
-        call    osPrintChar             ; ...
-        dec     DE                      ; decrement number of bytes to dump
-        ld      A,      E               ; have we reached zero?
-        or      D                       ; (bitwise OR lo & hi bytes)
-        jr      nz,     -               ; keep looping until zero
-        ;-----------------------------------------------------------------------
-        ret
-
 ;///////////////////////////////////////////////////////////////////////////////
 .ENDIF
 

@@ -187,19 +187,23 @@ errPrintQuit:
         ; (this is not the same as the line/col of last char read
         ;  which could be the end-of-line after an expression)
         ;
+        call    osPrintNewline
         ld      DE,     @row
         call    osPrintStrZ
         ld      BC,     [wrow]
-        call    printHexNumber
+        call    printDecNumber
+        call    osPrintNewline
         ld      DE,     @col
         call    osPrintStrZ
         ld      A,      [wcol]
-        call    printHexNumber
+        ld      C,      A
+        ld      B,      0
+        call    printDecNumber
 
         jp      osQuit
 
 @file   .BYTE   " FILE: ", 0
-@row    .BYTE   "\r\n LINE: ", 0
-@col    .BYTE   " COL: ", 0
+@row    .BYTE   " LINE: ", 0
+@col    .BYTE   "  COL: ", 0
 
 .ENDB

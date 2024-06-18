@@ -37,7 +37,6 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 .DEF    CHAR_EXPR_OUT   ')'             ; close parenthesis
 
 ;.DEF    DEBUG                           ; enable debug features
-;.DEF    DEBUG_DUMP                      ; dump binary after assembly
 
 .INC    "cpm.wla"                       ; CP/M bootstrap and interface
 .INC    "debug.wla"                     ; debug-only functionality
@@ -322,12 +321,10 @@ main:
         call    @size                   ; ...
         ld      DE,     @strs           ; string to print ("STACK")
         call    echoCommentStr          ; ...
-@stack  ld      A,      $0000           ; lastly, the number of bytes free
-        call    printHexByte            ;  on the stack at peak usage
+@stack  ld      BC,     $0000           ; lastly, the number of bytes free
+        call    printDecNumberSpc       ;  on the stack at peak usage
         ld      DE,     @peak           ;  i.e. the deepest the stack got,
         call    osPrintLn               ;  not the current level
-
-        .dumpCode code                  ; DEBUG_DUMP: hex-dump the code-segment
 
         jp      osQuit                  ; jump to CP/M to quit the program
 
@@ -343,7 +340,7 @@ main:
         ; print a string and append "bytes":
         ;-----------------------------------------------------------------------
 @size:  call    echoCommentStr          ; print string (DE) as comment
-        call    printHexNumber          ;  then print value (BC)
+        call    printDecNumberSpc       ; print number with leading spaces
         ld      DE,     @bytes          ; append " bytes"
         jp      osPrintLn               ;  and return
 
@@ -351,7 +348,7 @@ main:
 @strh   .BYTE   "HEAP : ", 0
 @strf   .BYTE   "FREE : ", 0
 @bytes  .BYTE   " bytes", 0
-@strs   .BYTE   "STACK: $00", 0
+@strs   .BYTE   "STACK: ", 0
 @peak   .BYTE   " free", 0
 
         ; re-evaluate deferred expressions:
@@ -520,6 +517,136 @@ printSymbolName:
         ;-----------------------------------------------------------------------
         ex      DE,     HL              ; swap symbol addr to DE
         ret
+
+
+printDecNumberSpc:
+;===============================================================================
+; prints an unsigned 16-bit number in decimal with leading spaces:
+;
+; in:   BC              number to print
+; out:  *               (clobbered)
+;-------------------------------------------------------------------------------
+        ; calculate the number of leading spaces:
+        ;
+        ld      HL,     -10             ; is number greater than 9?
+        add     HL,     BC              ; (subtract by adding negative number)
+        jr      c,      +               ; if yes, don't print
+        ld      A,      ' '             ;  leading tens-digit space
+        call    osPrintChar             ;  ...
++       ld      HL,     -100            ; is number greater than 99?
+        add     HL,     BC              ; (subtract by adding negative number)
+        jr      c,      +               ; if yes, don't print
+        ld      A,      ' '             ;  leading hundreds-digit space
+        call    osPrintChar             ;  ...
++       ld      HL,     -1000           ; is number greater than 999?
+        add     HL,     BC              ; (subtract by adding negative number)
+        jr      c,      +               ; if yes, don't print
+        ld      A,      ' '             ;  leading thousands-digit space
+        call    osPrintChar             ;  and thousands separator
+        ld      A,      ' '             ;  ...
+        call    osPrintChar             ;  
++       ld      HL,     -10000          ; is number greater than 9'999?
+        add     HL,     BC              ; (subtract by adding negative number)
+        jr      c,      +               ; if yes, don't print
+        ld      A,      ' '             ;  leading ten-thousands-digit space
+        call    osPrintChar             ;  ...
+
++       ; fall through
+        ; ...
+
+printDecNumber:
+;===============================================================================
+; print an unsigned 16-bit number in decimal:
+;
+; in:   BC              number to print
+; out:  *               (clobbered)
+;-------------------------------------------------------------------------------
+        ld      H,      B               ; working number goes into HL
+        ld      L,      C               ; ...
+
+        ; 10'000s digit:
+        ;-----------------------------------------------------------------------
+        ; we don't want to print leading zeroes -- e.g. "00123". the leading-
+        ; zeroes byte stays at zero so long as there are leading-zeroes. once
+        ; any non-zero digit occurs, the leading-zeroes byte becomes non-zero
+        ; and any additional zeroes are printed, e.g. "1001"
+        ;
+        xor     A                       ; (set A to zero)
+        ld      E,      A               ; set leading-zero state
+        ld      BC,     -10000          ; subtract 10'000s
+        dec     A                       ; start at 0 (pre-increment)
+-       inc     A                       ; next result digit - 0, 1, 2, etc.
+        add     HL,     BC              ; subtract 10'000 (without carry)
+        jr      c,      -               ;  keep going for each result >=0
+
+        ; note that ADD HL, BC does *not* modify the zero-flag!
+        ; this JR is based on the value of A, the digit counter!
+        ;
+        jr      z,      +               ; do not print leading zero!
+        dec     E                       ; clear leading-zeroes state
+
+        add     '0'                     ; convert to ASCII
+        call    osPrintChar             ;  and print digit
+
+        ; 1'000s digit:
+        ;-----------------------------------------------------------------------
+        ; subtracting the last 10'000 has made the working number inverted,
+        ; so we add 1'000s to reverse the effect and count resultant digits
+        ; from 9 to 0 to compensate the 10'000 overage
+        ;
++       ld      BC,     1000            ; add 1'000s
+        ld      A,      9+1             ; count result digit from 9 downwards
+-       dec     A                       ; next result digit - 9, 8, 7, etc.
+        add     HL,     BC              ; add 1'000
+        jr      nc,     -               ;  until crossing the 0 boundary
+
+        ; is this a leading-zero that needs to be skipped? the leading-zeroes
+        ; state is zero by default, but non-zero if the first digit was also
+        ; non-zero, therefore a digit of 0 + a leading-zero state of 0 = 0
+        ;
+        cp      E                       ; if digit is 0 AND leading-zeroes
+        jr      z,      +               ;  state is zero, skip digit
+        dec     E                       ; clear leading-zeroes state
+
+        add     '0'                     ; convert to ASCII
+        call    osPrintChar             ;  and print digit
+        ld      A,      '''             ; print thousands
+        call    osPrintChar             ;  separator
+
+        ; 100s digit:
+        ;-----------------------------------------------------------------------
++       ld      BC,     -100            ; subtract 100s
+        ld      A,      0-1             ; start at 0 (pre-increment)
+-       inc     A                       ; next result digit - 0, 1, 2, etc.
+        add     HL,     BC              ; subtract 100
+        jr      c,      -               ;  until underflow
+
+        cp      E                       ; if digit is 0 AND leading-zeroes
+        jr      z,      +               ;  state is zero, skip digit
+        dec     E                       ; clear leading-zeroes state
+
+        add     '0'                     ; convert to ASCII
+        call    osPrintChar             ;  and print digit
+
+        ; 10s / 1s digit:
+        ;-----------------------------------------------------------------------
++       ld      A,      L               ; 10s fit into one byte
+        ld      B,      9+1             ;  10s digit counting down in B
+-       dec     B                       ; next digit...
+        add     10                      ; add 10
+        jr      nc,     -               ;  until crossing 0 boundary
+        ld      C,      A               ; 1s remaining
+        ld      A,      B               ; 10s in B
+
+        cp      E                       ; still leading-zeroes?
+        jr      z,      +               ; skip 10s digit
+
+        add     '0'                     ; convert to ASCII
+        call    osPrintChar             ; print 10s digit
+
++       ld      A,      C               ; retrieve 1s digit
+        add     '0'                     ; convert to ASCII
+        jp      osPrintChar             ;  and print
 
 
 printHexNumber:
