@@ -357,15 +357,13 @@ assembleFile:
         ; include:
         ;-----------------------------------------------------------------------
         ; TODO: should we read ALL bytes until the end of the line, including
-        ;       expressions? where do we store these? (need a 256B temp string)
+        ;       expressions? where do we store these? (need a 127B temp string)
         ;       we could temporarily relocate the code-segment addr (IY) and
         ;       reuse the `.b` bytes parser but we'd need to disallow defers
         ;
         ; next parameter must be a string. unlike other strings this shouldn't
         ; be written directly to the code-segment but is instead captured in
         ; the string-buffer
-        ;
-        ; FIXME protect against strings > 127 bytes
         ;
 @i:     call    nextWord                ; skip in-between spaces
         jp      z,      errUnexpEOL     ; error if no parameter!
@@ -421,11 +419,9 @@ nextWord:
 ;
 ; - the next non-terminating character
 ; - a newline or end-of-line character
-; - a comment
-;
-; in the case of a comment, the comment text is skipped over and the next
-; newline / end-of-file is returned instead! therefore this routine
-; MUST NOT be used to skip over whitespace in string literals etc.
+; - a comment -- the comment text is skipped over and the next newline /
+;   end-of-file is returned instead! therefore this routine MUST NOT
+;   be used to skip over whitespace in string literals etc.
 ;
 ; WARN: this routine will return on newline and that there may be more leading
 ;       whitespace on the next line -- if you want to skip to the next non-
@@ -516,8 +512,10 @@ readChar:
 ;
 ; out:  A               ASCII code. 0 = end-of-file
 ;       zf              zero-flag is set *both* for end-of-file and newline!
-;       [char]          the character is also written to RAM
+;       [char]          the character read is also written to RAM
+;       [crow],[ccol]   line & column number are advanced accordingly
 ;       BC, DE, HL      (preserved)
+;       -               halts with error if line exceeds 127 cols
 ;-------------------------------------------------------------------------------
 -       call    osGetChar               ; read a char from file
         ld      [char], A               ; retain returned character
@@ -544,11 +542,8 @@ readChar:
 
         ; increment column number:
         ;-----------------------------------------------------------------------
-        ; WARN: we do not cap the column number -- keep lines to 80 cols!
-        ;       when a line exceeds 255 chars, the 256th character will
-        ;       be treated as end-of-file!
-        ;
-@col:   inc     [HL']
+@col:   inc     [HL']                   ; line length is limited to 127 bytes
+        jp      m,      errRangeLine    ; 128th char (sign bit) line too long!
         exx                             ; restore HL/DE
         ret
 
@@ -558,7 +553,7 @@ readChar:
 @row:   ld      DE',    [crow]          ; 16-bit load,
         inc     DE'                     ;  and increment,
         ld      [crow], DE'             ;  and write
-        ld      [HL'],  0               ; reset column number
+        ld      [HL'],  $00             ; reset column number
 
         exx                             ; restore HL/DE
         ret                             ; return z-flag set for newline/EOF
@@ -569,6 +564,7 @@ readChar:
 @tab:   dec     A                       ; \t = 9, so change to 8 (width of tab)
         add     [HL']                   ; add 8 to current column
         and     %11111000               ; clip to every 8th column
+        jp      m,      errRangeLine    ; stop if line too long! (>=128 chars)
         ld      [HL'],  A               ; update column number
         ld      A,      ASCII_SPC       ; return a single space instead
         ld      [char], A               ; update retained value to match
