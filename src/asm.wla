@@ -288,7 +288,7 @@ assembleFile:
         ; align:
         ;-----------------------------------------------------------------------
         ; the align keyword allows padding the code-segment up to a given
-        ; virtual program-counter,-- bytes are emitted until the virtual
+        ; virtual program-counter -- bytes are emitted until the virtual
         ; program-counter modulo the parameter = zero, e.g.
         ;
         ;       .a      $100            ; align to page
@@ -296,24 +296,36 @@ assembleFile:
 @a:     call    nextExpr                ; get the modulo parameter in BC
         jp      c,      errUnexpDefer   ; expr cannot contain a fwd-ref!
 
-        push    HL                      ; (preserve heap addr)
-        ;-----------------------------------------------------------------------
-        ; loop, emitting bytes until PC mod $nnnn = 0. this requires an
-        ; expensive divide each byte -- is there a faster way to do this?
-        ; calculate what the final PC would be based on the modulo?
+        ; calculate how many bytes we'd need to skip to reach an address
+        ; that would divide evenly by our given modulus parameter:
         ;
--       ld      D,      IXH             ; copy current virtual program-counter
-        ld      E,      IXL             ;  to DE and divide by parameter BC,
-        call    _doDiv                  ;  returning remainder in HL
+        ; if we have a program-counter of $2040 and a modulus of $0100 then
+        ; we need to pad $C0 bytes until we reach the modulus of $0100 --
+        ; $2040 / $0100 = $20 with $40 remainder, with the difference
+        ; between $40 and $100 being $C0 bytes
+        ;
+        push    HL                      ; (preserve heap addr)
+        ld      D,      IXH             ; calculate the remainder,HL, of
+        ld      E,      IXL             ;  the program-counter, DE, divided be
+        call    _doDiv                  ;  the modulus (align parameter in BC)
 
-        ld      A,      H               ; is the remainder $0000?
-        or      L                       ; (combine hi & lo-bytes)
-        jr      z,      +               ; stop when the modulo hits 0
+        ld      A,      H               ; if this is zero, no bytes need
+        or      L                       ;  emitting, we're already aligned,
+        jr      z,      +               ;  skip over emitting padding bytes!
 
-        ld      [IY+0], 0               ; emit a null to code-segment
+        ld      D,      B               ; to do BC - HL we'll have to copy
+        ld      E,      C               ;  BC to DE first, and swap DE & HL
+        ex      DE,     HL              ; bytes to pad is difference between
+        sbc     HL,     DE              ;  remainder, DE, and modulus, HL
+        jr      z,      +               ; already aligned?
+
+-       ld      [IY+0], 0               ; emit a null to code-segment
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
-        jr      -                       ; continue 
+        dec     HL                      ; decrement byte count
+        ld      A,      H               ; 16-bit decrements don't set flags!
+        or      L                       ; combine lo/hi-bytes to check for 0
+        jr      nz,     -               ; continue for all bytes
         ;-----------------------------------------------------------------------
 +       pop     HL                      ; (restore heap addr)
         jp      @line                   ; other keywords cannot follow .a
