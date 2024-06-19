@@ -45,7 +45,11 @@ PUSHD "%DIR_NTVCM%"
 
 %BIN_NTVCM% v80.com test.v80
 
+REM # if NTVCM does not hit a HALT instruction, do not launch RunCPM
+IF %ERRORLEVEL% EQU 0 POPD & ECHO: & ECHO OK. & EXIT /B 0
+
 POPD
+ECHO:
 
 IF NOT EXIST "%DIR_RUNCPM%\A\0" MKDIR "%DIR_RUNCPM%\A\0"
 DEL /F /Q "%DIR_RUNCPM%\A\0\*.*"
