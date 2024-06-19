@@ -625,33 +625,13 @@ evalExpr:
         ;=======================================================================
         ; divide operator:
         ;-----------------------------------------------------------------------
-@div:   call    @dodiv                  ; returns DE divided by BC in DE
+@div:   call    _doDiv                  ; returns DE divided by BC in DE
         pop     HL                      ; restore token addr
         ret
-
-        ; divide routine used from here:
-        ; <http://z80-heaven.wikidot.com/math#toc15>
-        ; divide DE by BC, result in DE, remainder in HL
-        ;
-@dodiv: ld      A,      16              ; number of bit-shifts to do
-        ld      HL,     0               ; initialise remainder
-        jr      +                       ; jump into divide loop
-
---      add     HL,     BC
--       dec     A
-        ret     z
-
-+       sla     E
-        rl      D
-        adc     HL,     HL
-        sbc     HL,     BC
-        jr      nc,     --
-        inc     E
-        jr      -
         ;-----------------------------------------------------------------------
         ; modulo operator:
         ;-----------------------------------------------------------------------
-@mod:   call    @dodiv                  ; returns DE / BC, remainder in HL
+@mod:   call    _doDiv                  ; returns DE / BC, remainder in HL
         ex      DE,     HL              ; return remainder in DE
         pop     HL                      ; restore token addr
         ret
@@ -728,6 +708,41 @@ evalExpr:
         xor     A,      C               ; ..
         ld      E,      A               ; .
         ret
+
+        ; divide routine used from here:
+        ; <http://z80-heaven.wikidot.com/math#toc15>
+        ; divide DE by BC, result in DE, remainder in HL
+        ;
+_doDiv: ld      A,      16              ; number of bit-shifts to do
+        ld      HL,     0               ; initialise remainder
+        jr      +                       ; jump into divide loop
+
+--      add     HL,     BC
+-       dec     A
+        ret     z
+
++       sra     E                       ; shift DE left by one,
+        rl      D                       ;  popping the top bit off
+        adc     HL,     HL              ; multiply HL by 2 and subtract
+        sbc     HL,     BC              ;  divisor to get current remainder
+        jr      nc,     --
+        inc     E
+        jr      -
+
+;_doDiv2:
+;        ; BC / DE = AC % HL, DE=DE
+;        ld      HL,     0
+;        ld      A,      B
+;        ld      B,      16
+;-       sll     C
+;        rla
+;        adc     HL,     HL
+;        sbc     HL,     DE
+;        jr      nc,     +
+;        add     HL,     DE
+;        dec     c
+;        djnz    -
+;+       ret
 
 
 evalValue:

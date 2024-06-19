@@ -230,9 +230,9 @@ Standard operators come between values:
     -  subtract
     *  multiply
     /  divide (integer)
-    \  modulo
-    &  and
-    |  or
-    ^  xor
+    \  modulo (remainder)
+    &  bitwise and
+    |  bitwise or
+    ^  bitwise xor
 
 There are no shift operators. To do shifts, multiply or divide by powers of 2, e.g. `* 2` = `<< 1`, `/ 8` = `>> 3`. Powers of 2 are up to you. There are no power / exponentiation operators.

@@ -35,3 +35,5 @@ $	( $ + $0100 )		; parenthesis require internal spaces
 ; include file:
 ;
 .i	"z80.v80"
+
+.a	$100
