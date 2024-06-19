@@ -296,32 +296,15 @@ assembleFile:
 @a:     call    nextExpr                ; get the modulo parameter in BC
         jp      c,      errUnexpDefer   ; expr cannot contain a fwd-ref!
 
-        ld      D,      B
-        ld      E,      C
         push    HL                      ; (preserve heap addr)
         ;-----------------------------------------------------------------------
         ; loop, emitting bytes until PC mod $nnnn = 0. this requires an
         ; expensive divide each byte -- is there a faster way to do this?
         ; calculate what the final PC would be based on the modulo?
         ;
-        ; BC / DE = BC % HL, DE = DE
-        ;
-        ; <https://github.com/Zeda/Z80-Optimized-Routines/blob/master/math/division/BC_Div_DE_sizeopt.z80>
-        ;
---      ld      HL,     0
-        ld      A,      IXH
-        ld      C,      IXL
-        ld      B,      16              ; number of shifts to do
-
--       sla     C                       ; shift the bits from AC into HL
-        rla
-        adc     HL,     HL
-        sbc     HL,     DE
-        jr      nc,     +
-        add     HL,     DE
-        .BYTE   $FE                     ; = CP $.., i.e. skip next byte
-+       inc     C
-        djnz    -
+-       ld      D,      IXH             ; copy current virtual program-counter
+        ld      E,      IXL             ;  to DE and divide by parameter BC,
+        call    _doDiv                  ;  returning remainder in HL
 
         ld      A,      H               ; is the remainder $0000?
         or      L                       ; (combine hi & lo-bytes)
@@ -330,7 +313,7 @@ assembleFile:
         ld      [IY+0], 0               ; emit a null to code-segment
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
-        jr      --                      ; continue 
+        jr      -                       ; continue 
         ;-----------------------------------------------------------------------
 +       pop     HL                      ; (restore heap addr)
         jp      @line                   ; other keywords cannot follow .a

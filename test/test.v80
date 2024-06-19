@@ -36,4 +36,5 @@ $	( $ + $0100 )		; parenthesis require internal spaces
 ;
 .i	"z80.v80"
 
+; align
 .a	$100

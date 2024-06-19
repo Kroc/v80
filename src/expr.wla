@@ -721,15 +721,15 @@ _doDiv: ld      A,      16              ; number of bit-shifts to do
 -       dec     A
         ret     z
 
-+       sra     E                       ; shift DE left by one,
++       sla     E                       ; shift DE left by one,
         rl      D                       ;  popping the top bit off
         adc     HL,     HL              ; multiply HL by 2 and subtract
         sbc     HL,     BC              ;  divisor to get current remainder
-        jr      nc,     --
+        jr      c,     --
         inc     E
         jr      -
 
-;_doDiv2:
+;_doDivDE:
 ;        ; BC / DE = AC % HL, DE=DE
 ;        ld      HL,     0
 ;        ld      A,      B
