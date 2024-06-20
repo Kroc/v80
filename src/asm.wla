@@ -305,7 +305,7 @@ assembleFile:
         ; between $40 and $100 being $C0 bytes
         ;
         push    HL                      ; (preserve heap addr)
-        ld      D,      IXH             ; calculate the remainder,HL, of
+        ld      D,      IXH             ; calculate the remainder, HL, of
         ld      E,      IXL             ;  the program-counter, DE, divided be
         call    _doDiv                  ;  the modulus (align parameter in BC)
 
@@ -313,12 +313,12 @@ assembleFile:
         or      L                       ;  emitting, we're already aligned,
         jr      z,      +               ;  skip over emitting padding bytes!
 
-        ld      D,      B               ; to do BC - HL we'll have to copy
-        ld      E,      C               ;  BC to DE first, and swap DE & HL
-        ex      DE,     HL              ; bytes to pad is difference between
-        sbc     HL,     DE              ;  remainder, DE, and modulus, HL
-        jr      z,      +               ; already aligned?
-
+        ld      D,      B               ; to do BC-HL we'll transfer BC to DE
+        ld      E,      C               ;  and then swap DE to HL, causing
+        ex      DE,     HL              ;  the remainder from HL to swap to DE
+        sbc     HL,     DE              ; do modulus minus remainder
+        jr      z,      +               ; if zero, we're already aligned!
+        ;-----------------------------------------------------------------------
 -       ld      [IY+0], 0               ; emit a null to code-segment
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
