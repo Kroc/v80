@@ -93,8 +93,10 @@ emitParam:
         ; note that A = 0 due to above check falling through
         ;
         or      B                       ; are any bits in hi-byte 1?
-        jp      nz,     errRangeIns     ; out-of-range instruction parameter!
+        ret     z                       ; if zero, value fits in 8-bits
+        jp      errRangeIns             ; out-of-range instruction parameter!
 
+        ;-----------------------------------------------------------------------
         ; write upper-byte of 16-bit result:
         ;
 +       ld      [IY+0], B               ; write value hi-byte
@@ -117,16 +119,13 @@ emitParam:
         ld      H,      B               ; copy BC (destination)
         ld      L,      C               ;  into HL (for SBC HL, BC)
 
-        ; the relative offset byte has to account for two automatic increments
-        ; of the program-counter, the first by the parameter byte itself
-        inc     IX
+        ; the relative offset byte has to account for the automatic increment
+        ; of the program-counter after every instruction, here compensated by
+        ; carry already being set! (this was done by the rel-flag check at
+        ; the start of this routine)
+        ;
         ld      B,      IXH             ; load BC with current
         ld      C,      IXL             ;  virtual program-counter (IX)
-
-        ; and the second is the automatic incrementing of the program-counter
-        ; after every instruction, here compensated by carry already being set!
-        ; (this was done by the rel-flag check at the start of this routine)
-        ;
         sbc     HL,     BC              ; do 'destination - PC'
 
         ; check for 8-bit signed bounds:
@@ -152,10 +151,9 @@ emitParam:
 
         ; output relative-distance byte:
         ;-----------------------------------------------------------------------
-        ; (note the virtual program-counter, IX, has already been incremented)
-        ;
         ld      [IY+0], L               ; write relative distance byte
         inc     IY                      ; move to next byte in code-segment
+        inc     IX                      ; increment virtual program-counter
         ex      DE,     HL              ; restore heap-addr to HL
         ret
 

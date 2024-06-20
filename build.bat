@@ -62,9 +62,8 @@ REM # run test.v80 without WLA equivalent
 CALL :v80 test
 
 REM # do binary comparisons
-CALL :RunTest loop
+CALL :RunTest jr
 
-ECHO:
 ECHO OK.
 EXIT /B 0
 
@@ -73,6 +72,14 @@ EXIT /B 0
 REM # ==========================================================================
 ECHO:
 
+CALL :wla %~1
+CALL :v80 %~1
+
+FC /B "build\%~1.com" "%DIR_NTVCM%\%~1.com"
+
+GOTO:EOF
+
+:wla
 REM # assemble with WLA-DX
 REM # --------------------------------------------------------------------------
 REM # assmeble file to test.o, regardless of input name
@@ -84,7 +91,9 @@ REM # assmeble file to test.o, regardless of input name
 REM # link test.o to input named .com file
 %WLA_LINK% ^
     -b "test\link.ini" ^
-       "build\wla-%~1.com"
+       "build\%~1.com"
+
+GOTO:EOF
 
 :v80
 REM # assemble with V80
@@ -93,13 +102,10 @@ PUSHD "%DIR_NTVCM%"
 
 %BIN_NTVCM% v80.com %~1.v80
 
-REM # if NTVCM does not hit a HALT instruction, do not launch RunCPM
-IF %ERRORLEVEL% EQU 0 POPD & EXIT /B 0
+REM # if NTVCM hits a HALT instruction, launch RunCPM
+IF ERRORLEVEL 1 POPD & START "RunCPM" /D "%DIR_RUNCPM%" %BIN_RUNCPM% & EXIT /B 1
 
 POPD
 ECHO:
 
-REM # run the CP/M emulator
-START "RunCPM" /D "%DIR_RUNCPM%" %BIN_RUNCPM%
-
-EXIT /B 1
+GOTO:EOF
