@@ -1,0 +1,1013 @@
+Legend:
+--------------------------------------------------------------------------------
+params: $mm     IX or IY offset value
+        $nn     8-bit value
+        $nnnn   16-bit value, e.g. label
+
+regs:   all registers can optionally have ' appended (shadow registers),
+        and the ' can replace a . where two registers are together, e.g.
+        
+            ex.af.af'
+            ex.af'af
+
+flags:  unless otherwise noted, flags are preserved by default.
+        see the Z80 manual for details of the h & n flags as they
+        are only used by the DAA instruction
+
+        c       carry
+        z       zero
+        s       sign
+        v, p    overflow / parity
+
+        +       set
+        -       clear
+        =       set|clear according to value:
+
+        z=      zero-flag (z) set if result is 0, otherwise clear
+        p=      partiy-flag (p) set if result is even (pe), clear if odd (po)
+        v=      overlflow set if sign flips, otherwise clear
+
+        [^n]    see footnote n
+
+cols:   #       number of bytes, including parameter(s)
+        =       number of cycles, branch taken
+        !       number of cycles, branch not-taken
+
+
+instructions:                                     (cycles)  flags:
+v80                 z80 (Zilog)                 #   =  !    c,z,s,v|p
+================================================================================
+:: add:
+================================================================================
+add $nn             add A,  $nn                 2   7       c=,z=,s=,v=
+add.a               add A,  A                   1   4       c=,z=,s=,v=
+add.b               add A,  B                   1   4       c=,z=,s=,v=
+add.c               add A,  C                   1   4       c=,z=,s=,v=
+add.d               add A,  D                   1   4       c=,z=,s=,v=
+add.e               add A,  E                   1   4       c=,z=,s=,v=
+add.h               add A,  H                   1   4       c=,z=,s=,v=
+add.l               add A,  L                   1   4       c=,z=,s=,v=
+add.ixh             add A,  IXH                 2   8       c=,z=,s=,v=
+add.ixl             add A,  IXL                 2   8       c=,z=,s=,v=
+add.iyh             add A,  IYH                 2   8       c=,z=,s=,v=
+add.iyl             add A,  IYL                 2   8       c=,z=,s=,v=
+add*hl              add A,  [HL]                1   7       c=,z=,s=,v=
+add*ix  $mm         add A,  [IX+$mm]            3   16      c=,z=,s=,v=
+add*iy  $mm         add A,  [IY+$mm]            3   16      c=,z=,s=,v=
+--------------------------------------------------------------------------------
+add.hl.bc           add HL, BC                  1   11      c=
+add.hl.de           add HL, DE                  1   11      c=
+add.hl.hl           add HL, HL                  1   11      c=
+add.hl.sp           add HL, SP                  1   11      c=
+add.ix.bc           add IX, BC                  2   15      c=
+add.ix.de           add IX, DE                  2   15      c=
+add.ix.ix           add IX, IX                  2   15      c=
+add.ix.sp           add IX, SP                  2   15      c=
+add.iy.bc           add IY, BC                  2   15      c=
+add.iy.de           add IY, DE                  2   15      c=
+add.iy.iy           add IY, IY                  2   15      c=
+add.iy.sp           add IY, SP                  2   15      c=
+--------------------------------------------------------------------------------
+adc $nn             adc A,  $nn                 2   7       c=,z=,s=,v=
+adc.a               adc A,  A                   1   4       c=,z=,s=,v=
+adc.b               adc A,  B                   1   4       c=,z=,s=,v=
+adc.c               adc A,  C                   1   4       c=,z=,s=,v=
+adc.d               adc A,  D                   1   4       c=,z=,s=,v=
+adc.e               adc A,  E                   1   4       c=,z=,s=,v=
+adc.h               adc A,  H                   1   4       c=,z=,s=,v=
+adc.l               adc A,  L                   1   4       c=,z=,s=,v=
+adc.ixh             adc A,  IXH                 2   8       c=,z=,s=,v=
+adc.ixl             adc A,  IXL                 2   8       c=,z=,s=,v=
+adc.iyh             adc A,  IYH                 2   8       c=,z=,s=,v=
+adc.iyl             adc A,  IYL                 2   8       c=,z=,s=,v=
+adc*hl              adc A,  [HL]                1   7       c=,z=,s=,v=
+adc*ix  $mm         adc A,  [IX+$mm]            3   19      c=,z=,s=,v=
+adc*iy  $mm         adc A,  [IY+$mm]            3   19      c=,z=,s=,v=
+--------------------------------------------------------------------------------
+adc.hl.bc           adc HL, BC                  2   15      c=,z=,v=
+adc.hl.de           adc HL, DE                  2   15      c=,z=,v=
+adc.hl.hl           adc HL, HL                  2   15      c=,z=,v=
+adc.hl.sp           adc HL, SP                  2   15      c=,z=,v=
+================================================================================
+:: bitwise and:
+================================================================================
+and $nn             and A,  $nn                 2   7       c-,z=,s=,p=
+and.a               and A,  A                   1   4       c-,z=,s=,p=
+and.b               and A,  B                   1   4       c-,z=,s=,p=
+and.c               and A,  C                   1   4       c-,z=,s=,p=
+and.d               and A,  D                   1   4       c-,z=,s=,p=
+and.e               and A,  E                   1   4       c-,z=,s=,p=
+and.h               and A,  H                   1   4       c-,z=,s=,p=
+and.l               and A,  L                   1   4       c-,z=,s=,p=
+and.ixh             and A,  IXH                 2   8       c-,z=,s=,p=
+and.ixl             and A,  IXL                 2   8       c-,z=,s=,p=
+and.iyh             and A,  IYH                 2   8       c-,z=,s=,p=
+and.iyl             and A,  IYL                 2   8       c-,z=,s=,p=
+and*hl              and A,  [HL]                1   7       c-,z=,s=,p=
+and*ix  $mm         and A,  [IX+$mm]            3   19      c-,z=,s=,p=
+and*iy  $mm         and A,  [IY+$mm]            3   19      c-,z=,s=,p=
+================================================================================
+:: bit test:
+================================================================================
+bit0.a              bit 0,  A                   2   8       z= [^3]
+bit0.b              bit 0,  B                   2   8       z= [^3]
+bit0.c              bit 0,  C                   2   8       z= [^3]
+bit0.d              bit 0,  D                   2   8       z= [^3]
+bit0.e              bit 0,  E                   2   8       z= [^3]
+bit0.h              bit 0,  H                   2   8       z= [^3]
+bit0.l              bit 0,  L                   2   8       z= [^3]
+bit0*hl             bit 0,  [HL]                2   12      z= [^3]
+bit0*ix $mm         bit 0,  [IX+$mm]            4   20      z= [^3]
+bit0*iy $mm         bit 0,  [IY+$mm]            4   20      z= [^3]
+--------------------------------------------------------------------------------
+bit1.a              bit 1,  A                   2   8       z= [^3]
+bit1.b              bit 1,  B                   2   8       z= [^3]
+bit1.c              bit 1,  C                   2   8       z= [^3]
+bit1.d              bit 1,  D                   2   8       z= [^3]
+bit1.e              bit 1,  E                   2   8       z= [^3]
+bit1.h              bit 1,  H                   2   8       z= [^3]
+bit1.l              bit 1,  L                   2   8       z= [^3]
+bit1*hl             bit 1,  [HL]                2   12      z= [^3]
+bit1*ix $mm         bit 1,  [IX+$mm]            4   20      z= [^3]
+bit1*iy $mm         bit 1,  [IY+$mm]            4   20      z= [^3]
+--------------------------------------------------------------------------------
+bit2.a              bit 2,  A                   2   8       z= [^3]
+bit2.b              bit 2,  B                   2   8       z= [^3]
+bit2.c              bit 2,  C                   2   8       z= [^3]
+bit2.d              bit 2,  D                   2   8       z= [^3]
+bit2.e              bit 2,  E                   2   8       z= [^3]
+bit2.h              bit 2,  H                   2   8       z= [^3]
+bit2.l              bit 2,  L                   2   8       z= [^3]
+bit2*hl             bit 2,  [HL]                2   12      z= [^3]
+bit2*ix $mm         bit 2,  [IX+$mm]            4   20      z= [^3]
+bit2*iy $mm         bit 2,  [IY+$mm]            4   20      z= [^3]
+--------------------------------------------------------------------------------
+bit3.a              bit 3,  A                   2   8       z= [^3]
+bit3.b              bit 3,  B                   2   8       z= [^3]
+bit3.c              bit 3,  C                   2   8       z= [^3]
+bit3.d              bit 3,  D                   2   8       z= [^3]
+bit3.e              bit 3,  E                   2   8       z= [^3]
+bit3.h              bit 3,  H                   2   8       z= [^3]
+bit3.l              bit 3,  L                   2   8       z= [^3]
+bit3*hl             bit 3,  [HL]                2   12      z= [^3]
+bit3*ix $mm         bit 3,  [IX+$mm]            4   20      z= [^3]
+bit3*iy $mm         bit 3,  [IY+$mm]            4   20      z= [^3]
+--------------------------------------------------------------------------------
+bit4.a              bit 4,  A                   2   8       z= [^3]
+bit4.b              bit 4,  B                   2   8       z= [^3]
+bit4.c              bit 4,  C                   2   8       z= [^3]
+bit4.d              bit 4,  D                   2   8       z= [^3]
+bit4.e              bit 4,  E                   2   8       z= [^3]
+bit4.h              bit 4,  H                   2   8       z= [^3]
+bit4.l              bit 4,  L                   2   8       z= [^3]
+bit4*hl             bit 4,  [HL]                2   12      z= [^3]
+bit4*ix $mm         bit 4,  [IX+$mm]            4   20      z= [^3]
+bit4*iy $mm         bit 4,  [IY+$mm]            4   20      z= [^3]
+--------------------------------------------------------------------------------
+bit5.a              bit 5,  A                   2   8       z= [^3]
+bit5.b              bit 5,  B                   2   8       z= [^3]
+bit5.c              bit 5,  C                   2   8       z= [^3]
+bit5.d              bit 5,  D                   2   8       z= [^3]
+bit5.e              bit 5,  E                   2   8       z= [^3]
+bit5.h              bit 5,  H                   2   8       z= [^3]
+bit5.l              bit 5,  L                   2   8       z= [^3]
+bit5*hl             bit 5,  [HL]                2   12      z= [^3]
+bit5*ix $mm         bit 5,  [IX+$mm]            4   20      z= [^3]
+bit5*iy $mm         bit 5,  [IY+$mm]            4   20      z= [^3]
+--------------------------------------------------------------------------------
+bit6.a              bit 6,  A                   2   8       z= [^3]
+bit6.b              bit 6,  B                   2   8       z= [^3]
+bit6.c              bit 6,  C                   2   8       z= [^3]
+bit6.d              bit 6,  D                   2   8       z= [^3]
+bit6.e              bit 6,  E                   2   8       z= [^3]
+bit6.h              bit 6,  H                   2   8       z= [^3]
+bit6.l              bit 6,  L                   2   8       z= [^3]
+bit6*hl             bit 6,  [HL]                2   12      z= [^3]
+bit6*ix $mm         bit 6,  [IX+$mm]            4   20      z= [^3]
+bit6*iy $mm         bit 6,  [IY+$mm]            4   20      z= [^3]
+--------------------------------------------------------------------------------
+bit7.a              bit 7,  A                   2   8       z= [^3]
+bit7.b              bit 7,  B                   2   8       z= [^3]
+bit7.c              bit 7,  C                   2   8       z= [^3]
+bit7.d              bit 7,  D                   2   8       z= [^3]
+bit7.e              bit 7,  E                   2   8       z= [^3]
+bit7.h              bit 7,  H                   2   8       z= [^3]
+bit7.l              bit 7,  L                   2   8       z= [^3]
+bit7*hl             bit 7,  [HL]                2   12      z= [^3]
+bit7*ix $mm         bit 7,  [IX+$mm]            4   20      z= [^3]
+bit7*iy $mm         bit 7,  [IY+$mm]            4   20      z= [^3]
+================================================================================
+:: call:
+================================================================================
+call    $nnnn       call    $nnnn               3   17      preserved
+call?nz $nnnn       call    nz, $nnnn           3   17 /10  preserved
+call?z  $nnnn       call    z,  $nnnn           3   17 /10  preserved
+call?nc $nnnn       call    nc, $nnnn           3   17 /10  preserved
+call?c  $nnnn       call    c,  $nnnn           3   17 /10  preserved
+call?po $nnnn       call    po, $nnnn           3   17 /10  preserved
+call?pe $nnnn       call    pe, $nnnn           3   17 /10  preserved
+call?p  $nnnn       call    p,  $nnnn           3   17 /10  preserved
+call?m  $nnnn       call    m,  $nnnn           3   17 /10  preserved
+================================================================================
+:: compare:
+================================================================================
+cp  $nn             cp  A,  $nn                 2   7       c=,z=,s=,v=
+cp.a                cp  A,  A                   1   4       c=,z=,s=,v=
+cp.b                cp  A,  B                   1   4       c=,z=,s=,v=
+cp.c                cp  A,  C                   1   4       c=,z=,s=,v=
+cp.d                cp  A,  D                   1   4       c=,z=,s=,v=
+cp.e                cp  A,  E                   1   4       c=,z=,s=,v=
+cp.h                cp  A,  H                   1   4       c=,z=,s=,v=
+cp.l                cp  A,  L                   1   4       c=,z=,s=,v=
+cp.ixh              cp  A,  IXH                 2   8       c=,z=,s=,v=
+cp.ixl              cp  A,  IXL                 2   8       c=,z=,s=,v=
+cp.iyh              cp  A,  IYH                 2   8       c=,z=,s=,v=
+cp.iyl              cp  A,  IYL                 2   8       c=,z=,s=,v=
+cp*hl               cp  A,  [HL]                1   7       c=,z=,s=,v=
+cp*ix   $mm         cp  A,  [IX+$mm]            3   19      c=,z=,s=,v=
+cp*iy   $mm         cp  A,  [IY+$mm]            3   19      c=,z=,s=,v=
+--------------------------------------------------------------------------------
+cpi                 cpi                         2   16      z=,s=,v= [^1]
+cpir                cpir                        2   21 /16  z=,s=,v= [^1]
+cpd                 cpd                         2   16      z=,s=,v= [^1]
+cpdr                cpdr                        2   21 /16  z=,s=,v= [^1]
+================================================================================
+:: complement:
+================================================================================
+cpl                 cpl                         1   4       preserved
+ccf                 ccf                         1   4       c=
+================================================================================
+:: decimal adjust:
+================================================================================
+daa                 daa                         1   4       c=,z=,s=,p=
+================================================================================
+:: decrement:
+================================================================================
+dec.a               dec A                       1   4       z=,s=,v=
+dec.b               dec B                       1   4       z=,s=,v=
+dec.c               dec C                       1   4       z=,s=,v=
+dec.d               dec D                       1   4       z=,s=,v=
+dec.e               dec E                       1   4       z=,s=,v=
+dec.h               dec H                       1   4       z=,s=,v=
+dec.l               dec L                       1   4       z=,s=,v=
+dec.ixh             dec IXH                     2   8       z=,s=,v=
+dec.ixl             dec IXL                     2   8       z=,s=,v=
+dec.iyh             dec IYH                     2   8       z=,s=,v=
+dec.iyl             dec IYL                     2   8       z=,s=,v=
+dec*hl              dec [HL]                    1   11      z=,s=,v=
+dec*ix  $mm         dec [IX+$mm]                3   23      z=,s=,v=
+dec*iy  $mm         dec [IY+$mm]                3   23      z=,s=,v=
+--------------------------------------------------------------------------------
+dec.bc              dec BC                      1   6       preserved
+dec.de              dec DE                      1   6       preserved
+dec.hl              dec HL                      1   6       preserved
+dec.sp              dec SP                      1   6       preserved
+dec.ix              dec IX                      2   10      preserved
+dec.iy              dec IY                      2   10      preserved
+================================================================================
+:: disable / enable interrupts:
+================================================================================
+di                  di                          1   4       preserved
+ei                  ei                          1   4       preserved
+================================================================================
+:: decrement, jump if non-zero:
+================================================================================
+djnz    $nnnn       djnz    $nnnn               2   13 /8   preserved
+================================================================================
+:: exchange:
+================================================================================
+ex.de.hl            ex  DE, HL                  1   4       preserved
+ex.hl.de            ex  DE, HL                  1   4       preserved
+ex.af.af            ex  AF, AF                  1   4       c=,z=,s=,v=
+exx                 exx                         1   4       preserved
+ex*sp.hl            ex  [SP],   HL              1   19      preserved
+ex.hl*sp            ex  [SP],   HL              1   19      preserved
+ex*sp.ix            ex  [SP],   IX              2   23      preserved
+ex.ix*sp            ex  [SP],   IX              2   23      preserved
+ex*sp.iy            ex  [SP],   IY              2   23      preserved
+ex.iy*iy            ex  [SP],   IY              2   23      preserved
+================================================================================
+:: halt:
+================================================================================
+halt                halt                        1   4       preserved
+hlt                 halt                        1   4       preserved
+hcf                 halt                        1   4       preserved
+================================================================================
+:: input:
+================================================================================
+in.a    $nn         in  A,  $nn                 2   11      preserved
+in*c                in  [C]                     2   12      z=,s=,p= [^4]
+in.a*c              in  A,  [C]                 2   12      z=,s=,p=
+in.b*c              in  B,  [C]                 2   12      z=,s=,p=
+in.c*c              in  C,  [C]                 2   12      z=,s=,p=
+in.d*c              in  D,  [C]                 2   12      z=,s=,p=
+in.e*c              in  E,  [C]                 2   12      z=,s=,p=
+in.h*c              in  H,  [C]                 2   12      z=,s=,p=
+in.l*c              in  L,  [C]                 2   12      z=,s=,p=
+--------------------------------------------------------------------------------
+ini                 ini                         2   16      z= [^1]
+inir                inir                        2   21 /16  z+
+ind                 ind                         2   16      z= [^1]
+indr                indr                        2   21 /16  z+
+================================================================================
+:: increment:
+================================================================================
+inc.a               inc A                       1   4       z=,s=,v=
+inc.b               inc B                       1   4       z=,s=,v=
+inc.c               inc C                       1   4       z=,s=,v=
+inc.d               inc D                       1   4       z=,s=,v=
+inc.e               inc E                       1   4       z=,s=,v=
+inc.h               inc H                       1   4       z=,s=,v=
+inc.l               inc L                       1   4       z=,s=,v=
+inc.ixh             inc IXH                     2   8       z=,s=,v=
+inc.ixl             inc IXL                     2   8       z=,s=,v=
+inc.iyh             inc IYH                     2   8       z=,s=,v=
+inc.iyl             inc IYL                     2   8       z=,s=,v=
+inc*hl              inc [HL]                    1   11      z=,s=,v=
+inc*ix  $mm         inc [IX+$mm]                3   23      z=,s=,v=
+inc*iy  $mm         inc [IY+$mm]                3   23      z=,s=,v=
+--------------------------------------------------------------------------------
+inc.bc              inc BC                      1   6       preserved
+inc.de              inc DE                      1   6       preserved
+inc.hl              inc HL                      1   6       preserved
+inc.sp              inc SP                      1   6       preserved
+inc.ix              inc IX                      2   10      preserved
+inc.iy              inc IY                      2   10      preserved
+================================================================================
+:: interrupt mode:
+================================================================================
+im.0                im  0                       2   8       preserved
+im.1                im  1                       2   8       preserved
+im.2                im  2                       2   8       preserved
+================================================================================
+:: jump:
+================================================================================
+jp  $nnnn           jp  $nnnn                   3   10      preserved
+jp?nz   $nnnn       jp  nc, $nnnn               3   10      preserved
+jp?z    $nnnn       jp  z,  $nnnn               3   10      preserved
+jp?nc   $nnnn       jp  nc, $nnnn               3   10      preserved
+jp?c    $nnnn       jp  c,  $nnnn               3   10      preserved
+jp?po   $nnnn       jp  po, $nnnn               3   10      preserved
+jp?pe   $nnnn       jp  pe, $nnnn               3   10      preserved
+jp?p    $nnnn       jp  p,  $nnnn               3   10      preserved
+jp?m    $nnnn       jp  m,  $nnnn               3   10      preserved
+jp.hl               jp  [HL]                    1   4       preserved
+jp.ix               jp  [IX]                    2   8       preserved
+jp.iy               jp  [IY]                    2   8       preserved
+--------------------------------------------------------------------------------
+jr  $nnnn           jr  $nnnn                   2   12      preserved
+jr?c    $nnnn       jr  c,  $nnnn               2   12 /7   preserved
+jr?nc   $nnnn       jr  nc, $nnnn               2   12 /7   preserved
+jr?z    $nnnn       jr  z,  $nnnn               2   12 /7   preserved
+jr?nz   $nnnn       jr  nz, $nnnn               2   12 /7   preserved
+================================================================================
+:: load:
+================================================================================
+:: load, 8-bit:
+--------------------------------------------------------------------------------
+ld.a    $nn         ld  A,  $nn                 2   7       preserved
+ld.a.a              ld  A,  A                   1   4       preserved
+ld.a.b              ld  A,  B                   1   4       preserved
+ld.a.c              ld  A,  C                   1   4       preserved
+ld.a.d              ld  A,  D                   1   4       preserved
+ld.a.e              ld  A,  E                   1   4       preserved
+ld.a.h              ld  A,  H                   1   4       preserved
+ld.a.l              ld  A,  L                   1   4       preserved
+ld.a.ixh            ld  A,  IXH                 2   8       preserved
+ld.a.ixl            ld  A,  IXL                 2   8       preserved
+ld.a.iyh            ld  A,  IYH                 2   8       preserved
+ld.a.iyl            ld  A,  IYL                 2   8       preserved
+ld.a*   $nnnn       ld  A,  [$nnnn]             3   13      preserved
+ld.a*bc             ld  A,  [BC]                1   7       preserved
+ld.a*de             ld  A,  [DE]                1   7       preserved
+ld.a*hl             ld  A,  [HL]                1   7       preserved
+ld.a*ix $mm         ld  A,  [IX+$mm]            3   19      preserved
+ld.a*iy $mm         ld  A,  [IY+$mm]            3   19      preserved
+--------------------------------------------------------------------------------
+ld.b    $nn         ld  B,  $nn                 2   7       preserved
+ld.b.a              ld  B,  A                   1   4       preserved
+ld.b.b              ld  B,  B                   1   4       preserved
+ld.b.c              ld  B,  C                   1   4       preserved
+ld.b.d              ld  B,  D                   1   4       preserved
+ld.b.e              ld  B,  E                   1   4       preserved
+ld.b.h              ld  B,  H                   1   4       preserved
+ld.b.l              ld  B,  L                   1   4       preserved
+ld.b.ixh            ld  B,  IXH                 2   8       preserved
+ld.b.ixl            ld  B,  IXL                 2   8       preserved
+ld.b.iyh            ld  B,  IYH                 2   8       preserved
+ld.b.iyl            ld  B,  IYL                 2   8       preserved
+ld.b*   $nnnn       ld  B,  [$nnnn]             3   13      preserved
+ld.b*hl             ld  B,  [HL]                1   7       preserved
+ld.b*ix $mm         ld  B,  [IX+$mm]            3   19      preserved
+ld.b*iy $mm         ld  B,  [IY+$mm]            3   19      preserved
+--------------------------------------------------------------------------------
+ld.c    $nn         ld  C,  $nn                 2   7       preserved
+ld.c.a              ld  C,  A                   1   4       preserved
+ld.c.b              ld  C,  B                   1   4       preserved
+ld.c.c              ld  C,  C                   1   4       preserved
+ld.c.d              ld  C,  D                   1   4       preserved
+ld.c.e              ld  C,  E                   1   4       preserved
+ld.c.h              ld  C,  H                   1   4       preserved
+ld.c.l              ld  C,  L                   1   4       preserved
+ld.c.ixh            ld  C,  IXH                 2   8       preserved
+ld.c.ixl            ld  C,  IXL                 2   8       preserved
+ld.c.iyh            ld  C,  IYH                 2   8       preserved
+ld.c.iyl            ld  C,  IYL                 2   8       preserved
+ld.c*   $nnnn       ld  C,  [$nnnn]             3   13      preserved
+ld.c*hl             ld  C,  [HL]                1   7       preserved
+ld.c*ix $mm         ld  C,  [IX+$mm]            3   19      preserved
+ld.c*iy $mm         ld  C,  [IY+$mm]            3   19      preserved
+--------------------------------------------------------------------------------
+ld.d    $nn         ld  D,  $nn                 2   7       preserved
+ld.d.a              ld  D,  A                   1   4       preserved
+ld.d.b              ld  D,  B                   1   4       preserved
+ld.d.c              ld  D,  C                   1   4       preserved
+ld.d.d              ld  D,  D                   1   4       preserved
+ld.d.e              ld  D,  E                   1   4       preserved
+ld.d.h              ld  D,  H                   1   4       preserved
+ld.d.l              ld  D,  L                   1   4       preserved
+ld.d.ixh            ld  D,  IXH                 2   8       preserved
+ld.d.ixl            ld  D,  IXL                 2   8       preserved
+ld.d.iyh            ld  D,  IYH                 2   8       preserved
+ld.d.iyl            ld  D,  IYL                 2   8       preserved
+ld.d*   $nnnn       ld  D,  [$nnnn]             3   13      preserved
+ld.d*hl             ld  D,  [HL]                1   7       preserved
+ld.d*ix $mm         ld  D,  [IX+$mm]            3   19      preserved
+ld.d*iy $mm         ld  D,  [IY+$mm]            3   19      preserved
+--------------------------------------------------------------------------------
+ld.e    $nn         ld  E,  $nn                 2   7       preserved
+ld.e.a              ld  E,  A                   1   4       preserved
+ld.e.b              ld  E,  B                   1   4       preserved
+ld.e.c              ld  E,  C                   1   4       preserved
+ld.e.d              ld  E,  D                   1   4       preserved
+ld.e.e              ld  E,  E                   1   4       preserved
+ld.e.h              ld  E,  H                   1   4       preserved
+ld.e.l              ld  E,  L                   1   4       preserved
+ld.e.ixh            ld  E,  IXH                 2   8       preserved
+ld.e.ixl            ld  E,  IXL                 2   8       preserved
+ld.e.iyh            ld  E,  IYH                 2   8       preserved
+ld.e.iyl            ld  E,  IYL                 2   8       preserved
+ld.e*   $nnnn       ld  E,  [$nnnn]             3   13      preserved
+ld.e*hl             ld  E,  [HL]                1   7       preserved
+ld.e*ix $mm         ld  E,  [IX+$mm]            3   19      preserved
+ld.e*iy $mm         ld  E,  [IY+$mm]            3   19      preserved
+--------------------------------------------------------------------------------
+ld.h    $nn         ld  H,  $nn                 2   7       preserved
+ld.h.a              ld  H,  A                   1   4       preserved
+ld.h.b              ld  H,  B                   1   4       preserved
+ld.h.c              ld  H,  C                   1   4       preserved
+ld.h.d              ld  H,  D                   1   4       preserved
+ld.h.e              ld  H,  E                   1   4       preserved
+ld.h.h              ld  H,  H                   1   4       preserved
+ld.h.l              ld  H,  L                   1   4       preserved
+ld.h.ixh            ld  H,  IXH                 2   8       preserved
+ld.h.ixl            ld  H,  IXL                 2   8       preserved
+ld.h.iyh            ld  H,  IYH                 2   8       preserved
+ld.h.iyl            ld  H,  IYL                 2   8       preserved
+ld.h*   $nnnn       ld  H,  [$nnnn]             3   13      preserved
+ld.h*hl             ld  H,  [HL]                1   7       preserved
+ld.h*ix $mm         ld  H,  [IX+$mm]            3   19      preserved
+ld.h*iy $mm         ld  H,  [IY+$mm]            3   19      preserved
+--------------------------------------------------------------------------------
+ld.l    $nn         ld  L,  $nn                 2   7       preserved
+ld.l.a              ld  L,  A                   1   4       preserved
+ld.l.b              ld  L,  B                   1   4       preserved
+ld.l.c              ld  L,  C                   1   4       preserved
+ld.l.d              ld  L,  D                   1   4       preserved
+ld.l.e              ld  L,  E                   1   4       preserved
+ld.l.h              ld  L,  H                   1   4       preserved
+ld.l.l              ld  L,  L                   1   4       preserved
+ld.l.ixh            ld  L,  IXH                 2   8       preserved
+ld.l.ixl            ld  L,  IXL                 2   8       preserved
+ld.l.iyh            ld  L,  IYH                 2   8       preserved
+ld.l.iyl            ld  L,  IYL                 2   8       preserved
+ld.l*   $nnnn       ld  L,  [$nnnn]             3   13      preserved
+ld.l*hl             ld  L,  [HL]                1   7       preserved
+ld.l*ix $mm         ld  L,  [IX+$mm]            3   19      preserved
+ld.l*iy $mm         ld  L,  [IY+$mm]            3   19      preserved
+--------------------------------------------------------------------------------
+ld.ixh  $nn         ld  IXH,    $nn             3   11      preserved
+ld.ixh.a            ld  IXH,    A               2   8       preserved
+ld.ixh.b            ld  IXH,    B               2   8       preserved
+ld.ixh.c            ld  IXH,    C               2   8       preserved
+ld.ixh.d            ld  IXH,    D               2   8       preserved
+ld.ixh.e            ld  IXH,    E               2   8       preserved
+ld.ixh.ixh          ld  IXH,    IXH             2   8       preserved
+ld.ixh.ixl          ld  IXH,    IXL             2   8       preserved
+ld.ixl  $nn         ld  IXL,    $nn             3   11      preserved
+ld.ixl.a            ld  IXL,    A               2   8       preserved
+ld.ixl.b            ld  IXL,    B               2   8       preserved
+ld.ixl.c            ld  IXL,    C               2   8       preserved
+ld.ixl.d            ld  IXL,    D               2   8       preserved
+ld.ixl.e            ld  IXL,    E               2   8       preserved
+ld.ixl.ixh          ld  IXL,    IXH             2   8       preserved
+ld.ixl.ixl          ld  IXL,    IXL             2   8       preserved
+--------------------------------------------------------------------------------
+ld.iyh  $nn         ld  IYH,    $nn             3   11      preserved
+ld.iyh.a            ld  IYH,    A               2   8       preserved
+ld.iyh.b            ld  IYH,    B               2   8       preserved
+ld.iyh.c            ld  IYH,    C               2   8       preserved
+ld.iyh.d            ld  IYH,    D               2   8       preserved
+ld.iyh.e            ld  IYH,    E               2   8       preserved
+ld.iyh.ixh          ld  IYH,    IYH             2   8       preserved
+ld.iyh.ixl          ld  IYH,    IYL             2   8       preserved
+ld.iyl  $nn         ld  IYL,    $nn             3   11      preserved
+ld.iyl.a            ld  IYL,    A               2   8       preserved
+ld.iyl.b            ld  IYL,    B               2   8       preserved
+ld.iyl.c            ld  IYL,    C               2   8       preserved
+ld.iyl.d            ld  IYL,    D               2   8       preserved
+ld.iyl.e            ld  IYL,    E               2   8       preserved
+ld.iyl.ixh          ld  IYL,    IYH             2   8       preserved
+ld.iyl.ixl          ld  IYL,    IYL             2   8       preserved
+--------------------------------------------------------------------------------
+ld.a.i              ld  A,  I                   2   9       preserved
+ld.i.a              ld  I,  A                   2   9       preserved
+ld.a.r              ld  A,  R                   2   9       preserved
+ld.r.a              ld  R,  A                   2   9       preserved
+--------------------------------------------------------------------------------
+ld*$.a              ld  [$nnnn],    A           3   13      preserved
+ld*bc.a             ld  [BC],       A           1   7       preserved
+ld*de.a             ld  [DE],       A           1   7       preserved
+ld*hl.a             ld  [HL],       A           1   7       preserved
+ld*ix.a $mm         ld  [IX+$mm],   A           3   19      preserved
+ld*iy.a $mm         ld  [IY+$mm],   A           3   19      preserved
+ld*hl   $nn         ld  [HL],       $nn         2   10      preserved
+ld*ix   $mm $nn     ld  [IX+$mm],   $nn         2   10      preserved
+ld*iy   $mm $nn     ld  [IY+$mm],   $nn         2   10      preserved
+--------------------------------------------------------------------------------
+:: load, 16-bit:
+--------------------------------------------------------------------------------
+ld.bc   $nnnn       ld  BC, $nnnn               3   10      preserved
+ld.de   $nnnn       ld  DE, $nnnn               3   10      preserved
+ld.hl   $nnnn       ld  HL, $nnnn               3   10      preserved
+ld.ix   $nnnn       ld  IX, $nnnn               4   14      preserved
+ld.iy   $nnnn       ld  IY, $nnnn               4   14      preserved
+ld.sp   $nnnn       ld  SP, $nnnn               3   10      preserved
+--------------------------------------------------------------------------------
+ld.sp.hl            ld  SP, HL                  1   20      preserved
+ld.sp.ix            ld  SP, IX                  2   10      preserved
+ld.sp.iy            ld  SP, IY                  2   10      preserved
+--------------------------------------------------------------------------------
+ld.bc*  $nnnn       ld  BC, [$nnnn]             4   20      preserved
+ld.de*  $nnnn       ld  DE, [$nnnn]             4   20      preserved
+ld.hl*  $nnnn       ld  HL, [$nnnn]             3   16      preserved
+ld.ix*  $nnnn       ld  IX, [$nnnn]             4   20      preserved
+ld.iy*  $nnnn       ld  IY, [$nnnn]             4   20      preserved
+ld.sp*  $nnnn       ld  SP, [$nnnn]             4   20      preserved
+--------------------------------------------------------------------------------
+ld*$.bc $nnnn       ld  [$nnnn],    BC          4   20      preserved
+ld*$.de $nnnn       ld  [$nnnn],    DE          4   20      preserved
+ld*$.hl $nnnn       ld  [$nnnn],    HL          3   20      preserved
+ld*$.ix $nnnn       ld  [$nnnn],    IX          4   20      preserved
+ld*$.iy $nnnn       ld  [$nnnn],    IY          4   20      preserved
+ld*$.sp $nnnn       ld  [$nnnn],    SP          4   20      preserved
+--------------------------------------------------------------------------------
+:: load & increment / decrement / repeat:
+--------------------------------------------------------------------------------
+ldi                 ldi                         2   16      v= [^1]
+ldir                ldir                        2   21 /16  v= [^1]
+ldd                 ldd                         2   16      v= [^1]
+lddr                lddr                        2   21 /21  v= [^1]
+================================================================================
+:: negate:
+================================================================================
+neg                 neg                         2   8       c=,z=,s=,v=
+================================================================================
+:: no-operation:
+================================================================================
+nop                 nop                         1   4       preserved
+================================================================================
+:: bitwise or
+================================================================================
+or  $nn             or  A,  $nn                 2   7       c-,z=,s=,p=
+or.a                or  A,  A                   1   4       c-,z=,s=,p=
+or.b                or  A,  B                   1   4       c-,z=,s=,p=
+or.c                or  A,  C                   1   4       c-,z=,s=,p=
+or.d                or  A,  D                   1   4       c-,z=,s=,p=
+or.e                or  A,  E                   1   4       c-,z=,s=,p=
+or.h                or  A,  H                   1   4       c-,z=,s=,p=
+or.l                or  A,  L                   1   4       c-,z=,s=,p=
+or.ixh              or  A,  IXH                 2   8       c-,z=,s=,p=
+or.ixl              or  A,  IXL                 2   8       c-,z=,s=,p=
+or.iyh              or  A,  IYH                 2   8       c-,z=,s=,p=
+or.iyl              or  A,  IYL                 2   8       c-,z=,s=,p=
+or*hl               or  A,  [HL]                1   7       c-,z=,s=,p=
+or*ix   $mm         or  A,  [IX+$mm]            3   19      c-,z=,s=,p=
+or*iy   $mm         or  A,  [IY+$mm]            3   19      c-,z=,s=,p=
+================================================================================
+:: ouput:
+================================================================================
+out*$.a             out [$nn],  A               2   11      preserved
+out*c.a             out [C],    A               2   12      preserved
+out*c.b             out [C],    B               2   12      preserved
+out*c.c             out [C],    C               2   12      preserved
+out*c.d             out [C],    D               2   12      preserved
+out*c.e             out [C],    E               2   12      preserved
+out*c.h             out [C],    H               2   12      preserved
+out*c.l             out [C],    L               2   12      preserved
+--------------------------------------------------------------------------------
+outi                outi                        2   16      z= [^1]
+otir                otir                        2   21 /16  z+
+outd                outd                        2   16      z= [^1]
+otdr                otdr                        2   21 /16  z+
+================================================================================
+:: reset bit:
+================================================================================
+res0.a              res 0,  A                   2   8       preserved
+res0.b              res 0,  B                   2   8       preserved
+res0.c              res 0,  C                   2   8       preserved
+res0.d              res 0,  D                   2   8       preserved
+res0.e              res 0,  E                   2   8       preserved
+res0.h              res 0,  H                   2   8       preserved
+res0.l              res 0,  L                   2   8       preserved
+res0*hl             res 0,  [HL]                2   15      preserved
+res0*ix $mm         res 0,  [IX+$mm]            4   23      preserved
+res0*iy $mm         res 0,  [IY+$mm]            4   23      preserved
+--------------------------------------------------------------------------------
+res1.a              res 1,  A                   2   8       preserved
+res1.b              res 1,  B                   2   8       preserved
+res1.c              res 1,  C                   2   8       preserved
+res1.d              res 1,  D                   2   8       preserved
+res1.e              res 1,  E                   2   8       preserved
+res1.h              res 1,  H                   2   8       preserved
+res1.l              res 1,  L                   2   8       preserved
+res1*hl             res 1,  [HL]                2   15      preserved
+res1*ix $mm         res 1,  [IX+$mm]            4   23      preserved
+res1*iy $mm         res 1,  [IY+$mm]            4   23      preserved
+--------------------------------------------------------------------------------
+res2.a              res 2,  A                   2   8       preserved
+res2.b              res 2,  B                   2   8       preserved
+res2.c              res 2,  C                   2   8       preserved
+res2.d              res 2,  D                   2   8       preserved
+res2.e              res 2,  E                   2   8       preserved
+res2.h              res 2,  H                   2   8       preserved
+res2.l              res 2,  L                   2   8       preserved
+res2*hl             res 2,  [HL]                2   15      preserved
+res2*ix $mm         res 2,  [IX+$mm]            4   23      preserved
+res2*iy $mm         res 2,  [IY+$mm]            4   23      preserved
+--------------------------------------------------------------------------------
+res3.a              res 3,  A                   2   8       preserved
+res3.b              res 3,  B                   2   8       preserved
+res3.c              res 3,  C                   2   8       preserved
+res3.d              res 3,  D                   2   8       preserved
+res3.e              res 3,  E                   2   8       preserved
+res3.h              res 3,  H                   2   8       preserved
+res3.l              res 3,  L                   2   8       preserved
+res3*hl             res 3,  [HL]                2   15      preserved
+res3*ix $mm         res 3,  [IX+$mm]            4   23      preserved
+res3*iy $mm         res 3,  [IY+$mm]            4   23      preserved
+--------------------------------------------------------------------------------
+res4.a              res 4,  A                   2   8       preserved
+res4.b              res 4,  B                   2   8       preserved
+res4.c              res 4,  C                   2   8       preserved
+res4.d              res 4,  D                   2   8       preserved
+res4.e              res 4,  E                   2   8       preserved
+res4.h              res 4,  H                   2   8       preserved
+res4.l              res 4,  L                   2   8       preserved
+res4*hl             res 4,  [HL]                2   15      preserved
+res4*ix $mm         res 4,  [IX+$mm]            4   23      preserved
+res4*iy $mm         res 4,  [IY+$mm]            4   23      preserved
+--------------------------------------------------------------------------------
+res5.a              res 5,  A                   2   8       preserved
+res5.b              res 5,  B                   2   8       preserved
+res5.c              res 5,  C                   2   8       preserved
+res5.d              res 5,  D                   2   8       preserved
+res5.e              res 5,  E                   2   8       preserved
+res5.h              res 5,  H                   2   8       preserved
+res5.l              res 5,  L                   2   8       preserved
+res5*hl             res 5,  [HL]                2   15      preserved
+res5*ix $mm         res 5,  [IX+$mm]            4   23      preserved
+res5*iy $mm         res 5,  [IY+$mm]            4   23      preserved
+--------------------------------------------------------------------------------
+res6.a              res 6,  A                   2   8       preserved
+res6.b              res 6,  B                   2   8       preserved
+res6.c              res 6,  C                   2   8       preserved
+res6.d              res 6,  D                   2   8       preserved
+res6.e              res 6,  E                   2   8       preserved
+res6.h              res 6,  H                   2   8       preserved
+res6.l              res 6,  L                   2   8       preserved
+res6*hl             res 6,  [HL]                2   15      preserved
+res6*ix $mm         res 6,  [IX+$mm]            4   23      preserved
+res6*iy $mm         res 6,  [IY+$mm]            4   23      preserved
+--------------------------------------------------------------------------------
+res7.a              res 7,  A                   2   8       preserved
+res7.b              res 7,  B                   2   8       preserved
+res7.c              res 7,  C                   2   8       preserved
+res7.d              res 7,  D                   2   8       preserved
+res7.e              res 7,  E                   2   8       preserved
+res7.h              res 7,  H                   2   8       preserved
+res7.l              res 7,  L                   2   8       preserved
+res7*hl             res 7,  [HL]                2   15      preserved
+res7*ix $mm         res 7,  [IX+$mm]            4   23      preserved
+res7*iy $mm         res 7,  [IY+$mm]            4   23      preserved
+================================================================================
+:: return:
+================================================================================
+ret                 ret                         1   10      preserved
+ret?nz              ret nz                      1   11 /5   preserved
+ret?z               ret z                       1   11 /5   preserved
+ret?nc              ret nc                      1   11 /5   preserved
+ret?c               ret c                       1   11 /5   preserved
+ret?po              ret po                      1   11 /5   preserved
+ret?pe              ret pe                      1   11 /5   preserved
+ret?p               ret p                       1   11 /5   preserved
+ret?m               ret m                       1   11 /5   preserved
+reti                reti                        2   14      preserved
+retn                retn                        2   14      preserved
+================================================================================
+:: reset vectors:
+================================================================================
+rst.0               rst $00                     1   11      preserved
+rst.8               rst $08                     1   11      preserved
+rst.10              rst $10                     1   11      preserved
+rst.18              rst $18                     1   11      preserved
+rst.20              rst $20                     1   11      preserved
+rst.28              rst $28                     1   11      preserved
+rst.30              rst $30                     1   11      preserved
+rst.38              rst $38                     1   11      preserved
+================================================================================
+:: rotate left:
+================================================================================
+rla                 rla                         1   4       c= [b0=c,c=b7]
+rl.a                rla A                       2   8       c=,z=,s= [b0=c,c=b7]
+rl.b                rla B                       2   8       c=,z=,s= [b0=c,c=b7]
+rl.c                rla C                       2   8       c=,z=,s= [b0=c,c=b7]
+rl.d                rla D                       2   8       c=,z=,s= [b0=c,c=b7]
+rl.e                rla E                       2   8       c=,z=,s= [b0=c,c=b7]
+rl.h                rla H                       2   8       c=,z=,s= [b0=c,c=b7]
+rl.l                rla L                       2   8       c=,z=,s= [b0=c,c=b7]
+rl*hl               rla [HL]                    2   15      c=,z=,s= [b0=c,c=b7]
+rl*ix   $mm         rla [IX+$mm]                4   23      c=,z=,s= [b0=c,c=b7]
+rl*iy   $mm         rla [IY+$mm]                4   23      c=,z=,s= [b0=c,c=b7]
+--------------------------------------------------------------------------------
+rlca                rlca                        1   4       c=,z=,s= [b0=c=b7]
+rlc.a               rlc A                       2   8       c=,z=,s= [b0=c=b7]
+rlc.b               rlc B                       2   8       c=,z=,s= [b0=c=b7]
+rlc.c               rlc C                       2   8       c=,z=,s= [b0=c=b7]
+rlc.d               rlc D                       2   8       c=,z=,s= [b0=c=b7]
+rlc.e               rlc E                       2   8       c=,z=,s= [b0=c=b7]
+rlc.h               rlc H                       2   8       c=,z=,s= [b0=c=b7]
+rlc.l               rlc L                       2   8       c=,z=,s= [b0=c=b7]
+rlc*hl              rlc [HL]                    2   15      c=,z=,s= [b0=c=b7]
+rlc*ix  $mm         rlc [IX+$mm]                4   23      c=,z=,s= [b0=c=b7]
+rlc*iy  $mm         rlc [IY+$mm]                4   23      c=,z=,s= [b0=c=b7]
+--------------------------------------------------------------------------------
+rld                 rld                         2   18      z=,s=,p=
+================================================================================
+:: rotate right:
+================================================================================
+rra                 rra                         1   4       c= [b7=c,c=b0]
+rr.a                rr  A                       2   8       c=,z=,s= [b7=c,c=b0]
+rr.b                rr  B                       2   8       c=,z=,s= [b7=c,c=b0]
+rr.c                rr  C                       2   8       c=,z=,s= [b7=c,c=b0]
+rr.d                rr  D                       2   8       c=,z=,s= [b7=c,c=b0]
+rr.e                rr  E                       2   8       c=,z=,s= [b7=c,c=b0]
+rr.h                rr  H                       2   8       c=,z=,s= [b7=c,c=b0]
+rr.l                rr  L                       2   8       c=,z=,s= [b7=c,c=b0]
+rr*hl               rr  [HL]                    2   15      c=,z=,s= [b7=c,c=b0]
+rr*ix   $mm         rr  [IX+$mm]                4   23      c=,z=,s= [b7=c,c=b0]
+rr*iy   $mm         rr  [IY+$mm]                4   23      c=,z=,s= [b7=c,c=b0]
+--------------------------------------------------------------------------------
+rrca                rrca                        1   4       c= [b7=c=b0]
+rrc.a               rrc A                       2   8       c=,z=,s= [b7=c=b0]
+rrc.b               rrc A                       2   8       c=,z=,s= [b7=c=b0]
+rrc.c               rrc A                       2   8       c=,z=,s= [b7=c=b0]
+rrc.d               rrc A                       2   8       c=,z=,s= [b7=c=b0]
+rrc.e               rrc A                       2   8       c=,z=,s= [b7=c=b0]
+rrc.h               rrc A                       2   8       c=,z=,s= [b7=c=b0]
+rrc.l               rrc A                       2   8       c=,z=,s= [b7=c=b0]
+rrc*hl              rrc [HL]                    2   15      c=,z=,s= [b7=c=b0]
+rrc*ix  $mm         rrc [IX+$mm]                4   23      c=,z=,s= [b7=c=b0]
+rrc*iy  $mm         rrc [IY+$mm]                4   23      c=,z=,s= [b7=c=b0]
+--------------------------------------------------------------------------------
+rrd                 rrd                         2   18      z=,s=,p=
+================================================================================
+:: set carry flag:
+================================================================================
+scf                 scf                         1   4       c+
+================================================================================
+:: set bit:
+================================================================================
+set0.a              set 0,  A                   2   8       preserved
+set0.b              set 0,  B                   2   8       preserved
+set0.c              set 0,  C                   2   8       preserved
+set0.d              set 0,  D                   2   8       preserved
+set0.e              set 0,  E                   2   8       preserved
+set0.h              set 0,  H                   2   8       preserved
+set0.l              set 0,  L                   2   8       preserved
+set0*hl             set 0,  [HL]                2   15      preserved
+set0*ix $mm         set 0,  [IX+$mm]            4   23      preserved
+set0*iy $mm         set 0,  [IY+$mm]            4   23      preserved
+--------------------------------------------------------------------------------
+set1.a              set 1,  A                   2   8       preserved
+set1.b              set 1,  B                   2   8       preserved
+set1.c              set 1,  C                   2   8       preserved
+set1.d              set 1,  D                   2   8       preserved
+set1.e              set 1,  E                   2   8       preserved
+set1.h              set 1,  H                   2   8       preserved
+set1.l              set 1,  L                   2   8       preserved
+set1*hl             set 1,  [HL]                2   15      preserved
+set1*ix $mm         set 1,  [IX+$mm]            4   23      preserved
+set1*iy $mm         set 1,  [IY+$mm]            4   23      preserved
+--------------------------------------------------------------------------------
+set2.a              set 2,  A                   2   8       preserved
+set2.b              set 2,  B                   2   8       preserved
+set2.c              set 2,  C                   2   8       preserved
+set2.d              set 2,  D                   2   8       preserved
+set2.e              set 2,  E                   2   8       preserved
+set2.h              set 2,  H                   2   8       preserved
+set2.l              set 2,  L                   2   8       preserved
+set2*hl             set 2,  [HL]                2   15      preserved
+set2*ix $mm         set 2,  [IX+$mm]            4   23      preserved
+set2*iy $mm         set 2,  [IY+$mm]            4   23      preserved
+--------------------------------------------------------------------------------
+set3.a              set 3,  A                   2   8       preserved
+set3.b              set 3,  B                   2   8       preserved
+set3.c              set 3,  C                   2   8       preserved
+set3.d              set 3,  D                   2   8       preserved
+set3.e              set 3,  E                   2   8       preserved
+set3.h              set 3,  H                   2   8       preserved
+set3.l              set 3,  L                   2   8       preserved
+set3*hl             set 3,  [HL]                2   15      preserved
+set3*ix $mm         set 3,  [IX+$mm]            4   23      preserved
+set3*iy $mm         set 3,  [IY+$mm]            4   23      preserved
+--------------------------------------------------------------------------------
+set4.a              set 4,  A                   2   8       preserved
+set4.b              set 4,  B                   2   8       preserved
+set4.c              set 4,  C                   2   8       preserved
+set4.d              set 4,  D                   2   8       preserved
+set4.e              set 4,  E                   2   8       preserved
+set4.h              set 4,  H                   2   8       preserved
+set4.l              set 4,  L                   2   8       preserved
+set4*hl             set 4,  [HL]                2   15      preserved
+set4*ix $mm         set 4,  [IX+$mm]            4   23      preserved
+set4*iy $mm         set 4,  [IY+$mm]            4   23      preserved
+--------------------------------------------------------------------------------
+set5.a              set 5,  A                   2   8       preserved
+set5.b              set 5,  B                   2   8       preserved
+set5.c              set 5,  C                   2   8       preserved
+set5.d              set 5,  D                   2   8       preserved
+set5.e              set 5,  E                   2   8       preserved
+set5.h              set 5,  H                   2   8       preserved
+set5.l              set 5,  L                   2   8       preserved
+set5*hl             set 5,  [HL]                2   15      preserved
+set5*ix $mm         set 5,  [IX+$mm]            4   23      preserved
+set5*iy $mm         set 5,  [IY+$mm]            4   23      preserved
+--------------------------------------------------------------------------------
+set6.a              set 6,  A                   2   8       preserved
+set6.b              set 6,  B                   2   8       preserved
+set6.c              set 6,  C                   2   8       preserved
+set6.d              set 6,  D                   2   8       preserved
+set6.e              set 6,  E                   2   8       preserved
+set6.h              set 6,  H                   2   8       preserved
+set6.l              set 6,  L                   2   8       preserved
+set6*hl             set 6,  [HL]                2   15      preserved
+set6*ix $mm         set 6,  [IX+$mm]            4   23      preserved
+set6*iy $mm         set 6,  [IY+$mm]            4   23      preserved
+--------------------------------------------------------------------------------
+set7.a              set 7,  A                   2   8       preserved
+set7.b              set 7,  B                   2   8       preserved
+set7.c              set 7,  C                   2   8       preserved
+set7.d              set 7,  D                   2   8       preserved
+set7.e              set 7,  E                   2   8       preserved
+set7.h              set 7,  H                   2   8       preserved
+set7.l              set 7,  L                   2   8       preserved
+set7*hl             set 7,  [HL]                2   15      preserved
+set7*ix $mm         set 7,  [IX+$mm]            4   23      preserved
+set7*iy $mm         set 7,  [IY+$mm]            4   23      preserved
+================================================================================
+:: shift-left:
+================================================================================
+sla.a               sla A                       2   8       c=,z=,s=,p= [c=b7]
+sla.b               sla B                       2   8       c=,z=,s=,p= [c=b7]
+sla.c               sla C                       2   8       c=,z=,s=,p= [c=b7]
+sla.d               sla D                       2   8       c=,z=,s=,p= [c=b7]
+sla.e               sla E                       2   8       c=,z=,s=,p= [c=b7]
+sla.h               sla H                       2   8       c=,z=,s=,p= [c=b7]
+sla.l               sla L                       2   8       c=,z=,s=,p= [c=b7]
+sla*hl              sla [HL]                    2   15      c=,z=,s=,p= [c=b7]
+sla*ix  $mm         sla [IX+$mm]                4   23      c=,z=,s=,p= [c=b7]
+sla*iy  $mm         sla [IY+$mm]                4   23      c=,z=,s=,p= [c=b7]
+--------------------------------------------------------------------------------
+sl1.a               sll A                       2   8       c=,z=,s=,p= [^2]
+sl1.b               sll B                       2   8       c=,z=,s=,p= [^2]
+sl1.c               sll C                       2   8       c=,z=,s=,p= [^2]
+sl1.d               sll D                       2   8       c=,z=,s=,p= [^2]
+sl1.e               sll E                       2   8       c=,z=,s=,p= [^2]
+sl1.h               sll H                       2   8       c=,z=,s=,p= [^2]
+sl1.l               sll L                       2   8       c=,z=,s=,p= [^2]
+sl1*hl              sll [HL]                    2   15      c=,z=,s=,p= [^2]
+sl1*ix  $mm         sll [IX+$mm]                4   23      c=,z=,s=,p= [^2]
+sl1*iy  $mm         sll [IY+$mm]                4   23      c=,z=,s=,p= [^2]
+================================================================================
+:: shift-right:
+================================================================================
+sra.a               sra A                       2   8       c=,z=,s=,p= [c=b0]
+sra.b               sra B                       2   8       c=,z=,s=,p= [c=b0]
+sra.c               sra C                       2   8       c=,z=,s=,p= [c=b0]
+sra.d               sra D                       2   8       c=,z=,s=,p= [c=b0]
+sra.e               sra E                       2   8       c=,z=,s=,p= [c=b0]
+sra.h               sra H                       2   8       c=,z=,s=,p= [c=b0]
+sra.l               sra L                       2   8       c=,z=,s=,p= [c=b0]
+sra*hl              sra [HL]                    2   15      c=,z=,s=,p= [c=b0]
+sra*ix  $mm         sra [IX+$mm]                4   23      c=,z=,s=,p= [c=b0]
+sra*iy  $mm         sra [IY+$mm]                4   23      c=,z=,s=,p= [c=b0]
+--------------------------------------------------------------------------------
+srl.a               srl A                       2   8       c=,z=,s-,p= [c=b0]
+srl.b               srl B                       2   8       c=,z=,s-,p= [c=b0]
+srl.c               srl C                       2   8       c=,z=,s-,p= [c=b0]
+srl.d               srl D                       2   8       c=,z=,s-,p= [c=b0]
+srl.e               srl E                       2   8       c=,z=,s-,p= [c=b0]
+srl.h               srl H                       2   8       c=,z=,s-,p= [c=b0]
+srl.l               srl L                       2   8       c=,z=,s-,p= [c=b0]
+sla*hl              srl [HL]                    2   15      c=,z=,s-,p= [c=b0]
+sla*ix  $mm         srl [IX+$mm]                4   23      c=,z=,s-,p= [c=b0]
+sla*iy  $mm         srl [IY+$mm]                4   23      c=,z=,s-,p= [c=b0]
+================================================================================
+:: subtract:
+================================================================================
+sub $nn             sub A,  $nn                 2   7       c=,z=,s=,v=
+sub.a               sub A,  A                   1   4       c=,z=,s=,v=
+sub.b               sub A,  B                   1   4       c=,z=,s=,v=
+sub.c               sub A,  C                   1   4       c=,z=,s=,v=
+sub.d               sub A,  D                   1   4       c=,z=,s=,v=
+sub.e               sub A,  E                   1   4       c=,z=,s=,v=
+sub.h               sub A,  H                   1   4       c=,z=,s=,v=
+sub.l               sub A,  L                   1   4       c=,z=,s=,v=
+sub.ixh             sub A,  IXH                 2   8       c=,z=,s=,v=
+sub.ixl             sub A,  IXL                 2   8       c=,z=,s=,v=
+sub.iyh             sub A,  IYH                 2   8       c=,z=,s=,v=
+sub.iyl             sub A,  IYL                 2   8       c=,z=,s=,v=
+sub*hl              sub A,  [HL]                1   7       c=,z=,s=,v=
+sub*ix  $mm         sub A,  [IX+$mm]            3   19      c=,z=,s=,v=
+sub*iy  $mm         sub A,  [IY+$mm]            3   19      c=,z=,s=,v=
+--------------------------------------------------------------------------------
+sbc $nn             sbc A,  $nn                 2   7       c=,z=,s=,v=
+sbc.a               sbc A,  A                   1   4       c=,z=,s=,v=
+sbc.b               sbc A,  B                   1   4       c=,z=,s=,v=
+sbc.c               sbc A,  C                   1   4       c=,z=,s=,v=
+sbc.d               sbc A,  D                   1   4       c=,z=,s=,v=
+sbc.e               sbc A,  E                   1   4       c=,z=,s=,v=
+sbc.h               sbc A,  H                   1   4       c=,z=,s=,v=
+sbc.l               sbc A,  L                   1   4       c=,z=,s=,v=
+sbc.ixh             sbc A,  IXH                 2   8       c=,z=,s=,v=
+sbc.ixl             sbc A,  IXL                 2   8       c=,z=,s=,v=
+sbc.iyh             sbc A,  IYH                 2   8       c=,z=,s=,v=
+sbc.iyl             sbc A,  IYL                 2   8       c=,z=,s=,v=
+sbc*hl              sbc A,  [HL]                1   7       c=,z=,s=,v=
+sbc*ix  $mm         sbc A,  [IX+$mm]            3   19      c=,z=,s=,v=
+sbc*iy  $mm         sbc A,  [IY+$mm]            3   19      c=,z=,s=,v=
+--------------------------------------------------------------------------------
+sbc.hl.bc           sbc HL, BC                  2   15      c=,z=,s=,v=
+sbc.hl.de           sbc HL, DE                  2   15      c=,z=,s=,v=
+sbc.hl.hl           sbc HL, HL                  2   15      c=,z=,s=,v=
+sbc.hl.sp           sbc HL, SP                  2   15      c=,z=,s=,v=
+================================================================================
+:: push & pop:
+================================================================================
+push.af             push    AF                  1   11      preserved
+push.bc             push    BC                  1   11      preserved
+push.de             push    DE                  1   11      preserved
+push.hl             push    HL                  1   11      preserved
+push.ix             push    IX                  2   15      preserved
+push.iy             push    IY                  2   15      preserved
+push.sp             push    SP                  1   11      preserved
+--------------------------------------------------------------------------------
+pop.af              pop     AF                  1   10      c=,z=,s=,v=
+pop.bc              pop     BC                  1   10      preserved
+pop.de              pop     DE                  1   10      preserved
+pop.hl              pop     HL                  1   10      preserved
+pop.ix              pop     IX                  2   14      preserved
+pop.iy              pop     IY                  2   14      preserved
+================================================================================
+:: bitwise xor:
+================================================================================
+xor  $nn            xor A,  $nn                 2   7       c-,z=,s=,p=
+xor.a               xor A,  A                   1   4       c-,z=,s=,p=
+xor.b               xor A,  B                   1   4       c-,z=,s=,p=
+xor.c               xor A,  C                   1   4       c-,z=,s=,p=
+xor.d               xor A,  D                   1   4       c-,z=,s=,p=
+xor.e               xor A,  E                   1   4       c-,z=,s=,p=
+xor.h               xor A,  H                   1   4       c-,z=,s=,p=
+xor.l               xor A,  L                   1   4       c-,z=,s=,p=
+xor.ixh             xor A,  IXH                 2   8       c-,z=,s=,p=
+xor.ixl             xor A,  IXL                 2   8       c-,z=,s=,p=
+xor.iyh             xor A,  IYH                 2   8       c-,z=,s=,p=
+xor.iyl             xor A,  IYL                 2   8       c-,z=,s=,p=
+xor*hl              xor A,  [HL]                1   7       c-,z=,s=,p=
+xor*ix   $mm        xor A,  [IX+$mm]            3   19      c-,z=,s=,p=
+xor*iy   $mm        xor A,  [IY+$mm]            3   19      c-,z=,s=,p=
+================================================================================
+:: footnotes:
+--------------------------------------------------------------------------------
+[^1]    after decrementing BC,
+        if BC >0, overflow-flag (v) is set
+        if BC =0, overflow-flag (v) is clear
+
+[^2]    undocumented opcode:
+        shifts value left by 1-bit. carry = bit 7, bit 0 = 1
+
+[^3]    zero-flag is set if specified bit is 0, otherwise clear
+
+[^4]    undocumented opcode:
+        reads byte from port BC and sets flags, but discards byte

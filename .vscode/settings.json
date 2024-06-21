@@ -9,6 +9,10 @@
     "editor.rulers": [
         80
     ],
+    "[plaintext]": {
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true
+    },
     "[asm]": {
         "editor.tabSize": 8
     },

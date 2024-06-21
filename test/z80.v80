@@ -636,13 +636,13 @@
 	rl*ix	$00		; rl	[IX+$00]		; DD CB 00 16
 	rl*iy	$00		; rl	[IY+$00]		; FD CB 00 16
 	rla			; rla				;    17
-	rl.a			; rl.a				;    CB 17
-	rl.b			; rl.b				;    CB 10
-	rl.c			; rl.c				;    CB 11
-	rl.d			; rl.d				;    CB 12
-	rl.e			; rl.e				;    CB 13
-	rl.h			; rl.h				;    CB 14
-	rl.l			; rl.l				;    CB 15
+	rl.a			; rl	A			;    CB 17
+	rl.b			; rl	B			;    CB 10
+	rl.c			; rl	C			;    CB 11
+	rl.d			; rl	D			;    CB 12
+	rl.e			; rl	E			;    CB 13
+	rl.h			; rl	H			;    CB 14
+	rl.l			; rl	L			;    CB 15
 	rlc*hl			; rlc	[HL]			;    CB 06
 	rlc*ix	$00		; rlc	[IX+$00]		; DD CB 00 06
 	rlc*iy	$00		; rlc	[IY+$00]		; FD CB 00 06
