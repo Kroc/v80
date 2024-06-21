@@ -27,21 +27,23 @@ _errmsg:
         .ADDR   @range_ins
 .DEF    ERR_RANGE_LINE          9       ; line too long
         .ADDR   @range_line
-.DEF    ERR_RANGE_STACK         10      ; stack overflow!
+.DEF    ERR_RANGE_OVER          10      ; expression overflow
+        .ADDR   @range_over
+.DEF    ERR_RANGE_STACK         11      ; stack overflow!
         .ADDR   @range_stack
-.DEF    ERR_RANGE_STR           11      ; `.w` does not support strings
+.DEF    ERR_RANGE_STR           12      ; `.w` does not support strings
         .ADDR   @range_str
-.DEF    ERR_REDEF_LABEL         12      ; label redefined
+.DEF    ERR_REDEF_LABEL         13      ; label redefined
         .ADDR   @redef_label
-.DEF    ERR_UNDEF_CONST         13      ; const undefined
+.DEF    ERR_UNDEF_CONST         14      ; const undefined
         .ADDR   @undef_const
-.DEF    ERR_UNDEF_FILE          14      ; file not found
+.DEF    ERR_UNDEF_FILE          15      ; file not found
         .ADDR   @undef_file
-.DEF    ERR_UNDEF_LABEL         15      ; label undefined
+.DEF    ERR_UNDEF_LABEL         16      ; label undefined
         .ADDR   @undef_label
-.DEF    ERR_UNEXP_DEFER         16      ; label cannot be deferred here
+.DEF    ERR_UNEXP_DEFER         17      ; label cannot be deferred here
         .ADDR   @unexp_defer
-.DEF    ERR_UNEXP_EOL           17      ; unexpected end-of-line / file
+.DEF    ERR_UNEXP_EOL           18      ; unexpected end-of-line / file
         .ADDR   @unexp_eol
 ;-------------------------------------------------------------------------------
 ; TODO: provide extended error message descriptions in an external file,
@@ -58,6 +60,7 @@ _errmsg:
 @range_heap     .BYTE "Heap overflow", 0
 @range_ins      .BYTE "Expression exceeds 8-bit parameter", 0
 @range_line     .BYTE "Line too long, 127 cols max.", 0
+@range_over     .BYTE "Expression overflow", 0
 @range_stack    .BYTE "Stack overflow", 0
 @range_str      .BYTE ".w cannot take strings", 0
 @redef_label    .BYTE "Labels cannot be redefined", 0
@@ -112,6 +115,10 @@ errRangeIns:
 errRangeLine:
         ;-----------------------------------------------------------------------
         ld      A,      ERR_RANGE_LINE  ; err code for line too long
+        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+errRangeOver:
+        ;-----------------------------------------------------------------------
+        ld      A,      ERR_RANGE_OVER  ; err code for expression overflow
         .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
 errRangeStack:
         ;-----------------------------------------------------------------------

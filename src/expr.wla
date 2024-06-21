@@ -634,8 +634,6 @@ evalExpr:
         ;-----------------------------------------------------------------------
         ; multiply operator:
         ;-----------------------------------------------------------------------
-        ; FIXME: err or warning on overflow?
-        ;
         ; multiply routine used from here:
         ; <http://z80-heaven.wikidot.com/math#toc4>
         ; multiplies DE by BC, result in DEHL
@@ -657,20 +655,26 @@ evalExpr:
 +       dec     A
         jr      nz,     -
 
+        ; did the multiplication overflow? 
+        ld      A,      E               ; check the upper 16-bits of the
+        or      D                       ;  32-bit result are all zero
+        jp      z,      errRangeOver    ; v80 is limited to 16-bits!
+
         ex      DE,     HL              ; return lower 16-bits in DE
         pop     HL                      ; restore token addr
         ret
         ;-----------------------------------------------------------------------
         ; add operator:
         ;-----------------------------------------------------------------------
-        ; FIXME: err or warning on overflow?
 @add:   add     HL,     BC              ; add value to total
+        jp      c,      errRangeOver    ; error if we go above 16-bits!
         ex      DE,     HL              ; return value in DE, token-addr in HL
         ret
         ;-----------------------------------------------------------------------
         ; subtract operator:
         ;-----------------------------------------------------------------------
-        ; FIXME: err or warning on underflow?
+        ; NOTE: underflows are allowed! e.g. the negate unary operator this
+        ;
 @sub:   sbc     HL,     BC              ; subtract value from total
         ex      DE,     HL              ; return value in DE, token-addr in HL
         ret
@@ -678,31 +682,31 @@ evalExpr:
         ; bitwise AND operator:
         ;-----------------------------------------------------------------------
 @and:   ld      A,      H               ; bitwise AND hi-bytes together
-        and     A,      B               ; ..
-        ld      D,      A               ; .
+        and     A,      B               ; ...
+        ld      D,      A               ; ..
         ld      A,      L               ; bitwise AND lo-bytes together
-        and     A,      C               ; ..
-        ld      E,      A               ; .
+        and     A,      C               ; ...
+        ld      E,      A               ; but return result in DE
         ret
         ;-----------------------------------------------------------------------
         ; bitwise OR operator:
         ;-----------------------------------------------------------------------
 @or:    ld      A,      H               ; bitwise OR hi-bytes together
-        or      A,      B               ; ..
-        ld      D,      A               ; .
+        or      A,      B               ; ...
+        ld      D,      A               ; ..
         ld      A,      L               ; bitwise OR lo-bytes together
-        or      A,      C               ; ..
-        ld      E,      A               ; .
+        or      A,      C               ; ...
+        ld      E,      A               ; but return result in DE
         ret
         ;-----------------------------------------------------------------------
         ; bitwise XOR operator:
         ;-----------------------------------------------------------------------
 @xor:   ld      A,      H               ; bitwise XOR hi-bytes together
-        xor     A,      B               ; ..
-        ld      D,      A               ; .
+        xor     A,      B               ; ...
+        ld      D,      A               ; ..
         ld      A,      L               ; bitwise XOR lo-bytes together
-        xor     A,      C               ; ..
-        ld      E,      A               ; .
+        xor     A,      C               ; ...
+        ld      E,      A               ; but return result in DE
         ret
 
         ; divide routine used from here:
@@ -816,6 +820,7 @@ evalValue:
         ;-----------------------------------------------------------------------
         ; 16-bit negate taken from:
         ; <www.smspower.org/Development/Z80ProgrammingTechniques#x16bitNeg>
+        ; underflow (but not overflow) is allowed for this purpose
         ;
 @neg:   xor     A                       ; set A to zero and clear flags
         sub     E                       ; do 0-E
@@ -904,7 +909,7 @@ parseHexNumber:
         ;-----------------------------------------------------------------------
         ; if a 5th byte was read that wasn't whitespace,
         ; it's an error -- the number is too long!
-        jp      errInvalNum
+        jp      errRangeOver            ; (use expr-overflow in this instance)
 
         ;-----------------------------------------------------------------------
 +       ld      E,      <buffers        ; go back to the start of the number
