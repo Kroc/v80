@@ -27,42 +27,45 @@ _errmsg:
         .ADDR   @range_ins
 .DEF    ERR_RANGE_LINE          9       ; line too long
         .ADDR   @range_line
-.DEF    ERR_RANGE_STR           10      ; `.w` does not support strings
+.DEF    ERR_RANGE_STACK         10      ; stack overflow!
+        .ADDR   @range_stack
+.DEF    ERR_RANGE_STR           11      ; `.w` does not support strings
         .ADDR   @range_str
-.DEF    ERR_REDEF_LABEL         11      ; label redefined
+.DEF    ERR_REDEF_LABEL         12      ; label redefined
         .ADDR   @redef_label
-.DEF    ERR_UNDEF_CONST         12      ; const undefined
+.DEF    ERR_UNDEF_CONST         13      ; const undefined
         .ADDR   @undef_const
-.DEF    ERR_UNDEF_FILE          13      ; file not found
+.DEF    ERR_UNDEF_FILE          14      ; file not found
         .ADDR   @undef_file
-.DEF    ERR_UNDEF_LABEL         14      ; label undefined
+.DEF    ERR_UNDEF_LABEL         15      ; label undefined
         .ADDR   @undef_label
-.DEF    ERR_UNEXP_DEFER         15      ; label cannot be deferred here
+.DEF    ERR_UNEXP_DEFER         16      ; label cannot be deferred here
         .ADDR   @unexp_defer
-.DEF    ERR_UNEXP_EOL           16      ; unexpected end-of-line / file
+.DEF    ERR_UNEXP_EOL           17      ; unexpected end-of-line / file
         .ADDR   @unexp_eol
 ;-------------------------------------------------------------------------------
 ; TODO: provide extended error message descriptions in an external file,
 ;       loading and printing them rather than storing them here
 ;
 @err            .BYTE "\r\n\r\nERROR: ",0
-@inval_expr     .BYTE "Invalid expression!", 0
-@inval_file     .BYTE "Invalid file-name!", 0
-@inval_ins      .BYTE "Invalid instruction!", 0
-@inval_key      .BYTE "Invalid keyword!", 0
-@inval_num      .BYTE "Invalid number!", 0
-@inval_str      .BYTE "Invalid string!", 0
-@inval_sym      .BYTE "Invalid symbol name!", 0
-@range_heap     .BYTE "Heap overflow!", 0
-@range_ins      .BYTE "Expression exceeds 8-bit parameter!", 0
-@range_line     .BYTE "Line too long! (127 cols max.)", 0
-@range_str      .BYTE ".w cannot take strings!", 0
-@redef_label    .BYTE "Labels cannot be redefined!", 0
-@undef_const    .BYTE "Undefined constant!", 0
-@undef_file     .BYTE "File not found!", 0
-@undef_label    .BYTE "Label is undefined!", 0
-@unexp_defer    .BYTE "Forward-references to labels not allowed here!", 0
-@unexp_eol      .BYTE "Expected expression!", 0
+@inval_expr     .BYTE "Invalid expression", 0
+@inval_file     .BYTE "Invalid file-name", 0
+@inval_ins      .BYTE "Invalid instruction", 0
+@inval_key      .BYTE "Invalid keyword", 0
+@inval_num      .BYTE "Invalid number", 0
+@inval_str      .BYTE "Invalid string", 0
+@inval_sym      .BYTE "Invalid symbol name", 0
+@range_heap     .BYTE "Heap overflow", 0
+@range_ins      .BYTE "Expression exceeds 8-bit parameter", 0
+@range_line     .BYTE "Line too long, 127 cols max.", 0
+@range_stack    .BYTE "Stack overflow", 0
+@range_str      .BYTE ".w cannot take strings", 0
+@redef_label    .BYTE "Labels cannot be redefined", 0
+@undef_const    .BYTE "Undefined constant", 0
+@undef_file     .BYTE "File not found", 0
+@undef_label    .BYTE "Label is undefined", 0
+@unexp_defer    .BYTE "Forward-references to labels not allowed here", 0
+@unexp_eol      .BYTE "Expected expression", 0
 
 
 ; print error message and quit:
@@ -100,7 +103,7 @@ errInvalSym:
         .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
 errRangeHeap:
         ;-----------------------------------------------------------------------
-        ld      A,      ERR_RANGE_HEAP  ; err code for heap overflow
+        ld      A,      ERR_RANGE_HEAP  ; err code for heap overflow!
         .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
 errRangeIns:
         ;-----------------------------------------------------------------------
@@ -109,6 +112,10 @@ errRangeIns:
 errRangeLine:
         ;-----------------------------------------------------------------------
         ld      A,      ERR_RANGE_LINE  ; err code for line too long
+        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+errRangeStack:
+        ;-----------------------------------------------------------------------
+        ld      A,      ERR_RANGE_STACK ; err code for stack overflow!
         .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
 errRangeStr:
         ;-----------------------------------------------------------------------
@@ -171,7 +178,10 @@ errPrintQuit:
 ; in:   DE              address of error string, zero-terminated, to print
 ; out:  -               program terminates!
 ;-------------------------------------------------------------------------------
-        call    osPrintLn               ; print passed error-string
+        call    osPrintStrZ             ; print passed error-string
+        ld      A,      '!'             ; ("!" is shared between all error 
+        call    osPrintChar             ;  messages. this saves 1 byte each
+        call    osPrintNewline          ;  error message, after the 8th)
 
         ; if the file-name addr is $0000 this is not a parsing error,
         ; such as the command line parameter file-name not being found

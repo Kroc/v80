@@ -160,10 +160,12 @@ main:
         ;   - - - -------+------------------+
         ;
         ld      HL,     $0000           ; oddly, there's no `ld HL, SP`!
-        add     HL,     SP              ; stack address, e.g. $FD00
+        add     HL,     SP              ; get stack address, e.g. $FD00
         ld      [sp],   HL              ; (save value for printing later)
         dec     H                       ; go down 1 page (e.g. $FD00 > $FC00)
         ld      [heap], HL              ; this will be the top of the heap
+        ld      A,      H               ; patch stack-overflow check routine
+        ld      [checkStackSize@hi+1],  A
 
         ; how do you measure the maximum depth of the stack
         ; used during program execution?
@@ -293,6 +295,7 @@ main:
         cp      A,      [HL]            ;  with lo-byte in stack slot
         jr      nz,     -               ; keep looping if mismatch
         ;-----------------------------------------------------------------------
+        ; FIXME: error on stack overflow?
 +       ld      A,      C               ; BC is number of unused stack slots
         rla                             ; * 2 for bytes
         ld      [@stack+1],     A       ; save value for printing later
@@ -421,6 +424,23 @@ main:
         dec     HL                      ;  the deferred expr record)
         ld      C,      [HL]            ; ...
         ret
+
+
+checkStackSize:
+;===============================================================================
+; check to see if the stack hasn't overflowed:
+;
+; out:  A               (clobbered)
+;       BC, DE, HL      (preserved)
+;       -               halts with error if stack overflowed
+;-------------------------------------------------------------------------------
+        ld      [@sp],  SP              ; store current stack pointer
+        ld      A,      [@sp+HI]        ; get hi-byte of stack addr
+@hi     cp      $ff                     ; (this byte patched in main)
+        ret     nc                      ; fast-return if stack is in page
+        jp      errRangeStack           ; stack overflow!
+
+@sp     .WORD   $0000
 
 
 checkHeapSize:

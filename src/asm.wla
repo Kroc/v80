@@ -15,6 +15,7 @@ assembleFile:
 ;-------------------------------------------------------------------------------
         call    echoCommentNewline
         call    osFileOpen              ; use the OS to open the file [DE]
+        call    checkStackSize          ; check for stack overflow
         call    echoCommentLn           ; (echo the file-name
         call    echoCommentBar          ;  and a dividing line)
 
