@@ -49,7 +49,7 @@ _errmsg:
 ; TODO: provide extended error message descriptions in an external file,
 ;       loading and printing them rather than storing them here
 ;
-@err            .BYTE "\r\n\r\nERROR: ",0
+@err            .BYTE "! ERROR: ",0
 @inval_expr     .BYTE "Invalid expression", 0
 @inval_file     .BYTE "Invalid file-name", 0
 @inval_ins      .BYTE "Invalid instruction", 0
@@ -166,6 +166,8 @@ err:
         ld      C,      A               ; load into BC
         ld      B,      0               ;  for 16-bit add
 
+        call    osPrintNewline
+        call    osPrintNewline
         ld      DE,     _errmsg@err     ; print two newlines and a leading
         call    osPrintStrZ             ;  "ERROR:" string (preserves BC)
 
@@ -225,8 +227,8 @@ errPrintQuit:
 
         jp      osQuit
 
-@file   .BYTE   " FILE: ", 0
-@row    .BYTE   " LINE: ", 0
-@col    .BYTE   "  COL: ", 0
+@file   .BYTE   "!  FILE: ", 0
+@row    .BYTE   "!  LINE: ", 0
+@col    .BYTE   "!   COL: ", 0
 
 .ENDB

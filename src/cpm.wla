@@ -150,8 +150,8 @@ osBoot:
         jp      main                    ; we will not return from here!
 
         ;-----------------------------------------------------------------------
-@banner .BYTE   "; v80 CP/M v0.0 - github.com/kroc/v80\r\n"
-        .BYTE   "; (C) Kroc Camen 2023-2024, MIT License", 0
+@banner .BYTE   CHAR_COMMENT, " v80 CP/M v0.0 - github.com/kroc/v80\r\n"
+        .BYTE   CHAR_COMMENT, " (C) Kroc Camen 2023-2024, MIT License", 0
 
         ;=======================================================================
         ; CP/M version less than 2.2 -- call BDOS manually for safety
@@ -161,7 +161,7 @@ osBoot:
         jp      BDOS                    ; call BDOS but also return to CCP
 
         ; string is "$" terminated for compatibility with CP/M < v2.2?
-@@str   .BYTE "ERROR: CP/M ", CPM_VER_STR, " or higher required!$"
+@@str   .BYTE "! ERROR: CP/M ", CPM_VER_STR, " or higher required!$"
 
 
 osQuit:

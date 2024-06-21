@@ -335,7 +335,8 @@ main:
 @echov: call    osPrintStrZ             ; print string passed in DE
 @word:  jp      printHexNumber          ; print hex number BC with sigil
 
-@addrc  .BYTE   "; CODE @ ", 0
+@addrc  .BYTE   CHAR_COMMENT
+        .BYTE    " CODE @ ", 0
 @addrh  .BYTE   ", HEAP @ ", 0
 @addrs  .BYTE   ", STACK @ ", 0
 
@@ -482,7 +483,7 @@ echoCommentBar:
         pop     DE
         ret
 
-@bar:   .BYTE   ";------------------------------------", 0
+@bar:   .BYTE   CHAR_COMMENT, "------------------------------------", 0
 
 
 echoCommentLn:
@@ -573,7 +574,7 @@ printDecNumberSpc:
 ;-------------------------------------------------------------------------------
         ; calculate the number of leading spaces:
         ;
-        ld      E,      ' '             ; (reusable space)
+        ld      E,      ASCII_SPC       ; (reusable space)
         ld      HL,     -10             ; is number greater than 9?
         add     HL,     BC              ; (subtract by adding negative number)
         jr      c,      +               ; if yes, don't print
