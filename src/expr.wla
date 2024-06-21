@@ -246,7 +246,7 @@ _defer: ld      DE,     [defer]         ; read prev defer addr
         ex      DE,     HL              ; ...
         inc     HL                      ; fix heap addr after copy
 
-        ret
+        jp      checkHeapSize           ; check for heap overflow
 
 
 nextExpr:
@@ -501,8 +501,6 @@ parseExpr:
 
         ; end of expr:
         ;=======================================================================
-        ; FIXME: check for heap spill here?
-        ;
 @end:   ld      A,      [@nest]         ; get parenthesis nested depth
         and     A                       ; check for zero (set flags)
         jp      nz,     errInvalExpr    ; parenthesis aren't matched!

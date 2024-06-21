@@ -61,9 +61,12 @@ COPY /N /Y "test\*.v80" /A "%DIR_RUNCPM%\A\0" /A
 REM # run test.v80 without WLA equivalent
 CALL :v80 test
 
+IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
+
 REM # do binary comparisons
 CALL :RunTest jr
 
+IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
 ECHO OK.
 EXIT /B 0
 

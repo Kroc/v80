@@ -235,16 +235,16 @@ main:
         ; +----------------+----------------------+---------------+
         ; ^ code           ^ IY                   ^ HL            ^ [heap]
         ;
-        ; size of the heap:
+        ; calculate final size of the heap:
         ; (works downwards from top of RAM)
         ;
-        xor     A                       ; (clear carry)
+        call    checkHeapSize           ; last check for heap overflow!
         ex      DE,     HL              ; swap heap end-address to DE
         ld      HL,     [heap]          ; get heap starting address (high!)
         sbc     HL,     DE              ; calculate end-start difference
         ld      [@heap+1],      HL      ; save value for printing later
 
-        ; free RAM size:
+        ; calculate free RAM size:
         ; (size between end of code-segment and end-of-heap)
         ;
         ex      DE,     HL              ; return last heap addr to HL
@@ -253,7 +253,7 @@ main:
         sbc     HL,     DE              ; calculate end-start difference
         ld      [@free+1],      HL      ; save value for printing later
 
-        ; size of code-segment:
+        ; calculate size of code-segment:
         ; (size of generated binary)
         ;
         ex      DE,     HL              ; swap code end addr into HL
@@ -385,18 +385,18 @@ main:
         ; set the code-segment addr and virtual
         ; program-counter for the deferred expr:
         ;
-        call    popw                    ; get the code-segment addr
+        call    @popw                   ; get the code-segment addr
         ld      IYH,    B               ;  from the deferred expression
         ld      IYL,    C               ;  and set current code-segment addr
-        call    popw                    ; likewise get and set
+        call    @popw                   ; likewise get and set
         ld      IXH,    B               ;  the virtual program-counter
         ld      IXL,    C               ;  from the deferred expression
 
-        call    popw                    ; if the expr errors during evaluation
+        call    @popw                   ; if the expr errors during evaluation
         ld      [file], BC              ;  return the file, line and column
-        call    popw                    ;  numbers of the deferred expr
+        call    @popw                   ;  numbers of the deferred expr
         ld      [erow], BC              ; ...
-        call    popw                    ; ..
+        call    @popw                   ; ..
         ld      [param_ecol],   BC      ; .
 
         dec     HL                      ; lastly, the expr bytecode
@@ -415,12 +415,38 @@ main:
         pop     HL                      ; snap back to the defer record
         jr      @expr                   ;  link-field to follow the chain
 
-        ;-----------------------------------------------------------------------
-popw:   dec     HL                      ; pop a word off the heap into BC
+        ;=======================================================================
+@popw:  dec     HL                      ; pop a word off the heap into BC
         ld      B,      [HL]            ; (used for pulling fields from
         dec     HL                      ;  the deferred expr record)
         ld      C,      [HL]            ; ...
         ret
+
+
+checkHeapSize:
+;===============================================================================
+; check to see the heap hasn't overflowed into the code-segment:
+;
+; in:   HL              heap addr
+;       IY              code-segment addr
+; out:  cf              carry-flag is always returned clear
+;       HL, BC, DE, IY  (preserved)
+;       A               (clobbered)
+;       -               halts with error if heap overflows
+;-------------------------------------------------------------------------------
+        ; check that IY is not > HL. they can be equal because the code-segment
+        ; addr points to the last unused byte, where as the heap addr points
+        ; to the last used byte
+        ;
+        ld      A,      H               ; check hi-byte of heap is not
+        cp      IYH                     ;  less than hi-byte of code-segment
+        jr      c,      @err            ; err if heap below code-segment!
+        ret     nz                      ; skip if hi-bytes mismatch
+        ld      A,      L               ; assuming hi-bytes match,
+        cp      IYL                     ;  test lo-bytes
+        ret     nc                      ; OK if heap addr >= code-segment addr
+
+@err:   jp      errRangeHeap            ; err if heap below code-segment!
 
 
 echoCommentBar:

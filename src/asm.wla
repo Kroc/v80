@@ -133,6 +133,8 @@ assembleFile:
         inc     DE                      ;  by accomodating for it, correcting
         dec     HL                      ;  DE up so HL only needs one dec
 
+        call    checkHeapSize           ; check for heap overflow
+
         pop     BC                      ; for echoing, restore addr of name
 
         ; get const value:
@@ -304,6 +306,9 @@ assembleFile:
         ; $2040 / $0100 = $20 with $40 remainder, with the difference
         ; between $40 and $100 being $C0 bytes
         ;
+        ; FIXME should we check for code overflow after an align?
+        ;       it could be, though not likely, thousands of bytes
+        ;
         push    HL                      ; (preserve heap addr)
         ld      D,      IXH             ; calculate the remainder, HL, of
         ld      E,      IXL             ;  the program-counter, DE, divided be
@@ -396,7 +401,7 @@ assembleFile:
 -       call    readChar                ; read next character
         jp      z,      errInvalStr     ; sudden EOL/EOF? unterminated string!
         cp      CHAR_STR                ; string terminator?
-        jr      z,      --              ; yes, check for next string/expr
+        jr      z,      --              ; yes, check for next string|expr
         ld      [IY+0], A               ; emit byte to code-segment
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
@@ -500,10 +505,10 @@ nextWord:
         ;
         ld      BC,     [crow]          ; copy current line number
         ld      [wrow], BC              ;  to start-of-word line-number
-        ex      AF,     AF'             ; preserve read character
-        ld      A',     [ccol]          ; copy current column number
-        ld      [wcol], A'              ;  to start-of-word column-number
-        ex      AF',    AF              ; restore read character
+        ld      C,      A               ; preserve read character
+        ld      A,      [ccol]          ; copy current column number
+        ld      [wcol], A               ;  to start-of-word column-number
+        ld      A,      C               ; restore read character
         ret
 
 +       ; skip over a comment until the newline / end-of-line:
@@ -518,10 +523,10 @@ readWord:
 ;===============================================================================
 ; read symbol name:
 ;
-; NOTE: the word is written *downwards* in RAM, to match how symbol names are
-;       written on the heap, for faster comparison -- we use the bottom of
-;       a page to hold the incoming word so that we can get away with using
-;       `DEC E` instead of `DEC DE`
+; NOTE: the word is written *downwards* in RAM, to match how symbol names
+;       are pushed to the heap, for faster comparison -- we use the bottom
+;       of a page to hold the incoming word so that we can get away with
+;       using `DEC E` instead of `DEC DE`
 ;
 ; out:  A               length of word
 ;       DE              DE is set to the first byte (length) of `word`
@@ -557,7 +562,7 @@ readChar:
 ; out:  A               ASCII code. 0 = end-of-file
 ;       zf              zero-flag is set *both* for end-of-file and newline!
 ;       [char]          the character read is also written to RAM
-;       [crow],[ccol]   line & column number are advanced accordingly
+;       [crow], [ccol]  line & column number are advanced accordingly
 ;       BC, DE, HL      (preserved)
 ;       -               halts with error if line exceeds 127 cols
 ;-------------------------------------------------------------------------------
@@ -716,6 +721,8 @@ getFileID:
         ld      E,      L               ;  is returned in DE like findSymbol
         inc     HL                      ; fix heap addr after LDDR copy
 
+        call    checkHeapSize           ; check heap didn't overflow
+
         pop     BC                      ; return the file-name addr
         ret
 
@@ -782,7 +789,8 @@ getLabel:
 ;                         addr of the name-length byte in the label record
 ;       DE              if label is a forward-reference (carry-set), then DE
 ;                       is the addr of the flag-byte
-;       HL              (preserved)
+;       HL              if label doesn't exist, it will be pushed to the heap
+;                       as a forward-reference
 ;       A               (clobbered)
 ;
 ;                       | DE    | DE (fwd-ref)                 | BC (fwd-ref)
@@ -849,6 +857,7 @@ getLabel:
         ld      [label],HL              ; update entry point with heap addr
 
         ; push the label name:
+        ;-----------------------------------------------------------------------
         ld      DE,     word            ; word-buffer addr
         inc     C                       ; length +1 to include the length-byte
 
@@ -862,8 +871,8 @@ getLabel:
         lddr                            ; copy BC bytes *from* [HL] *to* [DE]!
         ex      DE,     HL              ; swap back to heap in HL
 
-        ; push flag to indicate a forward-reference:
-        ;
+        ; push forward-reference flag:
+        ;-----------------------------------------------------------------------
         ; the flag byte is designed so that findSymbol will return zero-flag
         ; set for forward-references, i.e. the label is considered undefined,
         ; but carry is set to distinguish labels that exist in the dictionary
@@ -880,6 +889,8 @@ getLabel:
 
         dec     HL                      ; reserve two bytes on the heap
         dec     HL                      ;  for the label value
+
+        call    checkHeapSize           ; check for heap overflow
 
         pop     BC                      ; return length byte addr in BC
         scf                             ; return carry-flag set
@@ -1091,7 +1102,7 @@ parseInstruction:
 +       ex      DE,     HL              ; swap heap back to HL
 
         ; emit the opcode and parse any necessary parameters
-        ; (this routine is in the CPU-specific module, e.g. z80.wla)
+        ; (this routine is in the CPU-specific module, e.g. "z80.wla")
         jp      emitOpcode
 
 .ENDB
