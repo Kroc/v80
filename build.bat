@@ -60,13 +60,17 @@ COPY /N /Y "test\*.v80" /A "%DIR_RUNCPM%\A\0" /A
 
 REM # run test.v80 without WLA equivalent
 CALL :v80 test
-
 IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
 
 REM # do binary comparisons
 CALL :RunTest jr
-
 IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
+
+REM # --------------------------------------------------------------------------
+REM # if no errors, copy v80 binary to release folder
+
+COPY /N /Y "build\v80.com" /B "release"
+
 ECHO OK.
 EXIT /B 0
 
