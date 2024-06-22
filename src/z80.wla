@@ -1,5 +1,5 @@
 ; v80, (C) Kroc Camen 2023-2024, MIT License
-; z80 parsing / opcode tree
+; z80 opcode tree / emit
 ;
 .BLOCK  "code-emit"
 

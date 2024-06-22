@@ -1056,7 +1056,7 @@ parseInstruction:
         set     5,      A               ; force partial lowercase
         jr      nc,     +               ; was this a non-visible char before?
         xor     A                       ; any whitespace = end-of-word (0)
-       
+
 +       ; compare with opcode tree:
         ;-----------------------------------------------------------------------
 -       cp      [HL]                    ; compare input char with tree char
