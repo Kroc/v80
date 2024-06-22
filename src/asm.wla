@@ -1056,8 +1056,9 @@ parseInstruction:
         set     5,      A               ; force partial lowercase
         jr      nc,     +               ; was this a non-visible char before?
         xor     A                       ; any whitespace = end-of-word (0)
++       ld      BC,     3               ; this is faster than INC HL x 3!
 
-+       ; compare with opcode tree:
+        ; compare with opcode tree:
         ;-----------------------------------------------------------------------
 -       cp      [HL]                    ; compare input char with tree char
         jr      z,      @match          ; characters match?
@@ -1071,9 +1072,7 @@ parseInstruction:
 
         ; no match; try the next character:
         ;-----------------------------------------------------------------------
-        inc     HL
-        inc     HL
-        inc     HL
+        add     HL,     BC              ; skip 3 bytes
         jr      -
 
         ;-----------------------------------------------------------------------

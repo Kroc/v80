@@ -16,7 +16,7 @@ SET "BIN_RUNCPM=%DIR_RUNCPM%\RunCPM.exe"
 REM # NTVCM, CP/M Virtual Machine
 REM # https://github.com/davidly/ntvcm
 SET "DIR_NTVCM=%BIN_DIR%\ntvcm"
-SET "BIN_NTVCM=ntvcm.exe -l"
+SET BIN_NTVCM=ntvcm.exe -l -p
 
 REM # build v80 assembler from WLA-DX source:
 REM # ==========================================================================
