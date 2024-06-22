@@ -377,8 +377,6 @@ osFileOpen:
         ; stack space). we can zero all fields as _setFCBFileName will pad the
         ; file-name field with spaces
         ;
-        ; FIXME: we should check a stack overflow won't occur here beforehand
-        ;
 +       ld      DE',    0               ; fill 34 bytes with zeroes
         ld      B',     34/2            ; (half because pushing 2 bytes)
 -       push    DE'                     ; push 2 zeroes to the stack

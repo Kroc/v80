@@ -1,0 +1,270 @@
+--------------------------------------------------------------------------------
+ERROR: Invalid expression!
+--------------------------------------------------------------------------------
+Occurs when parenthesis are not paired in an expression,
+e.g.
+
+    .b  ( $100 + $10        ; closing parentheses missing
+
+Note that parenthesis require internal spaces;
+
+    .b  ( $100 + ( $10 + $1 ))
+
+A parentheses attached to the end of a label name would be taken
+to be part of the label name, e.g.
+
+    .w  ($100 + :label)     ; read as ":label)", ) is assumed missing
+
+--------------------------------------------------------------------------------
+ERROR: Invalid file-name!
+--------------------------------------------------------------------------------
+To ensure that source code written in v80 syntax can be assembled on real
+8-bit hardware, v80 enforces CP/M-style file-name restrictions, even on PC!
+
+- File-names are limited to "8.3" format; that is, up to 8 letters in the
+  file-name, followed by an optional extension consisting of a dot and
+  up-to 3 characters
+
+- File-names can contain only one dot,
+  specifically for the file-extension
+
+- Only these characters are valid in a file-name:
+  a-z 0-9 " # % ' @ ^ _ ` { } ~
+
+- CP/M does not have directories, so your file-name cannot contain a path.
+  until there's a C version of v80 (https://github.com/Kroc/v80/issues/4),
+  source files must be placed in the same directory as v80 and the current
+  working directory must be set to the same path as v80 (v80.bat helps with
+  this). If you're a C programmer and could help make a native C version of
+  v80 to avoid this issue, please see https://github.com/Kroc/v80/issues/4
+
+--------------------------------------------------------------------------------
+ERROR: Invalid instruction!
+--------------------------------------------------------------------------------
+A word was not recognised as a CPU instruction. See z80.txt for a list of
+all CPU instructions in v80 syntax with the equivalent Zilog syntax.
+
+Words that do not fall into any of the other categories of number, label,
+constant or keyword are automatically assumed to be instructions; remember
+to use hexadecimal numbers with the "$" sigil and not decimal numbers.
+
+Instructions may only appear in certain contexts:
+
+            nop             ; instructions may be first on a line,
+            nop nop nop     ;  and may follow one another
+    $0100   :label  nop     ; instructions may follow PC & label definitons
+            .b $100 nop     ; instructions may follow .b & .w keywords
+
+    #const  $1      nop     ; instructions may NOT follow a const defintion
+    .i "source.v80" nop     ; instructions may NOT follow include keywords
+    .a $100 nop             ; instructions may NOT follow align keywords
+
+--------------------------------------------------------------------------------
+ERROR: Invalid keyword!
+--------------------------------------------------------------------------------
+A keyword begins with "." followed by a letter.
+Supported keywords are .b (bytes), .w (words), .i (include) and .a (align)
+
+--------------------------------------------------------------------------------
+ERROR: Invalid Number!
+--------------------------------------------------------------------------------
+Only hexadecimal numbers are currently supported. Hexadecimal numbers must
+begin with "$" and use 1-4 digits 0-9, A-F, although case does not matter.
+
+A space must follow a hexadecimal number in expressions to separate numbers
+from operators or parentheses, e.g.
+
+    .w  $0100+:boot         ; wrong: "$0100+:boot" is treated as one number
+    .w  $0100 + :boot       ; OK
+    .w  (:boot + $0100)     ; wrong: "$0100)" parentheses is treated as a digit
+    .w  ( :boot + $0100 )   ; OK -- use internal spaces for parenthesis
+
+--------------------------------------------------------------------------------
+ERROR:  Invalid string!
+--------------------------------------------------------------------------------
+Only occurs if a string is unterminated.
+
+    .b  "hello world!"      ; OK
+    .b  "hello world!       ; error!
+
+Note that there are no string escape codes; to put non-printable characters
+in a string, or to include speech-marks, break the string and use numbers:
+
+    .b  "hello" $0d "world" ; emit newline character
+    .b  "speech" $22 "mark" ; emit speech mark (ASCII $22)
+
+--------------------------------------------------------------------------------
+ERROR: Invalid symbol!
+--------------------------------------------------------------------------------
+Names of labels and constants are limited to 31 characters including the sigil.
+
+Ensure a space follows the symbol name to separate the symbol name
+from operators and parentheses in expressions.
+
+--------------------------------------------------------------------------------
+ERROR: Heap overflow!
+--------------------------------------------------------------------------------
+A heap overflow occurs when the code-segment (binary being assembled) overlaps
+the heap that holds symbol names and deferred expressions.
+
+To maximise memory available, v80 assembles source code into binary from
+one end of RAM and stores runtime data at the other end so that there is no
+arbitrary limit to the size of a binary or runtime data, total RAM available
+nothwithstanding.
+
+    +-----+--------+---------------------------------------------+---------+
+    | v80 | buffer | code->                               <-heap | <-stack |
+    +-----+--------+---------------------------------------------+---------+
+    
+    v80:    the v80 assembler
+    buffer: buffer for capturing symbol names and expressions, fixed size
+    code:   source code is assembled into binary data here; builds upwards
+    heap:   symbols and other in-flight data goes here; builds downwards
+    stack:  usual Z80 stack, limited to 256 bytes
+
+A heap overflow can occur under a few conditions:
+
+- The size of the generated binary is too large. Check that any use of the
+  align keyword (`.a`) is not accidentally creating large amounts of padding
+  via an incorrect parameter
+
+- There are too many symbols or deferred expressions. Check you do not have
+  hundreds of constants defined that are not being used. If a label is used
+  in many expressions but is not defined until near the end of the code,
+  try relocating the label nearer to the beginning. Every expression that
+  references a label not yet defined (known as a "forward reference") is
+  pushed to the heap until all code is parsed
+
+--------------------------------------------------------------------------------
+ERROR: Expression exceeds 8-bit parameter!
+--------------------------------------------------------------------------------
+A parameter is expecting an 8-bit value, but the value provided is too
+large (>255). There are two possible causes for this, the first is with
+the bytes keyword:
+
+    .b  :label              ; error -- 16-bit value in 8-bit parameter
+    .b  <:label >:label     ; lo-byte / hi-byte operator trim to 8-bits
+    .b  >:label + $0100     ; bad -- beware of operator order!
+    .b  >( :label + $0100 ) ; OK -- lo/hi affect only the immediate value
+
+The second cause is with relative jumps. Relative jumps use a single byte for
+the jump distance, limiting them to roughly +|-128 bytes in either direction,
+even though the instruction accepts a 16-bit value (typically a label);
+v80 automatically calculates the jump distance and produces this error
+if the jump is too far.
+
+--------------------------------------------------------------------------------
+ERROR: Line too long, 127 cols max.!
+--------------------------------------------------------------------------------
+To ensure source code written on PCs is also buildable on real 8-bit hardware,
+v80 forces a hard limit on line length of 127 columns; this does not include
+the carriage-return and/or line-feed characters.
+
+Tabs (ASCII code 9) are always expanded to the next 8th column, which does
+count toward line-length, so make sure your editor is rendering tabs as 8 wide.
+Hard tabs instead of spaces are recommended because they reduce file-size and
+the number of characters v80 has to process on 8-bit hardware.
+
+--------------------------------------------------------------------------------
+ERROR: Expression overflow!
+--------------------------------------------------------------------------------
+Numbers in v80 are limited to 16-bits, $FFFF or 65'535 maximum. This error
+occurs when an expression does a calculation that exceeeds this maximum.
+Check that your expression is not going over $FFFF, even in an intermediate
+stage -- bear in mind that v80 evaluates expressions left to right only
+without operator precedence and that unary operators apply to values first.
+
+Underflow however *is* allowed. This is when a number goes below zero, it
+becomes negative, which is also the same as a high-number (bit 7 set).
+v80 allows this for the negate unary operator to function.
+
+--------------------------------------------------------------------------------
+ERROR: Stack overflow!
+--------------------------------------------------------------------------------
+The stack is a 256-byte section of memory that remembers the flow of operation
+within v80. Opening a file consumes at least 40 bytes of stack space and that
+space is held until the file is finished parsing. The .i keyword for including
+one file in another consumes another 40 bytes for each level of nesting which
+is why v80 recommends not to nest includes more than 4 levels deep.
+
+You might be getting this error if you accidentally created an infinite loop
+of includes by having one file include another that's already being included.
+
+v80 shows the amount of unused stack space after successful assembly to give
+you can idea how much pressure your code placed upon the stack; try avoid
+this number going lower than 40!
+
+--------------------------------------------------------------------------------
+ERROR: .w cannot take strings!
+--------------------------------------------------------------------------------
+The .w keyword writes words (2-bytes, 16-bits) at a time to the code-segment.
+Strings are always 1-byte per character so cannot be combined with the .w
+keyword.
+
+    .w  "This won't work!"  ; strings cannot be words
+    .b  "But this will"     ; strings are bytes
+
+--------------------------------------------------------------------------------
+ERROR: Labels cannot be redefined!
+--------------------------------------------------------------------------------
+Labels must be unique. Search your code to see where the label is being reused.
+
+    :1st                    ; OK
+    :2nd                    ; OK
+    :1st                    ; error! <- label redefined
+
+--------------------------------------------------------------------------------
+ERROR: Undefined constant!
+--------------------------------------------------------------------------------
+A constant must be defined before it can be referenced. Forward-references to
+constants cannot be used in expressions, keywords etc.
+
+        .b  #number         ; undefined constant!
+    #number 1               ; not defined until here
+
+--------------------------------------------------------------------------------
+ERROR: File not found!
+--------------------------------------------------------------------------------
+The input file-name could not be found, or the output file couldn't be created.
+CP/M does not support directories, so make sure that your current working
+directory is that of the file you're trying to assemble. "v80.bat" can be
+used to help with this:
+
+    code/ntvcm.exe code/v80.com code/thing.v80  -- wrong!
+    code/v80.bat v80.com thing.v80              -- right!
+
+If you're a C programmer and could help make a native C version of v80 to
+avoid this issue, please see https://github.com/Kroc/v80/issues/4 for details.
+
+--------------------------------------------------------------------------------
+ERROR: Label was not defined!
+--------------------------------------------------------------------------------
+A label was referenced in an expression, but was never defined by the end of
+all source code parsed. When an expression references a label that has not been
+defined yet this is known as a forward-reference; the expression is deferred
+until the end of parsing and re-evaluated under the assumption that the label
+must have been defined by then. You may have simply typo'd the label name,
+leading to it being deferred.
+
+        .w  :label          ; forward reference to undefined label
+    :label                  ; label is defined here, all is okay
+
+--------------------------------------------------------------------------------
+ERROR: Forward-references to labels not allowed here!
+--------------------------------------------------------------------------------
+You cannot use a reference to a label that hasn't been defined yet in certain
+contexts: defining a constant, setting the virtual program-counter, and when
+using the align (.a) keyword. These all require a known value at the point of
+parsing. You may have simply typo'd the label name causing v80 to believe it
+is a forward-reference to an yet undefined label.
+
+--------------------------------------------------------------------------------
+ERROR: Expected expression!
+--------------------------------------------------------------------------------
+The line ended when a required parameter was expected instead:
+
+    .i                      ; include without file-name!
+    .a                      ; align without parameter!
+    .b  (                   ; an open parentheses without following expr
+    .b  $1 +                ; an operator without following expr
+    jp                      ; a CPU instruction without required parameter

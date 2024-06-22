@@ -49,7 +49,6 @@ _errmsg:
 ; TODO: provide extended error message descriptions in an external file,
 ;       loading and printing them rather than storing them here
 ;
-@err            .BYTE "! ERROR: ",0
 @inval_expr     .BYTE "Invalid expression", 0
 @inval_file     .BYTE "Invalid file-name", 0
 @inval_ins      .BYTE "Invalid instruction", 0
@@ -66,7 +65,7 @@ _errmsg:
 @redef_label    .BYTE "Labels cannot be redefined", 0
 @undef_const    .BYTE "Undefined constant", 0
 @undef_file     .BYTE "File not found", 0
-@undef_label    .BYTE "Label is undefined", 0
+@undef_label    .BYTE "Label was not defined", 0
 @unexp_defer    .BYTE "Forward-references to labels not allowed here", 0
 @unexp_eol      .BYTE "Expected expression", 0
 
@@ -168,7 +167,7 @@ err:
 
         call    osPrintNewline
         call    osPrintNewline
-        ld      DE,     _errmsg@err     ; print two newlines and a leading
+        ld      DE,     @err            ; print two newlines and a leading
         call    osPrintStrZ             ;  "ERROR:" string (preserves BC)
 
         ld      HL,     _errmsg         ; err msg lookup table
@@ -177,20 +176,12 @@ err:
         inc     HL                      ; ...
         ld      D,      [HL]            ; get string addr hi-byte
 
-        ; fall through
-        ; ...
-
-errPrintQuit:
-;===============================================================================
-; (print error string and quit to OS)
-;
-; in:   DE              address of error string, zero-terminated, to print
-; out:  -               program terminates!
-;-------------------------------------------------------------------------------
         call    osPrintStrZ             ; print passed error-string
         ld      A,      '!'             ; ("!" is shared between all error 
         call    osPrintChar             ;  messages. this saves 1 byte each
         call    osPrintNewline          ;  error message, after the 8th)
+        ld      DE,     @txt            ; print following line
+        call    osPrintLn               ;  with note on "error.txt"
 
         ; if the file-name addr is $0000 this is not a parsing error,
         ; such as the command line parameter file-name not being found
@@ -207,12 +198,12 @@ errPrintQuit:
         ; print file-name:
         ld      DE,     [file]          ; addr of current file-name
         call    printSymbolName         ; print the backwards string
+        call    osPrintNewline          ;  + newline
 
         ; print start-of-word line number and column:
         ; (this is not the same as the line/col of last char read
         ;  which could be the end-of-line after an expression)
         ;
-        call    osPrintNewline
         ld      DE,     @row
         call    osPrintStrZ
         ld      BC,     [wrow]
@@ -227,6 +218,8 @@ errPrintQuit:
 
         jp      osQuit
 
+@err    .BYTE   "! ERROR: ", 0
+@txt    .BYTE   "!        See error.txt for detailed causes", 0
 @file   .BYTE   "!  FILE: ", 0
 @row    .BYTE   "!  LINE: ", 0
 @col    .BYTE   "!   COL: ", 0
