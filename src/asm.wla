@@ -1084,9 +1084,10 @@ parseInstruction:
         ;
 @cont:  or      %10000000               ; *add* top bit to input char
         cp      [HL]                    ; redo comparison with tree
-        jp      nz,     errInvalIns     ; any mismatch is an error!
-        inc     HL                      ; match -- move to next char in tree
-        jr      @char
+        inc     HL                      ; (move to next char in tree)
+        jr      z,      @char           ; match, check next char
+
+        jp      errInvalIns             ; any mismatch is an error!
 
         ;=======================================================================
         ; emit opcode(s):

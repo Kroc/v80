@@ -278,7 +278,7 @@ opcodes:
         .BYTE   'h', $a8+REG_H,         OP      ; XOR.H         |    AC
         .BYTE   'l', $a8+REG_L,         OP      ; XOR.L         |    AD
         .BYTE   'i'|AND
-        .DATA   'x', (@xor_rx-CADDR-1)
+        .DATA   'x', (@xor_rx-CADDR)-1
         .BYTE   'y'|AND
         .BYTE   'h', $a8+REG_IH,        OP_IY   ; XOR.IYH       | DD AC
         .BYTE   'l', $a8+REG_IL,        OP_IY   ; XOR.IYL       | DD AD
@@ -2090,7 +2090,7 @@ opcodes:
         .BYTE   'h', $90+REG_H,         OP      ; SUB.H         |    94
         .BYTE   'l', $90+REG_L,         OP      ; SUB.L         |    95
         .BYTE   'i'|AND
-        .DATA   'x', (@sub_rx-CADDR-1)
+        .DATA   'x', (@sub_rx-CADDR)-1
         .BYTE   'y'|AND
         .BYTE   'h', $90+REG_IH,        OP_IY   ; SUB.IYH       | DD 94
         .BYTE   'l', $90+REG_IL,        OP_IY   ; SUB.IYL       | DD 95
