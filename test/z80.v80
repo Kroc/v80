@@ -690,8 +690,8 @@
 	rst38			; rst	$38			;    FF
 	;-----------------------------------------------------------------------
 :sbc	sbc*hl			; sbc	A,	[HL]		;    9E
-	sbc*ix	$00		; sbc	A,	[iX+$00]	; DD 9E 00
-	sbc*iY	$00		; sbc	A,	[iX+$00]	; FD 9E 00
+	sbc*ix	$00		; sbc	A,	[IX+$00]	; DD 9E 00
+	sbc*iy	$00		; sbc	A,	[IX+$00]	; FD 9E 00
 	sbc	$00		; sbc	A,	$00		;    DE 00
 	sbc.a			; sbc	A,	A		;    9F
 	sbc.b			; sbc	A,	B		;    98

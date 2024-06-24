@@ -11,7 +11,7 @@ _errmsg:
         .ADDR   @inval_expr
 .DEF    ERR_INVAL_FILE          1       ; invalid file-name
         .ADDR   @inval_file
-.DEF    ERR_INVAL_INS           2       ; invalid CPU instruction
+.DEF    ERR_INVAL_INS           2       ; invalid instruction
         .ADDR   @inval_ins
 .DEF    ERR_INVAL_KEY           3       ; invalid keyword
         .ADDR   @inval_key
@@ -85,7 +85,7 @@ errInvalFile:
         .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
 errInvalIns:
         ;-----------------------------------------------------------------------
-        ld      A,      ERR_INVAL_INS   ; err code for invalid CPU instruction
+        ld      A,      ERR_INVAL_INS   ; err code for invalid instruction
         .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
 errInvalKey:
         ;-----------------------------------------------------------------------

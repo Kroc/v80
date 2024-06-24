@@ -571,9 +571,9 @@ readChar:
         ld      [char], A               ; retain returned character
 .IFDEF  DEBUG
         ;///////////////////////////////////////////////////////////////////////
-        ;push    AF
-        ;call    osPrintChar             ; print each character as we receive it
-        ;pop     AF                      ; (zero-flag must be preserved)
+        push    AF
+        call    osPrintChar             ; print each character as we receive it
+        pop     AF                      ; (zero-flag must be preserved)
 .ENDIF  ;///////////////////////////////////////////////////////////////////////
         ret     z                       ; return on end-of-file
 
@@ -1020,9 +1020,9 @@ parseInstruction:
         ; an offset to the next branch to follow, or an opcode pair
         ;
 @match: inc     HL                      ; step over the matched character
-        ld      C,      [HL]            ; read the offset lo-byte / opcode-byte
+        ld      C,      [HL]            ; read the offset lo-byte | opcode-byte
         inc     HL                      ; move to next byte in tree
-        ld      B,      [HL]            ; read the offset hi-byte / opcode-flags
+        ld      B,      [HL]            ; read the offset hi-byte | opcode-flags
 
         bit     7,      B               ; is hi-bit of hi-byte set?
         jr      nz,     @opcode         ; if so, this is an opcode
@@ -1031,11 +1031,19 @@ parseInstruction:
         ; NOTE: the offset in the binary tree is reduced by 1 to compensate
         ; for adding from the hi-byte addr, rather than the lo-byte addr
         ;
-        add     HL,     BC
+        adc     HL,     BC
+
+        ; if the hi-bit is set on the hi-byte, then it's an opcode + flag pair,
+        ; not a jump! we branch away after the add to get a free flag-check
+        ;
+        ; TODO: this requires bit 6 of the opcode-flags to always be zero
+        ;       otherwise the ADC can overflow, voiding this check
+        ;
+        ;jp      m,      @opcode         ; if hi-bit set, emit opcode
 
         ; get character from input file:
         ;-----------------------------------------------------------------------
-@char:  call    readChar                ; read from input file
+@next:  call    readChar                ; read from input file
         cp      ASCII_SPC+1             ; is it whitespace? (hold carry...)
 
         ; force lowercase, without also affecting
@@ -1064,15 +1072,14 @@ parseInstruction:
         jr      z,      @match          ; characters match?
 
         ; if the hi-bit of the character from the opcode tree is set, it's
-        ; either a continuation character (>128) or the end of a branch (=128).
-        ; in these cases, the result of the compare will always be negative!
+        ; either a continuation character (>128) or the end of a branch (=255)
         ;
         bit     7,      [HL]            ; check bit 7 of character
         jr      nz,     @cont           ; handle continuation char / end
 
         ; no match; try the next character:
         ;-----------------------------------------------------------------------
-        add     HL,     BC              ; skip 3 bytes
+@skip:  add     HL,     BC              ; skip 3 bytes
         jr      -
 
         ;-----------------------------------------------------------------------

@@ -236,16 +236,16 @@ opcodes:
         END     = 0
         ERR     = $ff
 
-        REG_A   = 7
-        REG_B   = 0
-        REG_C   = 1
-        REG_D   = 2
-        REG_E   = 3
-        REG_H   = 4
-        REG_L   = 5
+        Z80_A   = 7     ; z80 opcodes use these modifiers where an instruction
+        Z80_B   = 0     ;  is orthogonal. the value 6, missing here, is for
+        Z80_C   = 1     ;  the memory dereference modes such as `*hl`
+        Z80_D   = 2     ;
+        Z80_E   = 3     ;
+        Z80_H   = 4     ;
+        Z80_L   = 5     ;
 
-        REG_IH  = 4
-        REG_IL  = 5
+        Z80_IH  = 4     ; when the undocumented IXH/L and IYH/L registers
+        Z80_IL  = 5     ;  are used, these mumbers differentiate the halves
 
         .TABLE  BYTE,WORD
         ;-----------------------------------------------------------------------
@@ -270,22 +270,22 @@ opcodes:
         .BYTE   END, $ee,               OP_B    ; XOR $nn       |    EE nn
         .DATA   '*', (@xor_m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $a8+REG_A,         OP      ; XOR.A         |    AF
-        .BYTE   'b', $a8+REG_B,         OP      ; XOR.B         |    A8
-        .BYTE   'c', $a8+REG_C,         OP      ; XOR.C         |    A9
-        .BYTE   'd', $a8+REG_D,         OP      ; XOR.D         |    AA
-        .BYTE   'e', $a8+REG_E,         OP      ; XOR.E         |    AB
-        .BYTE   'h', $a8+REG_H,         OP      ; XOR.H         |    AC
-        .BYTE   'l', $a8+REG_L,         OP      ; XOR.L         |    AD
+        .BYTE   'a', $a8+Z80_A,         OP      ; XOR.A         |    AF
+        .BYTE   'b', $a8+Z80_B,         OP      ; XOR.B         |    A8
+        .BYTE   'c', $a8+Z80_C,         OP      ; XOR.C         |    A9
+        .BYTE   'd', $a8+Z80_D,         OP      ; XOR.D         |    AA
+        .BYTE   'e', $a8+Z80_E,         OP      ; XOR.E         |    AB
+        .BYTE   'h', $a8+Z80_H,         OP      ; XOR.H         |    AC
+        .BYTE   'l', $a8+Z80_L,         OP      ; XOR.L         |    AD
         .BYTE   'i'|AND
         .DATA   'x', (@xor_rx-CADDR)-1
         .BYTE   'y'|AND
-        .BYTE   'h', $a8+REG_IH,        OP_IY   ; XOR.IYH       | DD AC
-        .BYTE   'l', $a8+REG_IL,        OP_IY   ; XOR.IYL       | DD AD
+        .BYTE   'h', $a8+Z80_IH,        OP_IY   ; XOR.IYH       | DD AC
+        .BYTE   'l', $a8+Z80_IL,        OP_IY   ; XOR.IYL       | DD AD
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@xor_rx .BYTE   'h', $a8+REG_IH,        OP_IX   ; XOR.IXH       | FD AC
-        .BYTE   'l', $a8+REG_IL,        OP_IX   ; XOR.IXL       | FD AD
+@xor_rx .BYTE   'h', $a8+Z80_IH,        OP_IX   ; XOR.IXH       | FD AC
+        .BYTE   'l', $a8+Z80_IL,        OP_IX   ; XOR.IXL       | FD AD
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @xor_m  .DATA   'h', (@xor_mh-CADDR)-1
@@ -318,25 +318,25 @@ opcodes:
 @adc_mh .BYTE   'l', $8e,               OP      ; ADC*HL        |    8E
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@adc_r  .BYTE   'a', $88+REG_A,         OP      ; ADC.A         |    8F
-        .BYTE   'b', $88+REG_B,         OP      ; ADC.B         |    88
-        .BYTE   'c', $88+REG_C,         OP      ; ADC.C         |    89
-        .BYTE   'd', $88+REG_D,         OP      ; ADC.D         |    8A
-        .BYTE   'e', $88+REG_E,         OP      ; ADC.E         |    8B
+@adc_r  .BYTE   'a', $88+Z80_A,         OP      ; ADC.A         |    8F
+        .BYTE   'b', $88+Z80_B,         OP      ; ADC.B         |    88
+        .BYTE   'c', $88+Z80_C,         OP      ; ADC.C         |    89
+        .BYTE   'd', $88+Z80_D,         OP      ; ADC.D         |    8A
+        .BYTE   'e', $88+Z80_E,         OP      ; ADC.E         |    8B
         .DATA   'h', (@adc_h-CADDR)-1
-        .BYTE   'l', $88+REG_L,         OP      ; ADC.L         |    8D
+        .BYTE   'l', $88+Z80_L,         OP      ; ADC.L         |    8D
         .BYTE   'i'|AND
         .DATA   'x', (@adc_x-CADDR)-1
         .BYTE   'y'|AND
-        .BYTE   'h', $88+REG_IH,        OP_IY   ; ADC.IYH       | FD 8C
-        .BYTE   'l', $88+REG_IL,        OP_IY   ; ADC.IYL       | FD 8D
+        .BYTE   'h', $88+Z80_IH,        OP_IY   ; ADC.IYH       | FD 8C
+        .BYTE   'l', $88+Z80_IL,        OP_IY   ; ADC.IYL       | FD 8D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@adc_x  .BYTE   'h', $88+REG_IH,        OP_IX   ; ADC.IXH       | DD 8C
-        .BYTE   'l', $88+REG_IL,        OP_IX   ; ADC.IXL       | DD 8D
+@adc_x  .BYTE   'h', $88+Z80_IH,        OP_IX   ; ADC.IXH       | DD 8C
+        .BYTE   'l', $88+Z80_IL,        OP_IX   ; ADC.IXL       | DD 8D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@adc_h  .BYTE   END, $88+REG_H,         OP      ; ADC.H         |    8C
+@adc_h  .BYTE   END, $88+Z80_H,         OP      ; ADC.H         |    8C
         .BYTE   'l'|AND,
         .BYTE   '+'|AND
         .DATA   'b', (@adc_bc-CADDR)-1
@@ -367,18 +367,18 @@ opcodes:
 @add_mh .BYTE   'l', $86,               OP      ; ADD*HL        |    86
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@add_r  .BYTE   'a', $80+REG_A,         OP      ; ADD.A         |    87
-        .BYTE   'b', $80+REG_B,         OP      ; ADD.B         |    80
-        .BYTE   'c', $80+REG_C,         OP      ; ADD.C         |    81
-        .BYTE   'd', $80+REG_D,         OP      ; ADD.D         |    82
-        .BYTE   'e', $80+REG_E,         OP      ; ADD.E         |    83
+@add_r  .BYTE   'a', $80+Z80_A,         OP      ; ADD.A         |    87
+        .BYTE   'b', $80+Z80_B,         OP      ; ADD.B         |    80
+        .BYTE   'c', $80+Z80_C,         OP      ; ADD.C         |    81
+        .BYTE   'd', $80+Z80_D,         OP      ; ADD.D         |    82
+        .BYTE   'e', $80+Z80_E,         OP      ; ADD.E         |    83
         .DATA   'h', (@add_h-CADDR)-1
-        .BYTE   'l', $80+REG_L,         OP      ; ADD.L         |    85
+        .BYTE   'l', $80+Z80_L,         OP      ; ADD.L         |    85
         .BYTE   'i'|AND
         .DATA   'x', (@add_x-CADDR)-1
         .BYTE   'y'|AND
-        .BYTE   'h', $80+REG_IH,        OP_IY   ; ADD.IYH       | FD 84
-        .BYTE   'l', $80+REG_IL,        OP_IY   ; ADD.IYL       | FD 84
+        .BYTE   'h', $80+Z80_IH,        OP_IY   ; ADD.IYH       | FD 84
+        .BYTE   'l', $80+Z80_IL,        OP_IY   ; ADD.IYL       | FD 84
         .BYTE   '+'|AND
         .DATA   'b', (@add_yb-CADDR)-1
         .DATA   'd', (@add_yd-CADDR)-1
@@ -397,8 +397,8 @@ opcodes:
         .BYTE   ERR
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@add_x  .BYTE   'h', $80+REG_IH,        OP_IX   ; ADD.IXH       | DD 84
-        .BYTE   'l', $80+REG_IL,        OP_IX   ; ADD.IXL       | DD 84
+@add_x  .BYTE   'h', $80+Z80_IH,        OP_IX   ; ADD.IXH       | DD 84
+        .BYTE   'l', $80+Z80_IL,        OP_IX   ; ADD.IXL       | DD 84
         .BYTE   '+'|AND
         .DATA   'b', (@add_xb-CADDR)-1
         .DATA   'd', (@add_xd-CADDR)-1
@@ -416,7 +416,7 @@ opcodes:
 @add_xi .BYTE   'x', $29,               OP_IX   ; ADD.IX+IX     | DD 29
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@add_h  .BYTE   END, $80+REG_H,         OP      ; ADD.H         |    84
+@add_h  .BYTE   END, $80+Z80_H,         OP      ; ADD.H         |    84
         .BYTE   'l'|AND
         .BYTE   '+'|AND
         .DATA   'b', (@add_bc-CADDR)-1
@@ -438,13 +438,13 @@ opcodes:
 @and    .BYTE   END, $e6,               OP_B    ; AND $nn       |    E6 nn
         .DATA   '*', (@and_m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $a0+REG_A,         OP      ; AND.A         |    A7
-        .BYTE   'b', $a0+REG_B,         OP      ; AND.B         |    A0
-        .BYTE   'c', $a0+REG_C,         OP      ; AND.C         |    A1
-        .BYTE   'd', $a0+REG_D,         OP      ; AND.D         |    A2
-        .BYTE   'e', $a0+REG_E,         OP      ; AND.E         |    A3
-        .BYTE   'h', $a0+REG_H,         OP      ; AND.H         |    A4
-        .BYTE   'l', $a0+REG_L,         OP      ; AND.L         |    A5
+        .BYTE   'a', $a0+Z80_A,         OP      ; AND.A         |    A7
+        .BYTE   'b', $a0+Z80_B,         OP      ; AND.B         |    A0
+        .BYTE   'c', $a0+Z80_C,         OP      ; AND.C         |    A1
+        .BYTE   'd', $a0+Z80_D,         OP      ; AND.D         |    A2
+        .BYTE   'e', $a0+Z80_E,         OP      ; AND.E         |    A3
+        .BYTE   'h', $a0+Z80_H,         OP      ; AND.H         |    A4
+        .BYTE   'l', $a0+Z80_L,         OP      ; AND.L         |    A5
         .DATA   'i', (@and_i-CADDR)-1
         .BYTE   ERR
         ;-----------------------------------------------------------------------
@@ -452,12 +452,12 @@ opcodes:
         .DATA   'y', (@and_y-CADDR)-1
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@and_x  .BYTE   'h', $a0+REG_IH,        OP_IX   ; AND.IXH       | DD A4
-        .BYTE   'l', $a0+REG_IL,        OP_IX   ; AND.IXL       | DD A5
+@and_x  .BYTE   'h', $a0+Z80_IH,        OP_IX   ; AND.IXH       | DD A4
+        .BYTE   'l', $a0+Z80_IL,        OP_IX   ; AND.IXL       | DD A5
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@and_y  .BYTE   'h', $a0+REG_IH,        OP_IY   ; AND.IXH       | FD A4
-        .BYTE   'l', $a0+REG_IL,        OP_IY   ; AND.IXL       | FD A5
+@and_y  .BYTE   'h', $a0+Z80_IH,        OP_IY   ; AND.IXH       | FD A4
+        .BYTE   'l', $a0+Z80_IL,        OP_IY   ; AND.IXL       | FD A5
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @and_m  .DATA   'h', (@and_mh-CADDR)-1
@@ -481,13 +481,13 @@ opcodes:
         .BYTE   '0'|AND
         .DATA   '*', (@bit0m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $40+(8*0)+REG_A,   OP_CB   ; BIT0.A        |    CB 47
-        .BYTE   'b', $40+(8*0)+REG_B,   OP_CB   ; BIT0.B        |    CB 40
-        .BYTE   'c', $40+(8*0)+REG_C,   OP_CB   ; BIT0.C        |    CB 41
-        .BYTE   'd', $40+(8*0)+REG_D,   OP_CB   ; BIT0.D        |    CB 42
-        .BYTE   'e', $40+(8*0)+REG_E,   OP_CB   ; BIT0.E        |    CB 43
-        .BYTE   'h', $40+(8*0)+REG_H,   OP_CB   ; BIT0.H        |    CB 44
-        .BYTE   'l', $40+(8*0)+REG_L,   OP_CB   ; BIT0.L        |    CB 45
+        .BYTE   'a', $40+(8*0)+Z80_A,   OP_CB   ; BIT0.A        |    CB 47
+        .BYTE   'b', $40+(8*0)+Z80_B,   OP_CB   ; BIT0.B        |    CB 40
+        .BYTE   'c', $40+(8*0)+Z80_C,   OP_CB   ; BIT0.C        |    CB 41
+        .BYTE   'd', $40+(8*0)+Z80_D,   OP_CB   ; BIT0.D        |    CB 42
+        .BYTE   'e', $40+(8*0)+Z80_E,   OP_CB   ; BIT0.E        |    CB 43
+        .BYTE   'h', $40+(8*0)+Z80_H,   OP_CB   ; BIT0.H        |    CB 44
+        .BYTE   'l', $40+(8*0)+Z80_L,   OP_CB   ; BIT0.L        |    CB 45
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @bit0m  .DATA   'h', (@bit0hl-CADDR)-1
@@ -501,13 +501,13 @@ opcodes:
         ;-----------------------------------------------------------------------
 @bit1   .DATA   '*', (@bit1m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $40+(8*1)+REG_A    OP_CB   ; BIT1.A        |    CB 4F
-        .BYTE   'b', $40+(8*1)+REG_B    OP_CB   ; BIT1.B        |    CB 48
-        .BYTE   'c', $40+(8*1)+REG_C    OP_CB   ; BIT1.C        |    CB 49
-        .BYTE   'd', $40+(8*1)+REG_D    OP_CB   ; BIT1.D        |    CB 4A
-        .BYTE   'e', $40+(8*1)+REG_E    OP_CB   ; BIT1.E        |    CB 4B
-        .BYTE   'h', $40+(8*1)+REG_H    OP_CB   ; BIT1.H        |    CB 4C
-        .BYTE   'l', $40+(8*1)+REG_L    OP_CB   ; BIT1.L        |    CB 4D
+        .BYTE   'a', $40+(8*1)+Z80_A,   OP_CB   ; BIT1.A        |    CB 4F
+        .BYTE   'b', $40+(8*1)+Z80_B,   OP_CB   ; BIT1.B        |    CB 48
+        .BYTE   'c', $40+(8*1)+Z80_C,   OP_CB   ; BIT1.C        |    CB 49
+        .BYTE   'd', $40+(8*1)+Z80_D,   OP_CB   ; BIT1.D        |    CB 4A
+        .BYTE   'e', $40+(8*1)+Z80_E,   OP_CB   ; BIT1.E        |    CB 4B
+        .BYTE   'h', $40+(8*1)+Z80_H,   OP_CB   ; BIT1.H        |    CB 4C
+        .BYTE   'l', $40+(8*1)+Z80_L,   OP_CB   ; BIT1.L        |    CB 4D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @bit1m  .DATA   'h', (@bit1hl-CADDR)-1
@@ -521,13 +521,13 @@ opcodes:
         ;-----------------------------------------------------------------------
 @bit2   .DATA   '*', (@bit2m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $40+(8*2)+REG_A,   OP_CB   ; BIT2.A        |    CB 57
-        .BYTE   'b', $40+(8*2)+REG_B,   OP_CB   ; BIT2.B        |    CB 50
-        .BYTE   'c', $40+(8*2)+REG_C,   OP_CB   ; BIT2.C        |    CB 51
-        .BYTE   'd', $40+(8*2)+REG_D,   OP_CB   ; BIT2.D        |    CB 52
-        .BYTE   'e', $40+(8*2)+REG_E,   OP_CB   ; BIT2.E        |    CB 53
-        .BYTE   'h', $40+(8*2)+REG_H,   OP_CB   ; BIT2.H        |    CB 54
-        .BYTE   'l', $40+(8*2)+REG_L,   OP_CB   ; BIT2.L        |    CB 55
+        .BYTE   'a', $40+(8*2)+Z80_A,   OP_CB   ; BIT2.A        |    CB 57
+        .BYTE   'b', $40+(8*2)+Z80_B,   OP_CB   ; BIT2.B        |    CB 50
+        .BYTE   'c', $40+(8*2)+Z80_C,   OP_CB   ; BIT2.C        |    CB 51
+        .BYTE   'd', $40+(8*2)+Z80_D,   OP_CB   ; BIT2.D        |    CB 52
+        .BYTE   'e', $40+(8*2)+Z80_E,   OP_CB   ; BIT2.E        |    CB 53
+        .BYTE   'h', $40+(8*2)+Z80_H,   OP_CB   ; BIT2.H        |    CB 54
+        .BYTE   'l', $40+(8*2)+Z80_L,   OP_CB   ; BIT2.L        |    CB 55
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @bit2m  .DATA   'h', (@bit2hl-CADDR)-1
@@ -541,13 +541,13 @@ opcodes:
         ;-----------------------------------------------------------------------
 @bit3   .DATA   '*', (@bit3m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $40+(8*3)+REG_A,   OP_CB   ; BIT3.A        |    CB 5F
-        .BYTE   'b', $40+(8*3)+REG_B,   OP_CB   ; BIT3.B        |    CB 58
-        .BYTE   'c', $40+(8*3)+REG_C,   OP_CB   ; BIT3.C        |    CB 59
-        .BYTE   'd', $40+(8*3)+REG_D,   OP_CB   ; BIT3.D        |    CB 5A
-        .BYTE   'e', $40+(8*3)+REG_E,   OP_CB   ; BIT3.E        |    CB 5B
-        .BYTE   'h', $40+(8*3)+REG_H,   OP_CB   ; BIT3.H        |    CB 5C
-        .BYTE   'l', $40+(8*3)+REG_L,   OP_CB   ; BIT3.L        |    CB 5D
+        .BYTE   'a', $40+(8*3)+Z80_A,   OP_CB   ; BIT3.A        |    CB 5F
+        .BYTE   'b', $40+(8*3)+Z80_B,   OP_CB   ; BIT3.B        |    CB 58
+        .BYTE   'c', $40+(8*3)+Z80_C,   OP_CB   ; BIT3.C        |    CB 59
+        .BYTE   'd', $40+(8*3)+Z80_D,   OP_CB   ; BIT3.D        |    CB 5A
+        .BYTE   'e', $40+(8*3)+Z80_E,   OP_CB   ; BIT3.E        |    CB 5B
+        .BYTE   'h', $40+(8*3)+Z80_H,   OP_CB   ; BIT3.H        |    CB 5C
+        .BYTE   'l', $40+(8*3)+Z80_L,   OP_CB   ; BIT3.L        |    CB 5D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @bit3m  .DATA   'h', (@bit3hl-CADDR)-1
@@ -561,13 +561,13 @@ opcodes:
         ;-----------------------------------------------------------------------
 @bit4   .DATA   '*', (@bit4m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $40+(8*4)+REG_A,   OP_CB   ; BIT4.A        |    CB 67
-        .BYTE   'b', $40+(8*4)+REG_B,   OP_CB   ; BIT4.B        |    CB 60
-        .BYTE   'c', $40+(8*4)+REG_C,   OP_CB   ; BIT4.C        |    CB 61
-        .BYTE   'd', $40+(8*4)+REG_D,   OP_CB   ; BIT4.D        |    CB 62
-        .BYTE   'e', $40+(8*4)+REG_E,   OP_CB   ; BIT4.E        |    CB 63
-        .BYTE   'h', $40+(8*4)+REG_H,   OP_CB   ; BIT4.H        |    CB 64
-        .BYTE   'l', $40+(8*4)+REG_L,   OP_CB   ; BIT4.L        |    CB 65
+        .BYTE   'a', $40+(8*4)+Z80_A,   OP_CB   ; BIT4.A        |    CB 67
+        .BYTE   'b', $40+(8*4)+Z80_B,   OP_CB   ; BIT4.B        |    CB 60
+        .BYTE   'c', $40+(8*4)+Z80_C,   OP_CB   ; BIT4.C        |    CB 61
+        .BYTE   'd', $40+(8*4)+Z80_D,   OP_CB   ; BIT4.D        |    CB 62
+        .BYTE   'e', $40+(8*4)+Z80_E,   OP_CB   ; BIT4.E        |    CB 63
+        .BYTE   'h', $40+(8*4)+Z80_H,   OP_CB   ; BIT4.H        |    CB 64
+        .BYTE   'l', $40+(8*4)+Z80_L,   OP_CB   ; BIT4.L        |    CB 65
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @bit4m  .DATA   'h', (@bit4hl-CADDR)-1
@@ -581,13 +581,13 @@ opcodes:
         ;-----------------------------------------------------------------------
 @bit5   .DATA   '*', (@bit5m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $40+(8*5)+REG_A,   OP_CB   ; BIT5.A        |    CB 6F
-        .BYTE   'b', $40+(8*5)+REG_B,   OP_CB   ; BIT5.B        |    CB 68
-        .BYTE   'c', $40+(8*5)+REG_C,   OP_CB   ; BIT5.C        |    CB 69
-        .BYTE   'd', $40+(8*5)+REG_D,   OP_CB   ; BIT5.D        |    CB 6A
-        .BYTE   'e', $40+(8*5)+REG_E,   OP_CB   ; BIT5.E        |    CB 6B
-        .BYTE   'h', $40+(8*5)+REG_H,   OP_CB   ; BIT5.H        |    CB 6C
-        .BYTE   'l', $40+(8*5)+REG_L,   OP_CB   ; BIT5.L        |    CB 6D
+        .BYTE   'a', $40+(8*5)+Z80_A,   OP_CB   ; BIT5.A        |    CB 6F
+        .BYTE   'b', $40+(8*5)+Z80_B,   OP_CB   ; BIT5.B        |    CB 68
+        .BYTE   'c', $40+(8*5)+Z80_C,   OP_CB   ; BIT5.C        |    CB 69
+        .BYTE   'd', $40+(8*5)+Z80_D,   OP_CB   ; BIT5.D        |    CB 6A
+        .BYTE   'e', $40+(8*5)+Z80_E,   OP_CB   ; BIT5.E        |    CB 6B
+        .BYTE   'h', $40+(8*5)+Z80_H,   OP_CB   ; BIT5.H        |    CB 6C
+        .BYTE   'l', $40+(8*5)+Z80_L,   OP_CB   ; BIT5.L        |    CB 6D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @bit5m  .DATA   'h', (@bit5hl-CADDR)-1
@@ -601,13 +601,13 @@ opcodes:
         ;-----------------------------------------------------------------------
 @bit6   .DATA   '*', (@bit6m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $40+(8*6)+REG_A,   OP_CB   ; BIT6.A        |    CB 77
-        .BYTE   'b', $40+(8*6)+REG_B,   OP_CB   ; BIT6.B        |    CB 70
-        .BYTE   'c', $40+(8*6)+REG_C,   OP_CB   ; BIT6.C        |    CB 71
-        .BYTE   'd', $40+(8*6)+REG_D,   OP_CB   ; BIT6.D        |    CB 72
-        .BYTE   'e', $40+(8*6)+REG_E,   OP_CB   ; BIT6.E        |    CB 73
-        .BYTE   'h', $40+(8*6)+REG_H,   OP_CB   ; BIT6.H        |    CB 74
-        .BYTE   'l', $40+(8*6)+REG_L,   OP_CB   ; BIT6.L        |    CB 75
+        .BYTE   'a', $40+(8*6)+Z80_A,   OP_CB   ; BIT6.A        |    CB 77
+        .BYTE   'b', $40+(8*6)+Z80_B,   OP_CB   ; BIT6.B        |    CB 70
+        .BYTE   'c', $40+(8*6)+Z80_C,   OP_CB   ; BIT6.C        |    CB 71
+        .BYTE   'd', $40+(8*6)+Z80_D,   OP_CB   ; BIT6.D        |    CB 72
+        .BYTE   'e', $40+(8*6)+Z80_E,   OP_CB   ; BIT6.E        |    CB 73
+        .BYTE   'h', $40+(8*6)+Z80_H,   OP_CB   ; BIT6.H        |    CB 74
+        .BYTE   'l', $40+(8*6)+Z80_L,   OP_CB   ; BIT6.L        |    CB 75
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @bit6m  .DATA   'h', (@bit6hl-CADDR)-1
@@ -621,13 +621,13 @@ opcodes:
         ;-----------------------------------------------------------------------
 @bit7   .DATA   '*', (@bit7m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $40+(8*7)+REG_A,   OP_CB   ; BIT7.A        |    CB 7F
-        .BYTE   'b', $40+(8*7)+REG_B,   OP_CB   ; BIT7.B        |    CB 78
-        .BYTE   'c', $40+(8*7)+REG_C,   OP_CB   ; BIT7.C        |    CB 79
-        .BYTE   'd', $40+(8*7)+REG_D,   OP_CB   ; BIT7.D        |    CB 7A
-        .BYTE   'e', $40+(8*7)+REG_E,   OP_CB   ; BIT7.E        |    CB 7B
-        .BYTE   'h', $40+(8*7)+REG_H,   OP_CB   ; BIT7.H        |    CB 7C
-        .BYTE   'l', $40+(8*7)+REG_L,   OP_CB   ; BIT7.L        |    CB 7D
+        .BYTE   'a', $40+(8*7)+Z80_A,   OP_CB   ; BIT7.A        |    CB 7F
+        .BYTE   'b', $40+(8*7)+Z80_B,   OP_CB   ; BIT7.B        |    CB 78
+        .BYTE   'c', $40+(8*7)+Z80_C,   OP_CB   ; BIT7.C        |    CB 79
+        .BYTE   'd', $40+(8*7)+Z80_D,   OP_CB   ; BIT7.D        |    CB 7A
+        .BYTE   'e', $40+(8*7)+Z80_E,   OP_CB   ; BIT7.E        |    CB 7B
+        .BYTE   'h', $40+(8*7)+Z80_H,   OP_CB   ; BIT7.H        |    CB 7C
+        .BYTE   'l', $40+(8*7)+Z80_L,   OP_CB   ; BIT7.L        |    CB 7D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @bit7m  .DATA   'h', (@bit7hl-CADDR)-1
@@ -659,22 +659,22 @@ opcodes:
 @cp_mh  .BYTE   'l', $be,               OP      ; CP*HL         |    BE
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@cp_r   .BYTE   'a', $b8+REG_A,         OP      ; CP.A          |    BF
-        .BYTE   'b', $b8+REG_B,         OP      ; CP.B          |    B8
-        .BYTE   'c', $b8+REG_C,         OP      ; CP.C          |    B9
-        .BYTE   'd', $b8+REG_D,         OP      ; CP.D          |    BA
-        .BYTE   'e', $b8+REG_E,         OP      ; CP.E          |    BB
-        .BYTE   'h', $b8+REG_H,         OP      ; CP.H          |    BC
-        .BYTE   'l', $b8+REG_L,         OP      ; CP.L          |    BD
+@cp_r   .BYTE   'a', $b8+Z80_A,         OP      ; CP.A          |    BF
+        .BYTE   'b', $b8+Z80_B,         OP      ; CP.B          |    B8
+        .BYTE   'c', $b8+Z80_C,         OP      ; CP.C          |    B9
+        .BYTE   'd', $b8+Z80_D,         OP      ; CP.D          |    BA
+        .BYTE   'e', $b8+Z80_E,         OP      ; CP.E          |    BB
+        .BYTE   'h', $b8+Z80_H,         OP      ; CP.H          |    BC
+        .BYTE   'l', $b8+Z80_L,         OP      ; CP.L          |    BD
         .BYTE   'i'|AND
         .DATA   'x', (@cp_ix-CADDR)-1
         .BYTE   'y'|AND
-        .BYTE   'h', $b8+REG_IH,        OP_IY   ; CP.IYH        | FD BC
-        .BYTE   'l', $b8+REG_IL,        OP_IY   ; CP.IYL        | FD BD
+        .BYTE   'h', $b8+Z80_IH,        OP_IY   ; CP.IYH        | FD BC
+        .BYTE   'l', $b8+Z80_IL,        OP_IY   ; CP.IYL        | FD BD
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@cp_ix  .BYTE   'h', $b8+REG_IH,        OP_IX   ; CP.IXH        | DD BC
-        .BYTE   'l', $b8+REG_IL,        OP_IX   ; CP.IXL        | DD BD
+@cp_ix  .BYTE   'h', $b8+Z80_IH,        OP_IX   ; CP.IXH        | DD BC
+        .BYTE   'l', $b8+Z80_IL,        OP_IX   ; CP.IXL        | DD BD
         .BYTE   ERR
         ;=======================================================================
 @cpd    .BYTE   END, $a9,               OP_ED   ; CPD           | ED A9
@@ -761,13 +761,13 @@ opcodes:
 @dec_i  .DATA   'x', (@dec_ix-CADDR)-1
         .BYTE   'y'|AND
         .BYTE   END, $2b,               OP_IY   ; DEC.IY        | FD 2B
-        .BYTE   'h', $05+(8*REG_IH),    OP_IY   ; DEC.IYH       | FD 25
-        .BYTE   'l', $05+(8*REG_IL),    OP_IY   ; DEC.IYL       | FD 2D
+        .BYTE   'h', $05+(8*Z80_IH),    OP_IY   ; DEC.IYH       | FD 25
+        .BYTE   'l', $05+(8*Z80_IL),    OP_IY   ; DEC.IYL       | FD 2D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @dec_ix .BYTE   END, $2b,               OP_IX   ; DEC.IX        | DD 2B
-        .BYTE   'h', $05+(8*REG_IH),    OP_IX   ; DEC.IXH       | DD 25
-        .BYTE   'l', $05+(8*REG_IL),    OP_IX   ; DEC.IXL       | DD 2D
+        .BYTE   'h', $05+(8*Z80_IH),    OP_IX   ; DEC.IXH       | DD 25
+        .BYTE   'l', $05+(8*Z80_IL),    OP_IX   ; DEC.IXL       | DD 2D
         .BYTE   ERR
         ;=======================================================================
 @e      .BYTE   'i', $fb,               OP      ; EI            |    FB
@@ -898,13 +898,13 @@ opcodes:
 @inc_i  .DATA   'x', (@inc_ix-CADDR)-1
         .BYTE   'y'|AND
         .BYTE   END, $23,               OP_IY   ; INC.IY        | FD 23
-        .BYTE   'h', $04+(8*REG_IH),    OP_IY   ; INC.IYH       | FD 24
-        .BYTE   'l', $04+(8*REG_IL),    OP_IY   ; INC.IYL       | FD 2C
+        .BYTE   'h', $04+(8*Z80_IH),    OP_IY   ; INC.IYH       | FD 24
+        .BYTE   'l', $04+(8*Z80_IL),    OP_IY   ; INC.IYL       | FD 2C
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @inc_ix .BYTE   END, $23,               OP_IX   ; INC.IX        | DD 23
-        .BYTE   'h', $04+(8*REG_IH),    OP_IX   ; INC.IXH       | DD 24
-        .BYTE   'l', $04+(8*REG_IL),    OP_IX   ; INC.IXL       | DD 2C
+        .BYTE   'h', $04+(8*Z80_IH),    OP_IX   ; INC.IXH       | DD 24
+        .BYTE   'l', $04+(8*Z80_IL),    OP_IX   ; INC.IXL       | DD 2C
         .BYTE   ERR
         ;=======================================================================
 @ind    .BYTE   END, $aa,               OP_ED   ; IND           | ED AA
@@ -994,37 +994,37 @@ opcodes:
 @ld_hl  .BYTE   'l'|AND
         .BYTE   END, $36,               OP_B    ; LD*HL $nn     |    36 nn
         .BYTE   '.'|AND
-        .BYTE   'a', $70+REG_A,         OP      ; LD*HL.A       |    77
-        .BYTE   'b', $70+REG_B,         OP      ; LD*HL.B       |    70
-        .BYTE   'c', $70+REG_C,         OP      ; LD*HL.C       |    71
-        .BYTE   'd', $70+REG_D,         OP      ; LD*HL.D       |    72
-        .BYTE   'e', $70+REG_E,         OP      ; LD*HL.E       |    73
-        .BYTE   'h', $70+REG_H,         OP      ; LD*HL.H       |    74
-        .BYTE   'l', $70+REG_L,         OP      ; LD*HL.L       |    75
+        .BYTE   'a', $70+Z80_A,         OP      ; LD*HL.A       |    77
+        .BYTE   'b', $70+Z80_B,         OP      ; LD*HL.B       |    70
+        .BYTE   'c', $70+Z80_C,         OP      ; LD*HL.C       |    71
+        .BYTE   'd', $70+Z80_D,         OP      ; LD*HL.D       |    72
+        .BYTE   'e', $70+Z80_E,         OP      ; LD*HL.E       |    73
+        .BYTE   'h', $70+Z80_H,         OP      ; LD*HL.H       |    74
+        .BYTE   'l', $70+Z80_L,         OP      ; LD*HL.L       |    75
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @ld_mi  .DATA   'x', (@ld_mx-CADDR)-1
         .BYTE   'y'|AND
         .BYTE   END, $36,               OP_IYOB ; LD*IY $oo $nn | FD 36 oo nn
         .BYTE   '.'|AND
-        .BYTE   'a', $70+REG_A,         OP_IYO  ; LD*IY.A       | FD 77
-        .BYTE   'b', $70+REG_B,         OP_IYO  ; LD*IY.B       | FD 70
-        .BYTE   'c', $70+REG_C,         OP_IYO  ; LD*IY.C       | FD 71
-        .BYTE   'd', $70+REG_D,         OP_IYO  ; LD*IY.D       | FD 72
-        .BYTE   'e', $70+REG_E,         OP_IYO  ; LD*IY.E       | FD 73
-        .BYTE   'h', $70+REG_H,         OP_IYO  ; LD*IY.H       | FD 74
-        .BYTE   'l', $70+REG_L,         OP_IYO  ; LD*IY.L       | FD 75
+        .BYTE   'a', $70+Z80_A,         OP_IYO  ; LD*IY.A       | FD 77
+        .BYTE   'b', $70+Z80_B,         OP_IYO  ; LD*IY.B       | FD 70
+        .BYTE   'c', $70+Z80_C,         OP_IYO  ; LD*IY.C       | FD 71
+        .BYTE   'd', $70+Z80_D,         OP_IYO  ; LD*IY.D       | FD 72
+        .BYTE   'e', $70+Z80_E,         OP_IYO  ; LD*IY.E       | FD 73
+        .BYTE   'h', $70+Z80_H,         OP_IYO  ; LD*IY.H       | FD 74
+        .BYTE   'l', $70+Z80_L,         OP_IYO  ; LD*IY.L       | FD 75
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @ld_mx  .BYTE   END, $36,               OP_IXOB ; LD*IX $oo $nn | DD 36 oo nn
         .BYTE   '.'|AND
-        .BYTE   'a', $70+REG_A,         OP_IXO  ; LD*IX.A       | DD 77
-        .BYTE   'b', $70+REG_B,         OP_IXO  ; LD*IX.B       | DD 70
-        .BYTE   'c', $70+REG_C,         OP_IXO  ; LD*IX.C       | DD 71
-        .BYTE   'd', $70+REG_D,         OP_IXO  ; LD*IX.D       | DD 72
-        .BYTE   'e', $70+REG_E,         OP_IXO  ; LD*IX.E       | DD 73
-        .BYTE   'h', $70+REG_H,         OP_IXO  ; LD*IX.H       | DD 74
-        .BYTE   'l', $70+REG_L,         OP_IXO  ; LD*IX.L       | DD 75
+        .BYTE   'a', $70+Z80_A,         OP_IXO  ; LD*IX.A       | DD 77
+        .BYTE   'b', $70+Z80_B,         OP_IXO  ; LD*IX.B       | DD 70
+        .BYTE   'c', $70+Z80_C,         OP_IXO  ; LD*IX.C       | DD 71
+        .BYTE   'd', $70+Z80_D,         OP_IXO  ; LD*IX.D       | DD 72
+        .BYTE   'e', $70+Z80_E,         OP_IXO  ; LD*IX.E       | DD 73
+        .BYTE   'h', $70+Z80_H,         OP_IXO  ; LD*IX.H       | DD 74
+        .BYTE   'l', $70+Z80_L,         OP_IXO  ; LD*IX.L       | DD 75
         .BYTE   ERR
         ;=======================================================================
 @ldd    .BYTE   END, $a8,               OP_ED   ; LDD           | ED A8
@@ -1065,24 +1065,24 @@ opcodes:
 @ld_a   .BYTE   END, $3e,               OP_B    ; LD.A $nn      |    3E nn
         .DATA   '*', (@lda_m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $78+REG_A,         OP      ; LD.A.A        |    7F
-        .BYTE   'b', $78+REG_B,         OP      ; LD.A.B        |    78
-        .BYTE   'c', $78+REG_C,         OP      ; LD.A.C        |    79
-        .BYTE   'd', $78+REG_D,         OP      ; LD.A.D        |    7A
-        .BYTE   'e', $78+REG_E,         OP      ; LD.A.E        |    7B
-        .BYTE   'h', $78+REG_H,         OP      ; LD.A.H        |    7C
-        .BYTE   'l', $78+REG_L,         OP      ; LD.A.L        |    7D
+        .BYTE   'a', $78+Z80_A,         OP      ; LD.A.A        |    7F
+        .BYTE   'b', $78+Z80_B,         OP      ; LD.A.B        |    78
+        .BYTE   'c', $78+Z80_C,         OP      ; LD.A.C        |    79
+        .BYTE   'd', $78+Z80_D,         OP      ; LD.A.D        |    7A
+        .BYTE   'e', $78+Z80_E,         OP      ; LD.A.E        |    7B
+        .BYTE   'h', $78+Z80_H,         OP      ; LD.A.H        |    7C
+        .BYTE   'l', $78+Z80_L,         OP      ; LD.A.L        |    7D
         .BYTE   'r', $5f,               OP_ED   ; LD.A.R        | ED 5F
         .BYTE   'i'|AND
         .BYTE   END, $57                OP_ED   ; LD.A.I        | ED 57
         .DATA   'x', (@lda_ix-CADDR)-1
         .BYTE   'y'|AND
-        .BYTE   'h', $78+REG_IH,        OP_IY   ; LD.A.IYH      | FD 7C
-        .BYTE   'l', $78+REG_IL,        OP_IY   ; LD.A.IYL      | FD 7D
+        .BYTE   'h', $78+Z80_IH,        OP_IY   ; LD.A.IYH      | FD 7C
+        .BYTE   'l', $78+Z80_IL,        OP_IY   ; LD.A.IYL      | FD 7D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@lda_ix .BYTE   'h', $78+REG_IH,        OP_IX   ; LD.A.IXH      | DD 7C
-        .BYTE   'l', $78+REG_IL,        OP_IX   ; LD.A.IXL      | DD 7D
+@lda_ix .BYTE   'h', $78+Z80_IH,        OP_IX   ; LD.A.IXH      | DD 7C
+        .BYTE   'l', $78+Z80_IL,        OP_IX   ; LD.A.IXL      | DD 7D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @lda_m  .BYTE   END, $3a,               OP_W    ; LD.A* $nnnn   |    3A nn nn
@@ -1107,22 +1107,22 @@ opcodes:
         .DATA   'c', (@ldbc-CADDR)-1
         .DATA   '*', (@ldb_m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $40+REG_A,         OP      ; LD.B.A        |    47
-        .BYTE   'b', $40+REG_B,         OP      ; LD.B.B        |    40
-        .BYTE   'c', $40+REG_C,         OP      ; LD.B.C        |    41
-        .BYTE   'd', $40+REG_D,         OP      ; LD.B.D        |    42
-        .BYTE   'e', $40+REG_E,         OP      ; LD.B.E        |    43
-        .BYTE   'h', $40+REG_H,         OP      ; LD.B.H        |    44
-        .BYTE   'l', $40+REG_L,         OP      ; LD.B.L        |    45
+        .BYTE   'a', $40+Z80_A,         OP      ; LD.B.A        |    47
+        .BYTE   'b', $40+Z80_B,         OP      ; LD.B.B        |    40
+        .BYTE   'c', $40+Z80_C,         OP      ; LD.B.C        |    41
+        .BYTE   'd', $40+Z80_D,         OP      ; LD.B.D        |    42
+        .BYTE   'e', $40+Z80_E,         OP      ; LD.B.E        |    43
+        .BYTE   'h', $40+Z80_H,         OP      ; LD.B.H        |    44
+        .BYTE   'l', $40+Z80_L,         OP      ; LD.B.L        |    45
         .BYTE   'i'|AND
         .DATA   'x', (@ldb_ix-CADDR)-1
         .BYTE   'y'|AND
-        .BYTE   'h', $40+REG_IH,        OP_IY   ; LD.B.IYH      | FD 44
-        .BYTE   'l', $40+REG_IL,        OP_IY   ; LD.B.IYL      | FD 45
+        .BYTE   'h', $40+Z80_IH,        OP_IY   ; LD.B.IYH      | FD 44
+        .BYTE   'l', $40+Z80_IL,        OP_IY   ; LD.B.IYL      | FD 45
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@ldb_ix .BYTE   'h', $40+REG_IH,        OP_IX   ; LD.B.IXH      | DD 44
-        .BYTE   'l', $40+REG_IL,        OP_IX   ; LD.B.IXL      | DD 45
+@ldb_ix .BYTE   'h', $40+Z80_IH,        OP_IX   ; LD.B.IXH      | DD 44
+        .BYTE   'l', $40+Z80_IL,        OP_IX   ; LD.B.IXL      | DD 45
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @ldbc   .BYTE   END, $01,               OP_W    ; LD.BC $nnnn   |    01 nn nn
@@ -1141,22 +1141,22 @@ opcodes:
 @ld_c   .BYTE   END, $0e,               OP_B    ; LD.C $nn      |    0E nn
         .DATA   '*', (@ldc_m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $48+REG_A,         OP      ; LD.C.A        |    4F
-        .BYTE   'b', $48+REG_B,         OP      ; LD.C.B        |    48
-        .BYTE   'c', $48+REG_C,         OP      ; LD.C.C        |    49
-        .BYTE   'd', $48+REG_D,         OP      ; LD.C.D        |    4A
-        .BYTE   'e', $48+REG_E,         OP      ; LD.C.E        |    4B
-        .BYTE   'h', $48+REG_H,         OP      ; LD.C.H        |    4C
-        .BYTE   'l', $48+REG_L,         OP      ; LD.C.L        |    4D
+        .BYTE   'a', $48+Z80_A,         OP      ; LD.C.A        |    4F
+        .BYTE   'b', $48+Z80_B,         OP      ; LD.C.B        |    48
+        .BYTE   'c', $48+Z80_C,         OP      ; LD.C.C        |    49
+        .BYTE   'd', $48+Z80_D,         OP      ; LD.C.D        |    4A
+        .BYTE   'e', $48+Z80_E,         OP      ; LD.C.E        |    4B
+        .BYTE   'h', $48+Z80_H,         OP      ; LD.C.H        |    4C
+        .BYTE   'l', $48+Z80_L,         OP      ; LD.C.L        |    4D
         .BYTE   'i'|AND
         .DATA   'x', (@ldc_ix-CADDR)-1
         .BYTE   'y'|AND
-        .BYTE   'h', $48+REG_IH,        OP_IY   ; LD.C.IYH      | FD 4C
-        .BYTE   'l', $48+REG_IL,        OP_IY   ; LD.C.IYL      | FD 4D
+        .BYTE   'h', $48+Z80_IH,        OP_IY   ; LD.C.IYH      | FD 4C
+        .BYTE   'l', $48+Z80_IL,        OP_IY   ; LD.C.IYL      | FD 4D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@ldc_ix .BYTE   'h', $48+REG_IH,        OP_IX   ; LD.C.IXH      | DD 4C
-        .BYTE   'l', $48+REG_IL,        OP_IX   ; LD.C.IXL      | DD 4D
+@ldc_ix .BYTE   'h', $48+Z80_IH,        OP_IX   ; LD.C.IXH      | DD 4C
+        .BYTE   'l', $48+Z80_IL,        OP_IX   ; LD.C.IXL      | DD 4D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @ldc_m  .DATA   'h', (@ldc_hl-CADDR)-1
@@ -1172,22 +1172,22 @@ opcodes:
         .DATA   'e', (@ldde-CADDR)-1
         .DATA   '*', (@ldd_m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $50+REG_A,         OP      ; LD.D.A        |    57
-        .BYTE   'b', $50+REG_B,         OP      ; LD.D.B        |    50
-        .BYTE   'c', $50+REG_C,         OP      ; LD.D.C        |    51
-        .BYTE   'd', $50+REG_D,         OP      ; LD.D.D        |    52
-        .BYTE   'e', $50+REG_E,         OP      ; LD.B.E        |    53
-        .BYTE   'h', $50+REG_H,         OP      ; LD.B.H        |    54
-        .BYTE   'l', $50+REG_L,         OP      ; LD.B.L        |    55
+        .BYTE   'a', $50+Z80_A,         OP      ; LD.D.A        |    57
+        .BYTE   'b', $50+Z80_B,         OP      ; LD.D.B        |    50
+        .BYTE   'c', $50+Z80_C,         OP      ; LD.D.C        |    51
+        .BYTE   'd', $50+Z80_D,         OP      ; LD.D.D        |    52
+        .BYTE   'e', $50+Z80_E,         OP      ; LD.B.E        |    53
+        .BYTE   'h', $50+Z80_H,         OP      ; LD.B.H        |    54
+        .BYTE   'l', $50+Z80_L,         OP      ; LD.B.L        |    55
         .BYTE   'i'|AND
         .DATA   'x', (@ldd_ix-CADDR)-1
         .BYTE   'y'|AND
-        .BYTE   'h', $50+REG_IH,        OP_IY   ; LD.D.IYH      | FD 54
-        .BYTE   'l', $50+REG_IL,        OP_IY   ; LD.D.IYL      | FD 55
+        .BYTE   'h', $50+Z80_IH,        OP_IY   ; LD.D.IYH      | FD 54
+        .BYTE   'l', $50+Z80_IL,        OP_IY   ; LD.D.IYL      | FD 55
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@ldd_ix .BYTE   'h', $50+REG_IH,        OP_IX   ; LD.D.IXH      | DD 54
-        .BYTE   'l', $50+REG_IL,        OP_IX   ; LD.D.IXL      | DD 55
+@ldd_ix .BYTE   'h', $50+Z80_IH,        OP_IX   ; LD.D.IXH      | DD 54
+        .BYTE   'l', $50+Z80_IL,        OP_IX   ; LD.D.IXL      | DD 55
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @ldde   .BYTE   END, $11,               OP_W    ; LD.DE $nnnn   |    11 nn nn
@@ -1206,22 +1206,22 @@ opcodes:
 @ld_e   .BYTE   END, $1e,               OP_B    ; LD.E $nn      |    1E nn
         .DATA   '*', (@lde_m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $58+REG_A,         OP      ; LD.E.A        |    5F
-        .BYTE   'b', $58+REG_B,         OP      ; LD.E.B        |    58
-        .BYTE   'c', $58+REG_C,         OP      ; LD.E.C        |    59
-        .BYTE   'd', $58+REG_D,         OP      ; LD.E.D        |    5A
-        .BYTE   'e', $58+REG_E,         OP      ; LD.E.E        |    5B
-        .BYTE   'h', $58+REG_H,         OP      ; LD.E.H        |    5C
-        .BYTE   'l', $58+REG_L,         OP      ; LD.E.L        |    5D
+        .BYTE   'a', $58+Z80_A,         OP      ; LD.E.A        |    5F
+        .BYTE   'b', $58+Z80_B,         OP      ; LD.E.B        |    58
+        .BYTE   'c', $58+Z80_C,         OP      ; LD.E.C        |    59
+        .BYTE   'd', $58+Z80_D,         OP      ; LD.E.D        |    5A
+        .BYTE   'e', $58+Z80_E,         OP      ; LD.E.E        |    5B
+        .BYTE   'h', $58+Z80_H,         OP      ; LD.E.H        |    5C
+        .BYTE   'l', $58+Z80_L,         OP      ; LD.E.L        |    5D
         .BYTE   'i'|AND
         .DATA   'x', (@lde_ix-CADDR)-1
         .BYTE   'y'|AND
-        .BYTE   'h', $58+REG_IH,        OP_IY   ; LD.E.IYH      | FD 5C
-        .BYTE   'l', $58+REG_IL,        OP_IY   ; LD.E.IYL      | FD 5D
+        .BYTE   'h', $58+Z80_IH,        OP_IY   ; LD.E.IYH      | FD 5C
+        .BYTE   'l', $58+Z80_IL,        OP_IY   ; LD.E.IYL      | FD 5D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@lde_ix .BYTE   'h', $58+REG_IH,        OP_IX   ; LD.E.IXH      | DD 5C
-        .BYTE   'l', $58+REG_IL,        OP_IX   ; LD.E.IXL      | DD 5D
+@lde_ix .BYTE   'h', $58+Z80_IH,        OP_IX   ; LD.E.IXH      | DD 5C
+        .BYTE   'l', $58+Z80_IL,        OP_IX   ; LD.E.IXL      | DD 5D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @lde_m  .DATA   'h', (@lde_hl-CADDR)-1
@@ -1237,22 +1237,22 @@ opcodes:
         .DATA   'l', (@ldhl-CADDR)-1
         .DATA   '*', (@ldh_m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $60+REG_A,         OP      ; LD.H.A        |    67
-        .BYTE   'b', $60+REG_B,         OP      ; LD.H.B        |    60
-        .BYTE   'c', $60+REG_C,         OP      ; LD.H.C        |    61
-        .BYTE   'd', $60+REG_D,         OP      ; LD.H.D        |    62
-        .BYTE   'e', $60+REG_E,         OP      ; LD.H.E        |    63
-        .BYTE   'h', $60+REG_H,         OP      ; LD.H.H        |    64
-        .BYTE   'l', $60+REG_L,         OP      ; LD.H.L        |    65
+        .BYTE   'a', $60+Z80_A,         OP      ; LD.H.A        |    67
+        .BYTE   'b', $60+Z80_B,         OP      ; LD.H.B        |    60
+        .BYTE   'c', $60+Z80_C,         OP      ; LD.H.C        |    61
+        .BYTE   'd', $60+Z80_D,         OP      ; LD.H.D        |    62
+        .BYTE   'e', $60+Z80_E,         OP      ; LD.H.E        |    63
+        .BYTE   'h', $60+Z80_H,         OP      ; LD.H.H        |    64
+        .BYTE   'l', $60+Z80_L,         OP      ; LD.H.L        |    65
         .BYTE   'i'|AND
         .DATA   'x', (@ldh_ix-CADDR)-1
         .BYTE   'y'|AND
-        .BYTE   'h', $60+REG_IH,        OP_IY   ; LD.H.IYH      | FD 64
-        .BYTE   'l', $60+REG_IL,        OP_IY   ; LD.H.IYL      | FD 65
+        .BYTE   'h', $60+Z80_IH,        OP_IY   ; LD.H.IYH      | FD 64
+        .BYTE   'l', $60+Z80_IL,        OP_IY   ; LD.H.IYL      | FD 65
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@ldh_ix .BYTE   'h', $60+REG_IH,        OP_IX   ; LD.H.IXH      | DD 64
-        .BYTE   'l', $60+REG_IL,        OP_IX   ; LD.H.IXL      | DD 65
+@ldh_ix .BYTE   'h', $60+Z80_IH,        OP_IX   ; LD.H.IXH      | DD 64
+        .BYTE   'l', $60+Z80_IL,        OP_IX   ; LD.H.IXL      | DD 65
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @ldhl   .BYTE   END, $21,               OP_W    ; LD.HL $nnnn   |    21 nn nn
@@ -1271,22 +1271,22 @@ opcodes:
 @ld_l   .BYTE   END, $2e,               OP_B    ; LD.L $nn      |    2E nn
         .DATA   '*', (@ldl_m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $68+REG_A,         OP      ; LD.L.A        |    6F
-        .BYTE   'b', $68+REG_B,         OP      ; LD.L.B        |    68
-        .BYTE   'c', $68+REG_C,         OP      ; LD.L.C        |    69
-        .BYTE   'd', $68+REG_D,         OP      ; LD.L.D        |    6A
-        .BYTE   'e', $68+REG_E,         OP      ; LD.L.E        |    6B
-        .BYTE   'h', $68+REG_H,         OP      ; LD.L.H        |    6C
-        .BYTE   'l', $68+REG_L,         OP      ; LD.L.L        |    6D
+        .BYTE   'a', $68+Z80_A,         OP      ; LD.L.A        |    6F
+        .BYTE   'b', $68+Z80_B,         OP      ; LD.L.B        |    68
+        .BYTE   'c', $68+Z80_C,         OP      ; LD.L.C        |    69
+        .BYTE   'd', $68+Z80_D,         OP      ; LD.L.D        |    6A
+        .BYTE   'e', $68+Z80_E,         OP      ; LD.L.E        |    6B
+        .BYTE   'h', $68+Z80_H,         OP      ; LD.L.H        |    6C
+        .BYTE   'l', $68+Z80_L,         OP      ; LD.L.L        |    6D
         .BYTE   'i'|AND
         .DATA   'x', (@ldl_ix-CADDR)-1
         .BYTE   'y'|AND
-        .BYTE   'h', $68+REG_IH,        OP_IY   ; LD.L.IYH      | FD 6C
-        .BYTE   'l', $68+REG_IL,        OP_IY   ; LD.L.IYL      | FD 6D
+        .BYTE   'h', $68+Z80_IH,        OP_IY   ; LD.L.IYH      | FD 6C
+        .BYTE   'l', $68+Z80_IL,        OP_IY   ; LD.L.IYL      | FD 6D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@ldl_ix .BYTE   'h', $68+REG_IH,        OP_IX   ; LD.L.IXH      | DD 6C
-        .BYTE   'l', $68+REG_IL,        OP_IX   ; LD.L.IXL      | DD 6D
+@ldl_ix .BYTE   'h', $68+Z80_IH,        OP_IX   ; LD.L.IXH      | DD 6C
+        .BYTE   'l', $68+Z80_IL,        OP_IX   ; LD.L.IXL      | DD 6D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @ldl_m  .DATA   'h', (@ldl_hl-CADDR)-1
@@ -1310,28 +1310,28 @@ opcodes:
         .BYTE   'l'|AND
         .BYTE   END, $2e,               OP_IXB  ; LD.IXL $nn    | DD 2E nn
         .BYTE   '.'|AND
-        .BYTE   'a', $68+REG_A,         OP_IX   ; LD.IXL.A      | DD 6F
-        .BYTE   'b', $68+REG_B,         OP_IX   ; LD.IXL.B      | DD 68
-        .BYTE   'c', $68+REG_C,         OP_IX   ; LD.IXL.C      | DD 69
-        .BYTE   'd', $68+REG_D,         OP_IX   ; LD.IXL.D      | DD 6A
-        .BYTE   'e', $68+REG_E,         OP_IX   ; LD.IXL.E      | DD 6B
+        .BYTE   'a', $68+Z80_A,         OP_IX   ; LD.IXL.A      | DD 6F
+        .BYTE   'b', $68+Z80_B,         OP_IX   ; LD.IXL.B      | DD 68
+        .BYTE   'c', $68+Z80_C,         OP_IX   ; LD.IXL.C      | DD 69
+        .BYTE   'd', $68+Z80_D,         OP_IX   ; LD.IXL.D      | DD 6A
+        .BYTE   'e', $68+Z80_E,         OP_IX   ; LD.IXL.E      | DD 6B
         .BYTE   'i'|AND
         .BYTE   'x'|AND
-        .BYTE   'h', $68+REG_H,         OP_IX   ; LD.IXL.IXH    | DD 6C
-        .BYTE   'l', $68+REG_L,         OP_IX   ; LD.IXL.IXL    | DD 6D
+        .BYTE   'h', $68+Z80_H,         OP_IX   ; LD.IXL.IXH    | DD 6C
+        .BYTE   'l', $68+Z80_L,         OP_IX   ; LD.IXL.IXL    | DD 6D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @ldixh  .BYTE   END, $26,               OP_IXB  ; LD.IXH $nn    | DD 26 nn
         .BYTE   '.'|AND
-        .BYTE   'a', $60+REG_A,         OP_IX   ; LD.IXH.A      | DD 67
-        .BYTE   'b', $60+REG_B,         OP_IX   ; LD.IXH.B      | DD 60
-        .BYTE   'c', $60+REG_C,         OP_IX   ; LD.IXH.C      | DD 61
-        .BYTE   'd', $60+REG_D,         OP_IX   ; LD.IXH.D      | DD 62
-        .BYTE   'e', $60+REG_E,         OP_IX   ; LD.IXH.E      | DD 63
+        .BYTE   'a', $60+Z80_A,         OP_IX   ; LD.IXH.A      | DD 67
+        .BYTE   'b', $60+Z80_B,         OP_IX   ; LD.IXH.B      | DD 60
+        .BYTE   'c', $60+Z80_C,         OP_IX   ; LD.IXH.C      | DD 61
+        .BYTE   'd', $60+Z80_D,         OP_IX   ; LD.IXH.D      | DD 62
+        .BYTE   'e', $60+Z80_E,         OP_IX   ; LD.IXH.E      | DD 63
         .BYTE   'i'|AND
         .BYTE   'x'|AND
-        .BYTE   'h', $60+REG_H,         OP_IX   ; LD.IXH.IXH    | DD 64
-        .BYTE   'l', $60+REG_L,         OP_IX   ; LD.IXH.IXL    | DD 65
+        .BYTE   'h', $60+Z80_H,         OP_IX   ; LD.IXH.IXH    | DD 64
+        .BYTE   'l', $60+Z80_L,         OP_IX   ; LD.IXH.IXL    | DD 65
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @ldiy   .BYTE   END, $21,               OP_IYW  ; LD.IY $nnnn   | FD 21 nn nn
@@ -1340,28 +1340,28 @@ opcodes:
         .BYTE   'l'|AND
         .BYTE   END, $2e,               OP_IYB  ; LD.IYL $nn    | FD 2e nn
         .BYTE   '.'|AND
-        .BYTE   'a', $68+REG_A,         OP_IY   ; LD.IYL.A      | FD 6F
-        .BYTE   'b', $68+REG_B,         OP_IY   ; LD.IYL.B      | FD 68
-        .BYTE   'c', $68+REG_C,         OP_IY   ; LD.IYL.C      | FD 69
-        .BYTE   'd', $68+REG_D,         OP_IY   ; LD.IYL.D      | FD 6A
-        .BYTE   'e', $68+REG_E,         OP_IY   ; LD.IYL.E      | FD 6B
+        .BYTE   'a', $68+Z80_A,         OP_IY   ; LD.IYL.A      | FD 6F
+        .BYTE   'b', $68+Z80_B,         OP_IY   ; LD.IYL.B      | FD 68
+        .BYTE   'c', $68+Z80_C,         OP_IY   ; LD.IYL.C      | FD 69
+        .BYTE   'd', $68+Z80_D,         OP_IY   ; LD.IYL.D      | FD 6A
+        .BYTE   'e', $68+Z80_E,         OP_IY   ; LD.IYL.E      | FD 6B
         .BYTE   'i'|AND
         .BYTE   'y'|AND
-        .BYTE   'h', $68+REG_H,         OP_IY   ; LD.IYL.IYH    | FD 6C
-        .BYTE   'l', $68+REG_L,         OP_IY   ; LD.IYL.IYL    | FD 6D
+        .BYTE   'h', $68+Z80_H,         OP_IY   ; LD.IYL.IYH    | FD 6C
+        .BYTE   'l', $68+Z80_L,         OP_IY   ; LD.IYL.IYL    | FD 6D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @ldiyh  .BYTE   END, $26,               OP_IYB  ; LD.IYH $nn    | FD 26 nn
         .BYTE   '.'|AND
-        .BYTE   'a', $60+REG_A,         OP_IY   ; LD.IYH.A      | FD 67
-        .BYTE   'b', $60+REG_B,         OP_IY   ; LD.IYH.B      | FD 60
-        .BYTE   'c', $60+REG_C,         OP_IY   ; LD.IYH.C      | FD 61
-        .BYTE   'd', $60+REG_D,         OP_IY   ; LD.IYH.D      | FD 62
-        .BYTE   'e', $60+REG_E,         OP_IY   ; LD.IYH.E      | FD 63
+        .BYTE   'a', $60+Z80_A,         OP_IY   ; LD.IYH.A      | FD 67
+        .BYTE   'b', $60+Z80_B,         OP_IY   ; LD.IYH.B      | FD 60
+        .BYTE   'c', $60+Z80_C,         OP_IY   ; LD.IYH.C      | FD 61
+        .BYTE   'd', $60+Z80_D,         OP_IY   ; LD.IYH.D      | FD 62
+        .BYTE   'e', $60+Z80_E,         OP_IY   ; LD.IYH.E      | FD 63
         .BYTE   'i'|AND
         .BYTE   'y'|AND
-        .BYTE   'h', $60+REG_H,         OP_IY   ; LD.IYH.IYH    | FD 64
-        .BYTE   'l', $60+REG_L,         OP_IY   ; LD.IYH.IYL    | FD 65
+        .BYTE   'h', $60+Z80_H,         OP_IY   ; LD.IYH.IYH    | FD 64
+        .BYTE   'l', $60+Z80_L,         OP_IY   ; LD.IYH.IYL    | FD 65
         .BYTE   ERR
         ;=======================================================================
 @n      .DATA   'e', (@ne-CADDR)-1
@@ -1387,22 +1387,22 @@ opcodes:
 @or_hl  .BYTE   'l', $b6                OP      ; OR*HL         |    B6
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@or_r   .BYTE   'a', $b0+REG_A,         OP      ; OR.A          |    B7
-        .BYTE   'b', $b0+REG_B,         OP      ; OR.B          |    B0
-        .BYTE   'c', $b0+REG_C,         OP      ; OR.C          |    B1
-        .BYTE   'd', $b0+REG_D,         OP      ; OR.D          |    B2
-        .BYTE   'e', $b0+REG_E,         OP      ; OR.E          |    B3
-        .BYTE   'h', $b0+REG_H,         OP      ; OR.H          |    B4
-        .BYTE   'l', $b0+REG_L,         OP      ; OR.L          |    B5
+@or_r   .BYTE   'a', $b0+Z80_A,         OP      ; OR.A          |    B7
+        .BYTE   'b', $b0+Z80_B,         OP      ; OR.B          |    B0
+        .BYTE   'c', $b0+Z80_C,         OP      ; OR.C          |    B1
+        .BYTE   'd', $b0+Z80_D,         OP      ; OR.D          |    B2
+        .BYTE   'e', $b0+Z80_E,         OP      ; OR.E          |    B3
+        .BYTE   'h', $b0+Z80_H,         OP      ; OR.H          |    B4
+        .BYTE   'l', $b0+Z80_L,         OP      ; OR.L          |    B5
         .BYTE   'i'|AND
         .DATA   'x', (@or_rx-CADDR)-1
         .BYTE   'y'|AND
-        .BYTE   'h', $b0+REG_IH,        OP_IY   ; OR.IYH        | FD B4
-        .BYTE   'l', $b0+REG_IL,        OP_IY   ; OR.IYL        | FD B5
+        .BYTE   'h', $b0+Z80_IH,        OP_IY   ; OR.IYH        | FD B4
+        .BYTE   'l', $b0+Z80_IL,        OP_IY   ; OR.IYL        | FD B5
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@or_rx  .BYTE   'h', $b0+REG_IH,        OP_IX   ; OR.IXH        | DD B4
-        .BYTE   'l', $b0+REG_IL,        OP_IX   ; OR.IXL        | DD B5
+@or_rx  .BYTE   'h', $b0+Z80_IH,        OP_IX   ; OR.IXH        | DD B4
+        .BYTE   'l', $b0+Z80_IL,        OP_IX   ; OR.IXL        | DD B5
         .BYTE   ERR
         ;=======================================================================
 @ot     .DATA   'd', (@otd-CADDR)-1
@@ -1536,13 +1536,13 @@ opcodes:
         .BYTE   '0'|AND
         .DATA   '*', (@res0m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $80+(8*0)+REG_A,   OP_CB   ; RES0.A        |    CB 87
-        .BYTE   'b', $80+(8*0)+REG_B,   OP_CB   ; RES0.B        |    CB 80
-        .BYTE   'c', $80+(8*0)+REG_C,   OP_CB   ; RES0.C        |    CB 81
-        .BYTE   'd', $80+(8*0)+REG_D,   OP_CB   ; RES0.D        |    CB 82
-        .BYTE   'e', $80+(8*0)+REG_E,   OP_CB   ; RES0.E        |    CB 83
-        .BYTE   'h', $80+(8*0)+REG_H,   OP_CB   ; RES0.H        |    CB 84
-        .BYTE   'l', $80+(8*0)+REG_L,   OP_CB   ; RES0.L        |    CB 85
+        .BYTE   'a', $80+(8*0)+Z80_A,   OP_CB   ; RES0.A        |    CB 87
+        .BYTE   'b', $80+(8*0)+Z80_B,   OP_CB   ; RES0.B        |    CB 80
+        .BYTE   'c', $80+(8*0)+Z80_C,   OP_CB   ; RES0.C        |    CB 81
+        .BYTE   'd', $80+(8*0)+Z80_D,   OP_CB   ; RES0.D        |    CB 82
+        .BYTE   'e', $80+(8*0)+Z80_E,   OP_CB   ; RES0.E        |    CB 83
+        .BYTE   'h', $80+(8*0)+Z80_H,   OP_CB   ; RES0.H        |    CB 84
+        .BYTE   'l', $80+(8*0)+Z80_L,   OP_CB   ; RES0.L        |    CB 85
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @res0m  .DATA   'h', (@res0hl-CADDR)-1
@@ -1556,13 +1556,13 @@ opcodes:
         ;-----------------------------------------------------------------------
 @res1   .DATA   '*', (@res1m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $80+(8*1)+REG_A    OP_CB   ; RES1.A        |    CB 8F
-        .BYTE   'b', $80+(8*1)+REG_B    OP_CB   ; RES1.B        |    CB 88
-        .BYTE   'c', $80+(8*1)+REG_C    OP_CB   ; RES1.C        |    CB 89
-        .BYTE   'd', $80+(8*1)+REG_D    OP_CB   ; RES1.D        |    CB 8A
-        .BYTE   'e', $80+(8*1)+REG_E    OP_CB   ; RES1.E        |    CB 8B
-        .BYTE   'h', $80+(8*1)+REG_H    OP_CB   ; RES1.H        |    CB 8C
-        .BYTE   'l', $80+(8*1)+REG_L    OP_CB   ; RES1.L        |    CB 8D
+        .BYTE   'a', $80+(8*1)+Z80_A,   OP_CB   ; RES1.A        |    CB 8F
+        .BYTE   'b', $80+(8*1)+Z80_B,   OP_CB   ; RES1.B        |    CB 88
+        .BYTE   'c', $80+(8*1)+Z80_C,   OP_CB   ; RES1.C        |    CB 89
+        .BYTE   'd', $80+(8*1)+Z80_D,   OP_CB   ; RES1.D        |    CB 8A
+        .BYTE   'e', $80+(8*1)+Z80_E,   OP_CB   ; RES1.E        |    CB 8B
+        .BYTE   'h', $80+(8*1)+Z80_H,   OP_CB   ; RES1.H        |    CB 8C
+        .BYTE   'l', $80+(8*1)+Z80_L,   OP_CB   ; RES1.L        |    CB 8D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @res1m  .DATA   'h', (@res1hl-CADDR)-1
@@ -1576,13 +1576,13 @@ opcodes:
         ;-----------------------------------------------------------------------
 @res2   .DATA   '*', (@res2m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $80+(8*2)+REG_A,   OP_CB   ; RES2.A        |    CB 97
-        .BYTE   'b', $80+(8*2)+REG_B,   OP_CB   ; RES2.B        |    CB 90
-        .BYTE   'c', $80+(8*2)+REG_C,   OP_CB   ; RES2.C        |    CB 91
-        .BYTE   'd', $80+(8*2)+REG_D,   OP_CB   ; RES2.D        |    CB 92
-        .BYTE   'e', $80+(8*2)+REG_E,   OP_CB   ; RES2.E        |    CB 93
-        .BYTE   'h', $80+(8*2)+REG_H,   OP_CB   ; RES2.H        |    CB 94
-        .BYTE   'l', $80+(8*2)+REG_L,   OP_CB   ; RES2.L        |    CB 95
+        .BYTE   'a', $80+(8*2)+Z80_A,   OP_CB   ; RES2.A        |    CB 97
+        .BYTE   'b', $80+(8*2)+Z80_B,   OP_CB   ; RES2.B        |    CB 90
+        .BYTE   'c', $80+(8*2)+Z80_C,   OP_CB   ; RES2.C        |    CB 91
+        .BYTE   'd', $80+(8*2)+Z80_D,   OP_CB   ; RES2.D        |    CB 92
+        .BYTE   'e', $80+(8*2)+Z80_E,   OP_CB   ; RES2.E        |    CB 93
+        .BYTE   'h', $80+(8*2)+Z80_H,   OP_CB   ; RES2.H        |    CB 94
+        .BYTE   'l', $80+(8*2)+Z80_L,   OP_CB   ; RES2.L        |    CB 95
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @res2m  .DATA   'h', (@res2hl-CADDR)-1
@@ -1596,13 +1596,13 @@ opcodes:
         ;-----------------------------------------------------------------------
 @res3   .DATA   '*', (@res3m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $80+(8*3)+REG_A,   OP_CB   ; RES3.A        |    CB 9F
-        .BYTE   'b', $80+(8*3)+REG_B,   OP_CB   ; RES3.B        |    CB 98
-        .BYTE   'c', $80+(8*3)+REG_C,   OP_CB   ; RES3.C        |    CB 99
-        .BYTE   'd', $80+(8*3)+REG_D,   OP_CB   ; RES3.D        |    CB 9A
-        .BYTE   'e', $80+(8*3)+REG_E,   OP_CB   ; RES3.E        |    CB 9B
-        .BYTE   'h', $80+(8*3)+REG_H,   OP_CB   ; RES3.H        |    CB 9C
-        .BYTE   'l', $80+(8*3)+REG_L,   OP_CB   ; RES3.L        |    CB 9D
+        .BYTE   'a', $80+(8*3)+Z80_A,   OP_CB   ; RES3.A        |    CB 9F
+        .BYTE   'b', $80+(8*3)+Z80_B,   OP_CB   ; RES3.B        |    CB 98
+        .BYTE   'c', $80+(8*3)+Z80_C,   OP_CB   ; RES3.C        |    CB 99
+        .BYTE   'd', $80+(8*3)+Z80_D,   OP_CB   ; RES3.D        |    CB 9A
+        .BYTE   'e', $80+(8*3)+Z80_E,   OP_CB   ; RES3.E        |    CB 9B
+        .BYTE   'h', $80+(8*3)+Z80_H,   OP_CB   ; RES3.H        |    CB 9C
+        .BYTE   'l', $80+(8*3)+Z80_L,   OP_CB   ; RES3.L        |    CB 9D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @res3m  .DATA   'h', (@res3hl-CADDR)-1
@@ -1616,13 +1616,13 @@ opcodes:
         ;-----------------------------------------------------------------------
 @res4   .DATA   '*', (@res4m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $80+(8*4)+REG_A,   OP_CB   ; RES4.A        |    CB A7
-        .BYTE   'b', $80+(8*4)+REG_B,   OP_CB   ; RES4.B        |    CB A0
-        .BYTE   'c', $80+(8*4)+REG_C,   OP_CB   ; RES4.C        |    CB A1
-        .BYTE   'd', $80+(8*4)+REG_D,   OP_CB   ; RES4.D        |    CB A2
-        .BYTE   'e', $80+(8*4)+REG_E,   OP_CB   ; RES4.E        |    CB A3
-        .BYTE   'h', $80+(8*4)+REG_H,   OP_CB   ; RES4.H        |    CB A4
-        .BYTE   'l', $80+(8*4)+REG_L,   OP_CB   ; RES4.L        |    CB A5
+        .BYTE   'a', $80+(8*4)+Z80_A,   OP_CB   ; RES4.A        |    CB A7
+        .BYTE   'b', $80+(8*4)+Z80_B,   OP_CB   ; RES4.B        |    CB A0
+        .BYTE   'c', $80+(8*4)+Z80_C,   OP_CB   ; RES4.C        |    CB A1
+        .BYTE   'd', $80+(8*4)+Z80_D,   OP_CB   ; RES4.D        |    CB A2
+        .BYTE   'e', $80+(8*4)+Z80_E,   OP_CB   ; RES4.E        |    CB A3
+        .BYTE   'h', $80+(8*4)+Z80_H,   OP_CB   ; RES4.H        |    CB A4
+        .BYTE   'l', $80+(8*4)+Z80_L,   OP_CB   ; RES4.L        |    CB A5
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @res4m  .DATA   'h', (@res4hl-CADDR)-1
@@ -1636,13 +1636,13 @@ opcodes:
         ;-----------------------------------------------------------------------
 @res5   .DATA   '*', (@res5m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $80+(8*5)+REG_A,   OP_CB   ; RES5.A        |    CB AF
-        .BYTE   'b', $80+(8*5)+REG_B,   OP_CB   ; RES5.B        |    CB A8
-        .BYTE   'c', $80+(8*5)+REG_C,   OP_CB   ; RES5.C        |    CB A9
-        .BYTE   'd', $80+(8*5)+REG_D,   OP_CB   ; RES5.D        |    CB AA
-        .BYTE   'e', $80+(8*5)+REG_E,   OP_CB   ; RES5.E        |    CB AB
-        .BYTE   'h', $80+(8*5)+REG_H,   OP_CB   ; RES5.H        |    CB AC
-        .BYTE   'l', $80+(8*5)+REG_L,   OP_CB   ; RES5.L        |    CB AD
+        .BYTE   'a', $80+(8*5)+Z80_A,   OP_CB   ; RES5.A        |    CB AF
+        .BYTE   'b', $80+(8*5)+Z80_B,   OP_CB   ; RES5.B        |    CB A8
+        .BYTE   'c', $80+(8*5)+Z80_C,   OP_CB   ; RES5.C        |    CB A9
+        .BYTE   'd', $80+(8*5)+Z80_D,   OP_CB   ; RES5.D        |    CB AA
+        .BYTE   'e', $80+(8*5)+Z80_E,   OP_CB   ; RES5.E        |    CB AB
+        .BYTE   'h', $80+(8*5)+Z80_H,   OP_CB   ; RES5.H        |    CB AC
+        .BYTE   'l', $80+(8*5)+Z80_L,   OP_CB   ; RES5.L        |    CB AD
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @res5m  .DATA   'h', (@res5hl-CADDR)-1
@@ -1656,13 +1656,13 @@ opcodes:
         ;-----------------------------------------------------------------------
 @res6   .DATA   '*', (@res6m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $80+(8*6)+REG_A,   OP_CB   ; RES6.A        |    CB B7
-        .BYTE   'b', $80+(8*6)+REG_B,   OP_CB   ; RES6.B        |    CB B0
-        .BYTE   'c', $80+(8*6)+REG_C,   OP_CB   ; RES6.C        |    CB B1
-        .BYTE   'd', $80+(8*6)+REG_D,   OP_CB   ; RES6.D        |    CB B2
-        .BYTE   'e', $80+(8*6)+REG_E,   OP_CB   ; RES6.E        |    CB B3
-        .BYTE   'h', $80+(8*6)+REG_H,   OP_CB   ; RES6.H        |    CB B4
-        .BYTE   'l', $80+(8*6)+REG_L,   OP_CB   ; RES6.L        |    CB B5
+        .BYTE   'a', $80+(8*6)+Z80_A,   OP_CB   ; RES6.A        |    CB B7
+        .BYTE   'b', $80+(8*6)+Z80_B,   OP_CB   ; RES6.B        |    CB B0
+        .BYTE   'c', $80+(8*6)+Z80_C,   OP_CB   ; RES6.C        |    CB B1
+        .BYTE   'd', $80+(8*6)+Z80_D,   OP_CB   ; RES6.D        |    CB B2
+        .BYTE   'e', $80+(8*6)+Z80_E,   OP_CB   ; RES6.E        |    CB B3
+        .BYTE   'h', $80+(8*6)+Z80_H,   OP_CB   ; RES6.H        |    CB B4
+        .BYTE   'l', $80+(8*6)+Z80_L,   OP_CB   ; RES6.L        |    CB B5
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @res6m  .DATA   'h', (@res6hl-CADDR)-1
@@ -1676,13 +1676,13 @@ opcodes:
         ;-----------------------------------------------------------------------
 @res7   .DATA   '*', (@res7m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $80+(8*7)+REG_A,   OP_CB   ; RES7.A        |    CB BF
-        .BYTE   'b', $80+(8*7)+REG_B,   OP_CB   ; RES7.B        |    CB B8
-        .BYTE   'c', $80+(8*7)+REG_C,   OP_CB   ; RES7.C        |    CB B9
-        .BYTE   'd', $80+(8*7)+REG_D,   OP_CB   ; RES7.D        |    CB BA
-        .BYTE   'e', $80+(8*7)+REG_E,   OP_CB   ; RES7.E        |    CB BB
-        .BYTE   'h', $80+(8*7)+REG_H,   OP_CB   ; RES7.H        |    CB BC
-        .BYTE   'l', $80+(8*7)+REG_L,   OP_CB   ; RES7.L        |    CB BD
+        .BYTE   'a', $80+(8*7)+Z80_A,   OP_CB   ; RES7.A        |    CB BF
+        .BYTE   'b', $80+(8*7)+Z80_B,   OP_CB   ; RES7.B        |    CB B8
+        .BYTE   'c', $80+(8*7)+Z80_C,   OP_CB   ; RES7.C        |    CB B9
+        .BYTE   'd', $80+(8*7)+Z80_D,   OP_CB   ; RES7.D        |    CB BA
+        .BYTE   'e', $80+(8*7)+Z80_E,   OP_CB   ; RES7.E        |    CB BB
+        .BYTE   'h', $80+(8*7)+Z80_H,   OP_CB   ; RES7.H        |    CB BC
+        .BYTE   'l', $80+(8*7)+Z80_L,   OP_CB   ; RES7.L        |    CB BD
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @res7m  .DATA   'h', (@res7hl-CADDR)-1
@@ -1710,25 +1710,25 @@ opcodes:
 @rl_hl  .BYTE   'l', $16,               OP_CB   ; RL*HL         |    CB 16
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@rl_r   .BYTE   'a', $10+REG_A,         OP_CB   ; RL.A          |    CB 17
-        .BYTE   'b', $10+REG_B,         OP_CB   ; RL.B          |    CB 10
-        .BYTE   'c', $10+REG_C,         OP_CB   ; RL.C          |    CB 11
-        .BYTE   'd', $10+REG_D,         OP_CB   ; RL.D          |    CB 12
-        .BYTE   'e', $10+REG_E,         OP_CB   ; RL.E          |    CB 13
-        .BYTE   'h', $10+REG_H,         OP_CB   ; RL.H          |    CB 14
-        .BYTE   'l', $10+REG_L,         OP_CB   ; RL.L          |    CB 15
+@rl_r   .BYTE   'a', $10+Z80_A,         OP_CB   ; RL.A          |    CB 17
+        .BYTE   'b', $10+Z80_B,         OP_CB   ; RL.B          |    CB 10
+        .BYTE   'c', $10+Z80_C,         OP_CB   ; RL.C          |    CB 11
+        .BYTE   'd', $10+Z80_D,         OP_CB   ; RL.D          |    CB 12
+        .BYTE   'e', $10+Z80_E,         OP_CB   ; RL.E          |    CB 13
+        .BYTE   'h', $10+Z80_H,         OP_CB   ; RL.H          |    CB 14
+        .BYTE   'l', $10+Z80_L,         OP_CB   ; RL.L          |    CB 15
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @rlc    .BYTE   'a', $07,               OP      ; RLCA          |    07
         .DATA   '*', (@rlc_m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $00+REG_A,         OP_CB   ; RLC.A         |    CB 07
-        .BYTE   'b', $00+REG_B,         OP_CB   ; RLC.B         |    CB 00
-        .BYTE   'c', $00+REG_C,         OP_CB   ; RLC.C         |    CB 01
-        .BYTE   'd', $00+REG_D,         OP_CB   ; RLC.D         |    CB 02
-        .BYTE   'e', $00+REG_E,         OP_CB   ; RLC.E         |    CB 03
-        .BYTE   'h', $00+REG_H,         OP_CB   ; RLC.H         |    CB 04
-        .BYTE   'l', $00+REG_L,         OP_CB   ; RLC.L         |    CB 05
+        .BYTE   'a', $00+Z80_A,         OP_CB   ; RLC.A         |    CB 07
+        .BYTE   'b', $00+Z80_B,         OP_CB   ; RLC.B         |    CB 00
+        .BYTE   'c', $00+Z80_C,         OP_CB   ; RLC.C         |    CB 01
+        .BYTE   'd', $00+Z80_D,         OP_CB   ; RLC.D         |    CB 02
+        .BYTE   'e', $00+Z80_E,         OP_CB   ; RLC.E         |    CB 03
+        .BYTE   'h', $00+Z80_H,         OP_CB   ; RLC.H         |    CB 04
+        .BYTE   'l', $00+Z80_L,         OP_CB   ; RLC.L         |    CB 05
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @rlc_m  .DATA   'h', (@rlc_hl-CADDR)-1
@@ -1756,25 +1756,25 @@ opcodes:
 @rr_hl  .BYTE   'l', $1e,               OP_CB   ; RR*HL         |    CB 1E
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@rr_r   .BYTE   'a', $18+REG_A,         OP_CB   ; RR.A          |    CB 1F
-        .BYTE   'b', $18+REG_B,         OP_CB   ; RR.B          |    CB 18
-        .BYTE   'c', $18+REG_C,         OP_CB   ; RR.C          |    CB 19
-        .BYTE   'd', $18+REG_D,         OP_CB   ; RR.D          |    CB 1A
-        .BYTE   'e', $18+REG_E,         OP_CB   ; RR.E          |    CB 1B
-        .BYTE   'h', $18+REG_H,         OP_CB   ; RR.H          |    CB 1C
-        .BYTE   'l', $18+REG_L,         OP_CB   ; RR.L          |    CB 1D
+@rr_r   .BYTE   'a', $18+Z80_A,         OP_CB   ; RR.A          |    CB 1F
+        .BYTE   'b', $18+Z80_B,         OP_CB   ; RR.B          |    CB 18
+        .BYTE   'c', $18+Z80_C,         OP_CB   ; RR.C          |    CB 19
+        .BYTE   'd', $18+Z80_D,         OP_CB   ; RR.D          |    CB 1A
+        .BYTE   'e', $18+Z80_E,         OP_CB   ; RR.E          |    CB 1B
+        .BYTE   'h', $18+Z80_H,         OP_CB   ; RR.H          |    CB 1C
+        .BYTE   'l', $18+Z80_L,         OP_CB   ; RR.L          |    CB 1D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @rrc    .BYTE   'a', $0f,               OP      ; RRCA          |    0F
         .DATA   '*', (@rrc_m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $08+REG_A,         OP_CB   ; RRC.A         |    CB 0F
-        .BYTE   'b', $08+REG_B,         OP_CB   ; RRC.B         |    CB 08
-        .BYTE   'c', $08+REG_C,         OP_CB   ; RRC.C         |    CB 09
-        .BYTE   'd', $08+REG_D,         OP_CB   ; RRC.D         |    CB 0A
-        .BYTE   'e', $08+REG_E,         OP_CB   ; RRC.E         |    CB 0B
-        .BYTE   'h', $08+REG_H,         OP_CB   ; RRC.H         |    CB 0C
-        .BYTE   'l', $08+REG_L,         OP_CB   ; RRC.L         |    CB 0D
+        .BYTE   'a', $08+Z80_A,         OP_CB   ; RRC.A         |    CB 0F
+        .BYTE   'b', $08+Z80_B,         OP_CB   ; RRC.B         |    CB 08
+        .BYTE   'c', $08+Z80_C,         OP_CB   ; RRC.C         |    CB 09
+        .BYTE   'd', $08+Z80_D,         OP_CB   ; RRC.D         |    CB 0A
+        .BYTE   'e', $08+Z80_E,         OP_CB   ; RRC.E         |    CB 0B
+        .BYTE   'h', $08+Z80_H,         OP_CB   ; RRC.H         |    CB 0C
+        .BYTE   'l', $08+Z80_L,         OP_CB   ; RRC.L         |    CB 0D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @rrc_m  .DATA   'h', (@rrc_hl-CADDR)-1
@@ -1799,25 +1799,25 @@ opcodes:
         .BYTE   END, $de,               OP_B    ; SBC $nn       |    DE nn
         .DATA   '*', (@sbc_m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $98+REG_A,         OP      ; SBC.A         |    9F
-        .BYTE   'b', $98+REG_B,         OP      ; SBC.B         |    98
-        .BYTE   'c', $98+REG_C,         OP      ; SBC.C         |    99
-        .BYTE   'd', $98+REG_D,         OP      ; SBC.D         |    9A
-        .BYTE   'e', $98+REG_E,         OP      ; SBC.E         |    9B
+        .BYTE   'a', $98+Z80_A,         OP      ; SBC.A         |    9F
+        .BYTE   'b', $98+Z80_B,         OP      ; SBC.B         |    98
+        .BYTE   'c', $98+Z80_C,         OP      ; SBC.C         |    99
+        .BYTE   'd', $98+Z80_D,         OP      ; SBC.D         |    9A
+        .BYTE   'e', $98+Z80_E,         OP      ; SBC.E         |    9B
         .DATA   'h', (@sbc_h-CADDR)-1
-        .BYTE   'l', $98+REG_L,         OP      ; SBC.L         |    9D
+        .BYTE   'l', $98+Z80_L,         OP      ; SBC.L         |    9D
         .BYTE   'i'|AND
         .DATA   'x', (@sbc_rx-CADDR)-1
         .BYTE   'y'|AND
-        .BYTE   'h', $98+REG_IH,        OP_IY   ; SBC.IYH       | FD 9C
-        .BYTE   'l', $98+REG_IL,        OP_IY   ; SBC.IYL       | FD 9D
+        .BYTE   'h', $98+Z80_IH,        OP_IY   ; SBC.IYH       | FD 9C
+        .BYTE   'l', $98+Z80_IL,        OP_IY   ; SBC.IYL       | FD 9D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@sbc_rx .BYTE   'h', $98+REG_IH,        OP_IX   ; SBC.IXH       | DD 9C
-        .BYTE   'l', $98+REG_IL,        OP_IX   ; SBC.IXL       | DD 9D
+@sbc_rx .BYTE   'h', $98+Z80_IH,        OP_IX   ; SBC.IXH       | DD 9C
+        .BYTE   'l', $98+Z80_IL,        OP_IX   ; SBC.IXL       | DD 9D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@sbc_h  .BYTE   END, $98+REG_H,         OP      ; SBC.H         |    9C
+@sbc_h  .BYTE   END, $98+Z80_H,         OP      ; SBC.H         |    9C
         .BYTE   'l'|AND
         .BYTE   '.'|AND
         .DATA   'b', (@sbc_bc-CADDR)-1
@@ -1857,13 +1857,13 @@ opcodes:
         .BYTE   '0'|AND
         .DATA   '*', (@set0m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $80+(8*0)+REG_A,   OP_CB   ; SET0.A        |    CB 87
-        .BYTE   'b', $80+(8*0)+REG_B,   OP_CB   ; SET0.B        |    CB 80
-        .BYTE   'c', $80+(8*0)+REG_C,   OP_CB   ; SET0.C        |    CB 81
-        .BYTE   'd', $80+(8*0)+REG_D,   OP_CB   ; SET0.D        |    CB 82
-        .BYTE   'e', $80+(8*0)+REG_E,   OP_CB   ; SET0.E        |    CB 83
-        .BYTE   'h', $80+(8*0)+REG_H,   OP_CB   ; SET0.H        |    CB 84
-        .BYTE   'l', $80+(8*0)+REG_L,   OP_CB   ; SET0.L        |    CB 85
+        .BYTE   'a', $80+(8*0)+Z80_A,   OP_CB   ; SET0.A        |    CB 87
+        .BYTE   'b', $80+(8*0)+Z80_B,   OP_CB   ; SET0.B        |    CB 80
+        .BYTE   'c', $80+(8*0)+Z80_C,   OP_CB   ; SET0.C        |    CB 81
+        .BYTE   'd', $80+(8*0)+Z80_D,   OP_CB   ; SET0.D        |    CB 82
+        .BYTE   'e', $80+(8*0)+Z80_E,   OP_CB   ; SET0.E        |    CB 83
+        .BYTE   'h', $80+(8*0)+Z80_H,   OP_CB   ; SET0.H        |    CB 84
+        .BYTE   'l', $80+(8*0)+Z80_L,   OP_CB   ; SET0.L        |    CB 85
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @set0m  .DATA   'h', (@set0hl-CADDR)-1
@@ -1877,13 +1877,13 @@ opcodes:
         ;-----------------------------------------------------------------------
 @set1   .DATA   '*', (@set1m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $80+(8*1)+REG_A    OP_CB   ; SET1.A        |    CB 8F
-        .BYTE   'b', $80+(8*1)+REG_B    OP_CB   ; SET1.B        |    CB 88
-        .BYTE   'c', $80+(8*1)+REG_C    OP_CB   ; SET1.C        |    CB 89
-        .BYTE   'd', $80+(8*1)+REG_D    OP_CB   ; SET1.D        |    CB 8A
-        .BYTE   'e', $80+(8*1)+REG_E    OP_CB   ; SET1.E        |    CB 8B
-        .BYTE   'h', $80+(8*1)+REG_H    OP_CB   ; SET1.H        |    CB 8C
-        .BYTE   'l', $80+(8*1)+REG_L    OP_CB   ; SET1.L        |    CB 8D
+        .BYTE   'a', $80+(8*1)+Z80_A,   OP_CB   ; SET1.A        |    CB 8F
+        .BYTE   'b', $80+(8*1)+Z80_B,   OP_CB   ; SET1.B        |    CB 88
+        .BYTE   'c', $80+(8*1)+Z80_C,   OP_CB   ; SET1.C        |    CB 89
+        .BYTE   'd', $80+(8*1)+Z80_D,   OP_CB   ; SET1.D        |    CB 8A
+        .BYTE   'e', $80+(8*1)+Z80_E,   OP_CB   ; SET1.E        |    CB 8B
+        .BYTE   'h', $80+(8*1)+Z80_H,   OP_CB   ; SET1.H        |    CB 8C
+        .BYTE   'l', $80+(8*1)+Z80_L,   OP_CB   ; SET1.L        |    CB 8D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @set1m  .DATA   'h', (@set1hl-CADDR)-1
@@ -1897,13 +1897,13 @@ opcodes:
         ;-----------------------------------------------------------------------
 @set2   .DATA   '*', (@set2m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $80+(8*2)+REG_A,   OP_CB   ; SET2.A        |    CB 97
-        .BYTE   'b', $80+(8*2)+REG_B,   OP_CB   ; SET2.B        |    CB 90
-        .BYTE   'c', $80+(8*2)+REG_C,   OP_CB   ; SET2.C        |    CB 91
-        .BYTE   'd', $80+(8*2)+REG_D,   OP_CB   ; SET2.D        |    CB 92
-        .BYTE   'e', $80+(8*2)+REG_E,   OP_CB   ; SET2.E        |    CB 93
-        .BYTE   'h', $80+(8*2)+REG_H,   OP_CB   ; SET2.H        |    CB 94
-        .BYTE   'l', $80+(8*2)+REG_L,   OP_CB   ; SET2.L        |    CB 95
+        .BYTE   'a', $80+(8*2)+Z80_A,   OP_CB   ; SET2.A        |    CB 97
+        .BYTE   'b', $80+(8*2)+Z80_B,   OP_CB   ; SET2.B        |    CB 90
+        .BYTE   'c', $80+(8*2)+Z80_C,   OP_CB   ; SET2.C        |    CB 91
+        .BYTE   'd', $80+(8*2)+Z80_D,   OP_CB   ; SET2.D        |    CB 92
+        .BYTE   'e', $80+(8*2)+Z80_E,   OP_CB   ; SET2.E        |    CB 93
+        .BYTE   'h', $80+(8*2)+Z80_H,   OP_CB   ; SET2.H        |    CB 94
+        .BYTE   'l', $80+(8*2)+Z80_L,   OP_CB   ; SET2.L        |    CB 95
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @set2m  .DATA   'h', (@set2hl-CADDR)-1
@@ -1917,13 +1917,13 @@ opcodes:
         ;-----------------------------------------------------------------------
 @set3   .DATA   '*', (@set3m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $80+(8*3)+REG_A,   OP_CB   ; SET3.A        |    CB 9F
-        .BYTE   'b', $80+(8*3)+REG_B,   OP_CB   ; SET3.B        |    CB 98
-        .BYTE   'c', $80+(8*3)+REG_C,   OP_CB   ; SET3.C        |    CB 99
-        .BYTE   'd', $80+(8*3)+REG_D,   OP_CB   ; SET3.D        |    CB 9A
-        .BYTE   'e', $80+(8*3)+REG_E,   OP_CB   ; SET3.E        |    CB 9B
-        .BYTE   'h', $80+(8*3)+REG_H,   OP_CB   ; SET3.H        |    CB 9C
-        .BYTE   'l', $80+(8*3)+REG_L,   OP_CB   ; SET3.L        |    CB 9D
+        .BYTE   'a', $80+(8*3)+Z80_A,   OP_CB   ; SET3.A        |    CB 9F
+        .BYTE   'b', $80+(8*3)+Z80_B,   OP_CB   ; SET3.B        |    CB 98
+        .BYTE   'c', $80+(8*3)+Z80_C,   OP_CB   ; SET3.C        |    CB 99
+        .BYTE   'd', $80+(8*3)+Z80_D,   OP_CB   ; SET3.D        |    CB 9A
+        .BYTE   'e', $80+(8*3)+Z80_E,   OP_CB   ; SET3.E        |    CB 9B
+        .BYTE   'h', $80+(8*3)+Z80_H,   OP_CB   ; SET3.H        |    CB 9C
+        .BYTE   'l', $80+(8*3)+Z80_L,   OP_CB   ; SET3.L        |    CB 9D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @set3m  .DATA   'h', (@set3hl-CADDR)-1
@@ -1937,13 +1937,13 @@ opcodes:
         ;-----------------------------------------------------------------------
 @set4   .DATA   '*', (@set4m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $80+(8*4)+REG_A,   OP_CB   ; SET4.A        |    CB A7
-        .BYTE   'b', $80+(8*4)+REG_B,   OP_CB   ; SET4.B        |    CB A0
-        .BYTE   'c', $80+(8*4)+REG_C,   OP_CB   ; SET4.C        |    CB A1
-        .BYTE   'd', $80+(8*4)+REG_D,   OP_CB   ; SET4.D        |    CB A2
-        .BYTE   'e', $80+(8*4)+REG_E,   OP_CB   ; SET4.E        |    CB A3
-        .BYTE   'h', $80+(8*4)+REG_H,   OP_CB   ; SET4.H        |    CB A4
-        .BYTE   'l', $80+(8*4)+REG_L,   OP_CB   ; SET4.L        |    CB A5
+        .BYTE   'a', $80+(8*4)+Z80_A,   OP_CB   ; SET4.A        |    CB A7
+        .BYTE   'b', $80+(8*4)+Z80_B,   OP_CB   ; SET4.B        |    CB A0
+        .BYTE   'c', $80+(8*4)+Z80_C,   OP_CB   ; SET4.C        |    CB A1
+        .BYTE   'd', $80+(8*4)+Z80_D,   OP_CB   ; SET4.D        |    CB A2
+        .BYTE   'e', $80+(8*4)+Z80_E,   OP_CB   ; SET4.E        |    CB A3
+        .BYTE   'h', $80+(8*4)+Z80_H,   OP_CB   ; SET4.H        |    CB A4
+        .BYTE   'l', $80+(8*4)+Z80_L,   OP_CB   ; SET4.L        |    CB A5
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @set4m  .DATA   'h', (@set4hl-CADDR)-1
@@ -1957,13 +1957,13 @@ opcodes:
         ;-----------------------------------------------------------------------
 @set5   .DATA   '*', (@set5m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $80+(8*5)+REG_A,   OP_CB   ; SET5.A        |    CB AF
-        .BYTE   'b', $80+(8*5)+REG_B,   OP_CB   ; SET5.B        |    CB A8
-        .BYTE   'c', $80+(8*5)+REG_C,   OP_CB   ; SET5.C        |    CB A9
-        .BYTE   'd', $80+(8*5)+REG_D,   OP_CB   ; SET5.D        |    CB AA
-        .BYTE   'e', $80+(8*5)+REG_E,   OP_CB   ; SET5.E        |    CB AB
-        .BYTE   'h', $80+(8*5)+REG_H,   OP_CB   ; SET5.H        |    CB AC
-        .BYTE   'l', $80+(8*5)+REG_L,   OP_CB   ; SET5.L        |    CB AD
+        .BYTE   'a', $80+(8*5)+Z80_A,   OP_CB   ; SET5.A        |    CB AF
+        .BYTE   'b', $80+(8*5)+Z80_B,   OP_CB   ; SET5.B        |    CB A8
+        .BYTE   'c', $80+(8*5)+Z80_C,   OP_CB   ; SET5.C        |    CB A9
+        .BYTE   'd', $80+(8*5)+Z80_D,   OP_CB   ; SET5.D        |    CB AA
+        .BYTE   'e', $80+(8*5)+Z80_E,   OP_CB   ; SET5.E        |    CB AB
+        .BYTE   'h', $80+(8*5)+Z80_H,   OP_CB   ; SET5.H        |    CB AC
+        .BYTE   'l', $80+(8*5)+Z80_L,   OP_CB   ; SET5.L        |    CB AD
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @set5m  .DATA   'h', (@set5hl-CADDR)-1
@@ -1977,13 +1977,13 @@ opcodes:
         ;-----------------------------------------------------------------------
 @set6   .DATA   '*', (@set6m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $80+(8*6)+REG_A,   OP_CB   ; SET6.A        |    CB B7
-        .BYTE   'b', $80+(8*6)+REG_B,   OP_CB   ; SET6.B        |    CB B0
-        .BYTE   'c', $80+(8*6)+REG_C,   OP_CB   ; SET6.C        |    CB B1
-        .BYTE   'd', $80+(8*6)+REG_D,   OP_CB   ; SET6.D        |    CB B2
-        .BYTE   'e', $80+(8*6)+REG_E,   OP_CB   ; SET6.E        |    CB B3
-        .BYTE   'h', $80+(8*6)+REG_H,   OP_CB   ; SET6.H        |    CB B4
-        .BYTE   'l', $80+(8*6)+REG_L,   OP_CB   ; SET6.L        |    CB B5
+        .BYTE   'a', $80+(8*6)+Z80_A,   OP_CB   ; SET6.A        |    CB B7
+        .BYTE   'b', $80+(8*6)+Z80_B,   OP_CB   ; SET6.B        |    CB B0
+        .BYTE   'c', $80+(8*6)+Z80_C,   OP_CB   ; SET6.C        |    CB B1
+        .BYTE   'd', $80+(8*6)+Z80_D,   OP_CB   ; SET6.D        |    CB B2
+        .BYTE   'e', $80+(8*6)+Z80_E,   OP_CB   ; SET6.E        |    CB B3
+        .BYTE   'h', $80+(8*6)+Z80_H,   OP_CB   ; SET6.H        |    CB B4
+        .BYTE   'l', $80+(8*6)+Z80_L,   OP_CB   ; SET6.L        |    CB B5
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @set6m  .DATA   'h', (@set6hl-CADDR)-1
@@ -1997,13 +1997,13 @@ opcodes:
         ;-----------------------------------------------------------------------
 @set7   .DATA   '*', (@set7m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $80+(8*7)+REG_A,   OP_CB   ; SET7.A        |    CB BF
-        .BYTE   'b', $80+(8*7)+REG_B,   OP_CB   ; SET7.B        |    CB B8
-        .BYTE   'c', $80+(8*7)+REG_C,   OP_CB   ; SET7.C        |    CB B9
-        .BYTE   'd', $80+(8*7)+REG_D,   OP_CB   ; SET7.D        |    CB BA
-        .BYTE   'e', $80+(8*7)+REG_E,   OP_CB   ; SET7.E        |    CB BB
-        .BYTE   'h', $80+(8*7)+REG_H,   OP_CB   ; SET7.H        |    CB BC
-        .BYTE   'l', $80+(8*7)+REG_L,   OP_CB   ; SET7.L        |    CB BD
+        .BYTE   'a', $80+(8*7)+Z80_A,   OP_CB   ; SET7.A        |    CB BF
+        .BYTE   'b', $80+(8*7)+Z80_B,   OP_CB   ; SET7.B        |    CB B8
+        .BYTE   'c', $80+(8*7)+Z80_C,   OP_CB   ; SET7.C        |    CB B9
+        .BYTE   'd', $80+(8*7)+Z80_D,   OP_CB   ; SET7.D        |    CB BA
+        .BYTE   'e', $80+(8*7)+Z80_E,   OP_CB   ; SET7.E        |    CB BB
+        .BYTE   'h', $80+(8*7)+Z80_H,   OP_CB   ; SET7.H        |    CB BC
+        .BYTE   'l', $80+(8*7)+Z80_L,   OP_CB   ; SET7.L        |    CB BD
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @set7m  .DATA   'h', (@set7hl-CADDR)-1
@@ -2018,13 +2018,13 @@ opcodes:
 @sla    .BYTE   'a'|AND
         .DATA   '*', (@sla_m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $20+REG_A,         OP_CB   ; SLA.A         |    CB 27
-        .BYTE   'b', $20+REG_B,         OP_CB   ; SLA.B         |    CB 20
-        .BYTE   'c', $20+REG_C,         OP_CB   ; SLA.C         |    CB 21
-        .BYTE   'd', $20+REG_D,         OP_CB   ; SLA.D         |    CB 22
-        .BYTE   'e', $20+REG_E,         OP_CB   ; SLA.E         |    CB 23
-        .BYTE   'h', $20+REG_H,         OP_CB   ; SLA.H         |    CB 24
-        .BYTE   'l', $20+REG_L,         OP_CB   ; SLA.L         |    CB 25
+        .BYTE   'a', $20+Z80_A,         OP_CB   ; SLA.A         |    CB 27
+        .BYTE   'b', $20+Z80_B,         OP_CB   ; SLA.B         |    CB 20
+        .BYTE   'c', $20+Z80_C,         OP_CB   ; SLA.C         |    CB 21
+        .BYTE   'd', $20+Z80_D,         OP_CB   ; SLA.D         |    CB 22
+        .BYTE   'e', $20+Z80_E,         OP_CB   ; SLA.E         |    CB 23
+        .BYTE   'h', $20+Z80_H,         OP_CB   ; SLA.H         |    CB 24
+        .BYTE   'l', $20+Z80_L,         OP_CB   ; SLA.L         |    CB 25
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @sla_m  .DATA   'h', (@sla_mh-CADDR)-1
@@ -2040,13 +2040,13 @@ opcodes:
         .BYTE   'l'|AND
         .DATA   '*', (@srl_m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $38+REG_A,         OP_CB   ; SRL.A         |    CB 3F
-        .BYTE   'b', $38+REG_B,         OP_CB   ; SRL.B         |    CB 38
-        .BYTE   'c', $38+REG_C,         OP_CB   ; SRL.C         |    CB 39
-        .BYTE   'd', $38+REG_D,         OP_CB   ; SRL.D         |    CB 3A
-        .BYTE   'e', $38+REG_E,         OP_CB   ; SRL.E         |    CB 3B
-        .BYTE   'h', $38+REG_H,         OP_CB   ; SRL.H         |    CB 3C
-        .BYTE   'l', $38+REG_L,         OP_CB   ; SRL.L         |    CB 3D
+        .BYTE   'a', $38+Z80_A,         OP_CB   ; SRL.A         |    CB 3F
+        .BYTE   'b', $38+Z80_B,         OP_CB   ; SRL.B         |    CB 38
+        .BYTE   'c', $38+Z80_C,         OP_CB   ; SRL.C         |    CB 39
+        .BYTE   'd', $38+Z80_D,         OP_CB   ; SRL.D         |    CB 3A
+        .BYTE   'e', $38+Z80_E,         OP_CB   ; SRL.E         |    CB 3B
+        .BYTE   'h', $38+Z80_H,         OP_CB   ; SRL.H         |    CB 3C
+        .BYTE   'l', $38+Z80_L,         OP_CB   ; SRL.L         |    CB 3D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @srl_m  .DATA   'h', (@srl_mh-CADDR)-1
@@ -2060,13 +2060,13 @@ opcodes:
         ;=======================================================================
 @sra    .DATA   '*', (@sra_m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $28+REG_A,         OP_CB   ; SRL.A         |    CB 2F
-        .BYTE   'b', $28+REG_B,         OP_CB   ; SRL.B         |    CB 28
-        .BYTE   'c', $28+REG_C,         OP_CB   ; SRL.C         |    CB 29
-        .BYTE   'd', $28+REG_D,         OP_CB   ; SRL.D         |    CB 2A
-        .BYTE   'e', $28+REG_E,         OP_CB   ; SRL.E         |    CB 2B
-        .BYTE   'h', $28+REG_H,         OP_CB   ; SRL.H         |    CB 2C
-        .BYTE   'l', $28+REG_L,         OP_CB   ; SRL.L         |    CB 2D
+        .BYTE   'a', $28+Z80_A,         OP_CB   ; SRL.A         |    CB 2F
+        .BYTE   'b', $28+Z80_B,         OP_CB   ; SRL.B         |    CB 28
+        .BYTE   'c', $28+Z80_C,         OP_CB   ; SRL.C         |    CB 29
+        .BYTE   'd', $28+Z80_D,         OP_CB   ; SRL.D         |    CB 2A
+        .BYTE   'e', $28+Z80_E,         OP_CB   ; SRL.E         |    CB 2B
+        .BYTE   'h', $28+Z80_H,         OP_CB   ; SRL.H         |    CB 2C
+        .BYTE   'l', $28+Z80_L,         OP_CB   ; SRL.L         |    CB 2D
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @sra_m  .DATA   'h', (@sra_mh-CADDR)-1
@@ -2082,22 +2082,22 @@ opcodes:
         .BYTE   END, $d6,               OP_B    ; SUB $nn       |    D6 nn
         .DATA   '*', (@sub_m-CADDR)-1
         .BYTE   '.'|AND
-        .BYTE   'a', $90+REG_A,         OP      ; SUB.A         |    97
-        .BYTE   'b', $90+REG_B,         OP      ; SUB.B         |    90
-        .BYTE   'c', $90+REG_C,         OP      ; SUB.C         |    91
-        .BYTE   'd', $90+REG_D,         OP      ; SUB.D         |    92
-        .BYTE   'e', $90+REG_E,         OP      ; SUB.E         |    93
-        .BYTE   'h', $90+REG_H,         OP      ; SUB.H         |    94
-        .BYTE   'l', $90+REG_L,         OP      ; SUB.L         |    95
+        .BYTE   'a', $90+Z80_A,         OP      ; SUB.A         |    97
+        .BYTE   'b', $90+Z80_B,         OP      ; SUB.B         |    90
+        .BYTE   'c', $90+Z80_C,         OP      ; SUB.C         |    91
+        .BYTE   'd', $90+Z80_D,         OP      ; SUB.D         |    92
+        .BYTE   'e', $90+Z80_E,         OP      ; SUB.E         |    93
+        .BYTE   'h', $90+Z80_H,         OP      ; SUB.H         |    94
+        .BYTE   'l', $90+Z80_L,         OP      ; SUB.L         |    95
         .BYTE   'i'|AND
         .DATA   'x', (@sub_rx-CADDR)-1
         .BYTE   'y'|AND
-        .BYTE   'h', $90+REG_IH,        OP_IY   ; SUB.IYH       | DD 94
-        .BYTE   'l', $90+REG_IL,        OP_IY   ; SUB.IYL       | DD 95
+        .BYTE   'h', $90+Z80_IH,        OP_IY   ; SUB.IYH       | DD 94
+        .BYTE   'l', $90+Z80_IL,        OP_IY   ; SUB.IYL       | DD 95
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@sub_rx .BYTE   'h', $90+REG_IH,        OP_IX   ; SUB.IXH       | FD 94
-        .BYTE   'l', $90+REG_IL,        OP_IX   ; SUB.IXL       | FD 95
+@sub_rx .BYTE   'h', $90+Z80_IH,        OP_IX   ; SUB.IXH       | FD 94
+        .BYTE   'l', $90+Z80_IL,        OP_IX   ; SUB.IXL       | FD 95
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @sub_m  .DATA   'h', (@sub_mh-CADDR)-1
