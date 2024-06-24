@@ -1091,19 +1091,24 @@ parseInstruction:
 @cont:  or      %10000000               ; *add* top bit to input char
         cp      [HL]                    ; redo comparison with tree
         inc     HL                      ; (move to next char in tree)
-        jr      z,      @char           ; match, check next char
-
-        jp      errInvalIns             ; any mismatch is an error!
+        jr      z,      @next           ; match, check next char
+        jp      errInvalIns             ; error for continuation mismatch
 
         ;=======================================================================
         ; emit opcode(s):
         ;-----------------------------------------------------------------------
-        ; if a branch ends in an opcode, then no more characters must follow!
+        ; if a branch ends in an opcode then no more characters must follow,
+        ; with one exception -- an apostrophe can be appended to an instruction
+        ; for indicating shadow registers. this is a crude hack as no check is
+        ; made to ensure it's a register at the end, but it saves hundreds of
+        ; extra branches in the opcode tree
         ;
 @opcode and     A                       ; if the last char is already 0,
         jr      z,     +                ; then no further check is needed
 
-        call    readChar
+-       call    readChar                ; read one more character
+        cp      '''                     ; if it is apostrophe,
+        jr      z,      -               ;  then ignore and go again
         cp      ASCII_SPC+1             ; is it whitespace (or eof)?
         jp      nc,     errInvalIns     ; if not, invalid instruction!
 
