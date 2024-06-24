@@ -1063,12 +1063,12 @@ parseInstruction:
 -       cp      [HL]                    ; compare input char with tree char
         jr      z,      @match          ; characters match?
 
-        ; if the hi-bit of the character from the opcode tree was set, it's
+        ; if the hi-bit of the character from the opcode tree is set, it's
         ; either a continuation character (>128) or the end of a branch (=128).
-        ; in these cases, the result of the compare will always be negative,
-        ; triggering the signed-overflow flag!
+        ; in these cases, the result of the compare will always be negative!
         ;
-        jp      pe,     @cont           ; handle continuation char / end
+        bit     7,      [HL]            ; check bit 7 of character
+        jr      nz,     @cont           ; handle continuation char / end
 
         ; no match; try the next character:
         ;-----------------------------------------------------------------------
