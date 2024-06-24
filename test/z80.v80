@@ -340,6 +340,8 @@
 	ex.af'af		; ex	AF',	AF		;    08
 	ex.de.hl		; ex	DE,	HL		;    EB
 	ex.de'hl'		; ex	DE',	HL'		;    EB
+	ex.hl.de		; ex	DE,	HL		;    EB
+	ex.hl'de'		; ex	DE',	HL'		;    EB
 	exx			; exx				;    D9
 	;-----------------------------------------------------------------------
 :halt	halt			; halt				;    76

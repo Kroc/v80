@@ -783,12 +783,20 @@ opcodes:
         .DATA   '*', (@ex_m-CADDR)-1
         .BYTE   '.'|AND
         .DATA   'a', (@ex_af-CADDR)-1
+        .DATA   'h', (@ex_hl-CADDR)-1
         .BYTE   'd'|AND
         .BYTE   'e'|AND
         .DATA   '.', (@@dot-CADDR)-1            ; EX.DE.__
         .BYTE   '''|AND                         ; EX.DE'__
 @@dot   .BYTE   'h'|AND
         .BYTE   'l', $eb,               OP      ; EX.DE.HL      |    EB
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@ex_hl  .BYTE   'l'|AND
+        .DATA   '.', (@@dot-CADDR)-1            ; EX.HL.__
+        .BYTE   '''|AND                         ; EX.HL'__
+@@dot   .BYTE   'd'|AND
+        .BYTE   'e', $eb,               OP      ; EX.HL.DE      |    EB
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @ex_af  .BYTE   'f'|AND                         ; TODO: allow shadow registers
