@@ -32,6 +32,17 @@ $	( $ + $0100 )		; parenthesis require internal spaces
 ;
 	.b "hello, world" $00
 
+; condition markers skip all lines of greater indent
+; if the condition matches
+;
+?=	$0000
+	:z	.w	$0000
+	?!	$0000
+		; note that :nz won't be listed
+		:nz	.w	$ffff
+
+?=	$ffff
+
 ; include file:
 ;
 .i	"z80.v80"

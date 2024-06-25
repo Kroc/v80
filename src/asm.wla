@@ -3,7 +3,6 @@
 ;
 .BLOCK  "code-asm"
 
-
 assembleFile:
 ;===============================================================================
 ; opens a file and assembles it:
@@ -194,6 +193,16 @@ assembleFile:
 @line:  call    nextWord                ; find first character
         jr      z,      @nleof          ; did we hit newline or end-of-file?
 
+        ; conditional assembly markers must appear first as they can skip
+        ; multiple lines. parseCond will parse the condition marker and expr
+        ; and will skip lines if required. when it returns, the current char
+        ; will be the first char of a line, which could be another conditional
+        ; so it is guaranteed to return zero-flag set for this purpose
+        ;
+-       cp      CHAR_COND               ; is condition marker?
+        call    z,      parseCond       ; handle condition, skip lines etc.
+        jr      z,      -               ; after skipped lines, re-check
+
         ; a hexadecimal number at the start of a line
         ; defines the virtual program-counter
         ;
@@ -228,7 +237,7 @@ assembleFile:
         call    nextWord                ; find next character
         jr      z,      @nleof          ; did we hit newline or end-of-file?
 
-        ; are we defining a label or constant?
+        ; defining a label or constant?
         ;
 +       cp      CHAR_LABEL              ; is label?
         jp      z,      @label          ; define a label
@@ -304,7 +313,7 @@ assembleFile:
         ;
         ; if we have a program-counter of $2040 and a modulus of $0100 then
         ; we need to pad $C0 bytes until we reach the modulus of $0100 --
-        ; $2040 / $0100 = $20 with $40 remainder, with the difference
+        ; $2040 / $0100 = $20 plus $40 remainder, with the difference
         ; between $40 and $100 being $C0 bytes
         ;
         ; FIXME should we check for code overflow after an align?
@@ -989,6 +998,119 @@ findSymbol:
 @end:   ex      DE,     HL              ; return last addr as DE
         pop     HL                      ; restore old heap addr
         ret
+
+
+parseCond:
+;===============================================================================
+; parses and evaluates a condition marker:
+;
+; if the condition does not match, indented lines are skipped until
+; the first line of *equal or less* indent to the condition marker
+;
+; out:  A               if condition passes, A will be the EOL/EOF char
+;                       following the condition expression
+;                       if condition does not pass, lines will be skipped
+;                       and A will be the first *non-space* char following
+;                       the skipped lines, with the exception of end-of-file
+;                       which is not guaranteed to be null! (e.g. CP/M)
+;       zf              if condition passes, zero-flag is indeterminate
+;                       if condition fails, zero-flag is guaranteed to be set
+;       HL              (preserved) -- condition expr cannot be deferred
+;       A, BC, DE       (clobbered)
+;-------------------------------------------------------------------------------
+        ; the start-of-word column of the condition marker is what
+        ; will be used to guage what lines are within the condition
+        ;
+        ld      A,      [wcol]          ; current start-of-word column number
+        inc     A                       ; a fix to allow <= with CP
+        ld      [@skip+1],      A       ; keep if we need to skip lines
+
+        ; get condition type and value:
+        ;-----------------------------------------------------------------------
+        call    readChar                ; which conditon marker?
+        jp      z,      errInvalCond    ; a 2nd char must follow
+        push    AF                      ; keep condition type until after expr
+
+        call    nextWord                ; skip space after condition marker
+        jp      z,      errUnexpEOL     ; error if expression missing!
+        call    parseExpr               ; evaluate the expr that follows
+        jp      c,      errUnexpDefer   ; must be a constant expr!
+
+        ; test the condition against the value:
+        ;-----------------------------------------------------------------------
+        pop     AF                      ; restore conditon type
+        cp      A,      CHAR_COND_Z     ; zero?
+        jr      z,      @z              ; ...
+        cp      A,      CHAR_COND_NZ    ; not-zero?
+        jr      z,      @nz             ; ...
+        cp      A,      CHAR_COND_POS   ; positive?
+        jr      z,      @pos            ; ...
+        cp      A,      CHAR_COND_NEG   ; negative?
+        jp      nz,     errInvalCond    ; not one of the condition markers!
+
+        ; fall through for neagtive
+        ; ...
+
+        ;-----------------------------------------------------------------------
+        ; condition negative:
+        ;-----------------------------------------------------------------------
+@neg:   bit     7,      B               ; is the value BC <0? (hi-bit set)
+        ret     nz                      ; if yes, continue parsing lines
+        jr      @skip                   ; if no, skip indented lines
+        ;-----------------------------------------------------------------------
+        ; condition positive:
+        ;-----------------------------------------------------------------------
+@pos:   bit     7,      B               ; is the value BC >= 0? (hi-bit clear)
+        ret     z                       ; if yes, continue parsing lines
+        jr      @skip                   ; if no, skip indented lines
+        ;-----------------------------------------------------------------------
+        ; condition non-zero:
+        ;-----------------------------------------------------------------------
+@nz:    ld      A,      B               ; is the value BC != 0?
+        or      C                       ; (combine bits)
+        ret     nz                      ; if yes, continue parsing lines
+        jr      @skip                   ; if no, skip indented lines
+        ;-----------------------------------------------------------------------
+        ; condition zero:
+        ;-----------------------------------------------------------------------
+@z:     ld      A,      B               ; is the value BC = 0?
+        or      C                       ; (combine bits)
+        ret     z                       ; if yes, continue parsing lines
+
+        ; fall through
+        ; ...
+
+        ; condition mismatch, skip lines:
+        ;-----------------------------------------------------------------------
+        ; keep reading chars until we reach a non-space character
+        ; at or before the column number of the condition marker
+        ;
+@skip:  ld      E,      $ff             ; retain condition marker col in E
+        ;-----------------------------------------------------------------------
+@line:  call    nextWord                ; skip as much whitespace as possible
+        jr      nz,     +               ; distinguish EOL from EOF --
+        cp      ASCII_LF                ; check EOL because EOF might not be 0!
+        ret     nz                      ; stop skipping when we hit end-of-file
+        jr      @line                   ; keep going if leading space
+
+        ; non-space char -- is column equal or less than condition mark?
+        ; NOTE: nextWord also skips lines that contain only comments,
+        ;       so a comment won't terminate a condition block
+        ;
++       ld      A,      [ccol]          ; column number of last char read
+        cp      E                       ; compare with condition marker
+        jr      c,      @ret            ; return to parsing if <=
+
+        ; line is indented past condition, skip line
+        ;
+-       call    readChar                ; fetch next char from input
+        jr      nz,     -               ; skip chars until EOL|EOF
+        cp      ASCII_LF                ; check EOL because EOF might not be 0!
+        jr      z,      @line           ; if end-of-line, keep skipping
+        ;-----------------------------------------------------------------------
+@ret:   xor     A                       ; return zero-flag set for optimisation
+        ld      A,      [char]          ;  but with A = last char read
+        ret                             ; also return regardless on end-of-file
 
 
 parseInstruction:

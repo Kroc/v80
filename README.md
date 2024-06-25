@@ -80,8 +80,8 @@ The basic principle is that _v80_ can only recognise a word by the first charact
     ; unary operators:
     ; (before value)
     ;
-    ; <         = lo
-    ; >         = hi
+    ; <         = lo (bottom byte of word)
+    ; >         = hi (top byte of word)
     ; !         = not (flip all bits)
     ; -         = neg (flip all bits and +1)
 
@@ -94,16 +94,17 @@ The basic principle is that _v80_ can only recognise a word by the first charact
     ;
     .i "file.v80"
 
-    ; if statements: the expression is evaluated and
-    ; the if passes / skips based on equality with 0
+    ; condition markers: the expression is evaluated and
+    ; the condition passes / skips based on equality with 0
     ;
     ?= <expr>   ; only 0 passes
     ?! <expr>   ; only not-0 passes
     ?+ <expr>   ; only positive (sign+) passes
     ?- <expr>   ; only negative (sign-) passes
-        ; if the condition fails, indented lines are
-        ; skipped until first line of equal indent
-    ;   <- end of if statement
+        ; if the condition fails,
+        ; indented lines are skipped
+        ?!      <expr>
+                ; this allows for nested conditions
 
     ; align: skip bytes until the program-counter
     ; modulo the expression is zero

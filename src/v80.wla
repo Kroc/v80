@@ -21,6 +21,11 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 .DEF    CHAR_LABEL      ':'             ; a label (16-bit)
 .DEF    CHAR_CONST      '#'             ; a constant (flexible size)
 .DEF    CHAR_STR        '"'             ; a string
+.DEF    CHAR_COND       '?'             ; condition marker
+.DEF    CHAR_COND_Z     '='             ; `?=`, condition equal marker
+.DEF    CHAR_COND_NZ    '!'             ; `?!`, condition not-equal marker
+.DEF    CHAR_COND_POS   '+'             ; `?+`, condition positive marker
+.DEF    CHAR_COND_NEG   '-'             ; `?-`, condition negative marker
 .DEF    CHAR_OP_LO      '<'             ; lo-byte unary operator
 .DEF    CHAR_OP_HI      '>'             ; hi-byte unary operator
 .DEF    CHAR_OP_NOT     '!'             ; not unary operator
@@ -295,9 +300,12 @@ main:
         cp      A,      [HL]            ;  with lo-byte in stack slot
         jr      nz,     -               ; keep looping if mismatch
         ;-----------------------------------------------------------------------
-        ; FIXME: error on stack overflow?
+        ; we error if the stack reached 0 bytes because we cannot guarantee
+        ; that it went under without a sentinel and an additional check
+        ;
 +       ld      A,      C               ; BC is number of unused stack slots
-        rla                             ; * 2 for bytes
+        add     A,      A               ; *2 for bytes (RLA won't set z-flag!)
+        jp      z,      errRangeStack   ; if 0, stack overflow!
         ld      [@stack+1],     A       ; save value for printing later
 
         ; output file:
