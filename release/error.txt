@@ -144,8 +144,10 @@ the bytes keyword:
 
     .b  :label              ; error -- 16-bit value in 8-bit parameter
     .b  <:label >:label     ; lo-byte / hi-byte operator trim to 8-bits
-    .b  >:label + $0100     ; bad -- beware of operator order!
-    .b  >( :label + $0100 ) ; OK -- lo/hi affect only the immediate value
+    .b  >:label + $0100     ; error -- beware of operator order!
+    .b  >( :label + $0100 ) ; right -- lo/hi affect only the immediate value
+    .b  -$1                 ; error -- numbers are 16-bit so negative is $FFFF!
+    .b  <-$1                ; right -- use lo-byte for negative 8-bit numbers
 
 The second cause is with relative jumps. Relative jumps use a single byte for
 the jump distance, limiting them to roughly +|-128 bytes in either direction,
