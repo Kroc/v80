@@ -345,7 +345,7 @@ opcodes:
         .DATA   'd', (@adc_de-CADDR)-1
         .DATA   'h', (@adc_hl-CADDR)-1
         .BYTE   's'|AND
-        .BYTE   'p', $7a,               OP_ED   ; ADC.HL.SP     | ED 7A
+        .BYTE   'p', $7a,               OP_ED   ; adc.hl.sp     | ED 7A
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @adc_bc .BYTE   'c', $4a,               OP_ED   ; adc.hl.bc     | ED 4A
@@ -1031,7 +1031,7 @@ opcodes:
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @ld_hl  .BYTE   'l'|AND
-        .BYTE   END, $36,               OP_B    ; ld*hl $nn    |    36 nn
+        .BYTE   END, $36,               OP_B    ; ld*hl $nn     |    36 nn
         .DATA   '.', (@@dot-CADDR)-1            ; ld*hl._
         .DATA   ''', (@@pos-CADDR)-1            ; ld*hl'_
 @@pos   .BYTE   END, $36,               OP_B    ; ld*hl' $nn    |    36 nn
@@ -2080,7 +2080,9 @@ opcodes:
 @set7hl .BYTE   'l', $86+(8*7),         OP_CB   ; set7*hl       |    CB BE
         .BYTE   ERR
         ;=======================================================================
-@sla    .BYTE   'a'|AND
+@sla    .DATA   'l', (@sl1-CADDR)-1             ; sll?
+        .DATA   '1', (@sl1-CADDR)-1             ; sl1?
+        .BYTE   'a'|AND                         ; sla?
         .DATA   '*', (@sla_m-CADDR)-1
         .BYTE   '.'|AND
         .BYTE   'a', $20+Z80_A,         OP_CB   ; sla.a         |    CB 27
@@ -2098,7 +2100,27 @@ opcodes:
         .BYTE   'y', $26,               OP_CBYO ; sla*iy $nn    | FD CB nn 26
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@sla_mh .BYTE   'l', $26,               OP_CB   ; SLA*HL        |    CB 26
+@sla_mh .BYTE   'l', $26,               OP_CB   ; sla*hl        |    CB 26
+        .BYTE   ERR
+        ;=======================================================================
+@sl1    .DATA   '*', (@sl1_m-CADDR)-1
+        .BYTE   '.'|AND
+        .BYTE   'a', $20+Z80_A,         OP_CB   ; sl1.a         |    CB 37
+        .BYTE   'b', $20+Z80_B,         OP_CB   ; sl1.b         |    CB 30
+        .BYTE   'c', $20+Z80_C,         OP_CB   ; sl1.c         |    CB 31
+        .BYTE   'd', $20+Z80_D,         OP_CB   ; sl1.d         |    CB 32
+        .BYTE   'e', $20+Z80_E,         OP_CB   ; sl1.e         |    CB 33
+        .BYTE   'h', $20+Z80_H,         OP_CB   ; sl1.h         |    CB 34
+        .BYTE   'l', $20+Z80_L,         OP_CB   ; sl1.l         |    CB 35
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@sl1_m  .DATA   'h', (@sl1_mh-CADDR)-1
+        .BYTE   'i'|AND
+        .BYTE   'x', $26,               OP_CBXO ; sl1*ix $nn    | DD CB nn 36
+        .BYTE   'y', $26,               OP_CBYO ; sl1*iy $nn    | FD CB nn 36
+        .BYTE   ERR
+        ;-----------------------------------------------------------------------
+@sl1_mh .BYTE   'l', $26,               OP_CB   ; sl1*hl        |    CB 36
         .BYTE   ERR
         ;=======================================================================
 @sr     .DATA   'a', (@sra-CADDR)-1
@@ -2140,7 +2162,7 @@ opcodes:
         .BYTE   'y', $2e,               OP_CBYO ; sra*iy $nn    | FD CB nn 2E
         .BYTE   ERR
         ;-----------------------------------------------------------------------
-@sra_mh .BYTE   'l', $2e,               OP_CB   ; SRA*HL        |    CB 2E
+@sra_mh .BYTE   'l', $2e,               OP_CB   ; sra*hl        |    CB 2E
         .BYTE   ERR
         ;=======================================================================
 @sub    .BYTE   'b'|AND
