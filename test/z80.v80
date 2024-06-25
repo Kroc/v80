@@ -253,7 +253,9 @@
 	call?nc	$FF00		; call	nc,	$FF00		;    D4 00 FF
 	call?c	$FF00		; call	c,	$FF00		;    DC 00 FF
 	call?po	$FF00		; call	po,	$FF00		;    E4 00 FF
+	call?nv	$FF00		; call	po,	$FF00		;    E4 00 FF
 	call?pe	$FF00		; call	pe,	$FF00		;    EC 00 FF
+	call?v	$FF00		; call	pe,	$FF00		;    EC 00 FF
 	call?p	$FF00		; call	p,	$FF00		;    F4 00 FF
 	call?m	$FF00		; call	m,	$FF00		;    FC 00 FF
 	;-----------------------------------------------------------------------
@@ -417,7 +419,9 @@
 	jp?nc	$FF00		; jp	nc,	$FF00		;    D2 00 FF
 	jp?c	$FF00		; jp	c,	$FF00		;    DA 00 FF
 	jp?po	$FF00		; jp	po,	$FF00		;    E2 00 FF
+	jp?nv	$FF00		; jp	po,	$FF00		;    E2 00 FF
 	jp?pe	$FF00		; jp	pe,	$FF00		;    EA 00 FF
+	jp?v	$FF00		; jp	pe,	$FF00		;    EA 00 FF
 	jp?p	$FF00		; jp	p,	$FF00		;    F2 00 FF
 	jp?m	$FF00		; jp	m,	$FF00		;    FA 00 FF
 	;-----------------------------------------------------------------------

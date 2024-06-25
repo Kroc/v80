@@ -696,10 +696,12 @@ opcodes:
         .BYTE   'z', $cc,               OP_W    ; CALL?z $nnnn  |    CC nn nn
         .BYTE   'c', $dc,               OP_W    ; CALL?c $nnnn  |    DC nn nn
         .BYTE   'm', $fc,               OP_W    ; CALL?m $nnnn  |    FC nn nn
+        .BYTE   'v', $ec,               OP_W    ; CALL?v $nnnn  |    EC nn nn
         .DATA   'p', (@callp-CADDR)-1
         .BYTE   'n'|AND
         .BYTE   'z', $c4,               OP_W    ; CALL?nz $nnnn |    C4 nn nn
         .BYTE   'c', $d4,               OP_W    ; CALL?nc $nnnn |    D4 nn nn
+        .BYTE   'v', $e4,               OP_W    ; CALL?nv $nnnn |    E4 nn nn
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @callp  .BYTE   END, $f4,               OP_W    ; CALL?p $nnnn  |    F4 nn nn
@@ -956,10 +958,12 @@ opcodes:
         .BYTE   'z', $ca,               OP_W    ; JP?z $nnnn    |    CA nn nn
         .BYTE   'c', $da,               OP_W    ; JP?c $nnnn    |    DA nn nn
         .BYTE   'm', $fa,               OP_W    ; JP?m $nnnn    |    FA nn nn
+        .BYTE   'v', $ea,               OP_W    ; JP?v $nnnn    |    EA nn nn
         .DATA   'p', (@jp_p-CADDR)-1
         .BYTE   'n'|AND
         .BYTE   'z', $c2,               OP_W    ; JP?nz $nnnn   |    C2 nn nn
         .BYTE   'c', $d2,               OP_W    ; JP?nc $nnnn   |    D2 nn nn
+        .BYTE   'v', $e2,               OP_W    ; JP?nv $nnnn   |    E2 nn nn
         .BYTE   ERR
         ;-----------------------------------------------------------------------
 @jp_p   .BYTE   END, $f2,               OP_W    ; JP?p $nnnn    |    F2 nn nn
