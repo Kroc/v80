@@ -347,6 +347,8 @@
 	exx			; exx				;    D9
 	;-----------------------------------------------------------------------
 :halt	halt			; halt				;    76
+	hlt			; halt				;    76
+	hcf			; halt				;    76
 	;-----------------------------------------------------------------------
 :im	im.0			; im	0			; ED 46
 	im.1			; im	1			; ED 56
@@ -1068,7 +1070,9 @@
 	ret?nc			; ret	nc			;    D0
 	ret?c			; ret	c			;    D8
 	ret?po			; ret	po			;    E0
+	ret?nv			; ret	po			;    E0
 	ret?pe			; ret	pe			;    E8
+	ret?v			; ret	pe			;    E8
 	ret?p			; ret	p			;    F0
 	ret?m			; ret	m			;    F8
 	retn			; retn				; ED 45

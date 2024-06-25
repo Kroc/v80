@@ -205,7 +205,9 @@ call?z  $nnnn       call    z,  $nnnn           3   17 /10  preserved
 call?nc $nnnn       call    nc, $nnnn           3   17 /10  preserved
 call?c  $nnnn       call    c,  $nnnn           3   17 /10  preserved
 call?po $nnnn       call    po, $nnnn           3   17 /10  preserved
+call?nv $nnnn       call    po, $nnnn           3   17 /10  preserved
 call?pe $nnnn       call    pe, $nnnn           3   17 /10  preserved
+call?v  $nnnn       call    pe, $nnnn           3   17 /10  preserved
 call?p  $nnnn       call    p,  $nnnn           3   17 /10  preserved
 call?m  $nnnn       call    m,  $nnnn           3   17 /10  preserved
 ================================================================================
@@ -348,7 +350,9 @@ jp?z    $nnnn       jp  z,  $nnnn               3   10      preserved
 jp?nc   $nnnn       jp  nc, $nnnn               3   10      preserved
 jp?c    $nnnn       jp  c,  $nnnn               3   10      preserved
 jp?po   $nnnn       jp  po, $nnnn               3   10      preserved
+jp?nv   $nnnn       jp  po, $nnnn               3   10      preserved
 jp?pe   $nnnn       jp  pe, $nnnn               3   10      preserved
+jp?v    $nnnn       jp  pe, $nnnn               3   10      preserved
 jp?p    $nnnn       jp  p,  $nnnn               3   10      preserved
 jp?m    $nnnn       jp  m,  $nnnn               3   10      preserved
 jp.hl               jp  [HL]                    1   4       preserved
@@ -709,7 +713,9 @@ ret?z               ret z                       1   11 /5   preserved
 ret?nc              ret nc                      1   11 /5   preserved
 ret?c               ret c                       1   11 /5   preserved
 ret?po              ret po                      1   11 /5   preserved
+ret?nv              ret po                      1   11 /5   preserved
 ret?pe              ret pe                      1   11 /5   preserved
+ret?v               ret pe                      1   11 /5   preserved
 ret?p               ret p                       1   11 /5   preserved
 ret?m               ret m                       1   11 /5   preserved
 reti                reti                        2   14      preserved
@@ -1001,8 +1007,8 @@ xor*iy   $mm        xor A,  [IY+$mm]            3   19      c-,z=,s=,p=
 :: footnotes:
 --------------------------------------------------------------------------------
 [^1]    after decrementing BC,
-        if BC >0, overflow-flag (v) is set
-        if BC =0, overflow-flag (v) is clear
+        if BC >0, overflow-flag is set (v)
+        if BC =0, overflow-flag is clear (nv)
 
 [^2]    undocumented opcode:
         shifts value left by 1-bit. carry = bit 7, bit 0 = 1
