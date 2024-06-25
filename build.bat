@@ -18,6 +18,9 @@ REM # https://github.com/davidly/ntvcm
 SET "DIR_NTVCM=%BIN_DIR%\ntvcm"
 SET BIN_NTVCM=ntvcm.exe -l -p
 
+REM # VBinDiff for visual difference comparing
+SET "BIN_VBINDIFF=%BIN_DIR%\vbindiff\VBinDiff.exe"
+
 REM # build v80 assembler from WLA-DX source:
 REM # ==========================================================================
 IF NOT EXIST "build" MKDIR "build"
@@ -63,6 +66,8 @@ CALL :v80 test
 IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
 
 REM # do binary comparisons
+CALL :RunTest z80
+IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
 CALL :RunTest jr
 IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
 
@@ -83,6 +88,7 @@ CALL :wla %~1
 CALL :v80 %~1
 
 FC /B "build\%~1.com" "%DIR_NTVCM%\%~1.com"
+IF ERRORLEVEL 1 START "" %BIN_VBINDIFF% "build\%~1.com" "%DIR_NTVCM%\%~1.com"
 
 GOTO:EOF
 

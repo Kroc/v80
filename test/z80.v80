@@ -1,6 +1,6 @@
 ; v80 test file; z80 instructions:
 ;===============================================================================
-	; v80			; z80				; opcodes
+$0100	; v80			; z80				; opcodes
 	;-----------------------------------------------------------------------
 :adc	adc*hl			; adc	A,	[HL]		;    8E
 	adc*hl'			; adc	A,	[HL']		;    8E
@@ -329,7 +329,7 @@
 	;-----------------------------------------------------------------------
 :di	di			; di				;    F3
 	;-----------------------------------------------------------------------
-:djnz	djnz	$		; djnz	*			;    10 00?
+:djnz	djnz	:djnz		; djnz	djnz			;    10 00?
 	;-----------------------------------------------------------------------
 :ei	ei			; ei				;    FB
 	;-----------------------------------------------------------------------
@@ -337,7 +337,7 @@
 	ex*sp.hl'		; ex	[SP],	HL'		;    E3
 	ex*sp.ix		; ex	[SP],	IX		; DD E3
 	ex*sp.iy		; ex	[SP],	IY		; FD E3
-	ex.af.af		; ex	AF,	AF		;    08
+	ex.af.af		; ex	AF,	AF'		;    08
 	ex.af.af'		; ex	AF,	AF'		;    08
 	ex.af'af		; ex	AF',	AF		;    08
 	ex.de.hl		; ex	DE,	HL		;    EB
@@ -427,11 +427,11 @@
 	jp?p	$FF00		; jp	p,	$FF00		;    F2 00 FF
 	jp?m	$FF00		; jp	m,	$FF00		;    FA 00 FF
 	;-----------------------------------------------------------------------
-:jr	jr	$		; jr	*			;    18 00?
-	jr?nz	$		; jr	nz,	*		;    20 00?
-	jr?z	$		; jr	z,	*		;    28 00?
-	jr?nc	$		; jr	nc,	*		;    30 00?
-	jr?c	$		; jr	c,	*		;    38 00?
+:jr	jr	:jr		; jr	jr			;    18 00?
+	jr?nz	:jr		; jr	nz,	jr		;    20 00?
+	jr?z	:jr		; jr	z,	jr		;    28 00?
+	jr?nc	:jr		; jr	nc,	jr		;    30 00?
+	jr?c	:jr		; jr	c,	jr		;    38 00?
 	;-----------------------------------------------------------------------
 :ld	ld*bc.a			; ld	[BC],	A		;    02
 	ld*bc.a'		; ld	[BC],	A'		;    02
@@ -511,8 +511,8 @@
 	ld.de'*	$FF00		; ld	DE',	[$FF00]		; ED 5B 00 FF
 	ld.hl	$FF00		; ld	HL,	$FF00		;    21 00 FF
 	ld.hl'	$FF00		; ld	HL',	$FF00		;    21 00 FF
-	ld.hl*	$FF00		; ld	HL,	[$FF00]		; ED 2A 00 FF
-	ld.hl'*	$FF00		; ld	HL',	[$FF00]		; ED 2A 00 FF
+	ld.hl*	$FF00		; ld	HL,	[$FF00]		;    2A 00 FF
+	ld.hl'*	$FF00		; ld	HL',	[$FF00]		;    2A 00 FF
 	ld.ix	$FF00		; ld	IX,	$FF00		; DD 21 00 FF
 	ld.ix*	$FF00		; ld	IX,	[$FF00]		; DD 2A 00 FF
 	ld.iy	$FF00		; ld	IY,	$FF00		; FD 21 00 FF
@@ -739,14 +739,6 @@
 	ld.h'h'			; ld	H',	H'		;    64
 	ld.h.l			; ld	H,	L		;    65
 	ld.h'l'			; ld	H',	L'		;    65
-	ld.h.ixh		; ld	H,	IXH		; DD 64
-	ld.h'ixh		; ld	H',	IXH		; DD 64
-	ld.h.ixl		; ld	H,	IXL		; DD 65
-	ld.h'ixl		; ld	H',	IXL		; DD 65
-	ld.h.iyh		; ld	H,	IYH		; FD 64
-	ld.h'iyh		; ld	H',	IYH		; FD 64
-	ld.h.iyl		; ld	H,	IYL		; FD 65
-	ld.h'iyl		; ld	H',	IYL		; FD 65
 
 	ld.l*hl			; ld	L,	[HL]		;    6E
 	ld.l'*hl'		; ld	L',	[HL']		;    6E
@@ -772,14 +764,6 @@
 	ld.l'h'			; ld	L',	H'		;    6C
 	ld.l.l			; ld	L,	L		;    6D
 	ld.l'l'			; ld	L',	L'		;    6D
-	ld.l.ixh		; ld	L,	IXH		; DD 6C
-	ld.l'ixh		; ld	L',	IXH		; DD 6C
-	ld.l.ixl		; ld	L,	IXL		; DD 6D
-	ld.l'ixl		; ld	L',	IXL		; DD 6D
-	ld.l.iyh		; ld	L,	IYH		; FD 6C
-	ld.l'iyh		; ld	L',	IYH		; FD 6C
-	ld.l.iyl		; ld	L,	IYL		; FD 6D
-	ld.l'iyl		; ld	L',	IYL		; FD 6D
 
 	ld.ixh	$00		; ld	IXH,	$00		; DD 26 00
 	ld.ixh.a		; ld	IXH,	A		; DD 67
@@ -852,7 +836,7 @@
 	;-----------------------------------------------------------------------
 :or	or*hl			; or	A,	[HL]		;    B6
 	or*ix	$00		; or	A,	[IX+$00]	; DD B6 00
-	or*iy	$00		; or	A,	[IX+$00]	; FD B6 00
+	or*iy	$00		; or	A,	[IY+$00]	; FD B6 00
 	or	$00		; or	A,	$00		;    F6 00
 	or.a			; or	A,	A		;    B7
 	or.a'			; or	A',	A'		;    B7
@@ -1174,7 +1158,7 @@
 :sbc	sbc*hl			; sbc	A,	[HL]		;    9E
 	sbc*hl'			; sbc	A,	[HL']		;    9E
 	sbc*ix	$00		; sbc	A,	[IX+$00]	; DD 9E 00
-	sbc*iy	$00		; sbc	A,	[IX+$00]	; FD 9E 00
+	sbc*iy	$00		; sbc	A,	[IY+$00]	; FD 9E 00
 	sbc	$00		; sbc	A,	$00		;    DE 00
 	sbc.a			; sbc	A,	A		;    9F
 	sbc.a'			; sbc	A',	A'		;    9F

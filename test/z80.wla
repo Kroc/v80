@@ -1,0 +1,1484 @@
+.INC    "cpm.wla"
+
+.BANK 0 SLOT "TPA"
+.ORGA TBASE
+
+.SECTION        "test"  SIZE 128 * 22
+
+	; z80				; v80			; opcodes
+	;-----------------------------------------------------------------------
+adc:	adc	A,	[HL]		; adc*hl		;    8E
+	adc	A,	[HL']		; adc*hl'		;    8E
+	adc	A,	[IX+$00]	; adc*ix	$00	; DD 8E 00
+	adc	A,	[IY+$00]	; adc*iy	$00	; FD 8E 00
+	adc	A,	$00		; adc		$00	;    CE 00
+	adc	A,	A		; adc.a			;    8F
+	adc	A',	A'		; adc.a'		;    8F
+	adc	A,	B		; adc.b			;    88
+	adc	A,	B'		; adc.b'		;    88
+	adc	A,	C		; adc.c			;    89
+	adc	A,	C'		; adc.c'		;    89
+	adc	A,	D		; adc.d			;    8A
+	adc	A,	D'		; adc.d'		;    8A
+	adc	A,	E		; adc.e			;    8B
+	adc	A,	E'		; adc.e'		;    8B
+	adc	A,	H		; adc.h			;    8C
+	adc	A,	H'		; adc.h'		;    8C
+	adc	A,	L		; adc.l			;    8D
+	adc	A,	L'		; adc.l'		;    8D
+	adc	A,	IXH		; adc.ixh		; DD 8C
+	adc	A,	IXL		; adc.ixl		; DD 8D
+	adc	A,	IYH		; adc.iyh		; FD 8C
+	adc	A,	IYL		; adc.iyl		; FD 8D
+	adc	HL,	BC		; adc.hl.bc		; ED 4A
+	adc	HL',	BC'		; adc.hl'bc'		; ED 4A
+	adc	HL,	DE		; adc.hl.de		; ED 5A
+	adc	HL',	DE'		; adc.hl'de'		; ED 5A
+	adc	HL,	HL		; adc.hl.hl		; ED 6A
+	adc	HL',	HL'		; adc.hl'hl'		; ED 6A
+	adc	HL,	SP		; adc.hl.sp		; ED 7A
+	adc	HL',	SP		; adc.hl'sp		; ED 7A
+	;-----------------------------------------------------------------------
+add:	add	A,	[HL]		; add*hl		;    86
+	add	A,	[HL']		; add*hl'		;    86
+	add	A,	[IX+$00]	; add*ix	$00	; DD 86 00
+	add	A,	[IY+$00]	; add*iy	$00	; FD 86 00
+	add	A,	$00		; add		$00	;    C6 00
+	add	A,	A		; add.a			;    87
+	add	A',	A'		; add.a'		;    87
+	add	A,	B		; add.b			;    80
+	add	A,	B'		; add.b'		;    80
+	add	A,	C		; add.c			;    81
+	add	A,	C'		; add.c'		;    81
+	add	A,	D		; add.d			;    82
+	add	A,	D'		; add.d'		;    82
+	add	A,	E		; add.e			;    83
+	add	A,	E'		; add.e'		;    83
+	add	A,	H		; add.h			;    84
+	add	A,	H'		; add.h'		;    84
+	add	A,	L		; add.l			;    85
+	add	A,	L'		; add.l'		;    85
+	add	A,	IXH		; add.ixh		; DD 84
+	add	A,	IXL		; add.ixl		; DD 85
+	add	A,	IYH		; add.iyh		; FD 84
+	add	A,	IYL		; add.iyl		; FD 85
+	add	HL,	BC		; add.hl.bc		;    09
+	add	HL',	BC'		; add.hl'bc'		;    09
+	add	HL,	DE		; add.hl.de		;    19
+	add	HL',	DE'		; add.hl'de'		;    19
+	add	HL,	HL		; add.hl.hl		;    29
+	add	HL',	HL'		; add.hl'hl'		;    29
+	add	HL,	SP		; add.hl.sp		;    39
+	add	HL',	SP		; add.hl'sp		;    39
+	add	IX,	BC		; add.ix.bc		; DD 09
+	add	IX,	BC'		; add.ix.bc'		; DD 09
+	add	IX,	DE		; add.ix.de		; DD 19
+	add	IX,	DE'		; add.ix.de'		; DD 19
+	add	IX,	IX		; add.ix.ix		; DD 29
+	add	IX,	SP		; add.ix.sp		; DD 39
+	add	IY,	BC		; add.iy.bc		; FD 09
+	add	IY,	BC'		; add.iy.bc'		; FD 09
+	add	IY,	DE		; add.iy.de		; FD 19
+	add	IY,	DE'		; add.iy.de'		; FD 19
+	add	IY,	IY		; add.iy.iy		; FD 29
+	add	IY,	SP		; add.iy.sp		; FD 39
+	;-----------------------------------------------------------------------
+and:	and	A,	[HL]		; and*hl		;    A6
+	and	A,	[HL']		; and*hl'		;    A6
+	and	A,	[IX+$00]	; and*ix	$00	; DD A6 00
+	and	A,	[IY+$00]	; and*iy	$00	; FD A6 00
+	and	A,	$00		; and		$00	;    E6 00
+	and	A,	A		; and.a			;    A7
+	and	A',	A'		; and.a'		;    A7
+	and	A,	B		; and.b			;    A0
+	and	A,	B'		; and.b'		;    A0
+	and	A,	C		; and.c			;    A1
+	and	A,	C'		; and.c'		;    A1
+	and	A,	D		; and.d			;    A2
+	and	A,	D'		; and.d'		;    A2
+	and	A,	E		; and.e			;    A3
+	and	A,	E'		; and.e'		;    A3
+	and	A,	H		; and.h			;    A4
+	and	A,	H'		; and.h'		;    A4
+	and	A,	L		; and.l			;    A5
+	and	A,	L'		; and.l'		;    A5
+	and	A,	IXH		; and.ixh		; DD A4
+	and	A,	IXL		; and.ixl		; DD A5
+	and	A,	IYH		; and.iyh		; FD A4
+	and	A,	IYL		; and.iyl		; FD A5
+	;-----------------------------------------------------------------------
+bit:	bit	0,	[HL]		; bit0*hl		;    CB 46
+	bit	0,	[HL']		; bit0*hl'		;    CB 46
+	bit	0,	[IX+$00]	; bit0*ix	$00	; DD CB 00 46
+	bit	0,	[IY+$00]	; bit0*iy	$00	; FD CB 00 46
+	bit	0,	A		; bit0.a		;    CB 47
+	bit	0,	A'		; bit0.a'		;    CB 47
+	bit	0,	B		; bit0.b		;    CB 40
+	bit	0,	B'		; bit0.b'		;    CB 40
+	bit	0,	C		; bit0.c		;    CB 41
+	bit	0,	C'		; bit0.c'		;    CB 41
+	bit	0,	D		; bit0.d		;    CB 42
+	bit	0,	D'		; bit0.d'		;    CB 42
+	bit	0,	E		; bit0.e		;    CB 43
+	bit	0,	E'		; bit0.e'		;    CB 43
+	bit	0,	H		; bit0.h		;    CB 44
+	bit	0,	H'		; bit0.h'		;    CB 44
+	bit	0,	L		; bit0.l		;    CB 45
+	bit	0,	L'		; bit0.l'		;    CB 45
+	bit	1,	[HL]		; bit1*hl		;    CB 4E
+	bit	1,	[HL']		; bit1*hl'		;    CB 4E
+	bit	1,	[IX+$00]	; bit1*ix	$00	; DD CB 00 4E
+	bit	1,	[IY+$00]	; bit1*iy	$00	; FD CB 00 4E
+	bit	1,	A		; bit1.a		;    CB 4F
+	bit	1,	A'		; bit1.a'		;    CB 4F
+	bit	1,	B		; bit1.b		;    CB 48
+	bit	1,	B'		; bit1.b'		;    CB 48
+	bit	1,	C		; bit1.c		;    CB 49
+	bit	1,	C'		; bit1.c'		;    CB 49
+	bit	1,	D		; bit1.d		;    CB 4A
+	bit	1,	D'		; bit1.d'		;    CB 4A
+	bit	1,	E		; bit1.e		;    CB 4B
+	bit	1,	E'		; bit1.e'		;    CB 4B
+	bit	1,	H		; bit1.h		;    CB 4C
+	bit	1,	H'		; bit1.h'		;    CB 4C
+	bit	1,	L		; bit1.l		;    CB 4D
+	bit	1,	L'		; bit1.l'		;    CB 4D
+	bit	2,	[HL]		; bit2*hl		;    CB 56
+	bit	2,	[HL']		; bit2*hl'		;    CB 56
+	bit	2,	[IX+$00]	; bit2*ix	$00	; DD CB 00 56
+	bit	2,	[IY+$00]	; bit2*iy	$00	; FD CB 00 56
+	bit	2,	A		; bit2.a		;    CB 57
+	bit	2,	A'		; bit2.a'		;    CB 57
+	bit	2,	B		; bit2.b		;    CB 50
+	bit	2,	B'		; bit2.b'		;    CB 50
+	bit	2,	C		; bit2.c		;    CB 51
+	bit	2,	C'		; bit2.c'		;    CB 51
+	bit	2,	D		; bit2.d		;    CB 52
+	bit	2,	D'		; bit2.d'		;    CB 52
+	bit	2,	E		; bit2.e		;    CB 53
+	bit	2,	E'		; bit2.e'		;    CB 53
+	bit	2,	H		; bit2.h		;    CB 54
+	bit	2,	H'		; bit2.h'		;    CB 54
+	bit	2,	L		; bit2.l		;    CB 55
+	bit	2,	L'		; bit2.l'		;    CB 55
+	bit	3,	[HL]		; bit3*hl		;    CB 5E
+	bit	3,	[HL']		; bit3*hl'		;    CB 5E
+	bit	3,	[IX+$00]	; bit3*ix	$00	; DD CB 00 5E
+	bit	3,	[IY+$00]	; bit3*iy	$00	; FD CB 00 5E
+	bit	3,	A		; bit3.a		;    CB 5F
+	bit	3,	A'		; bit3.a'		;    CB 5F
+	bit	3,	B		; bit3.b		;    CB 58
+	bit	3,	B'		; bit3.b'		;    CB 58
+	bit	3,	C		; bit3.c		;    CB 59
+	bit	3,	C'		; bit3.c'		;    CB 59
+	bit	3,	D		; bit3.d		;    CB 5A
+	bit	3,	D'		; bit3.d'		;    CB 5A
+	bit	3,	E		; bit3.e		;    CB 5B
+	bit	3,	E'		; bit3.e'		;    CB 5B
+	bit	3,	H		; bit3.h		;    CB 5C
+	bit	3,	H'		; bit3.h'		;    CB 5C
+	bit	3,	L		; bit3.l		;    CB 5D
+	bit	3,	L'		; bit3.l'		;    CB 5D
+	bit	4,	[HL]		; bit4*hl		;    CB 66
+	bit	4,	[HL']		; bit4*hl'		;    CB 66
+	bit	4,	[IX+$00]	; bit4*ix	$00	; DD CB 00 66
+	bit	4,	[IY+$00]	; bit4*iy	$00	; FD CB 00 66
+	bit	4,	A		; bit4.a		;    CB 67
+	bit	4,	A'		; bit4.a'		;    CB 67
+	bit	4,	B		; bit4.b		;    CB 60
+	bit	4,	B'		; bit4.b'		;    CB 60
+	bit	4,	C		; bit4.c		;    CB 61
+	bit	4,	C'		; bit4.c'		;    CB 61
+	bit	4,	D		; bit4.d		;    CB 62
+	bit	4,	D'		; bit4.d'		;    CB 62
+	bit	4,	E		; bit4.e		;    CB 63
+	bit	4,	E'		; bit4.e'		;    CB 63
+	bit	4,	H		; bit4.h		;    CB 64
+	bit	4,	H'		; bit4.h'		;    CB 64
+	bit	4,	L		; bit4.l		;    CB 65
+	bit	4,	L'		; bit4.l'		;    CB 65
+	bit	5,	[HL]		; bit5*hl		;    CB 6E
+	bit	5,	[HL']		; bit5*hl'		;    CB 6E
+	bit	5,	[IX+$00]	; bit5*ix	$00	; DD CB 00 6E
+	bit	5,	[IY+$00]	; bit5*iy	$00	; FD CB 00 6E
+	bit	5,	A		; bit5.a		;    CB 6F
+	bit	5,	A'		; bit5.a'		;    CB 6F
+	bit	5,	B		; bit5.b		;    CB 68
+	bit	5,	B'		; bit5.b'		;    CB 68
+	bit	5,	C		; bit5.c		;    CB 69
+	bit	5,	C'		; bit5.c'		;    CB 69
+	bit	5,	D		; bit5.d		;    CB 6A
+	bit	5,	D'		; bit5.d'		;    CB 6A
+	bit	5,	E		; bit5.e		;    CB 6B
+	bit	5,	E'		; bit5.e'		;    CB 6B
+	bit	5,	H		; bit5.h		;    CB 6C
+	bit	5,	H'		; bit5.h'		;    CB 6C
+	bit	5,	L		; bit5.l		;    CB 6D
+	bit	5,	L'		; bit5.l'		;    CB 6D
+	bit	6,	[HL]		; bit6*hl		;    CB 76
+	bit	6,	[HL']		; bit6*hl'		;    CB 76
+	bit	6,	[IX+$00]	; bit6*ix	$00	; DD CB 00 76
+	bit	6,	[IY+$00]	; bit6*iy	$00	; FD CB 00 76
+	bit	6,	A		; bit6.a		;    CB 77
+	bit	6,	A'		; bit6.a'		;    CB 77
+	bit	6,	B		; bit6.b		;    CB 70
+	bit	6,	B'		; bit6.b'		;    CB 70
+	bit	6,	C		; bit6.c		;    CB 71
+	bit	6,	C'		; bit6.c'		;    CB 71
+	bit	6,	D		; bit6.d		;    CB 72
+	bit	6,	D'		; bit6.d'		;    CB 72
+	bit	6,	E		; bit6.e		;    CB 73
+	bit	6,	E'		; bit6.e'		;    CB 73
+	bit	6,	H		; bit6.h		;    CB 74
+	bit	6,	H'		; bit6.h'		;    CB 74
+	bit	6,	L		; bit6.l		;    CB 75
+	bit	6,	L'		; bit6.l'		;    CB 75
+	bit	7,	[HL]		; bit7*hl		;    CB 7E
+	bit	7,	[HL']		; bit7*hl'		;    CB 7E
+	bit	7,	[IX+$00]	; bit7*ix	$00	; DD CB 00 7E
+	bit	7,	[IY+$00]	; bit7*iy	$00	; FD CB 00 7E
+	bit	7,	A		; bit7.a		;    CB 7F
+	bit	7,	A'		; bit7.a'		;    CB 7F
+	bit	7,	B		; bit7.b		;    CB 78
+	bit	7,	B'		; bit7.b'		;    CB 78
+	bit	7,	C		; bit7.c		;    CB 79
+	bit	7,	C'		; bit7.c'		;    CB 79
+	bit	7,	D		; bit7.d		;    CB 7A
+	bit	7,	D'		; bit7.d'		;    CB 7A
+	bit	7,	E		; bit7.e		;    CB 7B
+	bit	7,	E'		; bit7.e'		;    CB 7B
+	bit	7,	H		; bit7.h		;    CB 7C
+	bit	7,	H'		; bit7.h'		;    CB 7C
+	bit	7,	L		; bit7.l		;    CB 7D
+	bit	7,	L'		; bit7.l'		;    CB 7D
+	;-----------------------------------------------------------------------
+call:	call	$FF00			; call		$FF00	;    CD 00 FF
+	call	nz,	$FF00		; call?nz	$FF00	;    C4 00 FF
+	call	z,	$FF00		; call?z	$FF00	;    CC 00 FF
+	call	nc,	$FF00		; call?nc	$FF00	;    D4 00 FF
+	call	c,	$FF00		; call?c	$FF00	;    DC 00 FF
+	call	po,	$FF00		; call?po	$FF00	;    E4 00 FF
+	call	po,	$FF00		; call?nv	$FF00	;    E4 00 FF
+	call	pe,	$FF00		; call?pe	$FF00	;    EC 00 FF
+	call	pe,	$FF00		; call?v	$FF00	;    EC 00 FF
+	call	p,	$FF00		; call?p	$FF00	;    F4 00 FF
+	call	m,	$FF00		; call?m	$FF00	;    FC 00 FF
+	;-----------------------------------------------------------------------
+ccf:	ccf				; ccf			;    3F
+	;-----------------------------------------------------------------------
+cp:	cp	A,	[HL]		; cp*hl			;    BE
+	cp	A,	[HL']		; cp*hl'		;    BE
+	cp	A,	[IX+$00]	; cp*ix		$00	; DD BE 00
+	cp	A,	[IY+$00]	; cp*iy		$00	; FD BE 00
+	cp	A,	$00		; cp		$00	;    FE 00
+	cp	A,	A		; cp.a			;    BF
+	cp	A',	A'		; cp.a'			;    BF
+	cp	A,	B		; cp.b			;    B8
+	cp	A,	B'		; cp.b'			;    B8
+	cp	A,	C		; cp.c			;    B9
+	cp	A,	C'		; cp.c'			;    B9
+	cp	A,	D		; cp.d			;    BA
+	cp	A,	D'		; cp.d'			;    BA
+	cp	A,	E		; cp.e			;    BB
+	cp	A,	E'		; cp.e'			;    BB
+	cp	A,	H		; cp.h			;    BC
+	cp	A,	H'		; cp.h'			;    BC
+	cp	A,	L		; cp.l			;    BD
+	cp	A,	L'		; cp.l'			;    BD
+	cp	A,	IXH		; cp.ixh		; DD BC
+	cp	A,	IXL		; cp.ixl		; DD BD
+	cp	A,	IYH		; cp.iyh		; FD BC
+	cp	A,	IYL		; cp.iyl		; FD BD
+	;-----------------------------------------------------------------------
+cpd:	cpd				; cpd			; ED A9
+	cpdr				; cpdr			; ED B9
+	;-----------------------------------------------------------------------
+cpi:	cpi				; cpi			; ED A1
+	cpir				; cpir			; ED B1
+	;-----------------------------------------------------------------------
+cpl:	cpl				; cpl			;    2F
+	;-----------------------------------------------------------------------
+daa:	daa				; daa			;    27
+	;-----------------------------------------------------------------------
+dec:	dec	[HL]			; dec*hl		;    35
+	dec	[HL']			; dec*hl'		;    35
+	dec	[IX+$00]		; dec*ix	$00	; DD 35 00
+	dec	[IY+$00]		; dec*iy	$00	; FD 35 00
+	dec	A			; dec.a			;    3D
+	dec	A'			; dec.a'		;    3D
+	dec	B			; dec.b			;    05
+	dec	B'			; dec.b'		;    05
+	dec	C			; dec.c			;    0D
+	dec	C'			; dec.c'		;    0D
+	dec	D			; dec.d			;    15
+	dec	D'			; dec.d'		;    15
+	dec	E			; dec.e			;    1D
+	dec	E'			; dec.e'		;    1D
+	dec	H			; dec.h			;    25
+	dec	H'			; dec.h'		;    25
+	dec	L			; dec.l			;    2D
+	dec	L'			; dec.l'		;    2D
+	dec	IXH			; dec.ixh		; DD 25
+	dec	IXL			; dec.ixl		; DD 2D 
+	dec	IYH			; dec.iyh		; FD 25
+	dec	IYL			; dec.iyl		; FD 2D
+	dec	BC			; dec.bc		;    0B
+	dec	BC'			; dec.bc'		;    0B
+	dec	DE			; dec.de		;    1B
+	dec	DE'			; dec.de'		;    1B
+	dec	HL			; dec.hl		;    2B
+	dec	HL'			; dec.hl'		;    2B
+	dec	IX			; dec.ix		; DD 2B
+	dec	IY			; dec.iy		; FD 2B
+	dec	SP			; dec.sp		;    3B
+	;-----------------------------------------------------------------------
+di:	di				; di			;    F3
+	;-----------------------------------------------------------------------
+djnz:	djnz	djnz			; djnz	:djnz		;    10 00?
+	;-----------------------------------------------------------------------
+ei:	ei				; ei			;    FB
+	;-----------------------------------------------------------------------
+ex:	ex	[SP],	HL		; ex*sp.hl		;    E3
+	ex	[SP],	HL'		; ex*sp.hl'		;    E3
+	ex	[SP],	IX		; ex*sp.ix		; DD E3
+	ex	[SP],	IY		; ex*sp.iy		; FD E3
+	ex	AF,	AF'		; ex.af.af		;    08
+	ex	AF,	AF'		; ex.af.af'		;    08
+	ex	AF',	AF		; ex.af'af		;    08
+	ex	DE,	HL		; ex.de.hl		;    EB
+	ex	DE',	HL'		; ex.de'hl'		;    EB
+	ex	DE,	HL		; ex.hl.de		;    EB
+	ex	DE',	HL'		; ex.hl'de'		;    EB
+	exx				; exx			;    D9
+	;-----------------------------------------------------------------------
+halt:	halt				; halt			;    76
+	halt				; hlt			;    76
+	halt				; hcf			;    76
+	;-----------------------------------------------------------------------
+im:	im	0			; im.0			; ED 46
+	im	1			; im.1			; ED 56
+	im	2			; im.2			; ED 5E
+	;-----------------------------------------------------------------------
+in:	in	A,	[$00]		; in.a*		$00	;    DB 00
+	in	A',	[$00]		; in.a'*	$00	;    DB 00
+	in	A,	[C]		; in.a*c		; ED 78
+	in	A',	[C]		; in.a'*c		; ED 78
+	in	A,	[C']		; in.a*c'		; ED 78
+	in	A',	[C']		; in.a'*c'		; ED 78
+	in	B,	[C]		; in.b*c		; ED 40
+	in	B',	[C']		; in.b'*c'		; ED 40
+	in	C,	[C]		; in.c*c		; ED 48
+	in	C',	[C']		; in.c'*c'		; ED 48
+	in	D,	[C]		; in.d*c		; ED 50
+	in	D',	[C']		; in.d'*c'		; ED 50
+	in	E,	[C]		; in.e*c		; ED 58
+	in	E',	[C']		; in.e'*c'		; ED 58
+	in	H,	[C]		; in.h*c		; ED 60
+	in	H',	[C']		; in.h'*c'		; ED 60
+	in	L,	[C]		; in.l*c		; ED 68
+	in	L',	[C']		; in.l'*c'		; ED 68
+	;-----------------------------------------------------------------------
+inc:	inc	[HL]			; inc*hl		;    34
+	inc	[HL']			; inc*hl'		;    34
+	inc	[IX+$00]		; inc*ix	$00	; DD 34 00
+	inc	[IY+$00]		; inc*iy	$00	; FD 34 00
+	inc	A			; inc.a			;    3C
+	inc	A'			; inc.a'		;    3C
+	inc	B			; inc.b			;    04
+	inc	B'			; inc.b'		;    04
+	inc	C			; inc.c			;    0C
+	inc	C'			; inc.c'		;    0C
+	inc	D			; inc.d			;    14
+	inc	D'			; inc.d'		;    14
+	inc	E			; inc.e			;    1C
+	inc	E'			; inc.e'		;    1C
+	inc	H			; inc.h			;    24
+	inc	H'			; inc.h'		;    24
+	inc	L			; inc.l			;    2C
+	inc	L'			; inc.l'		;    2C
+	inc	IXH			; inc.ixh		; DD 24
+	inc	IXL			; inc.ixl		; DD 2C
+	inc	IYH			; inc.iyh		; FD 24
+	inc	IYL			; inc.iyl		; FD 2C
+	inc	BC			; inc.bc		;    03
+	inc	BC'			; inc.bc'		;    03
+	inc	DE			; inc.de		;    13
+	inc	DE'			; inc.de'		;    13
+	inc	HL			; inc.hl		;    23
+	inc	HL'			; inc.hl'		;    23
+	inc	IX			; inc.ix		; DD 23
+	inc	IY			; inc.iy		; FD 23
+	inc	SP			; inc.sp		;    33
+	;-----------------------------------------------------------------------
+ind:	ind				; ind			; ED AA
+	indr				; indr			; ED BA
+	;-----------------------------------------------------------------------
+ini:	ini				; ini			; ED A2
+	inir				; inir			; ED B2
+	;-----------------------------------------------------------------------
+jp:	jp	$FF00			; jp		$FF00	;    C3 00 FF
+	jp	[HL]			; jp*hl			;    E9
+	jp	[HL']			; jp*hl'		;    E9
+	jp	[IX]			; jp*ix			; DD E9
+	jp	[IY]			; jp*iy			; FD E9
+	jp	nz,	$FF00		; jp?nz		$FF00	;    C2 00 FF
+	jp	z,	$FF00		; jp?z		$FF00	;    CA 00 FF
+	jp	nc,	$FF00		; jp?nc		$FF00	;    D2 00 FF
+	jp	c,	$FF00		; jp?c		$FF00	;    DA 00 FF
+	jp	po,	$FF00		; jp?po		$FF00	;    E2 00 FF
+	jp	po,	$FF00		; jp?nv		$FF00	;    E2 00 FF
+	jp	pe,	$FF00		; jp?pe		$FF00	;    EA 00 FF
+	jp	pe,	$FF00		; jp?v		$FF00	;    EA 00 FF
+	jp	p,	$FF00		; jp?p		$FF00	;    F2 00 FF
+	jp	m,	$FF00		; jp?m		$FF00	;    FA 00 FF
+	;-----------------------------------------------------------------------
+jr:	jr	jr			; jr		:jr	;    18 00?
+	jr	nz,	jr		; jr?nz		:jr	;    20 00?
+	jr	z,	jr		; jr?z		:jr	;    28 00?
+	jr	nc,	jr		; jr?nc		:jr	;    30 00?
+	jr	c,	jr		; jr?c		:jr	;    38 00?
+	;-----------------------------------------------------------------------
+ld:	ld	[BC],	A		; ld*bc.a		;    02
+	ld	[BC],	A'		; ld*bc.a'		;    02
+	ld	[BC'],	A		; ld*bc'a		;    02
+	ld	[BC'],	A'		; ld*bc'a'		;    02
+	ld	[DE],	A		; ld*de.a		;    12
+	ld	[DE],	A'		; ld*de.a'		;    12
+	ld	[DE'],	A		; ld*de'a		;    12
+	ld	[DE'],	A'		; ld*de'a'		;    12
+	ld	[HL],	$00		; ld*hl		$00	;    36 00
+	ld	[HL'],	$00		; ld*hl'	$00	;    36 00
+	ld	[HL],	A		; ld*hl.a		;    77
+	ld	[HL],	A'		; ld*hl.a'		;    77
+	ld	[HL'],	A		; ld*hl'a		;    77
+	ld	[HL'],	A'		; ld*hl'a'		;    77
+	ld	[HL],	B		; ld*hl.b		;    70
+	ld	[HL'],	B'		; ld*hl'b'		;    70
+	ld	[HL],	C		; ld*hl.c		;    71
+	ld	[HL'],	C'		; ld*hl'c'		;    71
+	ld	[HL],	D		; ld*hl.d		;    72
+	ld	[HL'],	D'		; ld*hl'd'		;    72
+	ld	[HL],	E		; ld*hl.e		;    73
+	ld	[HL'],	E'		; ld*hl'e'		;    73
+	ld	[HL],	H		; ld*hl.h		;    74
+	ld	[HL'],	H'		; ld*hl'h'		;    74
+	ld	[HL],	L		; ld*hl.l		;    75
+	ld	[HL'],	L'		; ld*hl'l'		;    75
+	ld	[IX+$00],	$FF	; ld*ix	$00	$FF	; DD 36 00 FF
+	ld	[IX+$00],	A	; ld*ix.a	$00	; DD 77 00
+	ld	[IX+$00],	A'	; ld*ix.a'	$00	; DD 77 00
+	ld	[IX+$00],	B	; ld*ix.b	$00	; DD 70 00
+	ld	[IX+$00],	B'	; ld*ix.b'	$00	; DD 70 00
+	ld	[IX+$00],	C	; ld*ix.c	$00	; DD 71 00
+	ld	[IX+$00],	C'	; ld*ix.c' 	$00	; DD 71 00
+	ld	[IX+$00],	D	; ld*ix.d	$00	; DD 72 00
+	ld	[IX+$00],	D'	; ld*ix.d' 	$00	; DD 72 00
+	ld	[IX+$00],	E	; ld*ix.e	$00	; DD 73 00
+	ld	[IX+$00],	E'	; ld*ix.e' 	$00	; DD 73 00
+	ld	[IX+$00],	H	; ld*ix.h	$00	; DD 74 00
+	ld	[IX+$00],	H'	; ld*ix.h' 	$00	; DD 74 00
+	ld	[IX+$00],	L	; ld*ix.l	$00	; DD 75 00
+	ld	[IX+$00],	L'	; ld*ix.l' 	$00	; DD 75 00
+	ld	[IY+$00],	$FF	; ld*iy	$00	$FF	; FD 36 00 FF
+	ld	[IY+$00],	A	; ld*iy.a	$00	; FD 77 00
+	ld	[IY+$00],	A'	; ld*iy.a' 	$00	; FD 77 00
+	ld	[IY+$00],	B	; ld*iy.b	$00	; FD 70 00
+	ld	[IY+$00],	B'	; ld*iy.b' 	$00	; FD 70 00
+	ld	[IY+$00],	C	; ld*iy.c	$00	; FD 71 00
+	ld	[IY+$00],	C'	; ld*iy.c' 	$00	; FD 71 00
+	ld	[IY+$00],	D	; ld*iy.d	$00	; FD 72 00
+	ld	[IY+$00],	D'	; ld*iy.d' 	$00	; FD 72 00
+	ld	[IY+$00],	E	; ld*iy.e	$00	; FD 73 00
+	ld	[IY+$00],	E'	; ld*iy.e' 	$00	; FD 73 00
+	ld	[IY+$00],	H	; ld*iy.h	$00	; FD 74 00
+	ld	[IY+$00],	H'	; ld*iy.h' 	$00	; FD 74 00
+	ld	[IY+$00],	L	; ld*iy.l	$00	; FD 75 00
+	ld	[IY+$00],	L'	; ld*iy.l' 	$00	; FD 75 00
+	ld	[$FF00],	A	; ld*$.a	$FF00	;    32 00 FF
+	ld	[$FF00],	A'	; ld*$.a'	$FF00	;    32 00 FF
+	ld	[$FF00],	BC	; ld*$.bc	$FF00	; ED 43 00 FF
+	ld	[$FF00],	BC'	; ld*$.bc' 	$FF00	; ED 43 00 FF
+	ld	[$FF00],	DE	; ld*$.de	$FF00	; ED 53 00 FF
+	ld	[$FF00],	DE'	; ld*$.de' 	$FF00	; ED 53 00 FF
+	ld	[$FF00],	HL	; ld*$.hl	$FF00	;    22 00 FF
+	ld	[$FF00],	HL'	; ld*$.hl' 	$FF00	;    22 00 FF
+	ld	[$FF00],	IX	; ld*$.ix	$FF00	; DD 22 00 FF
+	ld	[$FF00],	IY	; ld*$.iy	$FF00	; FD 22 00 FF
+	ld	[$FF00],	SP	; ld*$.sp	$FF00	; ED 73 00 FF
+
+	ld	BC,	$FF00		; ld.bc		$FF00	;    01 00 FF
+	ld	BC',	$FF00		; ld.bc'	$FF00	;    01 00 FF
+	ld	BC,	[$FF00]		; ld.bc*	$FF00	; ED 4B 00 FF
+	ld	BC',	[$FF00]		; ld.bc'*	$FF00	; ED 4B 00 FF
+	ld	DE,	$FF00		; ld.de		$FF00	;    11 00 FF
+	ld	DE',	$FF00		; ld.de'	$FF00	;    11 00 FF
+	ld	DE,	[$FF00]		; ld.de*	$FF00	; ED 5B 00 FF
+	ld	DE',	[$FF00]		; ld.de'*	$FF00	; ED 5B 00 FF
+	ld	HL,	$FF00		; ld.hl		$FF00	;    21 00 FF
+	ld	HL',	$FF00		; ld.hl'	$FF00	;    21 00 FF
+	ld	HL,	[$FF00]		; ld.hl*	$FF00	;    2A 00 FF
+	ld	HL',	[$FF00]		; ld.hl'*	$FF00	;    2A 00 FF
+	ld	IX,	$FF00		; ld.ix		$FF00	; DD 21 00 FF
+	ld	IX,	[$FF00]		; ld.ix*	$FF00	; DD 2A 00 FF
+	ld	IY,	$FF00		; ld.iy		$FF00	; FD 21 00 FF
+	ld	IY,	[$FF00]		; ld.iy*	$FF00	; FD 2A 00 FF
+	ld	SP,	$FF00		; ld.sp		$FF00	;    31 00 FF
+	ld	SP,	[$FF00]		; ld.sp*	$FF00	; ED 7B 00 FF
+	ld	SP,	HL		; ld.sp.hl		;    F9
+	ld	SP,	HL'		; ld.sp.hl'		;    F9
+	ld	SP,	IX		; ld.sp.ix		; DD F9
+	ld	SP,	IY		; ld.sp.iy		; FD F9
+
+	ld	A,	[BC]		; ld.a*bc		;    0A
+	ld	A,	[BC']		; ld.a*bc'		;    0A
+	ld	A',	[BC]		; ld.a'*bc		;    0A
+	ld	A',	[BC']		; ld.a'*bc'		;    0A
+	ld	A,	[DE]		; ld.a*de		;    1A
+	ld	A,	[DE']		; ld.a*de'		;    1A
+	ld	A',	[DE]		; ld.a'*de		;    1A
+	ld	A',	[DE']		; ld.a'*de'		;    1A
+	ld	A,	[HL]		; ld.a*hl		;    7E
+	ld	A,	[HL']		; ld.a*hl'		;    7E
+	ld	A',	[HL]		; ld.a'*hl		;    7E
+	ld	A',	[HL']		; ld.a'*hl'		;    7E
+	ld	A,	[IX+$00]	; ld.a*ix	$00	; DD 7E 00
+	ld	A',	[IX+$00]	; ld.a'*ix	$00	; DD 7E 00
+	ld	A,	[IY+$00]	; ld.a*iy	$00	; FD 7E 00
+	ld	A',	[IY+$00]	; ld.a'*iy	$00	; FD 7E 00
+	ld	A,	[$FF00]		; ld.a*		$FF00	;    3A 00 FF
+	ld	A',	[$FF00]		; ld.a'*	$FF00	;    3A 00 FF
+	ld	A,	$00		; ld.a		$00	;    3E 00
+	ld	A',	$00		; ld.a'		$00	;    3E 00
+	ld	A,	A		; ld.a.a		;    7F
+	ld	A',	A'		; ld.a'a'		;    7F
+	ld	A,	B		; ld.a.b		;    78
+	ld	A,	B'		; ld.a.b'		;    78
+	ld	A',	B		; ld.a'b		;    78
+	ld	A',	B'		; ld.a'b'		;    78
+	ld	A,	C		; ld.a.c		;    79
+	ld	A,	C'		; ld.a.c'		;    79
+	ld	A',	C		; ld.a'c		;    79
+	ld	A',	C'		; ld.a'c'		;    79
+	ld	A,	D		; ld.a.d		;    7A
+	ld	A,	D'		; ld.a.d'		;    7A
+	ld	A',	D		; ld.a'd		;    7A
+	ld	A',	D'		; ld.a'd'		;    7A
+	ld	A,	E		; ld.a.e		;    7B
+	ld	A,	E'		; ld.a.e'		;    7B
+	ld	A',	E		; ld.a'e		;    7B
+	ld	A',	E'		; ld.a'e'		;    7B
+	ld	A,	H		; ld.a.h		;    7C
+	ld	A,	H'		; ld.a.h'		;    7C
+	ld	A',	H		; ld.a'h		;    7C
+	ld	A',	H'		; ld.a'h'		;    7C
+	ld	A,	L		; ld.a.l		;    7D
+	ld	A,	L'		; ld.a.l'		;    7D
+	ld	A',	L		; ld.a'l		;    7D
+	ld	A',	L'		; ld.a'l'		;    7D
+	ld	A,	IXH		; ld.a.ixh		; DD 7C
+	ld	A',	IXH		; ld.a'ixh		; DD 7C
+	ld	A,	IXL		; ld.a.ixl		; DD 7D
+	ld	A',	IXL		; ld.a'ixl		; DD 7D
+	ld	A,	IYH		; ld.a.iyh		; FD 7C
+	ld	A',	IYH		; ld.a'iyh		; FD 7C
+	ld	A,	IYL		; ld.a.iyl		; FD 7D
+	ld	A',	IYL		; ld.a'iyl		; FD 7D
+	ld	A,	I		; ld.a.i		; ED 57
+	ld	A',	I		; ld.a'i		; ED 57
+	ld	A,	R		; ld.a.r		; ED 5F
+	ld	A',	R		; ld.a'r		; ED 5F
+
+	ld	B,	[HL]		; ld.b*hl		;    46
+	ld	B',	[HL']		; ld.b'*hl'		;    46
+	ld	B,	[IX+$00]	; ld.b*ix	$00	; DD 46 00
+	ld	B',	[IX+$00]	; ld.b'*ix	$00	; DD 46 00
+	ld	B,	[IY+$00]	; ld.b*iy	$00	; FD 46 00
+	ld	B',	[IY+$00]	; ld.b'*iy	$00	; FD 46 00
+	ld	B,	$00		; ld.b		$00	;    06 00
+	ld	B',	$00		; ld.b'		$00	;    06 00
+	ld	B,	A		; ld.b.a		;    47
+	ld	B,	A'		; ld.b.a'		;    47
+	ld	B',	A		; ld.b'a		;    47
+	ld	B',	A'		; ld.b'a'		;    47
+	ld	B,	B		; ld.b.b		;    40
+	ld	B',	B'		; ld.b'b'		;    40
+	ld	B,	C		; ld.b.c		;    41
+	ld	B',	C'		; ld.b'c'		;    41
+	ld	B,	D		; ld.b.d		;    42
+	ld	B',	D'		; ld.b'd'		;    42
+	ld	B,	E		; ld.b.e		;    43
+	ld	B',	E'		; ld.b'e'		;    43
+	ld	B,	H		; ld.b.h		;    44
+	ld	B',	H'		; ld.b'h'		;    44
+	ld	B,	L		; ld.b.l		;    45
+	ld	B',	L'		; ld.b'l'		;    45
+	ld	B,	IXH		; ld.b.ixh		; DD 44
+	ld	B',	IXH		; ld.b'ixh		; DD 44
+	ld	B,	IXL		; ld.b.ixl		; DD 45
+	ld	B',	IXL		; ld.b'ixl		; DD 45
+	ld	B,	IYH		; ld.b.iyh		; FD 44
+	ld	B',	IYH		; ld.b'iyh		; FD 44
+	ld	B,	IYL		; ld.b.iyl		; FD 45
+	ld	B',	IYL		; ld.b'iyl		; FD 45
+
+	ld	C,	[HL]		; ld.c*hl		;    4E
+	ld	C',	[HL']		; ld.c'*hl'		;    4E
+	ld	C,	[IX+$00]	; ld.c*ix	$00	; DD 4E 00
+	ld	C',	[IX+$00]	; ld.c'*ix 	$00	; DD 4E 00
+	ld	C,	[IY+$00]	; ld.c*iy	$00	; FD 4E 00
+	ld	C',	[IY+$00]	; ld.c'*iy 	$00	; FD 4E 00
+	ld	C,	$00		; ld.c		$00	;    0E 00
+	ld	C',	$00		; ld.c'		$00	;    0E 00
+	ld	C,	A		; ld.c.a		;    4F
+	ld	C,	A'		; ld.c.a'		;    4F
+	ld	C',	A		; ld.c'a		;    4F
+	ld	C',	A'		; ld.c'a'		;    4F
+	ld	C,	B		; ld.c.b		;    48
+	ld	C',	B'		; ld.c'b'		;    48
+	ld	C,	C		; ld.c.c		;    49
+	ld	C',	C'		; ld.c'c'		;    49
+	ld	C,	D		; ld.c.d		;    4A
+	ld	C',	D'		; ld.c'd'		;    4A
+	ld	C,	E		; ld.c.e		;    4B
+	ld	C',	E'		; ld.c'e'		;    4B
+	ld	C,	H		; ld.c.h		;    4C
+	ld	C',	H'		; ld.c'h'		;    4C
+	ld	C,	L		; ld.c.l		;    4D
+	ld	C',	L'		; ld.c'l'		;    4D
+	ld	C,	IXH		; ld.c.ixh		; DD 4C
+	ld	C',	IXH		; ld.c'ixh		; DD 4C
+	ld	C,	IXL		; ld.c.ixl		; DD 4D
+	ld	C',	IXL		; ld.c'ixl		; DD 4D
+	ld	C,	IYH		; ld.c.iyh		; FD 4C
+	ld	C',	IYH		; ld.c'iyh		; FD 4C
+	ld	C,	IYL		; ld.c.iyl		; FD 4D
+	ld	C',	IYL		; ld.c'iyl		; FD 4D
+
+	ld	D,	[HL]		; ld.d*hl		;    56
+	ld	D',	[HL']		; ld.d'*hl'		;    56
+	ld	D,	[IX+$00]	; ld.d*ix	$00	; DD 56 00
+	ld	D',	[IX+$00]	; ld.d'*ix 	$00	; DD 56 00
+	ld	D,	[IY+$00]	; ld.d*iy	$00	; FD 56 00
+	ld	D',	[IY+$00]	; ld.d'*iy 	$00	; FD 56 00
+	ld	D,	$00		; ld.d		$00	;    16 00
+	ld	D',	$00		; ld.d'		$00	;    16 00
+	ld	D,	A		; ld.d.a		;    57
+	ld	D,	A'		; ld.d.a'		;    57
+	ld	D',	A		; ld.d'a		;    57
+	ld	D',	A'		; ld.d'a'		;    57
+	ld	D,	B		; ld.d.b		;    50
+	ld	D',	B'		; ld.d'b'		;    50
+	ld	D,	C		; ld.d.c		;    51
+	ld	D',	C'		; ld.d'c'		;    51
+	ld	D,	D		; ld.d.d		;    52
+	ld	D',	D'		; ld.d'd'		;    52
+	ld	D,	E		; ld.d.e		;    53
+	ld	D',	E'		; ld.d'e'		;    53
+	ld	D,	H		; ld.d.h		;    54
+	ld	D',	H'		; ld.d'h'		;    54
+	ld	D,	L		; ld.d.l		;    55
+	ld	D',	L'		; ld.d'l'		;    55
+	ld	D,	IXH		; ld.d.ixh		; DD 54
+	ld	D',	IXH		; ld.d'ixh		; DD 54
+	ld	D,	IXL		; ld.d.ixl		; DD 55
+	ld	D',	IXL		; ld.d'ixl		; DD 55
+	ld	D,	IYH		; ld.d.iyh		; FD 54
+	ld	D',	IYH		; ld.d'iyh		; FD 54
+	ld	D,	IYL		; ld.d.iyl		; FD 55
+	ld	D',	IYL		; ld.d'iyl		; FD 55
+
+	ld	E,	[HL]		; ld.e*hl		;    5E
+	ld	E',	[HL']		; ld.e'*hl'		;    5E
+	ld	E,	[IX+$00]	; ld.e*ix	$00	; DD 5E 00
+	ld	E',	[IX+$00]	; ld.e'*ix	$00	; DD 5E 00
+	ld	E,	[IY+$00]	; ld.e*iy	$00	; FD 5E 00
+	ld	E',	[IY+$00]	; ld.e'*iy	$00	; FD 5E 00
+	ld	E,	$00		; ld.e		$00	;    1E 00
+	ld	E',	$00		; ld.e'		$00	;    1E 00
+	ld	E,	A		; ld.e.a		;    5F
+	ld	E,	A'		; ld.e.a'		;    5F
+	ld	E',	A		; ld.e'a		;    5F
+	ld	E',	A'		; ld.e'a'		;    5F
+	ld	E,	B		; ld.e.b		;    58
+	ld	E',	B'		; ld.e'b'		;    58
+	ld	E,	C		; ld.e.c		;    59
+	ld	E',	C'		; ld.e'c'		;    59
+	ld	E,	D		; ld.e.d		;    5A
+	ld	E',	D'		; ld.e'd'		;    5A
+	ld	E,	E		; ld.e.e		;    5B
+	ld	E',	E'		; ld.e'e'		;    5B
+	ld	E,	H		; ld.e.h		;    5C
+	ld	E',	H'		; ld.e'h'		;    5C
+	ld	E,	L		; ld.e.l		;    5D
+	ld	E',	L'		; ld.e'l'		;    5D
+	ld	E,	IXH		; ld.e.ixh		; DD 5C
+	ld	E',	IXH		; ld.e'ixh		; DD 5C
+	ld	E,	IXL		; ld.e.ixl		; DD 5D
+	ld	E',	IXL		; ld.e'ixl		; DD 5D
+	ld	E,	IYH		; ld.e.iyh		; FD 5C
+	ld	E',	IYH		; ld.e'iyh		; FD 5C
+	ld	E,	IYL		; ld.e.iyl		; FD 5D
+	ld	E',	IYL		; ld.e'iyl		; FD 5D
+
+	ld	H,	[HL]		; ld.h*hl		;    66
+	ld	H',	[HL']		; ld.h'*hl'		;    66
+	ld	H,	[IX+$00]	; ld.h*ix	$00	; DD 66 00
+	ld	H',	[IX+$00]	; ld.h'*ix	$00	; DD 66 00
+	ld	H,	[IY+$00]	; ld.h*iy	$00	; FD 66 00
+	ld	H',	[IY+$00]	; ld.h'*iy	$00	; FD 66 00
+	ld	H,	$00		; ld.h		$00	;    26 00
+	ld	H',	$00		; ld.h'		$00	;    26 00
+	ld	H,	A		; ld.h.a		;    67
+	ld	H,	A'		; ld.h.a'		;    67
+	ld	H',	A		; ld.h'a		;    67
+	ld	H',	A'		; ld.h'a'		;    67
+	ld	H,	B		; ld.h.b		;    60
+	ld	H',	B'		; ld.h'b'		;    60
+	ld	H,	C		; ld.h.c		;    61
+	ld	H',	C'		; ld.h'c'		;    61
+	ld	H,	D		; ld.h.d		;    62
+	ld	H',	D'		; ld.h'd'		;    62
+	ld	H,	E		; ld.h.e		;    63
+	ld	H',	E'		; ld.h'e'		;    63
+	ld	H,	H		; ld.h.h		;    64
+	ld	H',	H'		; ld.h'h'		;    64
+	ld	H,	L		; ld.h.l		;    65
+	ld	H',	L'		; ld.h'l'		;    65
+
+	ld	L,	[HL]		; ld.l*hl		;    6E
+	ld	L',	[HL']		; ld.l'*hl'		;    6E
+	ld	L,	[IX+$00]	; ld.l*ix	$00	; DD 6E 00
+	ld	L',	[IX+$00]	; ld.l'*ix	$00	; DD 6E 00
+	ld	L,	[IY+$00]	; ld.l*iy	$00	; FD 6E 00
+	ld	L',	[IY+$00]	; ld.l'*iy	$00	; FD 6E 00
+	ld	L,	$00		; ld.l		$00	;    2E 00
+	ld	L',	$00		; ld.l'		$00	;    2E 00
+	ld	L,	A		; ld.l.a		;    6F
+	ld	L,	A'		; ld.l.a'		;    6F
+	ld	L',	A		; ld.l'a		;    6F
+	ld	L',	A'		; ld.l'a'		;    6F
+	ld	L,	B		; ld.l.b		;    68
+	ld	L',	B'		; ld.l'b'		;    68
+	ld	L,	C		; ld.l.c		;    69
+	ld	L',	C'		; ld.l'c'		;    69
+	ld	L,	D		; ld.l.d		;    6A
+	ld	L',	D'		; ld.l'd'		;    6A
+	ld	L,	E		; ld.l.e		;    6B
+	ld	L',	E'		; ld.l'e'		;    6B
+	ld	L,	H		; ld.l.h		;    6C
+	ld	L',	H'		; ld.l'h'		;    6C
+	ld	L,	L		; ld.l.l		;    6D
+	ld	L',	L'		; ld.l'l'		;    6D
+
+	ld	IXH,	$00		; ld.ixh	$00	; DD 26 00
+	ld	IXH,	A		; ld.ixh.a		; DD 67
+	ld	IXH,	A'		; ld.ixh.a'		; DD 67
+	ld	IXH,	B		; ld.ixh.b		; DD 60
+	ld	IXH,	B'		; ld.ixh.b'		; DD 60
+	ld	IXH,	C		; ld.ixh.c		; DD 61
+	ld	IXH,	C'		; ld.ixh.c'		; DD 61
+	ld	IXH,	D		; ld.ixh.d		; DD 62
+	ld	IXH,	D'		; ld.ixh.d'		; DD 62
+	ld	IXH,	E		; ld.ixh.e		; DD 63
+	ld	IXH,	E'		; ld.ixh.e'		; DD 63
+	ld	IXH,	IXH		; ld.ixh.ixh		; DD 64
+	ld	IXH,	IXL		; ld.ixh.ixl		; DD 65
+	ld	IXL,	$00		; ld.ixl	$00	; DD 2E 00
+	ld	IXL,	A		; ld.ixl.a		; DD 6F
+	ld	IXL,	A'		; ld.ixl.a'		; DD 6F
+	ld	IXL,	B		; ld.ixl.b		; DD 68
+	ld	IXL,	B'		; ld.ixl.b'		; DD 68
+	ld	IXL,	C		; ld.ixl.c		; DD 69
+	ld	IXL,	C'		; ld.ixl.c'		; DD 69
+	ld	IXL,	D		; ld.ixl.d		; DD 6A
+	ld	IXL,	D'		; ld.ixl.d'		; DD 6A
+	ld	IXL,	E		; ld.ixl.e		; DD 6B
+	ld	IXL,	E'		; ld.ixl.e'		; DD 6B
+	ld	IXL,	IXH		; ld.ixl.ixh		; DD 6C
+	ld	IXL,	IXL		; ld.ixl.ixl		; DD 6D
+
+	ld	IYH,	$00		; ld.iyh	$00	; FD 26 00
+	ld	IYH,	A		; ld.iyh.a		; FD 67
+	ld	IYH,	A'		; ld.iyh.a'		; FD 67
+	ld	IYH,	B		; ld.iyh.b		; FD 60
+	ld	IYH,	B'		; ld.iyh.b'		; FD 60
+	ld	IYH,	C		; ld.iyh.c		; FD 61
+	ld	IYH,	C'		; ld.iyh.c'		; FD 61
+	ld	IYH,	D		; ld.iyh.d		; FD 62
+	ld	IYH,	D'		; ld.iyh.d'		; FD 62
+	ld	IYH,	E		; ld.iyh.e		; FD 63
+	ld	IYH,	E'		; ld.iyh.e'		; FD 63
+	ld	IYH,	IYH		; ld.iyh.iyh		; FD 64
+	ld	IYH,	IYL		; ld.iyh.iyl		; FD 65
+	ld	IYL,	$00		; ld.iyl	$00	; FD 2E 00
+	ld	IYL,	A		; ld.iyl.a		; FD 6F
+	ld	IYL,	A'		; ld.iyl.a'		; FD 6F
+	ld	IYL,	B		; ld.iyl.b		; FD 68
+	ld	IYL,	B'		; ld.iyl.b'		; FD 68
+	ld	IYL,	C		; ld.iyl.c		; FD 69
+	ld	IYL,	C'		; ld.iyl.c'		; FD 69
+	ld	IYL,	D		; ld.iyl.d		; FD 6A
+	ld	IYL,	D'		; ld.iyl.d'		; FD 6A
+	ld	IYL,	E		; ld.iyl.e		; FD 6B
+	ld	IYL,	E'		; ld.iyl.e'		; FD 6B
+	ld	IYL,	IYH		; ld.iyl.iyh		; FD 6C
+	ld	IYL,	IYL		; ld.iyl.iyl		; FD 6D
+
+	ld	I,	A		; ld.i.a		; ED 47
+	ld	I,	A'		; ld.i.a'		; ED 47
+	ld	R,	A		; ld.r.a		; ED 4F
+	ld	R,	A'		; ld.r.a'		; ED 4F
+	;-----------------------------------------------------------------------
+ldd:	ldd				; ldd			; ED A8
+	lddr				; lddr			; ED B8
+	;-----------------------------------------------------------------------
+ldi:	ldi				; ldi			; ED A0
+	ldir				; ldir			; ED B0
+	;-----------------------------------------------------------------------
+neg:	neg				; neg			; ED 44
+	;-----------------------------------------------------------------------
+nop:	nop				; nop			;    00
+	;-----------------------------------------------------------------------
+or:	or	A,	[HL]		; or*hl			;    B6
+	or	A,	[IX+$00]	; or*ix		$00	; DD B6 00
+	or	A,	[IY+$00]	; or*iy		$00	; FD B6 00
+	or	A,	$00		; or		$00	;    F6 00
+	or	A,	A		; or.a			;    B7
+	or	A',	A'		; or.a'			;    B7
+	or	A,	B		; or.b			;    B0
+	or	A,	B'		; or.b'			;    B0
+	or	A,	C		; or.c			;    B1
+	or	A,	C'		; or.c'			;    B1
+	or	A,	D		; or.d			;    B2
+	or	A,	D'		; or.d'			;    B2
+	or	A,	E		; or.e			;    B3
+	or	A,	E'		; or.e'			;    B3
+	or	A,	H		; or.h			;    B4
+	or	A,	H'		; or.h'			;    B4
+	or	A,	L		; or.l			;    B5
+	or	A,	L'		; or.l'			;    B5
+	or	A,	IXH		; or.ixh		; DD B4
+	or	A,	IXL		; or.ixl		; DD B5
+	or	A,	IYH		; or.iyh		; FD B4
+	or	A,	IYL		; or.iyl		; FD B5
+	;-----------------------------------------------------------------------
+out:	out	[$00],	A		; out*$.a	$00	;    D3 00
+	out	[$00],	A'		; out*$.a' 	$00	;    D3 00
+	out	[C],	A		; out*c.a		; ED 79
+	out	[C],	A'		; out*c.a'		; ED 79
+	out	[C'],	A		; out*c'a		; ED 79
+	out	[C'],	A'		; out*c'a'		; ED 79
+	out	[C],	B		; out*c.b		; ED 41
+	out	[C'],	B'		; out*c'b'		; ED 41
+	out	[C],	C		; out*c.c		; ED 49
+	out	[C'],	C'		; out*c'c'		; ED 49
+	out	[C],	D		; out*c.d		; ED 51
+	out	[C'],	D'		; out*c'd'		; ED 51
+	out	[C],	E		; out*c.e		; ED 59
+	out	[C'],	E'		; out*c'e'		; ED 59
+	out	[C],	H		; out*c.h		; ED 61
+	out	[C'],	H'		; out*c'h'		; ED 61
+	out	[C],	L		; out*c.l		; ED 69
+	out	[C'],	L'		; out*c'l'		; ED 69
+	;-----------------------------------------------------------------------
+outd:	outd				; outd			; ED AB
+	otdr				; otdr			; ED BB
+	;-----------------------------------------------------------------------
+outi:	outi				; outi			; ED A3
+	otir				; otir			; ED B3
+	;-----------------------------------------------------------------------
+push:	push	AF			; push.af		;    F5
+	push	AF'			; push.af'		;    F5
+	push	BC			; push.bc		;    C5
+	push	BC'			; push.bc'		;    C5
+	push	DE			; push.de		;    D5
+	push	DE'			; push.de'		;    D5
+	push	HL			; push.hl		;    E5
+	push	HL'			; push.hl'		;    E5
+	push	IX			; push.ix		; DD E5
+	push	IY			; push.iy		; FD E5
+	;-----------------------------------------------------------------------
+pop:	pop	AF			; pop.af		;    F1
+	pop	AF'			; pop.af'		;    F1
+	pop	BC			; pop.bc		;    C1
+	pop	BC'			; pop.bc'		;    C1
+	pop	DE			; pop.de		;    D1
+	pop	DE'			; pop.de'		;    D1
+	pop	HL			; pop.hl		;    E1
+	pop	HL'			; pop.hl'		;    E1
+	pop	IX			; pop.ix		; DD E1
+	pop	IY			; pop.iy		; FD E1
+	;-----------------------------------------------------------------------
+res:	res	0,	[HL']		; res0*hl'		;    CB 86
+	res	0,	[IX+$00]	; res0*ix	$00	; DD CB 00 86
+	res	0,	[IY+$00]	; res0*iy	$00	; FD CB 00 86
+	res	0,	A		; res0.a		;    CB 87
+	res	0,	A'		; res0.a'		;    CB 87
+	res	0,	B		; res0.b		;    CB 80
+	res	0,	B'		; res0.b'		;    CB 80
+	res	0,	C		; res0.c		;    CB 81
+	res	0,	C'		; res0.c'		;    CB 81
+	res	0,	D		; res0.d		;    CB 82
+	res	0,	D'		; res0.d'		;    CB 82
+	res	0,	E		; res0.e		;    CB 83
+	res	0,	E'		; res0.e'		;    CB 83
+	res	0,	H		; res0.h		;    CB 84
+	res	0,	H'		; res0.h'		;    CB 84
+	res	0,	L		; res0.l		;    CB 85
+	res	0,	L'		; res0.l'		;    CB 85
+	res	1,	[HL]		; res1*hl		;    CB 8E
+	res	1,	[HL']		; res1*hl'		;    CB 8E
+	res	1,	[IX+$00]	; res1*ix	$00	; DD CB 00 8E
+	res	1,	[IY+$00]	; res1*iy	$00	; FD CB 00 8E
+	res	1,	A		; res1.a		;    CB 8F
+	res	1,	A'		; res1.a'		;    CB 8F
+	res	1,	B		; res1.b		;    CB 88
+	res	1,	B'		; res1.b'		;    CB 88
+	res	1,	C		; res1.c		;    CB 89
+	res	1,	C'		; res1.c'		;    CB 89
+	res	1,	D		; res1.d		;    CB 8A
+	res	1,	D'		; res1.d'		;    CB 8A
+	res	1,	E		; res1.e		;    CB 8B
+	res	1,	E'		; res1.e'		;    CB 8B
+	res	1,	H		; res1.h		;    CB 8C
+	res	1,	H'		; res1.h'		;    CB 8C
+	res	1,	L		; res1.l		;    CB 8D
+	res	1,	L'		; res1.l'		;    CB 8D
+	res	2,	[HL]		; res2*hl		;    CB 96
+	res	2,	[HL']		; res2*hl		;    CB 96
+	res	2,	[IX+$00]	; res2*ix	$00	; DD CB 00 96
+	res	2,	[IY+$00]	; res2*iy	$00	; FD CB 00 96
+	res	2,	A		; res2.a		;    CB 97
+	res	2,	A'		; res2.a'		;    CB 97
+	res	2,	B		; res2.b		;    CB 90
+	res	2,	B'		; res2.b'		;    CB 90
+	res	2,	C		; res2.c		;    CB 91
+	res	2,	C'		; res2.c'		;    CB 91
+	res	2,	D		; res2.d		;    CB 92
+	res	2,	D'		; res2.d'		;    CB 92
+	res	2,	E		; res2.e		;    CB 93
+	res	2,	E'		; res2.e'		;    CB 93
+	res	2,	H		; res2.h		;    CB 94
+	res	2,	H'		; res2.h'		;    CB 94
+	res	2,	L		; res2.l		;    CB 95
+	res	2,	L'		; res2.l'		;    CB 95
+	res	3,	[HL]		; res3*hl		;    CB 9E
+	res	3,	[HL']		; res3*hl'		;    CB 9E
+	res	3,	[IX+$00]	; res3*ix	$00	; DD CB 00 9E
+	res	3,	[IY+$00]	; res3*iy	$00	; FD CB 00 9E
+	res	3,	A		; res3.a		;    CB 9F
+	res	3,	A'		; res3.a'		;    CB 9F
+	res	3,	B		; res3.b		;    CB 98
+	res	3,	B'		; res3.b'		;    CB 98
+	res	3,	C		; res3.c		;    CB 99
+	res	3,	C'		; res3.c'		;    CB 99
+	res	3,	D		; res3.d		;    CB 9A
+	res	3,	D'		; res3.d'		;    CB 9A
+	res	3,	E		; res3.e		;    CB 9B
+	res	3,	E'		; res3.e'		;    CB 9B
+	res	3,	H		; res3.h		;    CB 9C
+	res	3,	H'		; res3.h'		;    CB 9C
+	res	3,	L		; res3.l		;    CB 9D
+	res	3,	L'		; res3.l'		;    CB 9D
+	res	4,	[HL]		; res4*hl		;    CB A6
+	res	4,	[HL']		; res4*hl'		;    CB A6
+	res	4,	[IX+$00]	; res4*ix	$00	; DD CB 00 A6
+	res	4,	[IY+$00]	; res4*iy	$00	; FD CB 00 A6
+	res	4,	A		; res4.a		;    CB A7
+	res	4,	A'		; res4.a'		;    CB A7
+	res	4,	B		; res4.b		;    CB A0
+	res	4,	B'		; res4.b'		;    CB A0
+	res	4,	C		; res4.c		;    CB A1
+	res	4,	C'		; res4.c'		;    CB A1
+	res	4,	D		; res4.d		;    CB A2
+	res	4,	D'		; res4.d'		;    CB A2
+	res	4,	E		; res4.e		;    CB A3
+	res	4,	E'		; res4.e'		;    CB A3
+	res	4,	H		; res4.h		;    CB A4
+	res	4,	H'		; res4.h'		;    CB A4
+	res	4,	L		; res4.l		;    CB A5
+	res	4,	L'		; res4.l'		;    CB A5
+	res	5,	[HL]		; res5*hl		;    CB AE
+	res	5,	[HL']		; res5*hl'		;    CB AE
+	res	5,	[IX+$00]	; res5*ix	$00	; DD CB 00 AE
+	res	5,	[IY+$00]	; res5*iy	$00	; FD CB 00 AE
+	res	5,	A		; res5.a		;    CB AF
+	res	5,	A'		; res5.a'		;    CB AF
+	res	5,	B		; res5.b		;    CB A8
+	res	5,	B'		; res5.b'		;    CB A8
+	res	5,	C		; res5.c		;    CB A9
+	res	5,	C'		; res5.c'		;    CB A9
+	res	5,	D		; res5.d		;    CB AA
+	res	5,	D'		; res5.d'		;    CB AA
+	res	5,	E		; res5.e		;    CB AB
+	res	5,	E'		; res5.e'		;    CB AB
+	res	5,	H		; res5.h		;    CB AC
+	res	5,	H'		; res5.h'		;    CB AC
+	res	5,	L		; res5.l		;    CB AD
+	res	5,	L'		; res5.l'		;    CB AD
+	res	6,	[HL]		; res6*hl		;    CB B6
+	res	6,	[HL']		; res6*hl'		;    CB B6
+	res	6,	[IX+$00]	; res6*ix	$00	; DD CB 00 B6
+	res	6,	[IY+$00]	; res6*iy	$00	; FD CB 00 B6
+	res	6,	A		; res6.a		;    CB B7
+	res	6,	A'		; res6.a'		;    CB B7
+	res	6,	B		; res6.b		;    CB B0
+	res	6,	B'		; res6.b'		;    CB B0
+	res	6,	C		; res6.c		;    CB B1
+	res	6,	C'		; res6.c'		;    CB B1
+	res	6,	D		; res6.d		;    CB B2
+	res	6,	D'		; res6.d'		;    CB B2
+	res	6,	E		; res6.e		;    CB B3
+	res	6,	E'		; res6.e'		;    CB B3
+	res	6,	H		; res6.h		;    CB B4
+	res	6,	H'		; res6.h'		;    CB B4
+	res	6,	L		; res6.l		;    CB B5
+	res	6,	L'		; res6.l'		;    CB B5
+	res	7,	[HL]		; res7*hl		;    CB BE
+	res	7,	[HL']		; res7*hl'		;    CB BE
+	res	7,	[IX+$00]	; res7*ix	$00	; DD CB 00 BE
+	res	7,	[IY+$00]	; res7*iy	$00	; FD CB 00 BE
+	res	7,	A		; res7.a		;    CB BF
+	res	7,	A'		; res7.a'		;    CB BF
+	res	7,	B		; res7.b		;    CB B8
+	res	7,	B'		; res7.b'		;    CB B8
+	res	7,	C		; res7.c		;    CB B9
+	res	7,	C'		; res7.c'		;    CB B9
+	res	7,	D		; res7.d		;    CB BA
+	res	7,	D'		; res7.d'		;    CB BA
+	res	7,	E		; res7.e		;    CB BB
+	res	7,	E'		; res7.e'		;    CB BB
+	res	7,	H		; res7.h		;    CB BC
+	res	7,	H'		; res7.h'		;    CB BC
+	res	7,	L		; res7.l		;    CB BD
+	res	7,	L'		; res7.l'		;    CB BD
+	;-----------------------------------------------------------------------
+ret:	ret				; ret			;    C9
+	ret	nz			; ret?nz		;    C0
+	ret	z			; ret?z			;    C8
+	ret	nc			; ret?nc		;    D0
+	ret	c			; ret?c			;    D8
+	ret	po			; ret?po		;    E0
+	ret	po			; ret?nv		;    E0
+	ret	pe			; ret?pe		;    E8
+	ret	pe			; ret?v			;    E8
+	ret	p			; ret?p			;    F0
+	ret	m			; ret?m			;    F8
+	retn				; retn			; ED 45
+	reti				; reti			; ED 4D
+	;-----------------------------------------------------------------------
+rl:	rl	[HL]			; rl*hl			;    CB 16
+	rl	[HL']			; rl*hl'		;    CB 16
+	rl	[IX+$00]		; rl*ix		$00	; DD CB 00 16
+	rl	[IY+$00]		; rl*iy		$00	; FD CB 00 16
+	rla				; rla			;    17
+	rla				; rla'			;    17
+	rl	A			; rl.a			;    CB 17
+	rl	A'			; rl.a'			;    CB 17
+	rl	B			; rl.b			;    CB 10
+	rl	B'			; rl.b'			;    CB 10
+	rl	C			; rl.c			;    CB 11
+	rl	C'			; rl.c'			;    CB 11
+	rl	D			; rl.d			;    CB 12
+	rl	D'			; rl.d'			;    CB 12
+	rl	E			; rl.e			;    CB 13
+	rl	E'			; rl.e'			;    CB 13
+	rl	H			; rl.h			;    CB 14
+	rl	H'			; rl.h'			;    CB 14
+	rl	L			; rl.l			;    CB 15
+	rl	L'			; rl.l'			;    CB 15
+	rlc	[HL]			; rlc*hl		;    CB 06
+	rlc	[HL']			; rlc*hl'		;    CB 06
+	rlc	[IX+$00]		; rlc*ix	$00	; DD CB 00 06
+	rlc	[IY+$00]		; rlc*iy	$00	; FD CB 00 06
+	rlca				; rlca			;    07
+	rlca				; rlca'			;    07
+	rlc	A			; rlc.a			;    CB 07
+	rlc	A'			; rlc.a'		;    CB 07
+	rlc	B			; rlc.b			;    CB 00
+	rlc	B'			; rlc.b'		;    CB 00
+	rlc	C			; rlc.c			;    CB 01
+	rlc	C'			; rlc.c'		;    CB 01
+	rlc	D			; rlc.d			;    CB 02
+	rlc	D'			; rlc.d'		;    CB 02
+	rlc	E			; rlc.e			;    CB 03
+	rlc	E'			; rlc.e'		;    CB 03
+	rlc	H			; rlc.h			;    CB 04
+	rlc	H'			; rlc.h'		;    CB 04
+	rlc	L			; rlc.l			;    CB 05
+	rlc	L'			; rlc.l'		;    CB 05
+	rld				; rld			; ED 6F
+	;-----------------------------------------------------------------------
+rr:	rr	[HL]			; rr*hl			;    CB 1E
+	rr	[HL']			; rr*hl'		;    CB 1E
+	rr	[IX+$00]		; rr*ix		$00	; DD CB 00 1E
+	rr	[IY+$00]		; rr*iy		$00	; FD CB 00 1E
+	rra				; rra			;    1F
+	rra				; rra'			;    1F
+	rr	A			; rr.a			;    CB 1F
+	rr	A'			; rr.a'			;    CB 1F
+	rr	B			; rr.b			;    CB 18
+	rr	B'			; rr.b'			;    CB 18
+	rr	C			; rr.c			;    CB 19
+	rr	C'			; rr.c'			;    CB 19
+	rr	D			; rr.d			;    CB 1A
+	rr	D'			; rr.d'			;    CB 1A
+	rr	E			; rr.e			;    CB 1B
+	rr	E'			; rr.e'			;    CB 1B
+	rr	H			; rr.h			;    CB 1C
+	rr	H'			; rr.h'			;    CB 1C
+	rr	L			; rr.l			;    CB 1D
+	rr	L'			; rr.l'			;    CB 1D
+	rrc	[HL]			; rrc*hl		;    CB 0E
+	rrc	[HL']			; rrc*hl'		;    CB 0E
+	rrc	[IX+$00]		; rrc*ix	$00	; DD CB 00 0E
+	rrc	[IY+$00]		; rrc*iy	$00	; FD CB 00 0E
+	rrca				; rrca			;    0F
+	rrca				; rrca'			;    0F
+	rrc	A			; rrc.a			;    CB 0F
+	rrc	A'			; rrc.a'		;    CB 0F
+	rrc	B			; rrc.b			;    CB 08
+	rrc	B'			; rrc.b'		;    CB 08
+	rrc	C			; rrc.c			;    CB 09
+	rrc	C'			; rrc.c'		;    CB 09
+	rrc	D			; rrc.d			;    CB 0A
+	rrc	D'			; rrc.d'		;    CB 0A
+	rrc	E			; rrc.e			;    CB 0B
+	rrc	E'			; rrc.e'		;    CB 0B
+	rrc	H			; rrc.h			;    CB 0C
+	rrc	H'			; rrc.h'		;    CB 0C
+	rrc	L			; rrc.l			;    CB 0D
+	rrc	L'			; rrc.l'		;    CB 0D
+	rrd				; rrd			; ED 67
+	;-----------------------------------------------------------------------
+rst:	rst	$00			; rst.0			;    C7
+	rst	$08			; rst.8			;    CF
+	rst	$10			; rst.10		;    D7
+	rst	$18			; rst.18		;    DF
+	rst	$20			; rst.20		;    E7
+	rst	$28			; rst.28		;    EF
+	rst	$30			; rst.30		;    F7
+	rst	$38			; rst.38		;    FF
+	;-----------------------------------------------------------------------
+sbc:	sbc	A,	[HL]		; sbc*hl		;    9E
+	sbc	A,	[HL']		; sbc*hl'		;    9E
+	sbc	A,	[IX+$00]	; sbc*ix	$00	; DD 9E 00
+	sbc	A,	[IY+$00]	; sbc*iy	$00	; FD 9E 00
+	sbc	A,	$00		; sbc		$00	;    DE 00
+	sbc	A,	A		; sbc.a			;    9F
+	sbc	A',	A'		; sbc.a'		;    9F
+	sbc	A,	B		; sbc.b			;    98
+	sbc	A,	B'		; sbc.b'		;    98
+	sbc	A,	C		; sbc.c			;    99
+	sbc	A,	C'		; sbc.c'		;    99
+	sbc	A,	D		; sbc.d			;    9A
+	sbc	A,	D'		; sbc.d'		;    9A
+	sbc	A,	E		; sbc.e			;    9B
+	sbc	A,	E'		; sbc.e'		;    9B
+	sbc	A,	H		; sbc.h			;    9C
+	sbc	A,	H'		; sbc.h'		;    9C
+	sbc	A,	L		; sbc.l			;    9D
+	sbc	A,	L'		; sbc.l'		;    9D
+	sbc	A,	IXH		; sbc.ixh		; DD 9C
+	sbc	A,	IXL		; sbc.ixl		; DD 9D
+	sbc	A,	IYH		; sbc.iyh		; FD 9C
+	sbc	A,	IYL		; sbc.iyl		; FD 9D
+	sbc	HL,	BC		; sbc.hl.bc		; ED 42
+	sbc	HL',	BC'		; sbc.hl'bc'		; ED 42
+	sbc	HL,	DE		; sbc.hl.de		; ED 52
+	sbc	HL',	DE'		; sbc.hl'de'		; ED 52
+	sbc	HL,	HL		; sbc.hl.hl		; ED 62
+	sbc	HL',	HL'		; sbc.hl'hl'		; ED 62
+	sbc	HL,	SP		; sbc.hl.sp		; ED 72
+	sbc	HL',	SP		; sbc.hl'sp		; ED 72
+	;-----------------------------------------------------------------------
+scf:	scf				; scf			;    37
+	;-----------------------------------------------------------------------
+set:	set	0,	[HL]		; set0*hl		;    CB C6
+	set	0,	[HL']		; set0*hl'		;    CB C6
+	set	0,	[IX+$00]	; set0*ix	$00	; DD CB 00 C6
+	set	0,	[IY+$00]	; set0*iy	$00	; FD CB 00 C6
+	set	0,	A		; set0.a		;    CB C7
+	set	0,	A'		; set0.a'		;    CB C7
+	set	0,	B		; set0.b		;    CB C0
+	set	0,	B'		; set0.b'		;    CB C0
+	set	0,	C		; set0.c		;    CB C1
+	set	0,	C'		; set0.c'		;    CB C1
+	set	0,	D		; set0.d		;    CB C2
+	set	0,	D'		; set0.d'		;    CB C2
+	set	0,	E		; set0.e		;    CB C3
+	set	0,	E'		; set0.e'		;    CB C3
+	set	0,	H		; set0.h		;    CB C4
+	set	0,	H'		; set0.h'		;    CB C4
+	set	0,	L		; set0.l		;    CB C5
+	set	0,	L'		; set0.l'		;    CB C5
+	set	1,	[HL]		; set1*hl		;    CB CE
+	set	1,	[HL']		; set1*hl'		;    CB CE
+	set	1,	[IX+$00]	; set1*ix	$00	; DD CB 00 CE
+	set	1,	[IY+$00]	; set1*iy	$00	; FD CB 00 CE
+	set	1,	A		; set1.a		;    CB CF
+	set	1,	A'		; set1.a'		;    CB CF
+	set	1,	B		; set1.b		;    CB C8
+	set	1,	B'		; set1.b'		;    CB C8
+	set	1,	C		; set1.c		;    CB C9
+	set	1,	C'		; set1.c'		;    CB C9
+	set	1,	D		; set1.d		;    CB CA
+	set	1,	D'		; set1.d'		;    CB CA
+	set	1,	E		; set1.e		;    CB CB
+	set	1,	E'		; set1.e'		;    CB CB
+	set	1,	H		; set1.h		;    CB CC
+	set	1,	H'		; set1.h'		;    CB CC
+	set	1,	L		; set1.l		;    CB CD
+	set	1,	L'		; set1.l'		;    CB CD
+	set	2,	[HL]		; set2*hl		;    CB D6
+	set	2,	[HL']		; set2*hl'		;    CB D6
+	set	2,	[IX+$00]	; set2*ix	$00	; DD CB 00 D6
+	set	2,	[IY+$00]	; set2*iy	$00	; FD CB 00 D6
+	set	2,	A		; set2.a		;    CB D7
+	set	2,	A'		; set2.a'		;    CB D7
+	set	2,	B		; set2.b		;    CB D0
+	set	2,	B'		; set2.b'		;    CB D0
+	set	2,	C		; set2.c		;    CB D1
+	set	2,	C'		; set2.c'		;    CB D1
+	set	2,	D		; set2.d		;    CB D2
+	set	2,	D'		; set2.d'		;    CB D2
+	set	2,	E		; set2.e		;    CB D3
+	set	2,	E'		; set2.e'		;    CB D3
+	set	2,	H		; set2.h		;    CB D4
+	set	2,	H'		; set2.h'		;    CB D4
+	set	2,	L		; set2.l		;    CB D5
+	set	2,	L'		; set2.l'		;    CB D5
+	set	3,	[HL]		; set3*hl		;    CB DE
+	set	3,	[HL']		; set3*hl'		;    CB DE
+	set	3,	[IX+$00]	; set3*ix	$00	; DD CB 00 DE
+	set	3,	[IY+$00]	; set3*iy	$00	; FD CB 00 DE
+	set	3,	A		; set3.a		;    CB DF
+	set	3,	A'		; set3.a'		;    CB DF
+	set	3,	B		; set3.b		;    CB D8
+	set	3,	B'		; set3.b'		;    CB D8
+	set	3,	C		; set3.c		;    CB D9
+	set	3,	C'		; set3.c'		;    CB D9
+	set	3,	D		; set3.d		;    CB DA
+	set	3,	D'		; set3.d'		;    CB DA
+	set	3,	E		; set3.e		;    CB DB
+	set	3,	E'		; set3.e'		;    CB DB
+	set	3,	H		; set3.h		;    CB DC
+	set	3,	H'		; set3.h'		;    CB DC
+	set	3,	L		; set3.l		;    CB DD
+	set	3,	L'		; set3.l'		;    CB DD
+	set	4,	[HL]		; set4*hl		;    CB E6
+	set	4,	[HL']		; set4*hl'		;    CB E6
+	set	4,	[IX+$00]	; set4*ix	$00	; DD CB 00 E6
+	set	4,	[IY+$00]	; set4*iy	$00	; FD CB 00 E6
+	set	4,	A		; set4.a		;    CB E7
+	set	4,	A'		; set4.a'		;    CB E7
+	set	4,	B		; set4.b		;    CB E0
+	set	4,	B'		; set4.b'		;    CB E0
+	set	4,	C		; set4.c		;    CB E1
+	set	4,	C'		; set4.c'		;    CB E1
+	set	4,	D		; set4.d		;    CB E2
+	set	4,	D'		; set4.d'		;    CB E2
+	set	4,	E		; set4.e		;    CB E3
+	set	4,	E'		; set4.e'		;    CB E3
+	set	4,	H		; set4.h		;    CB E4
+	set	4,	H'		; set4.h'		;    CB E4
+	set	4,	L		; set4.l		;    CB E5
+	set	4,	L'		; set4.l'		;    CB E5
+	set	5,	[HL]		; set5*hl		;    CB EE
+	set	5,	[HL']		; set5*hl'		;    CB EE
+	set	5,	[IX+$00]	; set5*ix	$00	; DD CB 00 EE
+	set	5,	[IY+$00]	; set5*iy	$00	; FD CB 00 EE
+	set	5,	A		; set5.a		;    CB EF
+	set	5,	A'		; set5.a'		;    CB EF
+	set	5,	B		; set5.b		;    CB E8
+	set	5,	B'		; set5.b'		;    CB E8
+	set	5,	C		; set5.c		;    CB E9
+	set	5,	C'		; set5.c'		;    CB E9
+	set	5,	D		; set5.d		;    CB EA
+	set	5,	D'		; set5.d'		;    CB EA
+	set	5,	E		; set5.e		;    CB EB
+	set	5,	E'		; set5.e'		;    CB EB
+	set	5,	H		; set5.h		;    CB EC
+	set	5,	H'		; set5.h'		;    CB EC
+	set	5,	L		; set5.l		;    CB ED
+	set	5,	L'		; set5.l'		;    CB ED
+	set	6,	[HL]		; set6*hl		;    CB F6
+	set	6,	[HL']		; set6*hl'		;    CB F6
+	set	6,	[IX+$00]	; set6*ix	$00	; DD CB 00 F6
+	set	6,	[IY+$00]	; set6*iy	$00	; FD CB 00 F6
+	set	6,	A		; set6.a		;    CB F7
+	set	6,	A'		; set6.a'		;    CB F7
+	set	6,	B		; set6.b		;    CB F0
+	set	6,	B'		; set6.b'		;    CB F0
+	set	6,	C		; set6.c		;    CB F1
+	set	6,	C'		; set6.c'		;    CB F1
+	set	6,	D		; set6.d		;    CB F2
+	set	6,	D'		; set6.d'		;    CB F2
+	set	6,	E		; set6.e		;    CB F3
+	set	6,	E'		; set6.e'		;    CB F3
+	set	6,	H		; set6.h		;    CB F4
+	set	6,	H'		; set6.h'		;    CB F4
+	set	6,	L		; set6.l		;    CB F5
+	set	6,	L'		; set6.l'		;    CB F5
+	set	7,	[HL]		; set7*hl		;    CB FE
+	set	7,	[HL']		; set7*hl'		;    CB FE
+	set	7,	[IX+$00]	; set7*ix	$00	; DD CB 00 FE
+	set	7,	[IY+$00]	; set7*iy	$00	; FD CB 00 FE
+	set	7,	A		; set7.a		;    CB FF
+	set	7,	A'		; set7.a'		;    CB FF
+	set	7,	B		; set7.b		;    CB F8
+	set	7,	B'		; set7.b'		;    CB F8
+	set	7,	C		; set7.c		;    CB F9
+	set	7,	C'		; set7.c'		;    CB F9
+	set	7,	D		; set7.d		;    CB FA
+	set	7,	D'		; set7.d'		;    CB FA
+	set	7,	E		; set7.e		;    CB FB
+	set	7,	E'		; set7.e'		;    CB FB
+	set	7,	H		; set7.h		;    CB FC
+	set	7,	H'		; set7.h'		;    CB FC
+	set	7,	L		; set7.l		;    CB FD
+	set	7,	L'		; set7.l'		;    CB FD
+	;-----------------------------------------------------------------------
+sla:	sla	[HL]			; sla*hl		;    CB 26
+	sla	[HL']			; sla*hl'		;    CB 26
+	sla	[IX+$00]		; sla*ix	$00	; DD CB 00 26
+	sla	[IY+$00]		; sla*iy	$00	; FD CB 00 26
+	sla	A			; sla.a			;    CB 27
+	sla	A'			; sla.a'		;    CB 27
+	sla	B			; sla.b			;    CB 20
+	sla	B'			; sla.b'		;    CB 20
+	sla	C			; sla.c			;    CB 21
+	sla	C'			; sla.c'		;    CB 21
+	sla	D			; sla.d			;    CB 22
+	sla	D'			; sla.d'		;    CB 22
+	sla	E			; sla.e			;    CB 23
+	sla	E'			; sla.e'		;    CB 23
+	sla	H			; sla.h			;    CB 24
+	sla	H'			; sla.h'		;    CB 24
+	sla	L			; sla.l			;    CB 25
+	sla	L'			; sla.l'		;    CB 25
+	;-----------------------------------------------------------------------
+sl1:	sl1	[HL]			; sl1*hl		;    CB 36
+	sl1	[HL']			; sl1*hl'		;    CB 36
+	sl1	[IX+$00]		; sl1*ix	$00	; DD CB 00 36
+	sl1	[IY+$00]		; sl1*iy	$00	; FD CB 00 36
+	sl1	A			; sl1.a			;    CB 37
+	sl1	A'			; sl1.a'		;    CB 37
+	sl1	B			; sl1.b			;    CB 30
+	sl1	B'			; sl1.b'		;    CB 30
+	sl1	C			; sl1.c			;    CB 31
+	sl1	C'			; sl1.c'		;    CB 31
+	sl1	D			; sl1.d			;    CB 32
+	sl1	D'			; sl1.d'		;    CB 32
+	sl1	E			; sl1.e			;    CB 33
+	sl1	E'			; sl1.e'		;    CB 33
+	sl1	H			; sl1.h			;    CB 34
+	sl1	H'			; sl1.h'		;    CB 34
+	sl1	L			; sl1.l			;    CB 35
+	sl1	L'			; sl1.l'		;    CB 35
+	sl1	[HL]			; sl1*hl		;    CB 36
+	sll	[HL']			; sll*hl'		;    CB 36
+	sll	[IX+$00]		; sll*ix	$00	; DD CB 00 36
+	sll	[IY+$00]		; sll*iy	$00	; FD CB 00 36
+	sll	A			; sll.a			;    CB 37
+	sll	A'			; sll.a'		;    CB 37
+	sll	B			; sll.b			;    CB 30
+	sll	B'			; sll.b'		;    CB 30
+	sll	C			; sll.c			;    CB 31
+	sll	C'			; sll.c'		;    CB 31
+	sll	D			; sll.d			;    CB 32
+	sll	D'			; sll.d'		;    CB 32
+	sll	E			; sll.e			;    CB 33
+	sll	E'			; sll.e'		;    CB 33
+	sll	H			; sll.h			;    CB 34
+	sll	H'			; sll.h'		;    CB 34
+	sll	L			; sll.l			;    CB 35
+	sll	L'			; sll.l'		;    CB 35
+	;-----------------------------------------------------------------------
+sra:	sra	[HL]			; sra*hl		;    CB 2E
+	sra	[HL']			; sra*hl'		;    CB 2E
+	sra	[IX+$00]		; sra*ix	$00	; DD CB 00 2E
+	sra	[IY+$00]		; sra*iy	$00	; FD CB 00 2E
+	sra	A			; sra.a			;    CB 2F
+	sra	A'			; sra.a'		;    CB 2F
+	sra	B			; sra.b			;    CB 28
+	sra	B'			; sra.b'		;    CB 28
+	sra	C			; sra.c			;    CB 29
+	sra	C'			; sra.c'		;    CB 29
+	sra	D			; sra.d			;    CB 2A
+	sra	D'			; sra.d'		;    CB 2A
+	sra	E			; sra.e			;    CB 2B
+	sra	E'			; sra.e'		;    CB 2B
+	sra	H			; sra.h			;    CB 2C
+	sra	H'			; sra.h'		;    CB 2C
+	sra	L			; sra.l			;    CB 2D
+	sra	L'			; sra.l'		;    CB 2D
+	;-----------------------------------------------------------------------
+srl:	srl	[HL]			; srl*hl		;    CB 3E
+	srl	[HL']			; srl*hl'		;    CB 3E
+	srl	[IX+$00]		; srl*ix	$00	; DD CB 00 3E
+	srl	[IY+$00]		; srl*iy	$00	; FD CB 00 3E
+	srl	A			; srl.a			;    CB 3F
+	srl	A'			; srl.a'		;    CB 3F
+	srl	B			; srl.b			;    CB 38
+	srl	B'			; srl.b'		;    CB 38
+	srl	C			; srl.c			;    CB 39
+	srl	C'			; srl.c'		;    CB 39
+	srl	D			; srl.d			;    CB 3A
+	srl	D'			; srl.d'		;    CB 3A
+	srl	E			; srl.e			;    CB 3B
+	srl	E'			; srl.e'		;    CB 3B
+	srl	H			; srl.h			;    CB 3C
+	srl	H'			; srl.h'		;    CB 3C
+	srl	L			; srl.l			;    CB 3D
+	srl	L'			; srl.l'		;    CB 3D
+	;-----------------------------------------------------------------------
+sub:	sub	A, 	[HL]		; sub*hl		;    96
+	sub	A, 	[HL']		; sub*hl'		;    96
+	sub	A,	[IX+$00]	; sub*ix	$00	; DD 96 00
+	sub	A,	[IY+$00]	; sub*iy	$00	; FD 96 00
+	sub	A,	$00		; sub		$00	;    D6 00
+	sub	A,	A		; sub.a			;    97
+	sub	A',	A'		; sub.a'		;    97
+	sub	A,	B		; sub.b			;    90
+	sub	A,	B'		; sub.b'		;    90
+	sub	A,	C		; sub.c			;    91
+	sub	A,	C'		; sub.c'		;    91
+	sub	A,	D		; sub.d			;    92
+	sub	A,	D'		; sub.d'		;    92
+	sub	A,	E		; sub.e			;    93
+	sub	A,	E'		; sub.e'		;    93
+	sub	A,	H		; sub.h			;    94
+	sub	A,	H'		; sub.h'		;    94
+	sub	A,	L		; sub.l			;    95
+	sub	A,	L'		; sub.l'		;    95
+	sub	A,	IXH		; sub.ixh		; DD 94
+	sub	A,	IXL		; sub.ixl		; DD 95
+	sub	A,	IYH		; sub.iyh		; FD 94
+	sub	A,	IYL		; sub.iyl		; FD 95
+	;-----------------------------------------------------------------------
+xor:	xor	A, 	[HL]		; xor*hl		;    AE
+	xor	A, 	[HL']		; xor*hl'		;    AE
+	xor	A,	[IX+$00]	; xor*ix	$00	; DD AE 00
+	xor	A,	[IY+$00]	; xor*iy	$00	; FD AE 00
+	xor	A,	$00		; xor		$00	;    EE 00
+	xor	A,	A		; xor.a			;    AF
+	xor	A',	A'		; xor.a'		;    AF
+	xor	A,	B		; xor.b			;    A8
+	xor	A,	B'		; xor.b'		;    A8
+	xor	A,	C		; xor.c			;    A9
+	xor	A,	C'		; xor.c'		;    A9
+	xor	A,	D		; xor.d			;    AA
+	xor	A,	D'		; xor.d'		;    AA
+	xor	A,	E		; xor.e			;    AB
+	xor	A,	E'		; xor.e'		;    AB
+	xor	A,	H		; xor.h			;    AC
+	xor	A,	H'		; xor.h'		;    AC
+	xor	A,	L		; xor.l			;    AD
+	xor	A,	L'		; xor.l'		;    AD
+	xor	A,	IXH		; xor.ixh		; DD AC
+	xor	A,	IXL		; xor.ixl		; DD AD
+	xor	A,	IYH		; xor.iyh		; FD AC
+	xor	A,	IYL		; xor.iyl		; FD AD
+
+.ENDS
