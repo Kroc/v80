@@ -7,10 +7,12 @@ _v80_ is a very small (8KB), very simple Z80 assembler written in Z80 that runs 
 [NTVCM]:  https://github.com/davidly/ntvcm
 [RunCPM]: https://github.com/MockbaTheBorg/RunCPM
 
-It currently runs on CP/M with plans to make it self-hosting (can assemble itself) with ports to [Agon Light], [Zeal 8-bit OS] and other Z80-based systems. In the future _v80_ will support other CPUs and cross-assembly.
+It currently runs on CP/M with plans to make it self-hosting (can assemble itself) with ports to [Agon Light], [Zeal 8-bit OS] and other Z80-based systems. In the future _v80_ will support other CPUs and cross-assembly (assembling 6502 on Z80 etc).
 
 [Zeal 8-bit OS]: https://github.com/zeal8bit/Zeal-8-bit-OS
 [Agon Light]:    https://www.thebyteattic.com/p/agon.html
+
+If you feel like you could write a C version of _v80_, [your help](https://github.com/Kroc/v80/issues/4) would be appreciated as it would remove the need to simulate CP/M to assemble on PC, with the no-directories limit that imposes.
 
 ## ~~Features~~
 
@@ -116,161 +118,17 @@ The basic principle is that _v80_ can only recognise a word by the first charact
     ;
     .a  $ + $80 ; skip exactly 128 bytes
 
-## Syntax
+## Building v80
 
-### Numbers:
+If you just want to use _v80_ to write and assemble Z80 software, just download a [release](https://github.com/Kroc/v80/releases). If you want to build v80 from source, everything needed to build _v80_ on Windows is included in the repository. Building on Mac, Linux and UNIX-likes can be done, but will require you to source your own binaries of [WLA-DX] & [NTVCM].
 
-Only hexadecimal numbers are supported, prefixed with `$`, 1-4 digits.
+[WLA-DX]: https://github.com/vhelin/wla-dx
 
-    $8
-    $ff
-    $38f
-    $ffff
+Just run "build.bat" to assemble _v80_ -- the binary is placed in the "releases" folder. Instructions on using _v80_ are in the [Read Me](/release/readme.txt) in there.
 
-### Virtual Program-Counter:
+### Running on Real 8-bit, CP/M Hardware:
 
-The virtual program-counter starts at `$0000`.  
-A line that begins with a number sets the virtual program-counter to that value.
+_v80_ is assembled as a generic CP/M binary that should run on any CP/M v2.2 (or above) system -- no hardware or system-specific calls used. For now, _v80_ does not provide any system-specific floppy disk-images for loading _v80_ on to real hardware, but you can use tools like [Disk Image Manager] (Amstrad / Sinclair) or [cpmtools] to make disk-images. If you would like a specific system to have pre-loaded _v80_ disk images, please consider submitting an issue.
 
-    $0100                   ; sets PC to $0100
-
-A special value, `$` without any digits, always returns the current virtual program-counter.
-
-    $0100                   ; sets PC to $0100
-            .w  $           ; writes $00, $01 to the code-segment
-
-To set the virtual program-counter using an expression, label or constant, begin a line with a `$` followed by the expression / value:
-
-    #boot   $0100           ; define #boot to equal $0100
-    $       #boot           ; sets the PC to $0100
-
-Unlike other assemblers, changing the virtual program-counter **does not** fill the binary with padded space.
-
-    $0100                   ; sets PC to $0100
-            .b  $1 $2 $3    ; writes 3 bytes to the code-segment
-    $4000                   ; sets PC to $4000
-            .w  $code       ; writes bytes 4 & 5 of code-segment!
-
-The align keyword, `.a` can be used to pad the assembled binary instead:
-
-    .a  $100                ; align to the next page
-    .a  $ + $80             ; pad exactly $80 bytes
-
-### Labels:
-
-Labels begin with a colon.
-
-    :label
-
-Labels can begin with a number; in fact, almost any character is game as only whitespace is considered the end of a label name, although you should avoid going too far. `a`-`z`, `0`-`9` and `_` are recommended.
-
-    :1
-
-A line that 'begins' with a label name, that is, before any keyword, defines the label as having the current virtual program-counter.
-
-Labels cannot be redefined.  
-All labels must be unique.
-
-### Constants:
-
-A constant is a reusable value given a name.  
-A line that begins with constant name, followed by an expression, defines a constant:
-
-    #true   0
-
-Constant names can begin with a number:
-
-(the parser is very basic and considers everything between `#` and whitespace to be the constant name, although you should try stick to `a`-`z`, `0`-`9` & `_`)
-
-    #1      $31             ; ASCII "1"
-
-Constants _can_ be redefined, but the expression used cannot refer to a forward-reference or undefined constant.
-
-    :1
-    #back   :1              ; OK!
-    #next   #fwd            ; invalid! #fwd is currently undefined
-
-    #fwd    :2              ; invalid! :2 is a forward-reference
-    :2
-
-### bytes / words:
-
-Use `.b` & `.w` to write bytes and words to the assembled binary.
-
-    .b  $AD $DE $EF $BE     ; write bytes
-    .w  $DEAD $BEEF         ; write words
-
-Once either keyword is encountered, expressions will be read until the end of the line or another keyword or instruction is encountered; keywords and instructions cannot be expressions.
-
-    .b $1 $2 $3 .w $4 $5 $6 ; = $01 $02 $03 $0400 $0500 $0600
-
-An expression can be described as:
-
->   optional unary operator(s) followed by a value,  
->   optionally followed by an operator and another expression
-
-With a _value_ being any word that evaluates to a number;  
-i.e. number literals, labels, or constants.
-
-### Operators:
-
-_**There is no operator precedence!**_
-
-Expressions are evaluated left-to-right; the result is tallied after each infix operator and before the next.
-
-    .b  $1 + $2 * $5        ; ( $1 + $2 ) * $5 = 15! ($0f)
-    .b  $1 + ( $2 * $5 )    ; = 11 ($0b) use parenthesis to force order
-
-The unary operators come before a value:
-
-    !  not      = flip all bits, e.g. !$ff = $00
-    <  lo       = lower byte only, e.g. <$aabb = $bb
-    >  hi       = upper byte only, e.g. >$aabb = $aa
-    -  neg      = flip all bits and +1, e.g. -$1 = $ff
-
-Unary operators apply to the immediate right-hand value, before operators, i.e.
-
-    .b  >:label + $0100     ; error! = ( >:label ) + $0100, 2-bytes!
-    .b  >( :label + $0100 ) ; right! 1 byte
-    .b  :label + <:future   ; lo-byte of :future is calculated before addition
-
-Standard operators come between values:
-
-    +  add
-    -  subtract
-    *  multiply
-    /  divide (integer)
-    \  modulo (remainder)
-    &  bitwise and
-    |  bitwise or
-    ^  bitwise xor
-
-There are no power / exponentiation operators. There are no shift operators. To do shifts, multiply or divide by powers of 2, e.g. `* 2` = `<< 1`, `/ 8` = `>> 3`. Powers of 2 are up to you, I would be surprised if you don't have them memorised already, say with me: 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, ...
-
-### includes:
-
-Use `.i` to include another _v80_ source file.
-
-    .i  "include.v80"
-
-An include file can be reused multiple times. Each time, it will be re-parsed meaning that constant redefines will be applied, allowing for a macro-like application:
-
-    #count  #count + 1      ; increment a counter
-            .b  #count      ; a different number each time included
-
-Includes can be nested but it's recommended to not exceed 4 levels as each level pushes a large number of bytes to the stack. No sanity checks are done for recursive includes. Don't do that.
-
-### Align:
-
-Changing the virtual program-counter does not pad the binary! Only emitting bytes using `.b` & `.w` keywords or instructions adds to the binary.
-
-The align keyword pads the binary with null bytes until the virtual program-counter modulo the parameter equals zero. That is, bytes are added until the program-counter divides evenly with the given parameter with no remainder. If the current program-counter already divides evenly, then no bytes are emitted.
-
-    .a  $100                ; align to next page
-    .a  $c130               ; pad to specific desired program-counter
-    .a  $ + $80             ; pad a specific number of bytes
-
-
-
-
-
+[Disk Image Manager]: https://github.com/damieng/DiskImageManager
+[cpmtools]: http://www.moria.de/~michael/cpmtools/

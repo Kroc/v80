@@ -38,8 +38,8 @@ To ensure that source code written in v80 syntax can be assembled on real
   file-name, followed by an optional extension consisting of a dot and
   up-to 3 characters
 
-- File-names can contain only one dot,
-  specifically for the file-extension
+-   FIle-names cannot contain spaces and can contain only one dot,
+    specifically for the file-extension
 
 - Only these characters are valid in a file-name:
   a-z 0-9 " # % ' @ ^ _ ` { } ~

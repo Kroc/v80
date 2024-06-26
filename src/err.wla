@@ -223,7 +223,7 @@ err:
         jp      osQuit
 
 @err    .BYTE   "! ERROR: ", 0
-@txt    .BYTE   "!        See error.txt for detailed causes", 0
+@txt    .BYTE   "!        See errors.txt for detailed causes", 0
 @file   .BYTE   "!  FILE: ", 0
 @row    .BYTE   "!  LINE: ", 0
 @col    .BYTE   "!   COL: ", 0

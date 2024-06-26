@@ -37,7 +37,7 @@ cols:   #       number of bytes, including parameter(s)
 instructions:                                     (cycles)  flags:
 v80                 z80 (Zilog)                 #   =  !    c,z,s,v|p
 ================================================================================
-:: add:
+:: add:                                         #   =  !    flags
 ================================================================================
 add $nn             add A,  $nn                 2   7       c=,z=,s=,v=
 add.a               add A,  A                   1   4       c=,z=,s=,v=
@@ -89,7 +89,7 @@ adc.hl.de           adc HL, DE                  2   15      c=,z=,v=
 adc.hl.hl           adc HL, HL                  2   15      c=,z=,v=
 adc.hl.sp           adc HL, SP                  2   15      c=,z=,v=
 ================================================================================
-:: bitwise and:
+:: bitwise and:                                 #   =  !    flags
 ================================================================================
 and $nn             and A,  $nn                 2   7       c-,z=,s=,p=
 and.a               and A,  A                   1   4       c-,z=,s=,p=
@@ -107,7 +107,7 @@ and*hl              and A,  [HL]                1   7       c-,z=,s=,p=
 and*ix  $mm         and A,  [IX+$mm]            3   19      c-,z=,s=,p=
 and*iy  $mm         and A,  [IY+$mm]            3   19      c-,z=,s=,p=
 ================================================================================
-:: bit test:
+:: bit test:                                    #   =  !    flags
 ================================================================================
 bit0.a              bit 0,  A                   2   8       z= [^3]
 bit0.b              bit 0,  B                   2   8       z= [^3]
@@ -197,21 +197,21 @@ bit7*hl             bit 7,  [HL]                2   12      z= [^3]
 bit7*ix $mm         bit 7,  [IX+$mm]            4   20      z= [^3]
 bit7*iy $mm         bit 7,  [IY+$mm]            4   20      z= [^3]
 ================================================================================
-:: call:
+:: call:                                        #   =  !    flags
 ================================================================================
 call    $nnnn       call    $nnnn               3   17      preserved
-call?nz $nnnn       call    nz, $nnnn           3   17 /10  preserved
-call?z  $nnnn       call    z,  $nnnn           3   17 /10  preserved
-call?nc $nnnn       call    nc, $nnnn           3   17 /10  preserved
-call?c  $nnnn       call    c,  $nnnn           3   17 /10  preserved
-call?po $nnnn       call    po, $nnnn           3   17 /10  preserved
-call?nv $nnnn       call    po, $nnnn           3   17 /10  preserved
-call?pe $nnnn       call    pe, $nnnn           3   17 /10  preserved
-call?v  $nnnn       call    pe, $nnnn           3   17 /10  preserved
-call?p  $nnnn       call    p,  $nnnn           3   17 /10  preserved
-call?m  $nnnn       call    m,  $nnnn           3   17 /10  preserved
+call?nz $nnnn       call    nz, $nnnn           3   17|10   preserved
+call?z  $nnnn       call    z,  $nnnn           3   17|10   preserved
+call?nc $nnnn       call    nc, $nnnn           3   17|10   preserved
+call?c  $nnnn       call    c,  $nnnn           3   17|10   preserved
+call?po $nnnn       call    po, $nnnn           3   17|10   preserved
+call?nv $nnnn       call    po, $nnnn           3   17|10   preserved
+call?pe $nnnn       call    pe, $nnnn           3   17|10   preserved
+call?v  $nnnn       call    pe, $nnnn           3   17|10   preserved
+call?p  $nnnn       call    p,  $nnnn           3   17|10   preserved
+call?m  $nnnn       call    m,  $nnnn           3   17|10   preserved
 ================================================================================
-:: compare:
+:: compare:                                     #   =  !    flags
 ================================================================================
 cp  $nn             cp  A,  $nn                 2   7       c=,z=,s=,v=
 cp.a                cp  A,  A                   1   4       c=,z=,s=,v=
@@ -230,20 +230,20 @@ cp*ix   $mm         cp  A,  [IX+$mm]            3   19      c=,z=,s=,v=
 cp*iy   $mm         cp  A,  [IY+$mm]            3   19      c=,z=,s=,v=
 --------------------------------------------------------------------------------
 cpi                 cpi                         2   16      z=,s=,v= [^1]
-cpir                cpir                        2   21 /16  z=,s=,v= [^1]
+cpir                cpir                        2   21|16   z=,s=,v= [^1]
 cpd                 cpd                         2   16      z=,s=,v= [^1]
-cpdr                cpdr                        2   21 /16  z=,s=,v= [^1]
+cpdr                cpdr                        2   21|16   z=,s=,v= [^1]
 ================================================================================
-:: complement:
+:: complement:                                  #   =  !    flags
 ================================================================================
 cpl                 cpl                         1   4       preserved
 ccf                 ccf                         1   4       c=
 ================================================================================
-:: decimal adjust:
+:: decimal adjust:                              #   =  !    flags
 ================================================================================
 daa                 daa                         1   4       c=,z=,s=,p=
 ================================================================================
-:: decrement:
+:: decrement:                                   #   =  !    flags
 ================================================================================
 dec.a               dec A                       1   4       z=,s=,v=
 dec.b               dec B                       1   4       z=,s=,v=
@@ -267,16 +267,16 @@ dec.sp              dec SP                      1   6       preserved
 dec.ix              dec IX                      2   10      preserved
 dec.iy              dec IY                      2   10      preserved
 ================================================================================
-:: disable / enable interrupts:
+:: disable / enable interrupts:                 #   =  !    flags
 ================================================================================
 di                  di                          1   4       preserved
 ei                  ei                          1   4       preserved
 ================================================================================
-:: decrement, jump if non-zero:
+:: decrement, jump if non-zero:                 #   =  !    flags
 ================================================================================
-djnz    $nnnn       djnz    $nnnn               2   13 /8   preserved
+djnz    $nnnn       djnz    $nnnn               2   13|8   preserved
 ================================================================================
-:: exchange:
+:: exchange:                                    #   =  !    flags
 ================================================================================
 ex.de.hl            ex  DE, HL                  1   4       preserved
 ex.hl.de            ex  DE, HL                  1   4       preserved
@@ -289,13 +289,13 @@ ex.ix*sp            ex  [SP],   IX              2   23      preserved
 ex*sp.iy            ex  [SP],   IY              2   23      preserved
 ex.iy*iy            ex  [SP],   IY              2   23      preserved
 ================================================================================
-:: halt:
+:: halt:                                        #   =  !    flags
 ================================================================================
 halt                halt                        1   4       preserved
 hlt                 halt                        1   4       preserved
 hcf                 halt                        1   4       preserved
 ================================================================================
-:: input:
+:: input:                                       #   =  !    flags
 ================================================================================
 in.a    $nn         in  A,  $nn                 2   11      preserved
 in*c                in  [C]                     2   12      z=,s=,p= [^4]
@@ -308,11 +308,11 @@ in.h*c              in  H,  [C]                 2   12      z=,s=,p=
 in.l*c              in  L,  [C]                 2   12      z=,s=,p=
 --------------------------------------------------------------------------------
 ini                 ini                         2   16      z= [^1]
-inir                inir                        2   21 /16  z+
+inir                inir                        2   21|16   z+
 ind                 ind                         2   16      z= [^1]
-indr                indr                        2   21 /16  z+
+indr                indr                        2   21|16   z+
 ================================================================================
-:: increment:
+:: increment:                                   #   =  !    flags
 ================================================================================
 inc.a               inc A                       1   4       z=,s=,v=
 inc.b               inc B                       1   4       z=,s=,v=
@@ -336,13 +336,13 @@ inc.sp              inc SP                      1   6       preserved
 inc.ix              inc IX                      2   10      preserved
 inc.iy              inc IY                      2   10      preserved
 ================================================================================
-:: interrupt mode:
+:: interrupt mode:                              #   =  !    flags
 ================================================================================
 im.0                im  0                       2   8       preserved
 im.1                im  1                       2   8       preserved
 im.2                im  2                       2   8       preserved
 ================================================================================
-:: jump:
+:: jump:                                        #   =  !    flags
 ================================================================================
 jp  $nnnn           jp  $nnnn                   3   10      preserved
 jp?nz   $nnnn       jp  nc, $nnnn               3   10      preserved
@@ -360,14 +360,14 @@ jp.ix               jp  [IX]                    2   8       preserved
 jp.iy               jp  [IY]                    2   8       preserved
 --------------------------------------------------------------------------------
 jr  $nnnn           jr  $nnnn                   2   12      preserved
-jr?c    $nnnn       jr  c,  $nnnn               2   12 /7   preserved
-jr?nc   $nnnn       jr  nc, $nnnn               2   12 /7   preserved
-jr?z    $nnnn       jr  z,  $nnnn               2   12 /7   preserved
-jr?nz   $nnnn       jr  nz, $nnnn               2   12 /7   preserved
+jr?c    $nnnn       jr  c,  $nnnn               2   12|7    preserved
+jr?nc   $nnnn       jr  nc, $nnnn               2   12|7    preserved
+jr?z    $nnnn       jr  z,  $nnnn               2   12|7    preserved
+jr?nz   $nnnn       jr  nz, $nnnn               2   12|7    preserved
 ================================================================================
-:: load:
+:: load:                                        #   =  !    flags
 ================================================================================
-:: load, 8-bit:
+:: load, 8-bit:                                 #   =  !    flags
 --------------------------------------------------------------------------------
 ld.a    $nn         ld  A,  $nn                 2   7       preserved
 ld.a.a              ld  A,  A                   1   4       preserved
@@ -464,10 +464,6 @@ ld.h.d              ld  H,  D                   1   4       preserved
 ld.h.e              ld  H,  E                   1   4       preserved
 ld.h.h              ld  H,  H                   1   4       preserved
 ld.h.l              ld  H,  L                   1   4       preserved
-ld.h.ixh            ld  H,  IXH                 2   8       preserved
-ld.h.ixl            ld  H,  IXL                 2   8       preserved
-ld.h.iyh            ld  H,  IYH                 2   8       preserved
-ld.h.iyl            ld  H,  IYL                 2   8       preserved
 ld.h*   $nnnn       ld  H,  [$nnnn]             3   13      preserved
 ld.h*hl             ld  H,  [HL]                1   7       preserved
 ld.h*ix $mm         ld  H,  [IX+$mm]            3   19      preserved
@@ -481,10 +477,6 @@ ld.l.d              ld  L,  D                   1   4       preserved
 ld.l.e              ld  L,  E                   1   4       preserved
 ld.l.h              ld  L,  H                   1   4       preserved
 ld.l.l              ld  L,  L                   1   4       preserved
-ld.l.ixh            ld  L,  IXH                 2   8       preserved
-ld.l.ixl            ld  L,  IXL                 2   8       preserved
-ld.l.iyh            ld  L,  IYH                 2   8       preserved
-ld.l.iyl            ld  L,  IYL                 2   8       preserved
 ld.l*   $nnnn       ld  L,  [$nnnn]             3   13      preserved
 ld.l*hl             ld  L,  [HL]                1   7       preserved
 ld.l*ix $mm         ld  L,  [IX+$mm]            3   19      preserved
@@ -539,7 +531,7 @@ ld*hl   $nn         ld  [HL],       $nn         2   10      preserved
 ld*ix   $mm $nn     ld  [IX+$mm],   $nn         2   10      preserved
 ld*iy   $mm $nn     ld  [IY+$mm],   $nn         2   10      preserved
 --------------------------------------------------------------------------------
-:: load, 16-bit:
+:: load, 16-bit:                                #   =  !    flags
 --------------------------------------------------------------------------------
 ld.bc   $nnnn       ld  BC, $nnnn               3   10      preserved
 ld.de   $nnnn       ld  DE, $nnnn               3   10      preserved
@@ -566,22 +558,22 @@ ld*$.ix $nnnn       ld  [$nnnn],    IX          4   20      preserved
 ld*$.iy $nnnn       ld  [$nnnn],    IY          4   20      preserved
 ld*$.sp $nnnn       ld  [$nnnn],    SP          4   20      preserved
 --------------------------------------------------------------------------------
-:: load & increment / decrement / repeat:
+:: load & increment / decrement / repeat:       #   =  !    flags
 --------------------------------------------------------------------------------
 ldi                 ldi                         2   16      v= [^1]
-ldir                ldir                        2   21 /16  v= [^1]
+ldir                ldir                        2   21|16   v= [^1]
 ldd                 ldd                         2   16      v= [^1]
-lddr                lddr                        2   21 /21  v= [^1]
+lddr                lddr                        2   21|21   v= [^1]
 ================================================================================
-:: negate:
+:: negate:                                      #   =  !    flags
 ================================================================================
 neg                 neg                         2   8       c=,z=,s=,v=
 ================================================================================
-:: no-operation:
+:: no-operation:                                #   =  !    flags
 ================================================================================
 nop                 nop                         1   4       preserved
 ================================================================================
-:: bitwise or
+:: bitwise or                                   #   =  !    flags
 ================================================================================
 or  $nn             or  A,  $nn                 2   7       c-,z=,s=,p=
 or.a                or  A,  A                   1   4       c-,z=,s=,p=
@@ -599,7 +591,7 @@ or*hl               or  A,  [HL]                1   7       c-,z=,s=,p=
 or*ix   $mm         or  A,  [IX+$mm]            3   19      c-,z=,s=,p=
 or*iy   $mm         or  A,  [IY+$mm]            3   19      c-,z=,s=,p=
 ================================================================================
-:: ouput:
+:: ouput:                                       #   =  !    flags
 ================================================================================
 out*$.a             out [$nn],  A               2   11      preserved
 out*c.a             out [C],    A               2   12      preserved
@@ -611,11 +603,11 @@ out*c.h             out [C],    H               2   12      preserved
 out*c.l             out [C],    L               2   12      preserved
 --------------------------------------------------------------------------------
 outi                outi                        2   16      z= [^1]
-otir                otir                        2   21 /16  z+
+otir                otir                        2   21|16   z+
 outd                outd                        2   16      z= [^1]
-otdr                otdr                        2   21 /16  z+
+otdr                otdr                        2   21|16   z+
 ================================================================================
-:: reset bit:
+:: reset bit:                                   #   =  !    flags
 ================================================================================
 res0.a              res 0,  A                   2   8       preserved
 res0.b              res 0,  B                   2   8       preserved
@@ -705,23 +697,23 @@ res7*hl             res 7,  [HL]                2   15      preserved
 res7*ix $mm         res 7,  [IX+$mm]            4   23      preserved
 res7*iy $mm         res 7,  [IY+$mm]            4   23      preserved
 ================================================================================
-:: return:
+:: return:                                      #   =  !    flags
 ================================================================================
 ret                 ret                         1   10      preserved
-ret?nz              ret nz                      1   11 /5   preserved
-ret?z               ret z                       1   11 /5   preserved
-ret?nc              ret nc                      1   11 /5   preserved
-ret?c               ret c                       1   11 /5   preserved
-ret?po              ret po                      1   11 /5   preserved
-ret?nv              ret po                      1   11 /5   preserved
-ret?pe              ret pe                      1   11 /5   preserved
-ret?v               ret pe                      1   11 /5   preserved
-ret?p               ret p                       1   11 /5   preserved
-ret?m               ret m                       1   11 /5   preserved
+ret?nz              ret nz                      1   11|5    preserved
+ret?z               ret z                       1   11|5    preserved
+ret?nc              ret nc                      1   11|5    preserved
+ret?c               ret c                       1   11|5    preserved
+ret?po              ret po                      1   11|5    preserved
+ret?nv              ret po                      1   11|5    preserved
+ret?pe              ret pe                      1   11|5    preserved
+ret?v               ret pe                      1   11|5    preserved
+ret?p               ret p                       1   11|5    preserved
+ret?m               ret m                       1   11|5    preserved
 reti                reti                        2   14      preserved
 retn                retn                        2   14      preserved
 ================================================================================
-:: reset vectors:
+:: reset vectors:                               #   =  !    flags
 ================================================================================
 rst.0               rst $00                     1   11      preserved
 rst.8               rst $08                     1   11      preserved
@@ -732,7 +724,7 @@ rst.28              rst $28                     1   11      preserved
 rst.30              rst $30                     1   11      preserved
 rst.38              rst $38                     1   11      preserved
 ================================================================================
-:: rotate left:
+:: rotate left:                                 #   =  !    flags
 ================================================================================
 rla                 rla                         1   4       c= [b0=c,c=b7]
 rl.a                rla A                       2   8       c=,z=,s= [b0=c,c=b7]
@@ -760,7 +752,7 @@ rlc*iy  $mm         rlc [IY+$mm]                4   23      c=,z=,s= [b0=c=b7]
 --------------------------------------------------------------------------------
 rld                 rld                         2   18      z=,s=,p=
 ================================================================================
-:: rotate right:
+:: rotate right:                                #   =  !    flags
 ================================================================================
 rra                 rra                         1   4       c= [b7=c,c=b0]
 rr.a                rr  A                       2   8       c=,z=,s= [b7=c,c=b0]
@@ -788,11 +780,11 @@ rrc*iy  $mm         rrc [IY+$mm]                4   23      c=,z=,s= [b7=c=b0]
 --------------------------------------------------------------------------------
 rrd                 rrd                         2   18      z=,s=,p=
 ================================================================================
-:: set carry flag:
+:: set carry flag:                              #   =  !    flags
 ================================================================================
 scf                 scf                         1   4       c+
 ================================================================================
-:: set bit:
+:: set bit:                                     #   =  !    flags
 ================================================================================
 set0.a              set 0,  A                   2   8       preserved
 set0.b              set 0,  B                   2   8       preserved
@@ -882,7 +874,7 @@ set7*hl             set 7,  [HL]                2   15      preserved
 set7*ix $mm         set 7,  [IX+$mm]            4   23      preserved
 set7*iy $mm         set 7,  [IY+$mm]            4   23      preserved
 ================================================================================
-:: shift-left:
+:: shift-left:                                  #   =  !    flags
 ================================================================================
 sla.a               sla A                       2   8       c=,z=,s=,p= [c=b7]
 sla.b               sla B                       2   8       c=,z=,s=,p= [c=b7]
@@ -906,7 +898,7 @@ sl1*hl              sll [HL]                    2   15      c=,z=,s=,p= [^2]
 sl1*ix  $mm         sll [IX+$mm]                4   23      c=,z=,s=,p= [^2]
 sl1*iy  $mm         sll [IY+$mm]                4   23      c=,z=,s=,p= [^2]
 ================================================================================
-:: shift-right:
+:: shift-right:                                 #   =  !    flags
 ================================================================================
 sra.a               sra A                       2   8       c=,z=,s=,p= [c=b0]
 sra.b               sra B                       2   8       c=,z=,s=,p= [c=b0]
@@ -930,7 +922,7 @@ sla*hl              srl [HL]                    2   15      c=,z=,s-,p= [c=b0]
 sla*ix  $mm         srl [IX+$mm]                4   23      c=,z=,s-,p= [c=b0]
 sla*iy  $mm         srl [IY+$mm]                4   23      c=,z=,s-,p= [c=b0]
 ================================================================================
-:: subtract:
+:: subtract:                                    #   =  !    flags
 ================================================================================
 sub $nn             sub A,  $nn                 2   7       c=,z=,s=,v=
 sub.a               sub A,  A                   1   4       c=,z=,s=,v=
@@ -969,7 +961,7 @@ sbc.hl.de           sbc HL, DE                  2   15      c=,z=,s=,v=
 sbc.hl.hl           sbc HL, HL                  2   15      c=,z=,s=,v=
 sbc.hl.sp           sbc HL, SP                  2   15      c=,z=,s=,v=
 ================================================================================
-:: push & pop:
+:: push & pop:                                  #   =  !    flags
 ================================================================================
 push.af             push    AF                  1   11      preserved
 push.bc             push    BC                  1   11      preserved
@@ -986,7 +978,7 @@ pop.hl              pop     HL                  1   10      preserved
 pop.ix              pop     IX                  2   14      preserved
 pop.iy              pop     IY                  2   14      preserved
 ================================================================================
-:: bitwise xor:
+:: bitwise xor:                                 #   =  !    flags
 ================================================================================
 xor  $nn            xor A,  $nn                 2   7       c-,z=,s=,p=
 xor.a               xor A,  A                   1   4       c-,z=,s=,p=
@@ -1004,7 +996,7 @@ xor*hl              xor A,  [HL]                1   7       c-,z=,s=,p=
 xor*ix   $mm        xor A,  [IX+$mm]            3   19      c-,z=,s=,p=
 xor*iy   $mm        xor A,  [IY+$mm]            3   19      c-,z=,s=,p=
 ================================================================================
-:: footnotes:
+:: footnotes:                                   #   =  !    flags
 --------------------------------------------------------------------------------
 [^1]    after decrementing BC,
         if BC >0, overflow-flag is set (v)

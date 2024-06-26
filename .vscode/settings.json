@@ -10,7 +10,7 @@
         80
     ],
     "[plaintext]": {
-        "editor.tabSize": 4,
+        "editor.tabSize": 8,
         "editor.insertSpaces": true
     },
     "[asm]": {
@@ -28,7 +28,8 @@
         "editor.wordWrap":"bounded"
     },
     "files.exclude": {
-        "**/__*" : true
+        "**/__*" : true,
+        "build/*.o" : true
     },
     "search.exclude": {
         "**/*.code-search": true,
