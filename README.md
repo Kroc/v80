@@ -118,6 +118,8 @@ The basic principle is that _v80_ can only recognise a word by the first charact
     ;
     .a  $ + $80 ; skip exactly 128 bytes
 
+A full manual on the syntax is included in ["release/readme.txt"](/release/readme.txt).
+
 ## Building v80
 
 If you just want to use _v80_ to write and assemble Z80 software, just download a [release](https://github.com/Kroc/v80/releases). If you want to build v80 from source, everything needed to build _v80_ on Windows is included in the repository. Building on Mac, Linux and UNIX-likes can be done, but will require you to source your own binaries of [WLA-DX] & [NTVCM].
