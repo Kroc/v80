@@ -8,6 +8,7 @@ __*
 *.com
 *.sym
 *.lst
+*.zip
 
 # ignore the RunCPM environment
 bin/RunCPM/A/0/*
