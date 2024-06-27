@@ -27,14 +27,14 @@ IF NOT EXIST "build" MKDIR "build"
 DEL /F /Q "build\*.*"
 
 %WLA_Z80% -v ^
-    -I "src" ^
+    -I "wla" ^
     -o "build\v80.o" ^
        "v80.wla"
 
 IF ERRORLEVEL 1 EXIT /B 1
 
 %WLA_LINK% -v -b ^
-    "src\link.ini" ^
+    "wla\link.ini" ^
     "build\v80.com"
 
 IF ERRORLEVEL 1 EXIT /B 1
@@ -84,9 +84,11 @@ EXIT /B 0
 REM # ==========================================================================
 ECHO:
 
+REM # build "%~1.wla" with WLA-DX & "%~1.v80" with v80
 CALL :wla %~1
 CALL :v80 %~1
 
+REM # compare the two files
 FC /B "build\%~1.com" "%DIR_NTVCM%\%~1.com"
 IF ERRORLEVEL 1 START "" %BIN_VBINDIFF% "build\%~1.com" "%DIR_NTVCM%\%~1.com"
 
@@ -101,12 +103,16 @@ REM # assmeble file to test.o, regardless of input name
     -o "build\test.o" ^
        "test\%~1.wla"
 
+IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
+
 REM # link test.o to input named .com file
 %WLA_LINK% ^
     -b "test\link.ini" ^
        "build\%~1.com"
 
-GOTO:EOF
+REM # return with result of the link
+EXIT /B %ERRORLEVEL%
+
 
 :v80
 REM # assemble with V80
