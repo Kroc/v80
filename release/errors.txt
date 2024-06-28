@@ -114,6 +114,13 @@ Names of labels and constants are limited to 31 characters including the sigil.
 Ensure a space follows the symbol name to separate the symbol name
 from operators and parentheses in expressions.
 
+Local label names are combined with their parent label,
+so both together musn't exceeed 31 chars in total:
+
+    :2345678901234567890    ; 20 chars
+    _234567890              ; 30 chars - OK
+    _23456789012            ; 32 chars - invalid symbol error!
+
 --------------------------------------------------------------------------------
 ERROR: Heap overflow!
 --------------------------------------------------------------------------------
@@ -147,6 +154,10 @@ A heap overflow can occur under a few conditions:
   try relocating the label nearer to the beginning. Every expression that
   references a label not yet defined (known as a "forward reference") is
   pushed to the heap until all code is parsed
+
+- Local labels are expensive as the full label name is stored for each
+  local label, duplicating the parent label name many times, e.g.
+  :labelname_local1, :labelname_local2, :labelname_local3
 
 --------------------------------------------------------------------------------
 ERROR: Expression exceeds 8-bit parameter!
@@ -245,8 +256,8 @@ CP/M does not support directories, so make sure that your current working
 directory is that of the file you're trying to assemble. "v80.bat" can be
 used to help with this:
 
-    code/ntvcm.exe code/v80.com code/thing.v80  -- wrong!
-    code/v80.bat v80.com thing.v80              -- right!
+    code\ntvcm.exe code\v80.com code\thing.v80  -- wrong!
+    code\v80.bat v80.com thing.v80              -- right!
 
 If you're a C programmer and could help make a native C version of v80 to
 avoid this issue, please see https://github.com/Kroc/v80/issues/4 for details.
@@ -263,6 +274,16 @@ leading to it being deferred.
 
         .w  :label          ; forward reference to undefined label
     :label                  ; label is defined here, all is okay
+
+--------------------------------------------------------------------------------
+ERROR: Local label without label
+--------------------------------------------------------------------------------
+You cannot define a local label without a previous label defined:
+
+    _local                  ; ERROR - local label without label!
+
+    :label                  ; defines :label
+    _local                  ; defines :label_local
 
 --------------------------------------------------------------------------------
 ERROR: Forward-references to labels not allowed here!

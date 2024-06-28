@@ -150,7 +150,7 @@ osBoot:
         jp      main                    ; we will not return from here!
 
         ;-----------------------------------------------------------------------
-@banner .BYTE   CHAR_COMMENT, " v80 CP/M v0.0 - github.com/kroc/v80\r\n"
+@banner .BYTE   CHAR_COMMENT, " v80 CP/M v0.1 - github.com/kroc/v80\r\n"
         .BYTE   CHAR_COMMENT, " (C) Kroc Camen 2023-2024, MIT License", 0
 
         ;=======================================================================

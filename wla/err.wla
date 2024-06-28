@@ -43,9 +43,11 @@ _errmsg:
         .ADDR   @undef_file
 .DEF    ERR_UNDEF_LABEL         17      ; label undefined
         .ADDR   @undef_label
-.DEF    ERR_UNEXP_DEFER         18      ; label cannot be deferred here
+.DEF    ERR_UNDEF_LOCAL         18      ; local label defined without label
+        .ADDR   @undef_local
+.DEF    ERR_UNEXP_DEFER         19      ; label cannot be deferred here
         .ADDR   @unexp_defer
-.DEF    ERR_UNEXP_EOL           19      ; unexpected end-of-line / file
+.DEF    ERR_UNEXP_EOL           20      ; unexpected end-of-line / file
         .ADDR   @unexp_eol
 ;-------------------------------------------------------------------------------
 @inval_cond     .BYTE "Invalid condition", 0
@@ -66,6 +68,7 @@ _errmsg:
 @undef_const    .BYTE "Undefined constant", 0
 @undef_file     .BYTE "File not found", 0
 @undef_label    .BYTE "Label was not defined", 0
+@undef_local    .BYTE "Local label without label", 0
 @unexp_defer    .BYTE "Forward-references to labels not allowed here", 0
 @unexp_eol      .BYTE "Expected expression", 0
 
@@ -146,6 +149,10 @@ errUndefFile:
 errUndefLabel:
         ;-----------------------------------------------------------------------
         ld      A,      ERR_UNDEF_LABEL ; err code for label undefined
+        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+errUndefLocal:
+        ;-----------------------------------------------------------------------
+        ld      A,      ERR_UNDEF_LOCAL ; err code for local without label
         .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
 errUnexpDefer:
         ;-----------------------------------------------------------------------

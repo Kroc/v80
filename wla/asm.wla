@@ -53,14 +53,21 @@ assembleFile:
         ; and return carry-set. we will fill in the label's true value below
         ; using the current virtual program-counter
         ;
-@label: call    getLabel                ; get label value or push as fwd-ref
+@label: ld      [@@local+1],    A       ; first char determines label or local
+
+        call    getLabel                ; get label value or push as fwd-ref
         jp      nc,     errRedefLabel   ; cannot redefine labels!
 
         ; getLabel has returned the addr of the label name length byte [BC]
         ; and the addr of the flag-byte of the label record [DE] so we can
         ; flip the flag and fill in the true value of the label
         ;
-        push    BC                      ; we'll  print the label name later
+@@local ld      A,      $00             ; check first char (patched above)
+        cp      CHAR_LOCAL              ; was this a local label?
+        jr      z,      +               ; if yes, skip over last-defined
+        ld      [local],        BC      ; set last defined label addr
+
++       push    BC                      ; we'll  print the label name later
         ex      DE,     HL              ; (swap label addr to HL)
         ld      [HL],   1               ; set flag byte to indicate valid value
         dec     HL                      ; decrement to label value, hi-byte
@@ -241,6 +248,8 @@ assembleFile:
         ;
 +       cp      CHAR_LABEL              ; is label?
         jp      z,      @label          ; define a label
+        cp      CHAR_LOCAL              ; or local label?
+        jp      z,      @label          ; as above
         cp      CHAR_CONST              ; is constant?
         jr      z,      @const          ; define a constant
 
@@ -378,6 +387,8 @@ assembleFile:
         cp      CHAR_HEX                ; a hexadecimal literal / PC?
         jr      z,      -               ; ...
         cp      CHAR_LABEL              ; a label?
+        jr      z,      -               ; ...
+        cp      CHAR_LOCAL              ; (or local label)
         jr      z,      -               ; ...
         cp      CHAR_CONST              ; a constant?
         jr      z,      -               ; ...
@@ -533,18 +544,25 @@ readWord:
 ;===============================================================================
 ; read symbol name:
 ;
+; if the symbol begins with `_` it's a local label and the last-defined label
+; name will automatically be prepended to the symbol name being read in
+;
 ; NOTE: the word is written *downwards* in RAM, to match how symbol names
 ;       are pushed to the heap, for faster comparison -- we use the bottom
 ;       of a page to hold the incoming word so that we can get away with
 ;       using `DEC E` instead of `DEC DE`
 ;
+; in:   A               first char is already read
 ; out:  A               length of word
 ;       DE              DE is set to the first byte (length) of `word`
 ;       [char]          the last character read will always be some kind
 ;                       of whitespace -- space, newline or end-of-file
 ;       HL              (preserved)
+;       BC              (clobbered)
 ;-------------------------------------------------------------------------------
         ld      DE,     word            ; top of word-buffer
+        cp      CHAR_LOCAL              ; is this a local label?
+        call    z,      @local          ; prepend last label defined
         jr      +                       ; (first character already read)
         ;-----------------------------------------------------------------------
 -       call    readChar                ; read char from input file
@@ -561,6 +579,24 @@ readWord:
         sub     E                       ;  = length of word
         ld      E,      <word           ; snap back to length byte
         ld      [DE],   A               ; write word-length byte
+        ret
+
+        ; prepend last label name:
+        ;=======================================================================
+@local: push    HL                      ; preserve HL before copy
+
+        ld      HL,     [local]         ; last non-local label record addr
+        ld      A,      H               ; but make sure it's not $0000!
+        or      L                       ; can't define local label before label
+        jp      z,      errUndefLocal   ; error if no label defined yet
+        ld      C,      [HL]            ; read label-name length for copy
+        ld      B,      0               ; (LDDR copies BC bytes...)
+        inc     C                       ; +1 to include label-name length byte
+        lddr                            ; copy BC bytes from [HL] to [DE]
+
+        inc     E                       ; compensate for last DEC before return
+        ld      A,      CHAR_LOCAL      ; local label sigil must be included
+        pop     HL                      ; restore HL used for copy
         ret
 
 

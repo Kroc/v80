@@ -1,36 +1,42 @@
 ; v80 test file
 ;
-#true	$1			; define constant
-#true	#true - $1		; redefine constant
-#thing	!<-#true		; multiple unary operators
+#true	$1				; define constant
+#true	#true - $1			; redefine constant
+#thing	!<-#true			; multiple unary operators
+
+; a hexadecimal number first on the line
+; sets the virtual program-counter
+;
+$0100	:boot				; label may follow PC
+
+; start the line with `$` to set the virtual program-counter
+; using an expression. be aware that forward-references to
+; labels cannot be used when setting the program-counter
+;
+$	( $ + $0100 )			; parenthesis require internal spaces
 
 ; labels can start with numbers and are
 ; limited to 31 chars, including the sigil
 ;
 :123456789012345678901234567890
 
-; a hexadecimal number first on the line
-; sets the virtual program-counter
-;
-$0100	:boot			; label may follow PC
-
-; start the line with `$` to set the virtual program-counter
-; using an expression. be aware that forward-references to
-; labels cannot be used when setting the program-counter
-;
-$	( $ + $0100 )		; parenthesis require internal spaces
+:label					; local labels, are directly
+_local					;  appended to last label defined
+_1					; multiple locals can be appended
+_2					;  (though not appended to each other)
+_2_3					; but you can fake it!
+	jr	_2_3
 
 ; .b and .w keywords output bytes / words to the code-segment
 ;
-	.w :w
-:w	.w :w			; simple back-reference
-	.w :b			;
-:b	.b <:w			; back reference to a label
-	.b <:b			; label address should be known now
+	.w :w				; simple forward-reference
+:w	.w :w				; simple back-reference
+	.w :b				;
+:b	.b <:w				; 
+	.b <:b				;
 
-; a string is simply a series of bytes
-;
-	.b "hello, world" $00
+	.b "hello, world" $00		; a string is simply a series of bytes
+	.b $22 "hello, world!" $22	; cannot use speech-marks directly
 
 ; condition markers skip all lines of greater indent
 ; if the condition matches
@@ -48,4 +54,4 @@ $	( $ + $0100 )		; parenthesis require internal spaces
 .i	"z80.v80"
 
 ; align
-.a	$100
+.a	$80				; pad to 128 bytes, like CP/M

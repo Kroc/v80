@@ -31,7 +31,7 @@ To ensure that source code written in v80 syntax can be assembled on real
     file-name, followed by an optional extension consisting of a dot and
     up-to 3 characters
 
--   FIle-names cannot contain spaces and can contain only one dot,
+-   File-names cannot contain spaces and may contain only one dot,
     specifically for the file-extension
 
 -   Only these characters are valid in a file-name:
@@ -113,7 +113,29 @@ the label as having the current virtual program-counter.
 Labels cannot be redefined.
 All labels must be unique.
 
-1.4 Constants:
+1.4 Local Labels:
+--------------------------------------------------------------------------------
+Local labels can be "reused", as they automatically append themselves to
+the last defined, non-local, label:
+
+|   _local                  ; error: local label without label!
+|
+|   :label1
+|   _first                  ; defines :label1_first
+|   _second     jr _first   ; defines :label1_second, jumps to :label1_first
+|
+|   :label2
+|   _first                  ; defines :label2_first
+|   _second     jr _first   ; defines :label2_second, jumps to :label2_first
+
+Note that the combined length of the local label name and its parent must not
+exceed 31 characters, including label sigil:
+
+|   :2345678901234567890    ; 20 chars
+|   _234567890              ; 30 chars - OK
+|   _23456789012            ; 32 chars - invalid symbol error!
+
+1.5 Constants:
 --------------------------------------------------------------------------------
 A constant is a reusable value given a name. A line that begins with constant
 name, followed by an expression, defines a constant:
@@ -137,7 +159,7 @@ forward-reference to a label or an undefined constant.
 |   #fwd    :2              ; invalid! :2 is a forward-reference
 |   :2
 
-1.5 Bytes / Words:
+1.6 Bytes / Words:
 --------------------------------------------------------------------------------
 Use ".b" & ".w" to write bytes and words to the assembled binary:
 
@@ -158,7 +180,7 @@ An expression can be described as:
 With a "value" being any word that evaluates to a number;
 i.e. number literals, labels, or constants.
 
-1.6 Operators:
+1.7 Operators:
 --------------------------------------------------------------------------------
 THERE IS NO OPERATOR PRECEDENCE!
 
@@ -216,7 +238,7 @@ byte:
 |   .b  -$1                 ; ERROR! number too large for byte
 |   .b  <-$1                ; use lo-byte operator to get lower byte only
 
-1.7 Strings:
+1.8 Strings:
 --------------------------------------------------------------------------------
 Strings are a series of bytes:
 
@@ -236,7 +258,7 @@ in a string. Use the number $22 for ASCII speech marks:
 
 |   .b  $22 "Hello, World!" $22
 
-1.8 Includes:
+1.9 Includes:
 --------------------------------------------------------------------------------
 Use ".i" to include another v80 source file.
 
@@ -253,7 +275,7 @@ Includes can be nested but it's recommended to not exceed 4 levels as each
 level pushes a large number of bytes to the stack. No sanity checks are done
 for recursive includes. Don't do that.
 
-1.9 Alignment:
+1.10 Alignment:
 --------------------------------------------------------------------------------
 Changing the virtual program-counter does not pad the binary! Only emitting
 bytes using ".b" & ".w" keywords or instructions adds to the binary.
@@ -268,7 +290,7 @@ then no bytes are emitted.
 |   .a  $c130               ; pad to specific desired program-counter
 |   .a  $ + $80             ; pad a specific number of bytes
 
-1.10 Conditions:
+1.11 Conditions:
 --------------------------------------------------------------------------------
 Portions of code can be conditionally included or excluded from assembly using
 condition markers. Unlike if-statements in many programming languages, there
@@ -370,8 +392,8 @@ The following rules hold true throughout:
             ...                         ...
             rst.38                      RST $38
 
-    For the bit-manipulation instructions BIT, SET & RES, the bit number is
-    built into the instruction name:
+    For the bit-manipulation instructions BIT, SET & RES,
+    the bit number is built into the instruction name:
 
     v80:    bit0.a              Zilog:  BIT 0,  A
             res1.b                      RES 1,  B

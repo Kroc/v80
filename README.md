@@ -25,7 +25,7 @@ If you feel like you could write a C version of _v80_, [your help](https://githu
 - No comparison operators -- we use the zero-flag here
 - No commas. Commas were a mistake
 
-<!--_v80_ has a fixed level of complexity; one day it will be Finished™ rather than expanding forever. _v80_ can be used to write a better assembler with macros and everything.-->
+## Syntax Sample:
 
 _v80_ uses a non-standard syntax designed for parsing simplicity / speed, not compatibility with existing source code.
 
@@ -39,8 +39,7 @@ The basic principle is that _v80_ can only recognise a word by the first charact
     sbc.hl.bc               ; sbc HL,   BC
     ld.a*ix $00             ; ld  A,    [IX+$00]
     bit7.a                  ; bit 7,    A
-    call    $FFFF           ; call      $FFFF
-    jr?nz   $FFFF           ; jr    nz, $FFFF
+    jr?nz   :label          ; jr  nz,   :label
     ; ...
     ; (see "release/z80.txt" for full list)
 
@@ -51,10 +50,6 @@ The basic principle is that _v80_ can only recognise a word by the first charact
     ;
     #true   $0
 
-    ; label define
-    ;
-    :label
-
     ; a hex number at the start of a line
     ; sets the program-counter
     ;
@@ -64,6 +59,13 @@ The basic principle is that _v80_ can only recognise a word by the first charact
     ; using an expression
     ;
     $   #base + $0100
+
+    :label                  ; label define
+
+    ; local labels are appended to the
+    ; last defined non-local label
+    ;
+    _local                  ; i.e. :label_local
 
     ; keywords begin with `.`
     ;
@@ -118,19 +120,36 @@ The basic principle is that _v80_ can only recognise a word by the first charact
     ;
     .a  $ + $80 ; skip exactly 128 bytes
 
-A full manual on the syntax is included in ["release/readme.txt"](/release/readme.txt).
+A full guide on the syntax is included in ["release/readme.txt"](/release/readme.txt).
 
 ## Building v80
 
-If you just want to use _v80_ to write and assemble Z80 software, just download a [release](https://github.com/Kroc/v80/releases). If you want to build v80 from source, everything needed to build _v80_ on Windows is included in the repository. Building on Mac, Linux and UNIX-likes can be done, but will require you to source your own binaries of [WLA-DX] & [NTVCM].
+If you just want to use _v80_ to write and assemble Z80 software, just download a [release](https://github.com/Kroc/v80/releases). If you want to build v80 from source, everything needed to build _v80_ on Windows is included in the repository. Building on Mac, Linux and UNIX-likes can be done, but will require you to source / compile your own binaries of [WLA-DX] & [NTVCM].
 
 [WLA-DX]: https://github.com/vhelin/wla-dx
 
-Just run "build.bat" to assemble _v80_ -- the binary is placed in the "releases" folder. Instructions on using _v80_ are in the [Read Me](/release/readme.txt) in there.
+Just run "build.bat" to assemble _v80_ -- the binary is placed in the "releases" folder.
 
 ### Running on Real 8-bit, CP/M Hardware:
 
-_v80_ is assembled as a generic CP/M binary that should run on any CP/M v2.2 (or above) system -- no hardware or system-specific calls used. For now, _v80_ does not provide any system-specific floppy disk-images for loading _v80_ on to real hardware, but you can use tools like [Disk Image Manager] (Amstrad / Sinclair) or [cpmtools] to make disk-images. If you would like a specific system to have pre-loaded _v80_ disk images, please consider submitting an issue.
+_v80_ is assembled as a generic CP/M binary that should run on any Z80-based, CP/M v2.2 (or above) system -- no hardware or system-specific calls are used. For now, _v80_ does not provide any system-specific floppy-disk images for loading _v80_ on to real hardware, but you can use tools like [Disk Image Manager] (Amstrad / Sinclair) or [cpmtools] to make disk-images. If you would like a specific system to have pre-loaded _v80_ disk images, please consider submitting an issue.
 
 [Disk Image Manager]: https://github.com/damieng/DiskImageManager
 [cpmtools]: http://www.moria.de/~michael/cpmtools/
+
+## Change History
+
+### 2024/6/28: v0.1 alpha
+
+- Local labels (`_`)
+
+### 2024/6/27: v0.0
+
+First release, _v80_ includes:
+
+- Z80, CP/M v2.2. binary < 8KB
+- Constants (`#`) and labels (`:`)
+- Expression parsing with deferred expressions for forward-references to labels
+- Conditional assembly markers
+- Alignment / padding of binary
+- Z80 instruction set
