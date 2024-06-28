@@ -120,7 +120,7 @@ The basic principle is that _v80_ can only recognise a word by the first charact
     ;
     .a  $ + $80 ; skip exactly 128 bytes
 
-A full guide on the syntax is included in ["release/readme.txt"](/release/readme.txt).
+A full guide on the syntax is included in ["release/readme.txt"](/release/readme.txt). If you're using VSCode, there's an extension for _v80_ syntax highlighting in the marketplace under [v80-vscode](https://marketplace.visualstudio.com/items?itemName=KrocCamen.vscode-v80).
 
 ## Building v80
 
@@ -139,7 +139,7 @@ _v80_ is assembled as a generic CP/M binary that should run on any Z80-based, CP
 
 ## Change History
 
-### 2024/6/28: v0.1 alpha
+### 2024/6/28: v0.1.dev
 
 - Local labels (`_`)
 
