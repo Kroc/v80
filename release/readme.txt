@@ -56,10 +56,6 @@ from source: https://github.com/davidly/ntvcm
 ================================================================================
 1.1 Numbers:
 --------------------------------------------------------------------------------
-Only hexadecimal or binary numbers are supported -- no decimals!
-
-|   .b  0                   ; for now this is an error!
-
 Hexadecimal number are prefixed with `$`, 1-4 digits.
 
 |   .b  $8
@@ -70,6 +66,17 @@ Hexadecimal number are prefixed with `$`, 1-4 digits.
 Binary numbers are prefixed with `%`, 1-16 digits.
 
 |   .w  %1111111100000000
+
+Decimal numbers are limited to 0 through 65535 (i.e. $FFFF)
+
+|   .w  0 256 512 1024 2048 4096 8192 16384 32768 65535
+
+Note that negative numbers do not exist in practice; the negate operator just
+flips all the bits and adds one, so be aware that any negative number greater
+than 32768 is positive:
+
+|   .w  -32768              ; = $8000 %1000000000000000 or +32768
+|   .w  -32769              ; = $7FFF $0111111111111111 or +32767!
 
 1.2 Virtual Program-Counter:
 --------------------------------------------------------------------------------
@@ -444,5 +451,5 @@ The following rules hold true throughout:
     v80:    ld.a.b'             Zilog:  LD  A,  B'
             ld.a'b                      LD  A', B
             ld.d'*hl'                   LD  D', [HL']
-            ex.af.af'                   EX  AF, AF
-            ex.af'af                    EX  AF, AF
+            ex.af.af'                   EX  AF, AF'
+            ex.af'af                    EX  AF, AF'
