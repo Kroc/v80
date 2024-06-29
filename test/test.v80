@@ -15,6 +15,10 @@ $0100	:boot				; label may follow PC
 ;
 $	( $ + $0100 )			; parenthesis require internal spaces
 
+; binary number literals begin with %,
+; followed by 1-16 binary digits
+#bin	%1000000000000001
+
 ; labels can start with numbers and are
 ; limited to 31 chars, including the sigil
 ;

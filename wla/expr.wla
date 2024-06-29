@@ -415,6 +415,8 @@ parseExpr:
 
         cp      CHAR_HEX                ; hexadecimal sigil?
         jr      z,      @hex            ; ...
+        cp      CHAR_BIN                ; binary literal?
+        jr      z,      @bin            ; ...
         cp      CHAR_LABEL              ; a label?
         jr      z,      @label          ; ...
         cp      CHAR_LOCAL              ; or local label?
@@ -426,12 +428,21 @@ parseExpr:
         ; ...
 
         ;-----------------------------------------------------------------------
-        ; constant?
+        ; constant:
         ;-----------------------------------------------------------------------
 @const: call    getConst                ; try get the constant's value
         jp      z,      errUndefConst   ; expression contains undefined const!
         ;-----------------------------------------------------------------------
-        ; hexadecimal literal?
+        ; binary literal:
+        ;-----------------------------------------------------------------------
+        ; (micro-optimisation: the zero-flag conditional here is to allow the
+        ;  fall through from above to skip this instruction -- parseBinNumber
+        ;  is guaranteed to return zero-flag clear, also falling through the
+        ;  next instruction for hexadecimal literals!)
+        ;
+@bin:   call    z,      parseBinNumber  ; parse the binary number into BC
+        ;-----------------------------------------------------------------------
+        ; hexadecimal literal:
         ;-----------------------------------------------------------------------
         ; (micro-optimisation: the zero-flag conditional here is to allow
         ;  the fall through from above to skip this one instruction)
@@ -1007,6 +1018,47 @@ parseHexNumber:
         jp      errInvalNum             ;  faster than conditional JP first)
 
 +       add     10                      ; change "A"-"F" to 10-15
+        ret
+
+
+parseBinNumber:
+;===============================================================================
+; parses an ASCII binary number and returns the value:
+;
+; out:  BC              the value, 0 padded for numbers < 256
+;       [char]          the last character read will always be some kind
+;                       of whitespace -- space, newline or end-of-file
+;       zf              zero-flag is guaranteed to be clear
+;       HL              (preserved)
+;       A, DE           (clobbered)
+;       -               halts with error if a digit is non-binary,
+;                       or the number of digits exceeed 16
+;-------------------------------------------------------------------------------
+        ld      DE,     0               ; starting value
+        ld      B,      17              ; following char must be whitespace!
+        ;-----------------------------------------------------------------------
+-       call    readChar                ; read char from input
+        cp      ASCII_SPC+1             ; ASCII space or below? (inc. EOL/EOF)
+        jr      c,      +               ; stop when reaching whitespace
+        sub     '0'                     ; rebase to 0 for digits "0" and above
+        jr      c,       @err           ; error if ASCII code was < "0" ($30)
+        sub     2                       ; eliminate digits above 1
+        jr      nc,      @err           ; error if ASCII code was > "1"
+        add     1                       ; cause a carry only for "1" digit
+        rl      E                       ; shift bit into E
+        rl      D                       ;  and ripple into D
+        djnz    -                       ; loop for all digits...
+        ;-----------------------------------------------------------------------
+        ; we only drop through here if a 17th digit is read
+        ; that isn't whitespace -- too many binary digits!
+@err:   jp              errInvalNum
+
++       ld      B,      D               ; copy value to BC
+        ld      C,      E               ;  for return
+
+        ; note that zero-flag will be clear because CP ASCII_SPC+1 does not
+        ; exit the loop on equal but rather on carry. we use this for an
+        ; optimisation in the expression parser
         ret
 
 .ENDB

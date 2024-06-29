@@ -18,6 +18,7 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 .DEF    CHAR_COMMENT    ';'             ; comment
 .DEF    CHAR_KEYWORD    '.'             ; keyword
 .DEF    CHAR_HEX        '$'             ; hexadecimal literal or PC
+.DEF    CHAR_BIN        '%'             ; binary literal
 .DEF    CHAR_LABEL      ':'             ; a label (16-bit)
 .DEF    CHAR_LOCAL      '_'             ; local label
 .DEF    CHAR_CONST      '#'             ; a constant (flexible size)

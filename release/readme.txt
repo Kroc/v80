@@ -56,12 +56,20 @@ from source: https://github.com/davidly/ntvcm
 ================================================================================
 1.1 Numbers:
 --------------------------------------------------------------------------------
-Only hexadecimal numbers are supported, prefixed with `$`, 1-4 digits.
+Only hexadecimal or binary numbers are supported -- no decimals!
 
-|   $8
-|   $ff
-|   $38f
-|   $ffff
+|   .b  0                   ; for now this is an error!
+
+Hexadecimal number are prefixed with `$`, 1-4 digits.
+
+|   .b  $8
+|   .b  $ff
+|   .w  $38f
+|   .w  $ffff
+
+Binary numbers are prefixed with `%`, 1-16 digits.
+
+|   .w  %1111111100000000
 
 1.2 Virtual Program-Counter:
 --------------------------------------------------------------------------------

@@ -81,10 +81,11 @@ Supported keywords are .b (bytes), .w (words), .i (include) and .a (align)
 --------------------------------------------------------------------------------
 ERROR: Invalid Number!
 --------------------------------------------------------------------------------
-Only hexadecimal numbers are currently supported. Hexadecimal numbers must
-begin with "$" and use 1-4 digits 0-9, A-F, although case does not matter.
+Hexadecimal numbers must begin with "$" and use 1-4 digits 0-9, A-F, although
+case does not matter. Binary numbers must begin with "%" and use 1-16 digits,
+0 or 1.
 
-A space must follow a hexadecimal number in expressions to separate numbers
+A space must follow a number number in expressions to separate numbers
 from operators or parentheses, e.g.
 
     .w  $0100+:boot         ; wrong: "$0100+:boot" is treated as one number
