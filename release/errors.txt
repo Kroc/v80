@@ -122,6 +122,14 @@ so both together musn't exceeed 31 chars in total:
     _23456789012            ; 32 chars - invalid symbol error!
 
 --------------------------------------------------------------------------------
+ERROR: Disk full!
+--------------------------------------------------------------------------------
+This error should only be possible on real (or emulated) 8-bit hardware, as it
+is caused by CP/M reporting that the disk is full when trying to write the
+output file. This could occur on PC if the directory is read-only or otherwise
+protected by permissions that prevent ntvcm.exe from writing there.
+
+--------------------------------------------------------------------------------
 ERROR: Heap overflow!
 --------------------------------------------------------------------------------
 A heap overflow occurs when the code-segment (binary being assembled) overlaps

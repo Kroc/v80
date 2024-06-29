@@ -142,6 +142,7 @@ _v80_ is assembled as a generic CP/M binary that should run on any Z80-based, CP
 ### 2024/6/28: v0.1.dev
 
 - Local labels (`_`)
+- Disk full error
 
 ### 2024/6/27: v0.0
 

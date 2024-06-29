@@ -675,8 +675,8 @@ osSaveCode:
         ;-----------------------------------------------------------------------
 +       ld      C',     BDOS_MAKEFILE   ; create new, blank output file
         call    BDOS                    ; (note: equivalent to a BDOS open)
-        and     A                       ; OK = 0. does CP/M return otherwise?
-        jp      nz,     errUndefFile    ; FIXME: out of disk-space error?
+        inc     A                       ; $00 = OK, $FF = disk full
+        jp      z,      errRangeDisk    ; error if disk is full
 
         ; for CP/M 2.2 we must write 128 bytes at a time which requires
         ; setting the DMA address and moving it 128 bytes forward after
@@ -690,7 +690,8 @@ osSaveCode:
         ld      DE',    cpm_fcb         ; default FCB defines output file
         ld      C',     BDOS_WRITESEQ   ; write 1 sector (128 bytes)
         call    BDOS                    ;  of data...
-        and     A                       ; FIXME: out of disk-space error?
+        and     A                       ; $00 = OK, $01/$02 = disk full
+        jp      nz,     errRangeDisk    ; error if disk full
 
         exx                             ; restore end-addr [DE]
         ld      HL,     [@loop+1]       ; get current addr in binary

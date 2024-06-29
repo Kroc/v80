@@ -23,31 +23,33 @@ _errmsg:
         .ADDR   @inval_str
 .DEF    ERR_INVAL_SYM           7       ; invalid symbol
         .ADDR   @inval_sym
-.DEF    ERR_RANGE_HEAP          8       ; heap overflow!
+.DEF    ERR_RANGE_DISK          8       ; disk full
+        .ADDR   @range_disk
+.DEF    ERR_RANGE_HEAP          9       ; heap overflow!
         .ADDR   @range_heap
-.DEF    ERR_RANGE_INS           9       ; out-of-range instruction parameter
+.DEF    ERR_RANGE_INS           10      ; out-of-range instruction parameter
         .ADDR   @range_ins
-.DEF    ERR_RANGE_LINE          10      ; line too long
+.DEF    ERR_RANGE_LINE          11      ; line too long
         .ADDR   @range_line
-.DEF    ERR_RANGE_OVER          11      ; expression overflow
+.DEF    ERR_RANGE_OVER          12      ; expression overflow
         .ADDR   @range_over
-.DEF    ERR_RANGE_STACK         12      ; stack overflow!
+.DEF    ERR_RANGE_STACK         13      ; stack overflow!
         .ADDR   @range_stack
-.DEF    ERR_RANGE_STR           13      ; `.w` does not support strings
+.DEF    ERR_RANGE_STR           14      ; `.w` does not support strings
         .ADDR   @range_str
-.DEF    ERR_REDEF_LABEL         14      ; label redefined
+.DEF    ERR_REDEF_LABEL         15      ; label redefined
         .ADDR   @redef_label
-.DEF    ERR_UNDEF_CONST         15      ; const undefined
+.DEF    ERR_UNDEF_CONST         16      ; const undefined
         .ADDR   @undef_const
-.DEF    ERR_UNDEF_FILE          16      ; file not found
+.DEF    ERR_UNDEF_FILE          17      ; file not found
         .ADDR   @undef_file
-.DEF    ERR_UNDEF_LABEL         17      ; label undefined
+.DEF    ERR_UNDEF_LABEL         18      ; label undefined
         .ADDR   @undef_label
-.DEF    ERR_UNDEF_LOCAL         18      ; local label defined without label
+.DEF    ERR_UNDEF_LOCAL         19      ; local label defined without label
         .ADDR   @undef_local
-.DEF    ERR_UNEXP_DEFER         19      ; label cannot be deferred here
+.DEF    ERR_UNEXP_DEFER         20      ; label cannot be deferred here
         .ADDR   @unexp_defer
-.DEF    ERR_UNEXP_EOL           20      ; unexpected end-of-line / file
+.DEF    ERR_UNEXP_EOL           21      ; unexpected end-of-line / file
         .ADDR   @unexp_eol
 ;-------------------------------------------------------------------------------
 @inval_cond     .BYTE "Invalid condition", 0
@@ -58,6 +60,7 @@ _errmsg:
 @inval_num      .BYTE "Invalid number", 0
 @inval_str      .BYTE "Invalid string", 0
 @inval_sym      .BYTE "Invalid symbol name", 0
+@range_disk     .BYTE "Disk full", 0
 @range_heap     .BYTE "Heap overflow", 0
 @range_ins      .BYTE "Expression exceeds 8-bit parameter", 0
 @range_line     .BYTE "Line too long, 127 cols max.", 0
@@ -109,6 +112,10 @@ errInvalStr:
 errInvalSym:
         ;-----------------------------------------------------------------------
         ld      A,      ERR_INVAL_SYM   ; err code for invalid symbol
+        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+errRangeDisk:
+        ;-----------------------------------------------------------------------
+        ld      A,      ERR_RANGE_DISK  ; err code for disk full
         .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
 errRangeHeap:
         ;-----------------------------------------------------------------------
