@@ -149,6 +149,10 @@ _v80_ is assembled as a generic CP/M binary that should run on any Z80-based, CP
 
 ## Change History
 
+### 2024/6/30: v0.1.1
+
+- Fixed defining labels after setting program-counter with expression not working as intended and an issue with closing parenthesis
+
 ### 2024/6/30: v0.1
 
 - Decimal numbers!

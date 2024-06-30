@@ -9,11 +9,11 @@
 ;
 $0100	:boot				; label may follow PC
 
-; start the line with `$` to set the virtual program-counter
-; using an expression. be aware that forward-references to
-; labels cannot be used when setting the program-counter
+; start the line with `$` to set the virtual program-counter using an
+; expression. be aware that forward-references to labels cannot be used when
+; setting the program-counter. a label can be defined after setting the PC
 ;
-$	( $ + $0100 )			; parenthesis require internal spaces
+$	( $ + $0100 )	:next		; parenthesis require internal spaces
 
 ; binary number literals begin with %,
 ; followed by 1-16 binary digits

@@ -507,7 +507,7 @@ parseExpr:
         call    nextWord                ; read first character of the next word
         jr      z,      @end            ; end expr at newline / end-of-file
 
-        cp      CHAR_OP_ADD             ; add operator?
+-       cp      CHAR_OP_ADD             ; add operator?
         jr      z,      @next           ; push token to heap, find next operand
         cp      CHAR_OP_SUB             ; subtract operator?
         jr      z,      @next           ; ...
@@ -540,7 +540,7 @@ parseExpr:
         ; to extend the expression, or the end of the expression to occur
         ;
         call    nextWord                ; read first character of the next word
-        jr      nz,     @op             ; if it's not EOL/EOF, check for op
+        jr      nz,     -               ; if it's not EOL/EOF, check for op
 
         ; whatever it is, it isn't an operator or closing parenthesis;
         ; fall through and terminate the expression

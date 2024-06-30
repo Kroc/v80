@@ -90,7 +90,7 @@ assembleFile:
         call    printSymbolName         ;  and print label name
         call    osPrintNewline          ;  + newline
 
-        jr      @next                   ; return to parsing
+        jp      @next                   ; return to parsing
 
         ;=======================================================================
         ; define constant:
@@ -180,6 +180,54 @@ assembleFile:
         jr      @line                   ; only one const defined per line
 
         ;=======================================================================
+        ; set virtual program-counter:
+        ;-----------------------------------------------------------------------
+        ; there is no "org" statement to set the program counter as with other
+        ; assemblers; if a line begins with a hexadecimal number the virtual
+        ; program-counter is set to that value, e.g.
+        ;
+        ;       $c000                   ; PC is now $c000
+        ;
+        ; to set the virtual program-counter using an expression,
+        ; begin the line with a lone `$` followed by the expression, e.g.
+        ;
+        ;       $       #boot + $0100   ; set PC to #boot constant + 256
+        ;
+@pc:    call    parseHexNumber          ; capture the number
+        call    c,      nextExpr        ; if PC, parse the expr that follows
+        jp      c,      errUnexpDefer   ; must be a constant expr!
+
+        ld      IXL,    C               ; change the virtual program-counter
+        ld      IXH,    B               ;  to the number given
+
+        ; note that parseExpr may have read a non-whitespace char as the
+        ; last character read, so don't skip chars if already on one
+        ;
+        ; fall through
+        ; ...
+
+@nextChar:
+        ;=======================================================================
+        ; get first char of next word:
+        ;
+        ; unlike nextWord, if the current char is already
+        ; the start of a word, we do not skip it
+        ;
+        ; out:  A       if the current char is non-whitespace, returns that,
+        ;               otherwise skips whitespace and returns either the
+        ;               the first non-whitespace char or a newline/end-of-file
+        ;       zf      zero-flag is always set for newline/end-of-file
+        ;-----------------------------------------------------------------------
+        ld      A,      [char]          ; last read character
+        cp      ASCII_SPC               ; ASCII<32 = newline (or end-of-file)?
+        jr      c,      +               ; return zero-flag set for EOL/EOF
+        call    z,      nextWord        ; SPC = find next char (or newline)
+        ret                             ; return zero-flag from nextWord
+        ;-----------------------------------------------------------------------
++       cp      A                       ; set zero flag without changing A
+        ret                             ; (that is, A-A is always 0)
+
+        ;=======================================================================
         ; distinguish between newline and end-of-file:
         ;-----------------------------------------------------------------------
         ; readChar returns zero-flag set for both newline and end-of-file,
@@ -214,36 +262,14 @@ assembleFile:
         ; defines the virtual program-counter
         ;
         cp      CHAR_HEX                ; hexadecimal literal?
-        jr      nz,     +               ; if not, skip over setting PC
-
-        ; set the virtual program-counter:
-        ;-----------------------------------------------------------------------
-        ; there is no "org" statement to set the program counter as with other
-        ; assemblers; if a line begins with a hexadecimal number the virtual
-        ; program-counter is set to that value, e.g.
-        ;
-        ;       $c000   ; PC is now $c000
-        ;
-        ; to set the virtual program-counter using an expression,
-        ; begin the line with a lone `$` followed by the expression, e.g.
-        ;
-        ;       $       #boot + $0100   ; set PC to #boot constant + 256
-        ;
-@pc:    call    parseHexNumber          ; capture the number
-        call    c,      nextExpr        ; if PC, parse the expr that follows
-        jp      c,      errUnexpDefer   ; must be a constant expr!
-
-        ld      IXL,    C               ; change the virtual program-counter
-        ld      IXH,    B               ;  to the number given
+        call    z,      @pc             ; if yes set virtual program-counter
+        jr      z,      @nleof          ; this may cause end-of-line|file
 
         ; after the virtual program counter is set,
         ; a label or const can still be defined
         ; e.g.
         ;       $0100   :boot           ; defines :boot as $0100
         ;
-        call    nextWord                ; find next character
-        jr      z,      @nleof          ; did we hit newline or end-of-file?
-
         ; defining a label or constant?
         ;
 +       cp      CHAR_LABEL              ; is label?
@@ -251,7 +277,7 @@ assembleFile:
         cp      CHAR_LOCAL              ; or local label?
         jp      z,      @label          ; as above
         cp      CHAR_CONST              ; is constant?
-        jr      z,      @const          ; define a constant
+        jp      z,      @const          ; define a constant
 
         ; if no label or constant, fall through to body
         ; context for keywords / instructions etc.
@@ -268,10 +294,7 @@ assembleFile:
         ; unless a newline is encountered. in cases where the last-read char
         ; is whitespace, we need to pickup the next character:
         ;
-@next:  ld      A,      [char]          ; last read character
-        cp      ASCII_SPC               ; ASCII<32 = newline (or end-of-file)?
-        jr      c,      @nleof          ; switch to line context
-        call    z,      nextWord        ; SPC = find next char (or newline)
+@next:  call    @nextChar               ; use current char or skip whitespace
         jr      z,      @nleof          ; did we hit newline or end-of-file?
 
         ;-----------------------------------------------------------------------
@@ -332,7 +355,7 @@ assembleFile:
         or      C                       ; combine lo/hi-bytes to check for 0
         jr      nz,     @fill           ; continue for all bytes
         ;-----------------------------------------------------------------------
-        jp      @line                   ; other keywords cannot follow .f
+        jr      @line                   ; other keywords cannot follow .f
 
         ;-----------------------------------------------------------------------
         ; align:
@@ -567,7 +590,7 @@ nextWord:
         ret
 
 +       ; skip over a comment until the newline / end-of-line:
-        ;
+        ;-----------------------------------------------------------------------
 -       call    readChar                ; read a character (returns z-flag)
         jr      nz,     -               ; read until newline / end-of-file
 
