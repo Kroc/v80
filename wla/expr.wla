@@ -574,6 +574,7 @@ parseExpr:
         ld      B,      D               ; return expr result in BC
         ld      C,      E               ;  as expected elsewhere
 
+        xor     A                       ; carry-flag *must* be clear
         pop     HL                      ; restore heap addr to HL
         ret
 
