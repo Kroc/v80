@@ -300,10 +300,39 @@ assembleFile:
         cp      'I'                     ; .`i` keyword?
         jp      z,      @i              ; handle file include
         cp      'A'                     ; `.a` keyword?
+        jr      z,      @a              ; handle binary alignment
+        cp      'F'                     ; `.f` keyword?
         jp      nz,     errInvalKey     ; none of the above? invalid keyword!
 
-        ; (fall through to handle align keyword)
+        ; (fall through to handle fill keyword)
         ; ...
+
+        ;-----------------------------------------------------------------------
+        ; fill:
+        ;-----------------------------------------------------------------------
+        ; the fill keyword pads the code-segment with a given number of bytes
+        ;
+        ;       .f      '!      26      ; emit "!", 26 times
+        ;
+@f:     call    nextExpr                ; get value to write -- must be 8-bit
+        jp      c,      errUnexpDefer   ; expr cannot contain a fwd-ref!
+        rlc     B                       ; check if hi-byte is non-zero
+        jp      nz,     errRangeParam   ; can't use 16-bit fill parameter!
+        ld      A,              C       ; set the fill value
+        ld      [@fill + 3],    A       ;  used in the fill loop
+
+        call    nextExpr                ; get fill counter value
+        jp      c,      errUnexpDefer   ; expr cannot contain a fwd-ref!
+        add     IX,     BC              ; bump virtual program-counter by count
+        ;-----------------------------------------------------------------------
+@fill:  ld      [IY+0], $00             ; emit a null to code-segment
+        inc     IY                      ; move to next byte in code-segment
+        dec     BC                      ; decrement byte count
+        ld      A,      B               ; 16-bit decrements don't set flags!
+        or      C                       ; combine lo/hi-bytes to check for 0
+        jr      nz,     @fill           ; continue for all bytes
+        ;-----------------------------------------------------------------------
+        jp      @line                   ; other keywords cannot follow .f
 
         ;-----------------------------------------------------------------------
         ; align:
@@ -342,13 +371,14 @@ assembleFile:
         ex      DE,     HL              ;  the remainder from HL to swap to DE
         sbc     HL,     DE              ; do modulus minus remainder
         jr      z,      +               ; if zero, we're already aligned!
+        ex      DE,     HL              ; put padding-count back to DE
+        add     IX,     DE              ; bump virtual program-counter by count
         ;-----------------------------------------------------------------------
--       ld      [IY+0], 0               ; emit a null to code-segment
+-       ld      [IY+0], $00             ; emit a null to code-segment
         inc     IY                      ; move to next byte in code-segment
-        inc     IX                      ; increment virtual program-counter
-        dec     HL                      ; decrement byte count
-        ld      A,      H               ; 16-bit decrements don't set flags!
-        or      L                       ; combine lo/hi-bytes to check for 0
+        dec     DE                      ; decrement byte count
+        ld      A,      D               ; 16-bit decrements don't set flags!
+        or      E                       ; combine lo/hi-bytes to check for 0
         jr      nz,     -               ; continue for all bytes
         ;-----------------------------------------------------------------------
 +       pop     HL                      ; (restore heap addr)

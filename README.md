@@ -123,12 +123,12 @@ The basic principle is that _v80_ can only recognise a word by the first charact
     ; align: skip bytes until the program-counter
     ; modulo the expression is zero
     ;
-    .a  $100    ; align to next page
+    .a  $100                ; align to next page
 
-    ; to skip a specific number of bytes,
-    ; count from the current program-counter!
+    ; or fill a specific number of bytes,
+    ; with a given value
     ;
-    .a  $ + $80 ; skip exactly 128 bytes
+    .f  '!  10              ; emit "!", 10 times
 
 A full guide on the syntax is included in ["release/readme.txt"](/release/readme.txt). If you're using VSCode, there's an extension for _v80_ syntax highlighting in the marketplace under [v80-vscode](https://marketplace.visualstudio.com/items?itemName=KrocCamen.vscode-v80).
 
@@ -149,10 +149,13 @@ _v80_ is assembled as a generic CP/M binary that should run on any Z80-based, CP
 
 ## Change History
 
-### 2024/6/30: v0.1.dev
+### 2024/6/30: v0.1
 
 - Decimal numbers!
+- Binary literals (`%`)
+- Character literals (`'`)
 - Local labels (`_`)
+- Fill keyword (`.f`)
 - Disk full error (CP/M)
 
 ### 2024/6/27: v0.0

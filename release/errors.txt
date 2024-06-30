@@ -1,3 +1,128 @@
+Error descriptions: (in alphabetical error)
+
+--------------------------------------------------------------------------------
+ERROR: Disk full!
+--------------------------------------------------------------------------------
+This error should only be possible on real (or emulated) 8-bit hardware, as
+it is caused by CP/M reporting that the disk is full when trying to write the
+output file. This could occur on PC if the directory is read-only or otherwise
+protected by permissions that prevent ntvcm.exe from writing there.
+
+--------------------------------------------------------------------------------
+ERROR: Expected expression!
+--------------------------------------------------------------------------------
+The line ended when a required parameter was expected instead:
+
+    .i                      ; include without file-name!
+    .a                      ; align without parameter!
+    .b  (                   ; an open parentheses without following expr
+    .b  $1 +                ; an operator without following expr
+    .a                      ; align without parameter
+    .f                      ; fill without any parameters
+    .f  $ff                 ; ... or without the 2nd parameter
+    jp                      ; a CPU instruction without required parameter
+    ?=                      ; condition marker without expression!
+
+--------------------------------------------------------------------------------
+ERROR: Expression exceeds 8-bit parameter!
+--------------------------------------------------------------------------------
+A parameter is expecting an 8-bit value, but the value provided is too
+large (>255). There are two possible causes for this, the first is with
+the bytes or fill keyword:
+
+    .b  :label              ; error -- 16-bit value in 8-bit parameter
+    .b  <:label >:label     ; lo-byte / hi-byte operator trim to 8-bits
+    .b  >:label + $0100     ; error -- beware of operator order!
+    .b  >( :label + $0100 ) ; right -- lo/hi affect only the immediate value
+    .b  -$1                 ; error -- numbers are 16-bit so negative is $FFFF!
+    .b  <-$1                ; right -- use lo-byte for negative 8-bit numbers
+
+The same gotcha's also apply to the fill keyword, where the second parameter
+-- the byte to fill with -- must be an 8-bit value:
+
+    .f  999 128             ; error -- fill value (999) must be a byte
+    .f  $80 999             ; right -- be aware of parameter order
+
+The second cause is with relative jumps. Relative jumps use a single byte for
+the jump distance, limiting them to roughly +|-128 bytes in either direction,
+even though the instruction accepts a 16-bit value (typically a label);
+v80 automatically calculates the jump distance and produces this error
+if the jump is too far.
+
+--------------------------------------------------------------------------------
+ERROR: Expression overflow!
+--------------------------------------------------------------------------------
+Numbers in v80 are limited to 16-bits, $FFFF or 65'535 maximum. This error
+occurs when an expression does a calculation that exceeeds this maximum.
+Check that your expression is not going over $FFFF, even in an intermediate
+stage -- bear in mind that v80 evaluates expressions left to right only
+without operator precedence and that unary operators apply to values first.
+
+Underflow however *is* allowed. This is when a number goes below zero, it
+becomes negative, which is also the same as a high-number (bit 7 set).
+v80 allows this for the negate unary operator to function.
+
+--------------------------------------------------------------------------------
+ERROR: File not found!
+--------------------------------------------------------------------------------
+The input file-name could not be found, or the output file couldn't be created.
+CP/M does not support directories, so make sure that your current working
+directory is that of the file you're trying to assemble. "v80.bat" can be
+used to help with this:
+
+    code\ntvcm.exe code\v80.com code\thing.v80  -- wrong!
+    code\v80.bat v80.com thing.v80              -- right!
+
+If you're a C programmer and could help make a native C version of v80 to
+avoid this issue, please see https://github.com/Kroc/v80/issues/4 for details.
+
+--------------------------------------------------------------------------------
+ERROR: Forward-references to labels not allowed here!
+--------------------------------------------------------------------------------
+You cannot use a reference to a label that hasn't been defined yet in certain
+contexts: defining a constant, setting the virtual program-counter, conditional
+markers, and when using the align (.a) keyword. These all require a known value
+at the point of parsing. You may have simply typo'd the label name causing v80
+to believe it is a forward-reference to a yet undefined label.
+
+--------------------------------------------------------------------------------
+ERROR: Heap overflow!
+--------------------------------------------------------------------------------
+A heap overflow occurs when the code-segment (binary being assembled) overlaps
+the heap that holds symbol names and deferred expressions.
+
+To maximise memory available, v80 assembles source code into binary from
+one end of RAM and stores runtime data at the other end so that there is no
+arbitrary limit to the size of a binary or runtime data, total RAM available
+nothwithstanding.
+
+    +-----+--------+---------------------------------------------+---------+
+    | v80 | buffer | code->                               <-heap | <-stack |
+    +-----+--------+---------------------------------------------+---------+
+    
+    v80:    the v80 assembler
+    buffer: buffer for capturing symbol names and expressions, fixed size
+    code:   source code is assembled into binary data here; builds upwards
+    heap:   symbols and other in-flight data goes here; builds downwards
+    stack:  usual Z80 stack, limited to 256 bytes
+
+A heap overflow can occur under a few conditions:
+
+- The size of the generated binary is too large. Check that any use of the
+  align (`.a`) or fill (`.f`) keywords are not accidentally creating large
+  amounts of padding via an incorrect parameter
+
+- There are too many symbols or deferred expressions. Check you do not have
+  hundreds of constants defined that are not being used. If a label is used
+  in many expressions but is not defined until near the end of the code,
+  try relocating the label nearer to the beginning. Every expression that
+  references a label not yet defined (known as a "forward reference") is
+  pushed to the heap until all code is parsed
+
+- Local labels are expensive as the full label name is stored for each
+  local label, duplicating the parent label name many times, e.g.
+  :labelname_local1, :labelname_local2, :labelname_local3
+
 --------------------------------------------------------------------------------
 ERROR: Invalid condition!
 --------------------------------------------------------------------------------
@@ -75,11 +200,11 @@ Instructions may only appear in certain contexts:
 --------------------------------------------------------------------------------
 ERROR: Invalid keyword!
 --------------------------------------------------------------------------------
-A keyword begins with "." followed by a letter.
-Supported keywords are .b (bytes), .w (words), .i (include) and .a (align)
+A keyword begins with "." followed by a letter. Supported keywords are
+.b (bytes), .w (words), .i (include), .f (fill), and .a (align)
 
 --------------------------------------------------------------------------------
-ERROR: Invalid Number!
+ERROR: Invalid number!
 --------------------------------------------------------------------------------
 - Hexadecimal numbers must begin with "$" and use 1-4 digits 0-9, A-F,
   although case does not matter
@@ -125,70 +250,26 @@ so both together musn't exceeed 31 chars in total:
     _23456789012            ; 32 chars - invalid symbol error!
 
 --------------------------------------------------------------------------------
-ERROR: Disk full!
+ERROR: Labels cannot be redefined!
 --------------------------------------------------------------------------------
-This error should only be possible on real (or emulated) 8-bit hardware, as
-it is caused by CP/M reporting that the disk is full when trying to write the
-output file. This could occur on PC if the directory is read-only or otherwise
-protected by permissions that prevent ntvcm.exe from writing there.
+Labels must be unique. Search your code to see where the label is being reused.
 
---------------------------------------------------------------------------------
-ERROR: Heap overflow!
---------------------------------------------------------------------------------
-A heap overflow occurs when the code-segment (binary being assembled) overlaps
-the heap that holds symbol names and deferred expressions.
-
-To maximise memory available, v80 assembles source code into binary from
-one end of RAM and stores runtime data at the other end so that there is no
-arbitrary limit to the size of a binary or runtime data, total RAM available
-nothwithstanding.
-
-    +-----+--------+---------------------------------------------+---------+
-    | v80 | buffer | code->                               <-heap | <-stack |
-    +-----+--------+---------------------------------------------+---------+
-    
-    v80:    the v80 assembler
-    buffer: buffer for capturing symbol names and expressions, fixed size
-    code:   source code is assembled into binary data here; builds upwards
-    heap:   symbols and other in-flight data goes here; builds downwards
-    stack:  usual Z80 stack, limited to 256 bytes
-
-A heap overflow can occur under a few conditions:
-
-- The size of the generated binary is too large. Check that any use of the
-  align keyword (`.a`) is not accidentally creating large amounts of padding
-  via an incorrect parameter
-
-- There are too many symbols or deferred expressions. Check you do not have
-  hundreds of constants defined that are not being used. If a label is used
-  in many expressions but is not defined until near the end of the code,
-  try relocating the label nearer to the beginning. Every expression that
-  references a label not yet defined (known as a "forward reference") is
-  pushed to the heap until all code is parsed
-
-- Local labels are expensive as the full label name is stored for each
-  local label, duplicating the parent label name many times, e.g.
-  :labelname_local1, :labelname_local2, :labelname_local3
+    :1st                    ; OK
+    :2nd                    ; OK
+    :1st                    ; error! <- label redefined
 
 --------------------------------------------------------------------------------
-ERROR: Expression exceeds 8-bit parameter!
+ERROR: Label was not defined!
 --------------------------------------------------------------------------------
-A parameter is expecting an 8-bit value, but the value provided is too
-large (>255). There are two possible causes for this, the first is with
-the bytes keyword:
+A label was referenced in an expression, but was never defined by the end of
+all source code parsed. When an expression references a label that has not been
+defined yet this is known as a forward-reference; the expression is deferred
+until the end of parsing and re-evaluated under the assumption that the label
+must have been defined by then. You may have simply typo'd the label name,
+leading to it being deferred.
 
-    .b  :label              ; error -- 16-bit value in 8-bit parameter
-    .b  <:label >:label     ; lo-byte / hi-byte operator trim to 8-bits
-    .b  >:label + $0100     ; error -- beware of operator order!
-    .b  >( :label + $0100 ) ; right -- lo/hi affect only the immediate value
-    .b  -$1                 ; error -- numbers are 16-bit so negative is $FFFF!
-    .b  <-$1                ; right -- use lo-byte for negative 8-bit numbers
-
-The second cause is with relative jumps. Relative jumps use a single byte for
-the jump distance, limiting them to roughly +|-128 bytes in either direction,
-even though the instruction accepts a 16-bit value (typically a label);
-v80 automatically calculates the jump distance and produces this error
-if the jump is too far.
+        .w  :label          ; forward reference to undefined label
+    :label                  ; label is defined here, all is okay
 
 --------------------------------------------------------------------------------
 ERROR: Line too long, 127 cols max.!
@@ -203,17 +284,14 @@ Hard tabs instead of spaces are recommended because they reduce file-size and
 the number of characters v80 has to process on 8-bit hardware.
 
 --------------------------------------------------------------------------------
-ERROR: Expression overflow!
+ERROR: Local label without label
 --------------------------------------------------------------------------------
-Numbers in v80 are limited to 16-bits, $FFFF or 65'535 maximum. This error
-occurs when an expression does a calculation that exceeeds this maximum.
-Check that your expression is not going over $FFFF, even in an intermediate
-stage -- bear in mind that v80 evaluates expressions left to right only
-without operator precedence and that unary operators apply to values first.
+You cannot define a local label without a previous label defined:
 
-Underflow however *is* allowed. This is when a number goes below zero, it
-becomes negative, which is also the same as a high-number (bit 7 set).
-v80 allows this for the negate unary operator to function.
+    _local                  ; ERROR - local label without label!
+
+    :label                  ; defines :label
+    _local                  ; defines :label_local
 
 --------------------------------------------------------------------------------
 ERROR: Stack overflow!
@@ -232,25 +310,6 @@ you can idea how much pressure your code placed upon the stack; try avoid
 this number going lower than 40!
 
 --------------------------------------------------------------------------------
-ERROR: .w cannot take strings!
---------------------------------------------------------------------------------
-The .w keyword writes words (2-bytes, 16-bits) at a time to the code-segment.
-Strings are always 1-byte per character so cannot be combined with the .w
-keyword.
-
-    .w  "This won't work!"  ; strings cannot be words
-    .b  "But this will"     ; strings are bytes
-
---------------------------------------------------------------------------------
-ERROR: Labels cannot be redefined!
---------------------------------------------------------------------------------
-Labels must be unique. Search your code to see where the label is being reused.
-
-    :1st                    ; OK
-    :2nd                    ; OK
-    :1st                    ; error! <- label redefined
-
---------------------------------------------------------------------------------
 ERROR: Undefined constant!
 --------------------------------------------------------------------------------
 A constant must be defined before it can be referenced. Forward-references to
@@ -260,59 +319,11 @@ constants cannot be used in expressions, keywords etc.
     #number 1               ; not defined until here
 
 --------------------------------------------------------------------------------
-ERROR: File not found!
+ERROR: .w cannot take strings!
 --------------------------------------------------------------------------------
-The input file-name could not be found, or the output file couldn't be created.
-CP/M does not support directories, so make sure that your current working
-directory is that of the file you're trying to assemble. "v80.bat" can be
-used to help with this:
+The .w keyword writes words (2-bytes, 16-bits) at a time to the code-segment.
+Strings are always 1-byte per character so cannot be combined with the .w
+keyword.
 
-    code\ntvcm.exe code\v80.com code\thing.v80  -- wrong!
-    code\v80.bat v80.com thing.v80              -- right!
-
-If you're a C programmer and could help make a native C version of v80 to
-avoid this issue, please see https://github.com/Kroc/v80/issues/4 for details.
-
---------------------------------------------------------------------------------
-ERROR: Label was not defined!
---------------------------------------------------------------------------------
-A label was referenced in an expression, but was never defined by the end of
-all source code parsed. When an expression references a label that has not been
-defined yet this is known as a forward-reference; the expression is deferred
-until the end of parsing and re-evaluated under the assumption that the label
-must have been defined by then. You may have simply typo'd the label name,
-leading to it being deferred.
-
-        .w  :label          ; forward reference to undefined label
-    :label                  ; label is defined here, all is okay
-
---------------------------------------------------------------------------------
-ERROR: Local label without label
---------------------------------------------------------------------------------
-You cannot define a local label without a previous label defined:
-
-    _local                  ; ERROR - local label without label!
-
-    :label                  ; defines :label
-    _local                  ; defines :label_local
-
---------------------------------------------------------------------------------
-ERROR: Forward-references to labels not allowed here!
---------------------------------------------------------------------------------
-You cannot use a reference to a label that hasn't been defined yet in certain
-contexts: defining a constant, setting the virtual program-counter, conditional
-markers, and when using the align (.a) keyword. These all require a known value
-at the point of parsing. You may have simply typo'd the label name causing v80
-to believe it is a forward-reference to a yet undefined label.
-
---------------------------------------------------------------------------------
-ERROR: Expected expression!
---------------------------------------------------------------------------------
-The line ended when a required parameter was expected instead:
-
-    .i                      ; include without file-name!
-    .a                      ; align without parameter!
-    .b  (                   ; an open parentheses without following expr
-    .b  $1 +                ; an operator without following expr
-    jp                      ; a CPU instruction without required parameter
-    ?=                      ; condition marker without expression!
+    .w  "This won't work!"  ; strings cannot be words
+    .b  "But this will"     ; strings are bytes

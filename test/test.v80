@@ -72,5 +72,10 @@ _2_3					; but you can fake it!
 
 ?=	$ffff
 
+; fill bytes
+;
+:before	.f	'!	16
+:after
+
 ; align
 .a	$80				; pad to 128 bytes, like CP/M

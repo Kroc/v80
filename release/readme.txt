@@ -120,10 +120,11 @@ fill the binary with padded space:
 |   $4000                   ; sets PC to $4000
 |           .w  $code       ; writes bytes 4 & 5 of code-segment!
 
-The align keyword, ".a" can be used to pad the assembled binary instead:
+The fill (".f") or align (".a") keywords can be used to pad the assembled
+binary instead:
 
+|   .f  $ab 26              ; pad with exactly 26 bytes of $ab
 |   .a  $100                ; align to the next page
-|   .a  $ + $80             ; pad exactly $80 bytes
 
 1.3 Labels:
 --------------------------------------------------------------------------------
@@ -197,10 +198,9 @@ Use ".b" & ".w" to write bytes and words to the assembled binary:
 |   .w  $DEAD $BEEF         ; write words, little-Endian
 
 Once either keyword is encountered, expressions will be read until the end of
-the line or another keyword or instruction is encountered; keywords and
-instructions cannot be expressions.
+the line or another ".b" / ".w" keyword or instruction is encountered:
 
-|   .b $1 $2 $3 .w $4 $5 $6 ; = $01 $02 $03 $0400 $0500 $0600
+|   .b 1 2 3 .w 4 5 6       ; = $01 $02 $03 $0400 $0500 $0600
 
 An expression can be described as:
 
@@ -305,20 +305,26 @@ Includes can be nested but it's recommended to not exceed 4 levels as each
 level pushes a large number of bytes to the stack. No sanity checks are done
 for recursive includes. Don't do that.
 
-1.10 Alignment:
+1.10 Fill & Alignment:
 --------------------------------------------------------------------------------
 Changing the virtual program-counter does not pad the binary! Only emitting
-bytes using ".b" & ".w" keywords or instructions adds to the binary.
+bytes or instructions adds to the binary.
+
+The fill keyword simply emits a specific number of bytes of a given value:
+
+|   .f  $00 100             ; pad with 100 $00 bytes
+|   .f  '!  10              ; emit "!" 10 times
 
 The align keyword pads the binary with null bytes until the virtual program-
 counter modulo the parameter equals zero. That is, bytes are added until the
 program-counter divides evenly with the given parameter with no remainder.
-If the current program-counter already divides evenly,
-then no bytes are emitted.
+If the current program-counter already divides evenly, then no bytes are
+ emitted.
 
 |   .a  $100                ; align to next page
 |   .a  $c130               ; pad to specific desired program-counter
 |   .a  $ + $80             ; pad a specific number of bytes
+|   .f  $00 80              ; ... or use the fill keyword
 
 1.11 Conditions:
 --------------------------------------------------------------------------------
