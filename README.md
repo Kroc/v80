@@ -18,7 +18,7 @@ If you feel like you could write a C version of _v80_, [your help](https://githu
 
 - No linker, we have linker at home → includes
 - No Macros! Copy + Paste is your friend or re-use includes
-- $FFFF/65'5355 is the largest number in the universe
+- $FFFF/65'535 is the largest number in the universe
 - No floating point numbers. Have you _tried_ coding floats on an 8-bit CPU??
 - No shift operators. Multiply/divide by powers of 2
 - No comparison operators -- we use the zero-flag here
