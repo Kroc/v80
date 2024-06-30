@@ -41,8 +41,10 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 .DEF    CHAR_OP_OR      '|'             ; or operator
 .DEF    CHAR_OP_XOR     '^'             ; xor operator
 .DEF    CHAR_OP_MOD     '\'             ; modulo operator
-.DEF    CHAR_EXPR_IN    '('             ; open parenthesis
-.DEF    CHAR_EXPR_OUT   ')'             ; close parenthesis
+.DEF    CHAR_EXPR_IN1   '('             ; open parenthesis
+.DEF    CHAR_EXPR_OUT1  ')'             ; close parenthesis
+.DEF    CHAR_EXPR_IN2   '['             ; square brackets for marking
+.DEF    CHAR_EXPR_OUT2  ']'             ;  memory references in instructions
 
 ;.DEF    DEBUG                           ; enable debug features
 

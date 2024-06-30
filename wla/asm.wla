@@ -38,7 +38,7 @@ assembleFile:
         ld      C,      1               ;  defaults to 1
         ld      [crow], BC              ; ...
 
-        call    @line                   ; run the parsing loop
+        call    _line                   ; run the parsing loop
         call    osFileClose             ; close the file
 
         ; WARN: this cannot be optimised into a JP due to
@@ -53,7 +53,7 @@ assembleFile:
         ; and return carry-set. we will fill in the label's true value below
         ; using the current virtual program-counter
         ;
-@label: ld      [@@local+1],    A       ; first char determines label or local
+_label: ld      [@local+1],     A       ; first char determines label or local
 
         call    getLabel                ; get label value or push as fwd-ref
         jp      nc,     errRedefLabel   ; cannot redefine labels!
@@ -62,7 +62,7 @@ assembleFile:
         ; and the addr of the flag-byte of the label record [DE] so we can
         ; flip the flag and fill in the true value of the label
         ;
-@@local ld      A,      $00             ; check first char (patched above)
+@local  ld      A,      $00             ; check first char (patched above)
         cp      CHAR_LOCAL              ; was this a local label?
         jr      z,      +               ; if yes, skip over last-defined
         ld      [local],        BC      ; set last defined label addr
@@ -90,12 +90,12 @@ assembleFile:
         call    printSymbolName         ;  and print label name
         call    osPrintNewline          ;  + newline
 
-        jp      @next                   ; return to parsing
+        jp      _next                   ; return to parsing
 
         ;=======================================================================
         ; define constant:
         ;-----------------------------------------------------------------------
-@const: call    readWord                ; read symbol name into word buffer
+_const: call    readWord                ; read symbol name into word buffer
 
         ; evaluating the expression that follows may overwrite the word buffer!
         ; e.g. if a const or label is used in the expr, so we push the const
@@ -177,7 +177,7 @@ assembleFile:
         call    printHexNumber          ; print const value in BC
         call    osPrintNewline          ;  + newline
 
-        jr      @line                   ; only one const defined per line
+        jr      _line                   ; only one const defined per line
 
         ;=======================================================================
         ; set virtual program-counter:
@@ -193,7 +193,7 @@ assembleFile:
         ;
         ;       $       #boot + $0100   ; set PC to #boot constant + 256
         ;
-@pc:    call    parseHexNumber          ; capture the number
+_pc:    call    parseHexNumber          ; capture the number
         call    c,      nextExpr        ; if PC, parse the expr that follows
         jp      c,      errUnexpDefer   ; must be a constant expr!
 
@@ -206,7 +206,7 @@ assembleFile:
         ; fall through
         ; ...
 
-@nextChar:
+nextChar:
         ;=======================================================================
         ; get first char of next word:
         ;
@@ -233,7 +233,7 @@ assembleFile:
         ; readChar returns zero-flag set for both newline and end-of-file,
         ; check the ASCII code to differentiate the two
         ;
-@nleof: cp      ASCII_LF                ; check for newline
+_nleof: cp      ASCII_LF                ; check for newline
         ret     nz                      ; no? end-of-file -- end assembling
 
         ; at newline fall through to
@@ -245,8 +245,8 @@ assembleFile:
         ; at the beginning of the line, labels, constants and
         ; the program-counter can be defined but nowhere else
         ;
-@line:  call    nextWord                ; find first character
-        jr      z,      @nleof          ; did we hit newline or end-of-file?
+_line:  call    nextWord                ; find first character
+        jr      z,      _nleof          ; did we hit newline or end-of-file?
 
         ; conditional assembly markers must appear first as they can skip
         ; multiple lines. parseCond will parse the condition marker and expr
@@ -262,8 +262,8 @@ assembleFile:
         ; defines the virtual program-counter
         ;
         cp      CHAR_HEX                ; hexadecimal literal?
-        call    z,      @pc             ; if yes set virtual program-counter
-        jr      z,      @nleof          ; this may cause end-of-line|file
+        call    z,      _pc             ; if yes set virtual program-counter
+        jr      z,      _nleof          ; this may cause end-of-line|file
 
         ; after the virtual program counter is set,
         ; a label or const can still be defined
@@ -272,12 +272,12 @@ assembleFile:
         ;
         ; defining a label or constant?
         ;
-+       cp      CHAR_LABEL              ; is label?
-        jp      z,      @label          ; define a label
+        cp      CHAR_LABEL              ; is label?
+        jp      z,      _label          ; define a label
         cp      CHAR_LOCAL              ; or local label?
-        jp      z,      @label          ; as above
+        jp      z,      _label          ; as above
         cp      CHAR_CONST              ; is constant?
-        jp      z,      @const          ; define a constant
+        jp      z,      _const          ; define a constant
 
         ; if no label or constant, fall through to body
         ; context for keywords / instructions etc.
@@ -294,8 +294,8 @@ assembleFile:
         ; unless a newline is encountered. in cases where the last-read char
         ; is whitespace, we need to pickup the next character:
         ;
-@next:  call    @nextChar               ; use current char or skip whitespace
-        jr      z,      @nleof          ; did we hit newline or end-of-file?
+_next:  call    nextChar                ; use current char or skip whitespace
+        jr      z,      _nleof          ; did we hit newline or end-of-file?
 
         ;-----------------------------------------------------------------------
 @body:  cp      CHAR_KEYWORD            ; is this a keyword?
@@ -303,7 +303,7 @@ assembleFile:
 
         call    parseInstruction        ; if not, must be an instruction
 
-        jr      @next
+        jr      _next
 
         ; keywords:
         ;-----------------------------------------------------------------------
@@ -355,7 +355,7 @@ assembleFile:
         or      C                       ; combine lo/hi-bytes to check for 0
         jr      nz,     @fill           ; continue for all bytes
         ;-----------------------------------------------------------------------
-        jr      @line                   ; other keywords cannot follow .f
+        jr      _line                   ; other keywords cannot follow .f
 
         ;-----------------------------------------------------------------------
         ; align:
@@ -405,7 +405,7 @@ assembleFile:
         jr      nz,     -               ; continue for all bytes
         ;-----------------------------------------------------------------------
 +       pop     HL                      ; (restore heap addr)
-        jp      @line                   ; other keywords cannot follow .a
+        jp      _line                   ; other keywords cannot follow .a
 
         ;-----------------------------------------------------------------------
         ; words:
@@ -416,12 +416,12 @@ assembleFile:
         ; bytes:
         ;-----------------------------------------------------------------------
 @b:     ld      A,              1       ; set parameter size to 1 (bytes)
-+       ld      [param],        A       ; save parameter size to reuse
+        ld      [param],        A       ; save parameter size to reuse
 
         ; check if either a string OR an expression follows:
         ;
 --      call    nextWord                ; skip in-between spaces
-        jp      z,      @nleof          ; stop at EOL/EOF
+        jp      z,      _nleof          ; stop at EOL/EOF
         cp      A,      CHAR_STR        ; a string?
         jr      z,      @str            ; process string literal
 
@@ -436,7 +436,7 @@ assembleFile:
         ;
         ld      A,      [char]          ; last character read
         cp      ASCII_SPC+1             ; any non-visible char must be EOL/EOF
-        jp      c,      @nleof          ; EOL/EOF is always end of keyword
+        jp      c,      _nleof          ; EOL/EOF is always end of keyword
         cp      CHAR_HEX                ; a hexadecimal literal / PC?
         jr      z,      -               ; ...
         cp      CHAR_BIN                ; a binary literal?
@@ -457,10 +457,12 @@ assembleFile:
         jr      z,      -               ; ...
         cp      CHAR_OP_NEG             ; the negate unary operator
         jr      z,      -               ; ...
-        cp      CHAR_EXPR_IN            ; a parenthesis
+        cp      CHAR_EXPR_IN1           ; a parenthesis
+        jr      z,      -               ; ...
+        cp      CHAR_EXPR_IN2           ; and it's square cousin
         jr      z,      -               ; ...
         cp      CHAR_STR                ; a string?
-        jp      nz,      @next          ; leave if not an expression
+        jp      nz,      _next          ; leave if not an expression
 
         ; fall through to handle string
         ; ...
@@ -537,7 +539,7 @@ assembleFile:
 
         ; skip any whitespace / comment following the file-name and return
         ; to the line context (other keywords cannot follow `.i`)
-        jp      @line
+        jp      _line
 
 
 nextWord:
