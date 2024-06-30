@@ -94,7 +94,7 @@ emitParam:
         ;
         or      B                       ; are any bits in hi-byte 1?
         ret     z                       ; if zero, value fits in 8-bits
-        jp      errRangeIns             ; out-of-range instruction parameter!
+        jp      errRangeParam           ; out-of-range instruction parameter!
 
         ;-----------------------------------------------------------------------
         ; write upper-byte of 16-bit result:
@@ -140,14 +140,14 @@ emitParam:
         ; therefore we expect A = H. compare sets flags without changing A,
         ; allowing us to do two tests using the same A value!
         cp      H
-        jp      nz,     errRangeIns     ; err if hi-byte is not 'empty'
+        jp      nz,     errRangeParam   ; err if hi-byte is not 'empty'
 
         ; because the relative-distance byte is signed, we expect its sign
         ; to match that of the result -- a forward jump can only produce
         ; a positive distance; if the lo-byte is negative it's a positive
         ; distance that's too large (>127, i.e. hi-bit set)
         xor     L
-        jp      m,      errRangeIns     ; if sign bits differ, error
+        jp      m,      errRangeParam   ; if sign bits differ, error
 
         ; output relative-distance byte:
         ;-----------------------------------------------------------------------

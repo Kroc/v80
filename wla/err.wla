@@ -5,53 +5,6 @@
 
 _errmsg:
 ;===============================================================================
-; this is a lookup table from error code (ERR_*) to string address to print
-;-------------------------------------------------------------------------------
-.DEF    ERR_INVAL_COND          0       ; invalid condition
-        .ADDR   @inval_cond
-.DEF    ERR_INVAL_EXPR          1       ; invalid expression
-        .ADDR   @inval_expr
-.DEF    ERR_INVAL_FILE          2       ; invalid file-name
-        .ADDR   @inval_file
-.DEF    ERR_INVAL_INS           3       ; invalid instruction
-        .ADDR   @inval_ins
-.DEF    ERR_INVAL_KEY           4       ; invalid keyword
-        .ADDR   @inval_key
-.DEF    ERR_INVAL_NUM           5       ; invalid number
-        .ADDR   @inval_num
-.DEF    ERR_INVAL_STR           6       ; invalid string
-        .ADDR   @inval_str
-.DEF    ERR_INVAL_SYM           7       ; invalid symbol
-        .ADDR   @inval_sym
-.DEF    ERR_RANGE_DISK          8       ; disk full
-        .ADDR   @range_disk
-.DEF    ERR_RANGE_HEAP          9       ; heap overflow!
-        .ADDR   @range_heap
-.DEF    ERR_RANGE_INS           10      ; out-of-range instruction parameter
-        .ADDR   @range_ins
-.DEF    ERR_RANGE_LINE          11      ; line too long
-        .ADDR   @range_line
-.DEF    ERR_RANGE_OVER          12      ; expression overflow
-        .ADDR   @range_over
-.DEF    ERR_RANGE_STACK         13      ; stack overflow!
-        .ADDR   @range_stack
-.DEF    ERR_RANGE_STR           14      ; `.w` does not support strings
-        .ADDR   @range_str
-.DEF    ERR_REDEF_LABEL         15      ; label redefined
-        .ADDR   @redef_label
-.DEF    ERR_UNDEF_CONST         16      ; const undefined
-        .ADDR   @undef_const
-.DEF    ERR_UNDEF_FILE          17      ; file not found
-        .ADDR   @undef_file
-.DEF    ERR_UNDEF_LABEL         18      ; label undefined
-        .ADDR   @undef_label
-.DEF    ERR_UNDEF_LOCAL         19      ; local label defined without label
-        .ADDR   @undef_local
-.DEF    ERR_UNEXP_DEFER         20      ; label cannot be deferred here
-        .ADDR   @unexp_defer
-.DEF    ERR_UNEXP_EOL           21      ; unexpected end-of-line / file
-        .ADDR   @unexp_eol
-;-------------------------------------------------------------------------------
 @inval_cond     .BYTE "Invalid condition", 0
 @inval_expr     .BYTE "Invalid expression", 0
 @inval_file     .BYTE "Invalid file-name", 0
@@ -62,9 +15,9 @@ _errmsg:
 @inval_sym      .BYTE "Invalid symbol name", 0
 @range_disk     .BYTE "Disk full", 0
 @range_heap     .BYTE "Heap overflow", 0
-@range_ins      .BYTE "Expression exceeds 8-bit parameter", 0
 @range_line     .BYTE "Line too long, 127 cols max.", 0
 @range_over     .BYTE "Expression overflow", 0
+@range_param    .BYTE "Expression exceeds 8-bit parameter", 0
 @range_stack    .BYTE "Stack overflow", 0
 @range_str      .BYTE ".w cannot take strings", 0
 @redef_label    .BYTE "Labels cannot be redefined", 0
@@ -78,96 +31,97 @@ _errmsg:
 
 ; print error message and quit:
 ;===============================================================================
-; this is a fall through 'ladder' that sets A to the value based on entrypoint.
-; opcode $21 is manually inserted to skip the next LD A instruction and so on.
+; this is a fall through 'ladder' that sets HL to the error string addr based
+; on entrypoint. opcode $DD is manually inserted to "skip" the next LD HL $....
+; instruction by converting it to LD IX $.... (with IX not being used)
 ; 
 errInvalCond:
         ;-----------------------------------------------------------------------
-        xor     A                       ; = ERR_INVAL_COND
-        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+        ld      HL,     _errmsg@inval_cond
+        .BYTE   $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
 errInvalExpr:
         ;-----------------------------------------------------------------------
-        ld      A,      ERR_INVAL_EXPR  ; err code for invalid condition-marker
-        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+        ld      HL,     _errmsg@inval_expr
+        .BYTE   $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
 errInvalFile:
         ;-----------------------------------------------------------------------
-        ld      A,      ERR_INVAL_FILE  ; err code for invalid file-name
-        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+        ld      HL,     _errmsg@inval_file
+        .BYTE   $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
 errInvalIns:
         ;-----------------------------------------------------------------------
-        ld      A,      ERR_INVAL_INS   ; err code for invalid instruction
-        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+        ld      HL,     _errmsg@inval_ins
+        .BYTE   $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
 errInvalKey:
         ;-----------------------------------------------------------------------
-        ld      A,      ERR_INVAL_KEY   ; err code for invalid keyword
-        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+        ld      HL,     _errmsg@inval_key
+        .BYTE   $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
 errInvalNum:
         ;-----------------------------------------------------------------------
-        ld      A,      ERR_INVAL_NUM   ; err code for invalid number
-        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+        ld      HL,     _errmsg@inval_num
+        .BYTE   $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
 errInvalStr:
         ;-----------------------------------------------------------------------
-        ld      A,      ERR_INVAL_STR   ; err code for invalid string
-        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+        ld      HL,     _errmsg@inval_str
+        .BYTE   $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
 errInvalSym:
         ;-----------------------------------------------------------------------
-        ld      A,      ERR_INVAL_SYM   ; err code for invalid symbol
-        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+        ld      HL,     _errmsg@inval_sym
+        .BYTE   $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
 errRangeDisk:
         ;-----------------------------------------------------------------------
-        ld      A,      ERR_RANGE_DISK  ; err code for disk full
-        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+        ld      HL,     _errmsg@range_disk
+        .BYTE   $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
 errRangeHeap:
         ;-----------------------------------------------------------------------
-        ld      A,      ERR_RANGE_HEAP  ; err code for heap overflow!
-        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
-errRangeIns:
-        ;-----------------------------------------------------------------------
-        ld      A,      ERR_RANGE_INS   ; err code for out-of-range parameter
-        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+        ld      HL,     _errmsg@range_heap
+        .BYTE   $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
 errRangeLine:
         ;-----------------------------------------------------------------------
-        ld      A,      ERR_RANGE_LINE  ; err code for line too long
-        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+        ld      HL,     _errmsg@range_line
+        .BYTE   $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
 errRangeOver:
         ;-----------------------------------------------------------------------
-        ld      A,      ERR_RANGE_OVER  ; err code for expression overflow
-        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+        ld      HL,     _errmsg@range_over
+        .BYTE   $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+errRangeParam:
+        ;-----------------------------------------------------------------------
+        ld      HL,     _errmsg@range_param
+        .BYTE   $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
 errRangeStack:
         ;-----------------------------------------------------------------------
-        ld      A,      ERR_RANGE_STACK ; err code for stack overflow!
-        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+        ld      HL,     _errmsg@range_stack
+        .BYTE   $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
 errRangeStr:
         ;-----------------------------------------------------------------------
-        ld      A,      ERR_RANGE_STR   ; err code for string with .w
-        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+        ld      HL,     _errmsg@range_str
+        .BYTE   $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
 errRedefLabel:
         ;-----------------------------------------------------------------------
-        ld      A,      ERR_REDEF_LABEL ; err code for label redefined
-        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+        ld      HL,     _errmsg@redef_label
+        .BYTE   $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
 errUndefConst:
         ;-----------------------------------------------------------------------
-        ld      A,      ERR_UNDEF_CONST ; err code for const undefined
-        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+        ld      HL,     _errmsg@undef_const
+        .BYTE   $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
 errUndefFile:
         ;-----------------------------------------------------------------------
-        ld      A,      ERR_UNDEF_FILE  ; err code for file not found
-        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+        ld      HL,     _errmsg@undef_file
+        .BYTE   $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
 errUndefLabel:
         ;-----------------------------------------------------------------------
-        ld      A,      ERR_UNDEF_LABEL ; err code for label undefined
-        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+        ld      HL,     _errmsg@undef_label
+        .BYTE   $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
 errUndefLocal:
         ;-----------------------------------------------------------------------
-        ld      A,      ERR_UNDEF_LOCAL ; err code for local without label
-        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+        ld      HL,     _errmsg@undef_local
+        .BYTE   $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
 errUnexpDefer:
         ;-----------------------------------------------------------------------
-        ld      A,      ERR_UNEXP_DEFER ; err code for disallowed fwd-reference
-        .BYTE   $21                     ; 'ld HL, $nnnn' (skip next 2 bytes!)
+        ld      HL,     _errmsg@unexp_defer
+        .BYTE   $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
 errUnexpEOL:
         ;-----------------------------------------------------------------------
-        ld      A,      ERR_UNEXP_EOL   ; err code for unexpected end-of-line
+        ld      HL,     _errmsg@unexp_eol
 
         ; fall through
         ; ...
@@ -176,24 +130,15 @@ err:
 ;===============================================================================
 ; print an error message and quit:
 ;
-; in:   A               error number (an index to the errmsg table)
+; in:   HL              error string addr
 ; out:  -               program terminates!
 ;===============================================================================
-        add     A,      A               ; double index number for table lookup
-        ld      C,      A               ; load into BC
-        ld      B,      0               ;  for 16-bit add
+        call    osPrintNewline          ; print two newlines and a leading
+        call    osPrintNewline          ;  "ERROR:" string
+        ld      DE,     @err            ; ...
+        call    osPrintStrZ             ; ...
 
-        call    osPrintNewline
-        call    osPrintNewline
-        ld      DE,     @err            ; print two newlines and a leading
-        call    osPrintStrZ             ;  "ERROR:" string (preserves BC)
-
-        ld      HL,     _errmsg         ; err msg lookup table
-        add     HL,     BC              ; offset into table
-        ld      E,      [HL]            ; get string addr lo-byte
-        inc     HL                      ; ...
-        ld      D,      [HL]            ; get string addr hi-byte
-
+        ex      DE,     HL              ; swap error string addr to DE
         call    osPrintStrZ             ; print passed error-string
         ld      A,      '!'             ; ("!" is shared between all error 
         call    osPrintChar             ;  messages. this saves 1 byte each

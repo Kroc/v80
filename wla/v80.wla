@@ -360,7 +360,7 @@ main:
 @addrh  .BYTE   ", HEAP @ ", 0
 @addrs  .BYTE   ", STACK @ ", 0
 
-        ; print a string and append "bytes":
+        ; print a string and number and append "bytes":
         ;-----------------------------------------------------------------------
 @size:  call    echoCommentStr          ; print string [DE] as comment
         call    printDecNumberSpc       ; print number with leading spaces
@@ -798,7 +798,7 @@ end_of_v80:                             ; where code ends before align padding
 
 ; buffers:
 ;===============================================================================
-.ALIGN $100                             ; align to page
+.ALIGN  $100                            ; align to page
 
 ;-------------------------------------------------------------------------------
 ; WARNING: ANYTHING PLACED AFTER HERE WILL BE OVERWRITTEN

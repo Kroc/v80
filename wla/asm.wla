@@ -1197,7 +1197,8 @@ parseInstruction:
         ; not a jump! we branch away after the add to get a free flag-check
         ;
         ; TODO: this requires bit 6 of the opcode-flags to always be zero
-        ;       otherwise the ADC can overflow, voiding this check
+        ;       otherwise the ADC can overflow, voiding this check. this
+        ;       would leave us only 5 unique bits for any CPU
         ;
         ;jp      m,      @opcode         ; if hi-bit set, emit opcode
 
