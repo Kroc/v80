@@ -230,7 +230,7 @@ _defer: ld      DE,     [defer]         ; read prev defer addr
         jr      nz,      -              ; if yes, skip another byte
 
         ;-----------------------------------------------------------------------
-+       ld      HL,     0               ; there is no `LD HL, SP` (!?), so
+        ld      HL,     0               ; there is no `LD HL, SP` (!?), so
         add     HL,     SP              ;  it's quicker to just add SP to 0!
         ld      SP,     [sp]            ; restore stack pointer!
 
@@ -697,7 +697,7 @@ evalExpr:
         ;       multiplier in A as we shift bits off DE and after 8-bits,
         ;       swap A to H and loop again, i.e. do two 8*8-bit multiplies
         ;
-@mul:   ld      HL,     0               ; HL is lower 16-bits of 32-bit result
+@mul:   ld      HL,     $0000           ; HL is lower 16-bits of 32-bit result
         ld      A,      16              ; number of bit shifts to do
 -       add     HL,     HL              ;
         rl      E                       ; shift DE up by 1 bit
@@ -712,7 +712,7 @@ evalExpr:
         ; did the multiplication overflow? 
         ld      A,      E               ; check the upper 16-bits of the
         or      D                       ;  32-bit result are all zero
-        jp      z,      errRangeOver    ; v80 is limited to 16-bits!
+        jp      nz,     errRangeOver    ; v80 is limited to 16-bits!
 
         ex      DE,     HL              ; return lower 16-bits in DE
         pop     HL                      ; restore token addr
