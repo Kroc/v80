@@ -85,6 +85,7 @@ ERROR: Invalid Number!
   although case does not matter
 - Binary numbers must begin with "%" and use 1-16 digits, "0" or "1"
 - Decimal numbers are limited to 0 through 65535 (i.e. $FFFF)
+- A non-whitespace character must follow a character literal (e.g. 'A)
 
 A space must follow a number in expressions to separate numbers
 from operators or parentheses, e.g.

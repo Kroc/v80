@@ -24,6 +24,20 @@ $	( $ + $0100 )			; parenthesis require internal spaces
 #dec	0
 #dec	65535
 
+; character literals take the character code of the character following the
+; sigil. if the source file is in ASCII, this will be an ASCII value even if
+; the host system does not use ASCII! (e.g. C64). use number literals when
+; you need to guarantee system-specific char codes like PETSCII. whitespace
+; cannot be used following the sigil, use number literals for those
+;
+#a	'a				; NOTE: the value of these
+#z	'z				;  is based on the file-encoding
+#A	'A				;  not the system running v80
+#Z	'Z				;
+#0	'0				;
+#9	'9				;
+#'	''				; (for apostrophe itself)
+
 ; labels can start with numbers and are
 ; limited to 31 chars, including the sigil
 ;
@@ -57,10 +71,6 @@ _2_3					; but you can fake it!
 		:nz	.w	$ffff
 
 ?=	$ffff
-
-; include file:
-;
-.i	"z80.v80"
 
 ; align
 .a	$80				; pad to 128 bytes, like CP/M

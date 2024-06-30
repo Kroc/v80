@@ -78,6 +78,21 @@ than 32768 is positive:
 |   .w  -32768              ; = $8000 %1000000000000000 or +32768
 |   .w  -32769              ; = $7FFF $0111111111111111 or +32767!
 
+Character literals produce the character code of the character following
+the sigil:
+
+|   .b  'a                  ; $61 in ASCII
+|   .b  'A                  ; $41 in ASCII
+|   .b  ''                  ; $27 in ASCII
+
+Whitespace cannot be used following the sigil,
+use number literals for those.
+
+NOTE:   the value of a character literal is based on the encoding of the input
+        file, NOT the encoding of the system, which might not be ASCII! (C64)
+        Use number literals when you need to guarantee system-specific
+        character codes like PETSCII
+
 1.2 Virtual Program-Counter:
 --------------------------------------------------------------------------------
 The virtual program-counter starts at $0000. A line that begins with a number

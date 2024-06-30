@@ -361,6 +361,13 @@ parseExpr:
         jr      @val                    ;  bytecode to save a few bytes
 
         ;=======================================================================
+        ; constant:
+        ;-----------------------------------------------------------------------
+@const: call    getConst                ; try get the constant's value
+        jr      nz,     @num            ; (fast path for common case)
+        jp      errUndefConst           ; expression contains undefined const!
+
+        ;=======================================================================
         ; open parenthesis:
         ;-----------------------------------------------------------------------
 @paren: ex      DE,     HL              ; put token addr aside
@@ -385,7 +392,6 @@ parseExpr:
         ; operator preceeds a value
         ; ...
 
-        ;-----------------------------------------------------------------------
         ; unary operators:
         ;=======================================================================
         ; an expression must begin with either a value,
@@ -407,11 +413,12 @@ parseExpr:
         ;-----------------------------------------------------------------------
         cp      CHAR_OP_NEG             ; negate operator?
         jr      z,      @next           ; add unary operator and check again
-        ;-----------------------------------------------------------------------
+        
+        ; after unary operator(s), a value *must* follow
+        ; ...
+
         ; values:
         ;=======================================================================
-        ; after unary operator(s), a value *must* follow
-        ;
 @value: cp      CHAR_EXPR_IN            ; parenthesis?
         jr      z,      @paren          ; handle nested expression!
 
@@ -424,16 +431,28 @@ parseExpr:
 
         cp      CHAR_HEX                ; a hexadecimal literal?
         jr      z,      @hex            ; ...
+        cp      CHAR_CONST              ; a constant?
+        jr      z,      @const          ; ...
         cp      CHAR_BIN                ; a binary literal?
         jr      z,      @bin            ; ...
-        cp      CHAR_CONST              ; a constant?
-        jp      nz,     errUnexpEOL     ; no? expression has no value!!
+        cp      CHAR_CHAR               ; a character literal?
+        jp      nz,     errUnexpEOL     ; no? expression has no value!
+
+        ; fall through
+        ; ...
+
         ;-----------------------------------------------------------------------
-        ; constant:
+        ; character literal:
         ;-----------------------------------------------------------------------
-        call    getConst                ; try get the constant's value
-        jr      nz,     @num            ; (fast path for common case)
-        jp      errUndefConst           ; expression contains undefined const!
+        ; the character following the sigil determines the value,
+        ; although it must be non-whitespace
+        ;
+        call    readChar                ; get next char from input
+        cp      ASCII_SPC+1             ; is it non-visible? SPC, EOL, EOF
+        jp      c,      errInvalNum     ; error if sigil followed by whitespace
+        ld      C,      A               ; load character value into BC
+        ld      B,      0               ; ...
+        jr      @num                    ; add to expr bytecode
 
         ;-----------------------------------------------------------------------
         ; char is "0" or above:
@@ -477,7 +496,6 @@ parseExpr:
         ; an operator can follow a value
         ; ...
 
-        ;-----------------------------------------------------------------------
         ; operators:
         ;=======================================================================
         ; a value has been added, check for the presence of an operator:
