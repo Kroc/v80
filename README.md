@@ -64,6 +64,12 @@ The basic principle is that _v80_ can only recognise a word by the first charact
     ;
     $   #base + $0100
 
+    ; other number types supported:
+    ;
+    #bin    %10000001       ; binary (1-16 digits)
+    #dec    65535           ; decimal
+    #chr    'A              ; character literals
+
     :label                  ; label define
 
     ; local labels are appended to the

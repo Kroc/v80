@@ -51,36 +51,37 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 
 ; memory map:
 ;
-;   +-----+------+------+-----+-------------------------------+---------+
-;   | v80 | word | expr | str | code->                 <-heap | <-stack |
-;   +-----+------+------+-----+-------------------------------+---------+
-;         | <-32   <-96   128 |                               |     256
+;         $xx80 $xx00
+;   +-----+-----+------+------+-------------------------------+---------+
+;   | v80 | str | word | expr | code->                 <-heap | <-stack |
+;   +-----+-----+------+------+-------------------------------+---------+
+;         | 128 | <-32   <-96 |                               |     256
 ;
 ;       v80:    the v80 assembler
+;       str:    forward buffer for reading strings, file-names
 ;       word:   a buffer for capturing words (symbol names); builds downwards
 ;       expr:   expressions are tokenised here; builds downwards
-;       str:    forward buffer for reading strings, file-names
 ;       code:   source code is assembled here
 ;       heap:   symbols and other in-flight data goes here; builds downwards
 ;       stack:  usual Z80 stack; builds downwards
 ;
 .DEF    WORD_LEN        31              ; maximum symbol name length
 
+; the string buffer is used to capture forwards strings
+; e.g. file-names used in include keywords
+;
+str             = buffers               ; e.g. $2080...$20FF (128 bytes)
+
 ; the word buffer is used to capture symbol names. it works backwards with
 ; the top-most byte being the word-length. it must start at a page boundary
 ; because the lo-byte addr is assumed to be $00...$1F for optimisation
 ;
-word            = buffers + WORD_LEN    ; e.g. $1000...$101F (32 bytes)
+word            = str + 128 + WORD_LEN  ; e.g. $2100...$211F (32 bytes)
 
 ; calculations are compiled into bytecode to allow for later evaluation,
 ; i.e. for deferred calculations where a symbol is not yet known
 ;
-expr            = buffers + 127         ; e.g. $1020...$107F (96 bytes)
-
-; the string buffer is used to capture forwards strings
-; e.g. file-names used in include keywords
-;
-str             = buffers + 128         ; e.g. $1080...$10FF (128 bytes)
+expr            = str + 128 + 127       ; e.g. $2120...$217F (96 bytes)
 
 ; the buffers begin after the end of the v80's code but are aligned to the next
 ; page so that their addresses fall within a page and cycles can be saved using
@@ -88,7 +89,7 @@ str             = buffers + 128         ; e.g. $1080...$10FF (128 bytes)
 ; written, begins after the buffers at a page bounadry. this is also
 ; necessary for CP/M which writes files in 128-byte sectors
 ;
-code            = buffers + 256         ; e.g. $1100
+code            = buffers + 256         ; e.g. $2180
 
 ;===============================================================================
 .INC    "err.wla"                       ; error messages
@@ -799,7 +800,7 @@ end_of_v80:                             ; where code ends before align padding
 
 ; buffers:
 ;===============================================================================
-.ALIGN  $100                            ; align to page
+.ALIGN  $0080                            ; align to half-page
 
 ;-------------------------------------------------------------------------------
 ; WARNING: ANYTHING PLACED AFTER HERE WILL BE OVERWRITTEN
