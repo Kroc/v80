@@ -18,12 +18,16 @@ If you feel like you could write a C version of _v80_, [your help](https://githu
 
 - No linker, we have linker at home → includes
 - No Macros! Copy + Paste is your friend or re-use includes
-- No decimal numbers. Let's face it, you think in hexadecimal anyway
-- $FFFF is the largest number in the universe
+- $FFFF/65'5355 is the largest number in the universe
 - No floating point numbers. Have you _tried_ coding floats on an 8-bit CPU??
 - No shift operators. Multiply/divide by powers of 2
 - No comparison operators -- we use the zero-flag here
 - No commas. Commas were a mistake
+
+Features added since v0:
+
+- Local labels! (`_`)
+- Decimal numbers!
 
 ## Syntax Sample:
 
@@ -139,10 +143,11 @@ _v80_ is assembled as a generic CP/M binary that should run on any Z80-based, CP
 
 ## Change History
 
-### 2024/6/28: v0.1.dev
+### 2024/6/30: v0.1.dev
 
+- Decimal numbers!
 - Local labels (`_`)
-- Disk full error
+- Disk full error (CP/M)
 
 ### 2024/6/27: v0.0
 

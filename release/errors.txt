@@ -81,11 +81,12 @@ Supported keywords are .b (bytes), .w (words), .i (include) and .a (align)
 --------------------------------------------------------------------------------
 ERROR: Invalid Number!
 --------------------------------------------------------------------------------
-Hexadecimal numbers must begin with "$" and use 1-4 digits 0-9, A-F, although
-case does not matter. Binary numbers must begin with "%" and use 1-16 digits,
-0 or 1.
+- Hexadecimal numbers must begin with "$" and use 1-4 digits 0-9, A-F,
+  although case does not matter
+- Binary numbers must begin with "%" and use 1-16 digits, "0" or "1"
+- Decimal numbers are limited to 0 through 65535 (i.e. $FFFF)
 
-A space must follow a number number in expressions to separate numbers
+A space must follow a number in expressions to separate numbers
 from operators or parentheses, e.g.
 
     .w  $0100+:boot         ; wrong: "$0100+:boot" is treated as one number
@@ -125,8 +126,8 @@ so both together musn't exceeed 31 chars in total:
 --------------------------------------------------------------------------------
 ERROR: Disk full!
 --------------------------------------------------------------------------------
-This error should only be possible on real (or emulated) 8-bit hardware, as it
-is caused by CP/M reporting that the disk is full when trying to write the
+This error should only be possible on real (or emulated) 8-bit hardware, as
+it is caused by CP/M reporting that the disk is full when trying to write the
 output file. This could occur on PC if the directory is read-only or otherwise
 protected by permissions that prevent ntvcm.exe from writing there.
 

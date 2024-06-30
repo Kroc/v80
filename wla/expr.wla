@@ -316,11 +316,17 @@ parseExpr:
 @nest   .BYTE   $00                     ; parenthesis nested depth counter
 
         ;=======================================================================
-        ; label?
+        ; label:
         ;-----------------------------------------------------------------------
+@label: cp      CHAR_LABEL              ; a label?
+        jr      z,      +               ; ...
+        cp      CHAR_LOCAL              ; or local label?
+        jp      nz,     errUnexpEOL     ; no? expression has no value!!
+        ;-----------------------------------------------------------------------
+
         ; swap our current position within the token space with the
         ; heap position preserved at the beginning of the routine!
-@label: ex      [SP],   HL
++       ex      [SP],   HL
 
         ; this routine does most of the work for us by reading the label's name
         ; from input, searching for it, and if it doesn't exist automatically
@@ -334,7 +340,7 @@ parseExpr:
 
         ; if the label exists and isn't a forward-reference,
         ; its value is in BC to go into the expr bytecode
-        jr      nc,     @num
+        jr      nc,      @num
 
         ; this label has not been seen before but because it's in an expression
         ; this is a forward-reference -- a placeholder for the label has been
@@ -343,20 +349,16 @@ parseExpr:
         ; the label value, the address of the label's flag-byte on the heap
         ; is tokenised
         ;
-        ; NOTE: it is very important to be aware that in the case of carry-set,
-        ;       getLabel has returned the addr of the label's flag byte in DE
-        ;
-+       ld      [HL],   CHAR_LABEL      ; push the label token
-        dec     HL                      ; move to next token space
-        ld      [HL],   D               ; push the label value addr hi-byte
-        dec     HL                      ; move to next token space
-        ld      [HL],   E               ; push the label value addr lo-byte
-        dec     HL                      ; move to next token space
-
         ld      A,      %10000000       ; set the deferred flag -- this will be
         ld      [@flag],A               ;  checked at the end of the expression
 
-        jr      @op                     ; an operator can follow a label
+        ; NOTE: it is very important to be aware that in the case of carry-set,
+        ;       getLabel has returned the addr of the label's flag byte in DE
+        ;
+        ld      [HL],   CHAR_LABEL      ; push the label token
+        ld      B,      D               ; copy label addr to BC and jump to
+        ld      C,      E               ;  where tokens are added to the expr
+        jr      @val                    ;  bytecode to save a few bytes
 
         ;=======================================================================
         ; open parenthesis:
@@ -413,32 +415,46 @@ parseExpr:
 @value: cp      CHAR_EXPR_IN            ; parenthesis?
         jr      z,      @paren          ; handle nested expression!
 
-        cp      CHAR_HEX                ; hexadecimal sigil?
+        ; PRO-TIP: check for decimal digits first! the result of the comparison
+        ; automatically excludes certain ASCII ranges. in our case, "#", "$"
+        ; and "%" are all below "0", where as ":" & "_" are above!
+        ;
+        cp      '0'                     ; decimal digit "0" or above?
+        jr      nc,     +               ; ...
+
+        cp      CHAR_HEX                ; a hexadecimal literal?
         jr      z,      @hex            ; ...
-        cp      CHAR_BIN                ; binary literal?
+        cp      CHAR_BIN                ; a binary literal?
         jr      z,      @bin            ; ...
-        cp      CHAR_LABEL              ; a label?
-        jr      z,      @label          ; ...
-        cp      CHAR_LOCAL              ; or local label?
-        jr      z,      @label          ; ...
         cp      CHAR_CONST              ; a constant?
         jp      nz,     errUnexpEOL     ; no? expression has no value!!
-
-        ; fall through to const-handling
-        ; ...
-
         ;-----------------------------------------------------------------------
         ; constant:
         ;-----------------------------------------------------------------------
-@const: call    getConst                ; try get the constant's value
-        jp      z,      errUndefConst   ; expression contains undefined const!
+        call    getConst                ; try get the constant's value
+        jr      nz,     @num            ; (fast path for common case)
+        jp      errUndefConst           ; expression contains undefined const!
+
+        ;-----------------------------------------------------------------------
+        ; char is "0" or above:
+        ;
++       cp      '9'+1                   ; is decimal "0"-"9"?
+        jr      nc,     @label          ; if not, only labels remain!
+
+        ; fall through
+        ; ...
+
+        ;-----------------------------------------------------------------------
+        ; decimal literal:
+        ;-----------------------------------------------------------------------
+@dec:   call    parseDecNumber          ; parse decimal number into BC
         ;-----------------------------------------------------------------------
         ; binary literal:
         ;-----------------------------------------------------------------------
         ; (micro-optimisation: the zero-flag conditional here is to allow the
         ;  fall through from above to skip this instruction -- parseBinNumber
         ;  is guaranteed to return zero-flag clear, also falling through the
-        ;  next instruction for hexadecimal literals!)
+        ;  next instruction!)
         ;
 @bin:   call    z,      parseBinNumber  ; parse the binary number into BC
         ;-----------------------------------------------------------------------
@@ -452,7 +468,7 @@ parseExpr:
         ; push a number literal token:
         ;-----------------------------------------------------------------------
 @num:   ld      [HL],   CHAR_HEX        ; push a number token
-        dec     HL                      ; move to next token space
+@val:   dec     HL                      ; move to next token space
         ld      [HL],   B               ; push the number hi-byte
         dec     HL                      ; move to next token space
         ld      [HL],   C               ; push the number lo-byte
@@ -477,13 +493,13 @@ parseExpr:
         jr      z,      @next           ; push token to heap, find next operand
         cp      CHAR_OP_SUB             ; subtract operator?
         jr      z,      @next           ; ...
-        cp      CHAR_OP_MUL             ; multiply operator?
-        jr      z,      @next           ; ...
         cp      CHAR_OP_AND             ; and operator?
         jr      z,      @next           ; ...
         cp      CHAR_OP_OR              ; or operator?
         jr      z,      @next           ; ...
         cp      CHAR_OP_XOR             ; xor operator?
+        jr      z,      @next           ; ...
+        cp      CHAR_OP_MUL             ; multiply operator?
         jr      z,      @next           ; ...
         cp      CHAR_OP_MOD             ; modulo operator?
         jr      z,      @next           ; ...
@@ -1038,10 +1054,8 @@ parseBinNumber:
         ld      B,      17              ; following char must be whitespace!
         ;-----------------------------------------------------------------------
 -       call    readChar                ; read char from input
-        cp      ASCII_SPC+1             ; ASCII space or below? (inc. EOL/EOF)
-        jr      c,      +               ; stop when reaching whitespace
         sub     '0'                     ; rebase to 0 for digits "0" and above
-        jr      c,       @err           ; error if ASCII code was < "0" ($30)
+        jr      c,       +              ; check chars < "0" for end-of-number
         sub     2                       ; eliminate digits above 1
         jr      nc,      @err           ; error if ASCII code was > "1"
         add     1                       ; cause a carry only for "1" digit
@@ -1053,12 +1067,63 @@ parseBinNumber:
         ; that isn't whitespace -- too many binary digits!
 @err:   jp              errInvalNum
 
-+       ld      B,      D               ; copy value to BC
+        ; note that on return zero-flag will be clear because the ADD to check
+        ; for correct end-of-number character considers zero an error; we use
+        ; this for an optimisation in the expression parser
+        ;
++       add     ('0' - ASCII_SPC - 1)   ; adjust again so <= SPC is negative
+        jr      c,      @err            ; error on invalid digit
+        ld      B,      D               ; copy value to BC
         ld      C,      E               ;  for return
+        ret
 
-        ; note that zero-flag will be clear because CP ASCII_SPC+1 does not
-        ; exit the loop on equal but rather on carry. we use this for an
-        ; optimisation in the expression parser
+
+parseDecNumber:
+;===============================================================================
+; parse an ASCII decimal number and returns the value:
+;
+; out:  BC              the value, 0 padded for numbers < 256
+;       [char]          the last character read will always be some kind
+;                       of whitespace -- space, newline or end-of-file
+;       HL              (preserved)
+;       A, DE           (clobbered)
+;       -               halts with error if a digit is non-decimal,
+;                       or the number exceeds 16-bits (65'535)
+;-------------------------------------------------------------------------------
+        ; adapted from "string_to_uint16.z80" from:
+        ; <github.com/Zeda/Z80-Optimized-Routines>
+        ;
+        ex      DE,     HL              ; put incoming HL aside
+        ld      HL,     0               ; initialise working value
+        jr      +                       ; jump into loop as 1st char known
+        ;-----------------------------------------------------------------------
+-       call    readChar                ; get digit from input
++       sub     '0'                     ; re-base "0" to 0
+        jr      c,      +               ; if < "0", check for end-of-number
+        cp      10                      ; check if >9
+        jr      nc,     +               ; if > "9", check for end-of-number
+        ld      B,      H               ; take a copy of current value
+        ld      C,      L               ;  as part of multiplying by 10
+        add     HL,     HL              ; multiply by 2
+        add     HL,     HL              ; multiply by 4
+        add     HL,     BC              ; add 1x, effectively multiply by 5
+        add     HL,     HL              ; double again, effectively x10
+        add     A,      L               ; add the single digit
+        ld      L,      A               ; ...
+        jr      nc,     -               ; overflow lo-byte?
+        inc     H                       ; ripple carry to hi-byte
+        jr      nz,     -               ; keep looping if <=65'535
+        ;-----------------------------------------------------------------------
+@err:   jp      errInvalNum             ; err if >65'535 or invalid digit
+
+        ; the loop exits here on any any non-decimal digit; check if the digit
+        ; is a valid end-of-number separator such as space, end-of-line|file
+        ;
++       add     ('0' - ASCII_SPC - 1)   ; adjust again so <= SPC is negative
+        jr      c,      @err            ; error on invalid digit
+        ld      B,      H               ; copy result from HL
+        ld      C,      L               ; ... to BC
+        ex      DE,     HL              ; restore caller's HL
         ret
 
 .ENDB
