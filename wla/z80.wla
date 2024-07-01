@@ -851,7 +851,7 @@ opcodes:
         .DATA   'e', (@in_e-CADDR)-1
         .DATA   'h', (@in_h-CADDR)-1
         .BYTE   'l'|AND
-        .DATA   ''', (@@_-CADDR)-1              ; s
+        .DATA   ''', (@@_-CADDR)-1              ; in.hl'_
 @@_     .BYTE   '*'|AND
         .BYTE   'c', $68,               OP_ED   ; in.l*c        | ED 68
         .BYTE   ERR

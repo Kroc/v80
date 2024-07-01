@@ -423,9 +423,11 @@ main:
         call    @popw                   ; if the expr errors during evaluation
         ld      [file], BC              ;  return the file, line and column
         call    @popw                   ;  numbers of the deferred expr
-        ld      [erow], BC              ; ...
+        ld      [wrow], BC              ; ...
         call    @popw                   ; ..
         ld      [param_ecol],   BC      ; .
+        ld      A,      B               ; column number needs copying
+        ld      [wcol], A               ;  to current start-of-word
 
         dec     HL                      ; lastly, the expr bytecode
         call    evalExpr                ; evaluate! returns result in DE
