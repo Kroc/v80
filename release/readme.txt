@@ -210,7 +210,7 @@ An expression can be described as:
 With a "value" being any word that evaluates to a number;
 i.e. number literals, labels, or constants.
 
-1.7 Operators:
+1.7 Expressions:
 --------------------------------------------------------------------------------
 THERE IS NO OPERATOR PRECEDENCE!
 
@@ -267,6 +267,14 @@ byte:
 
 |   .b  -$1                 ; ERROR! number too large for byte
 |   .b  <-$1                ; use lo-byte operator to get lower byte only
+
+Square brackets can be used in place of parentheses if desired; this option
+is specifically provided to indicate memory references in instructions,
+if desired, e.g.:
+
+|   ld.HL   :addr           ; = LD HL, addr
+|   ld.HL*  [ :addr ]       ; = LD HL, [addr]
+|   ld*$.HL [ :addr ]       ; = LD [addr], HL
 
 1.8 Strings:
 --------------------------------------------------------------------------------
@@ -382,7 +390,7 @@ languages -- try repeating the conditional with a reverse condition:
 |       ; "false" branch
 
 
-2. Instructions:
+2. CPU Instructions:
 ================================================================================
 v80 does not use standard Intel (8080) or Zilog (Z80) instruction syntax.
 v80's syntax was chosen to be as easy and as fast as possible to parse,

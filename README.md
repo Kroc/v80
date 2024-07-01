@@ -149,6 +149,17 @@ _v80_ is assembled as a generic CP/M binary that should run on any Z80-based, CP
 
 ## Change History
 
+### 2024/7/1: v0.1.2
+
+- Square brackets allowed as alternatives to parenthesis
+
+Many fixes realised whilst working on v80 assembling itself:
+
+- Expression parsing was sometimes returning carry-set if not deferred
+- Multiplication was straight-up broken!
+- Decimals not being recognised in `.b` / `.w` lists
+- 2nd pass not reporting the correct line/col number for errors
+
 ### 2024/6/30: v0.1.1
 
 - Fixed defining labels after setting program-counter with expression not working as intended and an issue with closing parenthesis
