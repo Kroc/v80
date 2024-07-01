@@ -621,14 +621,14 @@ evalExpr:
         ld      D,      B               ; should there be no operator
         ld      E,      C               ;  value will be returned in DE
 
-        ld      A,      [HL]            ; read token type
+-       ld      A,      [HL]            ; read token type
         and     A                       ; (set CPU flags!)
         ret     z                       ; end on expr terminator
         dec     HL                      ; move to next token space
         cp      CHAR_EXPR_OUT1          ; close parenthesis?
         ret     z                       ; also end of current expr
-        cp      CHAR_EXPR_OUT2          ; (also our square cousin)
-        ret     z                       ; ...
+        cp      CHAR_EXPR_OUT2          ; (and our square cousin?)
+        ret     z                       ; same
 
         ; an operator follows:
         ;-----------------------------------------------------------------------
@@ -640,25 +640,35 @@ evalExpr:
         ; will be preserved throughout
         ;
         call    evalValue               ; get right-hand operand in BC
-
         pop     AF                      ; restore chosen operator
-        ex      DE,     HL              ; put token-addr aside in DE
-        pop     HL                      ; restore left-hand operand to HL
+        pop     DE                      ; restore left-hand operand to DE
 
-        cp      CHAR_OP_ADD             ; add operator?
-        jr      z,      @add            ; ...
-        cp      CHAR_OP_SUB             ; subtract operator?
-        jr      z,      @sub            ; ...
+        call    @op                     ; apply operator to values
 
-        cp      CHAR_OP_AND             ; bitwise AND operator?
+        jr      -                       ; check for next operator in chain...
+
+        ;=======================================================================
+        ; apply an operator:
+        ;-----------------------------------------------------------------------
+        ; (these operators do not need to use HL)
+        ;
+@op:    cp      CHAR_OP_AND             ; bitwise AND operator?
         jr      z,      @and            ; ...
         cp      CHAR_OP_OR              ; bitwise OR operator?
         jr      z,      @or             ; ...
         cp      CHAR_OP_XOR             ; bitwise XOR operator?
         jr      z,      @xor            ; ...
 
+        ; the +/- operators require HL:
+        ;
+        ex      DE,     HL              ; swap operand to HL, token-addr to DE
+        cp      CHAR_OP_ADD             ; add operator?
+        jr      z,      @add            ; ...
+        cp      CHAR_OP_SUB             ; subtract operator?
+        jr      z,      @sub            ; ...
+        
         ; the multiply / divide / modulo
-        ; operators use a lot of registers
+        ; operators use all registers:
         ;
         push    DE                      ; preserve token addr
         ex      DE,     HL              ; swap left-hand operand to DE
@@ -712,16 +722,18 @@ evalExpr:
         ; did the multiplication overflow? 
         ld      A,      E               ; check the upper 16-bits of the
         or      D                       ;  32-bit result are all zero
-        jp      nz,     errRangeOver    ; v80 is limited to 16-bits!
+        jr      nz,     @err            ; v80 is limited to 16-bits!
 
         ex      DE,     HL              ; return lower 16-bits in DE
         pop     HL                      ; restore token addr
         ret
+
+@err:   jp      errRangeOver            ; v80 is limited to 16-bits!
         ;-----------------------------------------------------------------------
         ; add operator:
         ;-----------------------------------------------------------------------
 @add:   add     HL,     BC              ; add value to total
-        jp      c,      errRangeOver    ; error if we go above 16-bits!
+        jr      c,      @err            ; error if we go above 16-bits!
         ex      DE,     HL              ; return value in DE, token-addr in HL
         ret
         ;-----------------------------------------------------------------------
@@ -735,32 +747,32 @@ evalExpr:
         ;-----------------------------------------------------------------------
         ; bitwise AND operator:
         ;-----------------------------------------------------------------------
-@and:   ld      A,      H               ; bitwise AND hi-bytes together
+@and:   ld      A,      D               ; bitwise AND hi-bytes together
         and     A,      B               ; ...
-        ld      D,      A               ; ..
-        ld      A,      L               ; bitwise AND lo-bytes together
+        ld      D,      A               ; ...
+        ld      A,      E               ; bitwise AND lo-bytes together
         and     A,      C               ; ...
-        ld      E,      A               ; but return result in DE
+        ld      E,      A               ; ...
         ret
         ;-----------------------------------------------------------------------
         ; bitwise OR operator:
         ;-----------------------------------------------------------------------
-@or:    ld      A,      H               ; bitwise OR hi-bytes together
+@or:    ld      A,      D               ; bitwise OR hi-bytes together
         or      A,      B               ; ...
-        ld      D,      A               ; ..
-        ld      A,      L               ; bitwise OR lo-bytes together
+        ld      D,      A               ; ...
+        ld      A,      E               ; bitwise OR lo-bytes together
         or      A,      C               ; ...
-        ld      E,      A               ; but return result in DE
+        ld      E,      A               ; ...
         ret
         ;-----------------------------------------------------------------------
         ; bitwise XOR operator:
         ;-----------------------------------------------------------------------
-@xor:   ld      A,      H               ; bitwise XOR hi-bytes together
+@xor:   ld      A,      D               ; bitwise XOR hi-bytes together
         xor     A,      B               ; ...
-        ld      D,      A               ; ..
-        ld      A,      L               ; bitwise XOR lo-bytes together
+        ld      D,      A               ; ...
+        ld      A,      E               ; bitwise XOR lo-bytes together
         xor     A,      C               ; ...
-        ld      E,      A               ; but return result in DE
+        ld      E,      A               ; ...
         ret
 
         ; divide routine used from here:
@@ -782,21 +794,6 @@ _doDiv: ld      A,      16              ; number of bit-shifts to do
         jr      c,     --
         inc     E
         jr      -
-
-;_doDivDE:
-;        ; BC / DE = AC % HL, DE=DE
-;        ld      HL,     0
-;        ld      A,      B
-;        ld      B,      16
-;-       sll     C
-;        rla
-;        adc     HL,     HL
-;        sbc     HL,     DE
-;        jr      nc,     +
-;        add     HL,     DE
-;        dec     c
-;        djnz    -
-;+       ret
 
 
 evalValue:
@@ -834,12 +831,7 @@ evalValue:
         ; recurse, fetching the value that follows --
         ; this allows for multiple unary operators per value
         ;
-        ; a minor optimisation hinges on the very fact that THIS routine
-        ; returns its value in BC but evalExpr returns in DE; we do the
-        ; copy from DE to BC at the same time as doing the unary operators
-        ;
-        call    evalValue               ; WARN: returns value in DE!
-
+        call    evalValue               ; (returns value in BC)
         pop     AF                      ; restore the unary operator
         cp      CHAR_OP_LO              ; lo-byte unary operator?
         jr      z,      @lo             ; ...
@@ -852,23 +844,22 @@ evalValue:
 
         ; NOT unary operator:
         ;-----------------------------------------------------------------------
-@not:   ld      A,      D               ; invert bits in D
+@not:   ld      A,      B               ; invert bits in B
         cpl                             ; ...
-        ld      B,      A               ; but return in B
-        ld      A,      E               ; invert bits in E
+        ld      B,      A               ; ...
+        ld      A,      C               ; invert bits in C
         cpl                             ; ...
-        ld      C,      A               ; but return in C
+        ld      C,      A               ; ...
         ret
         ;-----------------------------------------------------------------------
         ; LO-byte unary operator:
         ;-----------------------------------------------------------------------
 @lo:    ld      B,      0               ; clear the hi-byte
-        ld      C,      E               ; return BC instead of DE
-        ret
+        ret                             ;  and pass C through as-is
         ;-----------------------------------------------------------------------
         ; HI-byte unary operator:
         ;-----------------------------------------------------------------------
-@hi:    ld      C,      D               ; copy the hi-byte into the lo-byte
+@hi:    ld      C,      B               ; copy the hi-byte into the lo-byte
         ld      B,      0               ;  and clear the hi-byte
         ret
         ;-----------------------------------------------------------------------
@@ -879,11 +870,11 @@ evalValue:
         ; underflow (but not overflow) is allowed for this purpose
         ;
 @neg:   xor     A                       ; set A to zero and clear flags
-        sub     E                       ; do 0-E
-        ld      C,      A               ; but return in C
+        sub     C                       ; do 0-C
+        ld      C,      A               ;  and return in C
         sbc     A,      A               ; set A to 0 or -1 based on carry
-        sub     D                       ; do 0-D (+carry)
-        ld      B,      A               ; but return in B
+        sub     B                       ; do 0-B (+carry)
+        ld      B,      A               ;  and return in B
         ret                             ; WARN: carry may be set!
 
         ;=======================================================================
@@ -891,7 +882,7 @@ evalValue:
         ;-----------------------------------------------------------------------
 @paren: call    evalExpr                ; returns nested expr value in DE
         ld      B,      D               ; return result in BC
-        ld      C,      E               ;  as intended by evalValue
+        ld      C,      E               ;  as expected for evalValue
         ret
 
         ;=======================================================================

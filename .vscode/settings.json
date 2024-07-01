@@ -13,11 +13,12 @@
         "editor.tabSize": 8,
         "editor.insertSpaces": true
     },
-    "[asm]": {
-        "editor.tabSize": 8
-    },
     "[wla-dx-asm]": {
         "editor.tabSize": 8
+    },
+    "[v80]": {
+        "editor.tabSize": 8,
+        "editor.insertSpaces": true
     },
     "[markdown]": {
         "editor.tabSize": 4,

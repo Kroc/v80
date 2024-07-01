@@ -94,13 +94,6 @@ expr            = str + 128 + 127       ; e.g. $2120...$217F (96 bytes)
 code            = buffers + 256         ; e.g. $2180
 
 ;===============================================================================
-.INC    "err.wla"                       ; error messages
-.INC    "asm.wla"                       ; main parsing and assembling loop
-.INC    "expr.wla"                      ; expression parsing and evaluation
-.INC    "z80.wla"                       ; Z80 parser & opcode binary tree
-
-.BLOCK  "code"
-;===============================================================================
 ; heap:
 ;-------------------------------------------------------------------------------
 ; as assembly progresses, the dictionary of symbols and deferred expressions
@@ -168,6 +161,13 @@ crow:   .WORD   $0000                   ; last char read line-number
 wcol:   .BYTE   $00                     ; column number to report on err
 wrow:   .WORD   $0000                   ; line number to report on err
 
+;===============================================================================
+.INC    "err.wla"                       ; error messages
+.INC    "asm.wla"                       ; main parsing and assembling loop
+.INC    "expr.wla"                      ; expression parsing and evaluation
+.INC    "z80.wla"                       ; Z80 parser & opcode binary tree
+
+.BLOCK  "code"
 
 main:
 ;===============================================================================
@@ -804,10 +804,14 @@ end_of_v80:                             ; where code ends before align padding
 
 ; buffers:
 ;===============================================================================
+; to match CP/M's behaviour for build tests,
+; pad the binary to the next 128 byte boundary
+;
+.DSB    $80 - (end_of_v80 # $80), $00
+
 .ALIGN  $0080                            ; align to half-page
 
+buffers:
 ;-------------------------------------------------------------------------------
 ; WARNING: ANYTHING PLACED AFTER HERE WILL BE OVERWRITTEN
-
-buffers:
 ;///////////////////////////////////////////////////////////////////////////////

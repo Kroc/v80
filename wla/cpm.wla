@@ -172,6 +172,11 @@ osQuit:
         jp      BDOS                    ;  the stack, we can just reset
 
 
+_infile:                                ; command-line input file-name param
+        .BYTE   "            ", 0       ;
+_outfile:                               ; command-line output file-name param
+        .BYTE   "            ", 0       ;
+
 osParseParameters:
 ;===============================================================================
 ; parse the command-line parameters:
@@ -255,10 +260,6 @@ osParseParameters:
 
 @@str   .BYTE   "    V80 FILE.V80 [FILE.COM]", 0
 
-_infile:                                ; command-line input file-name param
-        .BYTE   "            ", 0       ;
-_outfile:                               ; command-line output file-name param
-        .BYTE   "            ", 0       ;
 
 _getParam:
 ;===============================================================================
