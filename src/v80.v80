@@ -52,16 +52,16 @@
 
 ; memory map:
 ;
-;         $xx80 $xx00
-;   +-----+-----+------+------+-------------------------------+---------+
-;   | v80 | str | word | expr | code->                 <-heap | <-stack |
-;   +-----+-----+------+------+-------------------------------+---------+
-;         | 128 | <-32   <-96 |                               |     256
+;         $xx00         $xx80
+;   +-----+------+------+-----+-------------------------------+---------+
+;   | v80 | word | expr | str | code->                 <-heap | <-stack |
+;   +-----+------+------+-----+-------------------------------+---------+
+;         | <-32   <-96 | 128 |                               |     256
 ;
 ;       v80:    the v80 assembler
-;       str:    forward buffer for reading strings, file-names
 ;       word:   a buffer for capturing words (symbol names); builds downwards
 ;       expr:   expressions are tokenised here; builds downwards
+;       str:    forward buffer for reading strings, file-names
 ;       code:   source code is assembled here
 ;       heap:   symbols and other in-flight data goes here; builds downwards
 ;       stack:  usual Z80 stack; builds downwards
@@ -266,9 +266,11 @@ _push   dec.HL                          ; decrement HL first to match the
         ; we calculate the stats above first becasue no more data will need
         ; to be written to the heap and we want to re-use HL for the 2nd pass
         ;
+        ; note that IX (virtual program-counter) & IY (code-segment addr)
+        ; will be changed to repeat each deferred expression
+        ;
         ld*$.IY [ _iy + 1 ]             ; save code-segment end-addr for output
-        ld.HL   :defer                  ; start of deferred expr chain
-        call    _expr                   ; re-evaluate deferred expressions
+        call    _defer                  ; re-evaluate deferred expressions
 
         ; how deep is your stack?
         ;-----------------------------------------------------------------------
@@ -310,7 +312,6 @@ _iy     ld.DE   $0000                   ; code-segment end addr patched in here
 
         ; print final stats:
         ;-----------------------------------------------------------------------
-        call    :osPrintNewline
         ld.DE   _strc                   ; string to print ("CODE")
 _code   ld.BC   $0000                   ; value to print (code size)
         call    _size                   ; ...
@@ -346,9 +347,11 @@ _size   call    :echoCommentStr         ; print string [DE] as comment
         ld.DE   _bytes                  ; append " bytes"
         jp      :osPrintLn              ;  and return
 
-_strc   .b      "CODE : " 0
-_strh   .b      "HEAP : " 0
-_strf   .b      "FREE : " 0
+_strd   .b      "DEFER: " 0
+_stre   .b      " exprs" 0
+_strc   .b      " CODE: " 0
+_strh   .b      " HEAP: " 0
+_strf   .b      " FREE: " 0
 _bytes  .b      " bytes" 0
 _strs   .b      "STACK: " 0
 _peak   .b      " free" 0
@@ -374,8 +377,20 @@ _peak   .b      " free" 0
         ;       len             length of expression bytecode
         ;       expr            expression bytecode
         ;
-        ; follow this link, but finish if it's $0000
+        ; print deferred expression count:
         ;
+_defer  call    :osPrintNewline
+        call    :echoCommentBar
+        ld.DE   _strd
+        call    :echoCommentStr
+        ld.BC*  [ :deferCount ]
+        call    :printDecNumberSpc
+        ld.DE   _stre
+        call    :osPrintLn
+
+        ld.HL   :defer                  ; start of deferred expr chain
+        ;-----------------------------------------------------------------------
+        ; follow the link, but finish if it's $0000
 _expr   ld.A*HL                         ; read next expr addr, lo-byte
         inc.HL                          ; move *up* to link addr hi-byte
         ld.H*HL                         ; read next expr addr, hi-byte
@@ -534,8 +549,19 @@ _bar    .b      #CHAR_COMMENT "------------------------------------" 0
 ;-------------------------------------------------------------------------------
         ld.A    #CHAR_COMMENT           ; print "; "
         call    :osPrintChar            ; ...
-        ld.A    #ASCII_SPC              ; ..
-        jp      :osPrintChar            ; .
+
+        ; fall through
+        ; ...
+
+:echoSpc
+;===============================================================================
+; echoes a singe space:
+;
+; out:  A               (clobbered)
+;       BC, DE, HL      (preserved)
+;-------------------------------------------------------------------------------
+        ld.A    #ASCII_SPC              ; this routine costs 17 cycles
+        jp      :osPrintChar            ;  but saves 2 bytes each time
 
 
 :printSymbolName
@@ -786,21 +812,21 @@ _digit  and     %00001111               ; isolate low-nybble
 :buffers
 ;///////////////////////////////////////////////////////////////////////////////
 
-; the string buffer is used to capture forwards strings
-; e.g. file-names used in include keywords
-;
-:str                                    ; e.g. $2080...$20FF (128 bytes)
-
 ; the word buffer is used to capture symbol names. it works backwards with
 ; the top-most byte being the word-length. it must start at a page boundary
 ; because the lo-byte addr is assumed to be $00...$1F for optimisation
 ;
-$ ( :str + 128 + #WORD_LEN )    :word   ; e.g. $2100...$211F (32 bytes)
+$ ( :buffers + #WORD_LEN )      :word   ; e.g. $2100...$211F (32 bytes)
 
 ; calculations are compiled into bytecode to allow for later evaluation,
 ; i.e. for deferred calculations where a symbol is not yet known
 ;
-$ ( :str + 128 + 127 )          :expr   ; e.g. $2120...$217F (96 bytes)
+$ ( :buffers + 127 )            :expr   ; e.g. $2120...$217F (96 bytes)
+
+; the string buffer is used to capture forwards strings
+; e.g. file-names used in include keywords
+;
+$ ( :buffers + 128 )            :str    ; e.g. $2180...$21FF (128 bytes)
 
 ; the buffers begin after the end of the v80's code but are aligned to the next
 ; page so that their addresses fall within a page and cycles can be saved using
@@ -808,4 +834,4 @@ $ ( :str + 128 + 127 )          :expr   ; e.g. $2120...$217F (96 bytes)
 ; written, begins after the buffers at a page bounadry. this is also
 ; necessary for CP/M which writes files in 128-byte sectors
 ;
-$ ( :str + 256 )                :code   ; e.g. $2180
+$ ( :buffers + 256 )            :code   ; e.g. $2200

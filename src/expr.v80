@@ -55,7 +55,7 @@
         ; and it'll be pushed to the heap for later evaluation
         ;
         call    :nextExpr               ; parse and evaluate expression
-        jr?c    :_defer                 ; defer to heap? (note early exit)
+        jr?c    :deferExpr              ; defer to heap? (note early exit)
 
         ; fall through
         ; ...
@@ -156,7 +156,7 @@ _rel    ex.DE.HL                        ; preserve heap-addr in DE
         ret
 
 
-; defer expression:
+:deferExpr
 ;===============================================================================
 ; when an expression contains a reference to a label not yet defined the space
 ; in the code-segment (byte or word) is reserved and the expr is pushed to the
@@ -177,9 +177,18 @@ _rel    ex.DE.HL                        ; preserve heap-addr in DE
 ;       len     length of expression bytecode
 ;       expr    expression bytecode
 ;
-; link this expression to the previous one:
+; in:   BC              length of expression bytecode; returned by nextExpr
+;                       when an forward-reference is encountered
+;       HL              current heap position
+;       [param]         the param size & rel-flag byte must be set
+;                       (e.g. parseParam above)
 ;
-:_defer ld.DE*  [ :defer ]              ; read prev defer addr
+; out:  HL              heap addr will be modified if expr is deferred
+;       A, BC, DE       (clobbered)
+;-------------------------------------------------------------------------------
+        ; link this expression to the previous one:
+        ;
+        ld.DE*  [ :defer ]              ; read prev defer addr
         dec.HL                          ; pre-decrement heap to empty byte
         ld*HL.D                         ; write prev defer addr hi-byte
         dec.HL                          ; (this is the heap addr we want)
@@ -241,10 +250,20 @@ _inc    inc.IY                          ; step over byte in code-segment
         ld.DE   :expr                   ; ...
         ex.DE.HL                        ; ...
         lddr                            ; copy BC bytes *from* [HL] *to* [DE]!
-        ex.DE.HL                        ; ...
-        inc.HL                          ; fix heap addr after copy
+        ex.DE.HL                        ; return heap to HL
+        inc.HL                          ; fix heap addr after LDDR copy
+
+        ; add one to the deferred expression counter:
+        ;
+        ld.DE*  [ :deferCount ]         ; (we're just going to assume
+        inc.DE                          ;  that you will keep this
+        ld*$.DE [ :deferCount ]         ;  under 65'535...)
 
         jp      :checkHeapSize          ; check for heap overflow
+
+:deferCount
+        ;-----------------------------------------------------------------------
+        .w      $0000                   ; number of deferred expressions
 
 
 :nextExpr

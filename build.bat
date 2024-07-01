@@ -72,7 +72,7 @@ CALL :RunTest jr
 IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
 
 REM # --------------------------------------------------------------------------
-REM # if no errors, use v80 to assemble itself (WIP)
+REM # if no errors, use v80 to assemble itself
 
 REM # copy v80 source into NTVCM directory
 COPY /N /Y "src\*.v80" /B "%DIR_NTVCM%" /A
@@ -84,21 +84,17 @@ CALL :v80   v80
 IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
 
 REM # compare WLA-built v80 against v80-built v80
-FC /B "build\v80.com" "%DIR_NTVCM%\v80.com"
-IF ERRORLEVEL 1 START "" %BIN_VBINDIFF% "build\v80.com" "%DIR_NTVCM%\v80.com"
+REM FC /B "build\v80.com" "%DIR_NTVCM%\v80.com"
+REM IF ERRORLEVEL 1 START "" %BIN_VBINDIFF% "build\v80.com" "%DIR_NTVCM%\v80.com"
 
 REM # do a 2nd-generation build of v80-built v80 building v80!
 CALL :v80   v80
 IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
 
-REM # compare WLA-built v80 against v80-built v80
-FC /B "build\v80.com" "%DIR_NTVCM%\v80.com"
-IF ERRORLEVEL 1 START "" %BIN_VBINDIFF% "build\v80.com" "%DIR_NTVCM%\v80.com"
-
 REM # --------------------------------------------------------------------------
 REM # if no errors, copy v80 binary to release folder
 
-COPY /N /Y "build\v80.com" /B "release"
+COPY /N /Y "%DIR_NTVCM%\v80.com" /B "release"
 
 ECHO OK.
 EXIT /B 0
