@@ -53,37 +53,37 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 
 ; memory map:
 ;
-;         $xx80 $xx00
-;   +-----+-----+------+------+-------------------------------+---------+
-;   | v80 | str | word | expr | code->                 <-heap | <-stack |
-;   +-----+-----+------+------+-------------------------------+---------+
-;         | 128 | <-32   <-96 |                               |     256
+;         $xx00         $xx80
+;   +-----+------+------+-----+-------------------------------+---------+
+;   | v80 | word | expr | str | code->                 <-heap | <-stack |
+;   +-----+------+------+-----+-------------------------------+---------+
+;         | <-32   <-96 | 128 |                               |     256
 ;
 ;       v80:    the v80 assembler
-;       str:    forward buffer for reading strings, file-names
 ;       word:   a buffer for capturing words (symbol names); builds downwards
 ;       expr:   expressions are tokenised here; builds downwards
+;       str:    forward buffer for reading strings, file-names
 ;       code:   source code is assembled here
 ;       heap:   symbols and other in-flight data goes here; builds downwards
 ;       stack:  usual Z80 stack; builds downwards
 ;
 .DEF    WORD_LEN        31              ; maximum symbol name length
 
-; the string buffer is used to capture forwards strings
-; e.g. file-names used in include keywords
-;
-str             = buffers               ; e.g. $2080...$20FF (128 bytes)
-
 ; the word buffer is used to capture symbol names. it works backwards with
 ; the top-most byte being the word-length. it must start at a page boundary
 ; because the lo-byte addr is assumed to be $00...$1F for optimisation
 ;
-word            = str + 128 + WORD_LEN  ; e.g. $2100...$211F (32 bytes)
+word            = buffers + WORD_LEN    ; e.g. $2100...$211F (32 bytes)
 
 ; calculations are compiled into bytecode to allow for later evaluation,
 ; i.e. for deferred calculations where a symbol is not yet known
 ;
-expr            = str + 128 + 127       ; e.g. $2120...$217F (96 bytes)
+expr            = buffers + 127         ; e.g. $2120...$217F (96 bytes)
+
+; the string buffer is used to capture forwards strings
+; e.g. file-names used in include keywords
+;
+str             = buffers + 128         ; e.g. $2180...$21FF (128 bytes)
 
 ; the buffers begin after the end of the v80's code but are aligned to the next
 ; page so that their addresses fall within a page and cycles can be saved using
@@ -91,7 +91,7 @@ expr            = str + 128 + 127       ; e.g. $2120...$217F (96 bytes)
 ; written, begins after the buffers at a page bounadry. this is also
 ; necessary for CP/M which writes files in 128-byte sectors
 ;
-code            = buffers + 256         ; e.g. $2180
+code            = buffers + 256         ; e.g. $2200
 
 ;===============================================================================
 ; heap:
@@ -284,17 +284,6 @@ main:
         sbc     HL,     DE              ; calculate end-start difference
         ld      [@code+1],      HL      ; save value for printing later
 
-        ; 2nd pass!
-        ;-----------------------------------------------------------------------
-        ; (actually more like 1.5 because we aren't reading the code again)
-        ;
-        ; we calculate the stats above first becasue no more data will need
-        ; to be written to the heap and we want to re-use HL for the 2nd pass
-        ;
-        ld      [@iy+1],IY              ; save code-segment end-addr for output
-        ld      HL,     defer           ; start of deferred expr chain
-        call    @expr                   ; re-evaluate deferred expressions
-
         ; how deep is your stack?
         ;-----------------------------------------------------------------------
         ; since counting towards zero is faster on Z80 we start at the top and
@@ -303,7 +292,7 @@ main:
         ; WARN: this code assumes that stack is at its top (e.g. $FD00),
         ;       because this code is in the top-most main routine
         ; 
-@end:   ld      HL,     0               ; load HL with the stack pointer
+        ld      HL,     0               ; load HL with the stack pointer
         add     HL,     SP              ; (oddly, there's no `ld HL, SP`!)
         ld      BC,     256/2           ; begin at the top, report remaining
         ;-----------------------------------------------------------------------
@@ -324,6 +313,19 @@ main:
         jp      z,      errRangeStack   ; if 0, stack overflow!
         ld      [@stack+1],     A       ; save value for printing later
 
+        ; 2nd pass!
+        ;-----------------------------------------------------------------------
+        ; (actually more like 1.5 because we aren't reading the code again)
+        ;
+        ; we calculate the stats above first becasue no more data will need
+        ; to be written to the heap and we want to re-use HL for the 2nd pass
+        ;
+        ; note that IX (virtual program-counter) & IY (code-segment addr)
+        ; will be changed to repeat each deferred expression
+        ;
+        ld      [@iy+1],IY              ; save code-segment end-addr for output
+        call    @defer                  ; re-evaluate deferred expressions
+
         ; output file:
         ;=======================================================================
         ; the output file-name is already known to the OS which read it
@@ -335,7 +337,6 @@ main:
 
         ; print final stats:
         ;-----------------------------------------------------------------------
-        call    osPrintNewline
         ld      DE,     @strc           ; string to print ("CODE")
 @code   ld      BC,     $0000           ; value to print (code size)
         call    @size                   ; ...
@@ -371,9 +372,9 @@ main:
         ld      DE,     @bytes          ; append " bytes"
         jp      osPrintLn               ;  and return
 
-@strc   .BYTE   "CODE : ", 0
-@strh   .BYTE   "HEAP : ", 0
-@strf   .BYTE   "FREE : ", 0
+@strc   .BYTE   " CODE: ", 0
+@strh   .BYTE   " HEAP: ", 0
+@strf   .BYTE   " FREE: ", 0
 @bytes  .BYTE   " bytes", 0
 @strs   .BYTE   "STACK: ", 0
 @peak   .BYTE   " free", 0
@@ -399,7 +400,20 @@ main:
         ;       len             length of expression bytecode
         ;       expr            expression bytecode
         ;
-        ; follow this link, but finish if it's $0000
+        ; print deferred expression count:
+        ;
+@defer: call    osPrintNewline
+        call    echoCommentBar
+        ld      DE,     @strd
+        call    echoCommentStr
+        ld      BC,     [deferCount]
+        call    printDecNumberSpc
+        ld      DE,     @stre
+        call    osPrintLn
+
+        ld      HL,     defer           ; start of deferred expr chain
+        ;-----------------------------------------------------------------------
+        ; follow the link, but finish if it's $0000
         ;
 @expr:  ld      A,      [HL]            ; read next expr addr, lo-byte
         inc     HL                      ; move *up* to link addr hi-byte
@@ -444,6 +458,10 @@ main:
 
         pop     HL                      ; snap back to the defer record
         jr      @expr                   ;  link-field to follow the chain
+
+        ;-----------------------------------------------------------------------
+@strd   .BYTE   "DEFER: ", 0
+@stre   .BYTE   " exprs", 0
 
         ;=======================================================================
 @popw:  dec     HL                      ; pop a word off the heap into BC
@@ -559,8 +577,19 @@ echoCommentMarker:
 ;-------------------------------------------------------------------------------
         ld      A,      CHAR_COMMENT    ; print "; "
         call    osPrintChar             ; ...
-        ld      A,      ASCII_SPC       ; ..
-        jp      osPrintChar             ; .
+
+        ; fall through
+        ; ...
+
+echoSpc:
+;===============================================================================
+; echoes a singe space:
+;
+; out:  A               (clobbered)
+;       BC, DE, HL      (preserved)
+;-------------------------------------------------------------------------------
+        ld      A,      ASCII_SPC       ; this routine costs 17 cycles
+        jp      osPrintChar             ;  but saves 2 bytes each time
 
 
 printSymbolName:
