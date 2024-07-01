@@ -38,11 +38,11 @@ parseParam:
 ;                       in the code-segment. bit 7 set indicates relative jump
 ;       HL              current heap position -- if the expression is deferred
 ;                       it will be copied to the heap
-;       [param]         the param size & rel-flag byte must be set
-;                       (e.g. parseParam above)
 ;
 ; out:  BC              expr value. if deferred, BC is length of expr bytecode
 ;       HL              heap addr will be modified if expr is deferred
+;       [param]         the param size & rel-flag byte is set and is re-used
+;                       for each additional call of nextParam (below)
 ;       A, DE           (clobbered)
 ;-------------------------------------------------------------------------------
         ld      [param],        A
@@ -57,7 +57,7 @@ nextParam:
         ; and it'll be pushed to the heap for later evaluation
         ;
         call    nextExpr                ; parse and evaluate expression
-        jr      c,      _defer          ; defer to heap? (note early exit)
+        jr      c,      deferExpr       ; defer to heap? (note early exit)
 
         ; fall through
         ; ...
@@ -158,7 +158,7 @@ emitParam:
         ret
 
 
-; defer expression:
+deferExpr:
 ;===============================================================================
 ; when an expression contains a reference to a label not yet defined the space
 ; in the code-segment (byte or word) is reserved and the expr is pushed to the
@@ -179,9 +179,18 @@ emitParam:
 ;       len     length of expression bytecode
 ;       expr    expression bytecode
 ;
-; link this expression to the previous one:
+; in:   BC              length of expression bytecode; returned by nextExpr
+;                       when an forward-reference is encountered
+;       HL              current heap position
+;       [param]         the param size & rel-flag byte must be set
+;                       (e.g. parseParam above)
 ;
-_defer: ld      DE,     [defer]         ; read prev defer addr
+; out:  HL              heap addr will be modified if expr is deferred
+;       A, BC, DE       (clobbered)
+;-------------------------------------------------------------------------------
+        ; link this expression to the previous one:
+        ;
+        ld      DE,     [defer]         ; read prev defer addr
         dec     HL                      ; pre-decrement heap to empty byte
         ld      [HL],   D               ; write prev defer addr hi-byte
         dec     HL                      ; (this is the heap addr we want)
@@ -243,10 +252,20 @@ _defer: ld      DE,     [defer]         ; read prev defer addr
         ld      DE,     expr            ; ...
         ex      DE,     HL              ; ...
         lddr                            ; copy BC bytes *from* [HL] *to* [DE]!
-        ex      DE,     HL              ; ...
-        inc     HL                      ; fix heap addr after copy
+        ex      DE,     HL              ; return heap to HL
+        inc     HL                      ; fix heap addr after LDDR copy
+
+        ; add one to the deferred expression counter:
+        ;
+        ld      DE,     [deferCount]    ; (we're going to just assume
+        inc     DE                      ;  that you will keep this
+        ld      [deferCount],   DE      ;  under 65'535...)
 
         jp      checkHeapSize           ; check for heap overflow
+
+deferCount:
+        ;-----------------------------------------------------------------------
+        .WORD   $0000
 
 
 nextExpr:

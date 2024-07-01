@@ -150,7 +150,7 @@ osBoot:
         jp      main                    ; we will not return from here!
 
         ;-----------------------------------------------------------------------
-@banner .BYTE   CHAR_COMMENT, " v80 CP/M v0.1.3 - github.com/kroc/v80\r\n"
+@banner .BYTE   CHAR_COMMENT, " v80 CP/M v0.1.4 - github.com/kroc/v80\r\n"
         .BYTE   CHAR_COMMENT, " (C) Kroc Camen 2023-2024, MIT License", 0
 
         ;=======================================================================
@@ -258,7 +258,7 @@ osParseParameters:
         call    osPrintStrZ             ; print the command usage
         jp      osQuit                  ;  and quit
 
-@@str   .BYTE   "    V80 FILE.V80 [FILE.COM]", 0
+@@str   .BYTE   "    V80 FILE.V80 [FILE.COM]\r\n", 0
 
 
 _getParam:

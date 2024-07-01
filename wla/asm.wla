@@ -84,8 +84,7 @@ _label: ld      [@local+1],     A       ; first char determines label or local
         ; (sets program-counter) followed by the label name:
         ;
         call    printHexNumber          ; print value in BC with "$" sigil
-        ld      A,      ASCII_SPC       ; print a space between
-        call    osPrintChar             ;  addr and label name
+        call    echoSpc                 ; print spc between addr & label name
         pop     DE                      ; restore label-name addr from earlier
         call    printSymbolName         ;  and print label name
         call    osPrintNewline          ;  + newline

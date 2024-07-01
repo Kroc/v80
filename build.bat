@@ -79,7 +79,6 @@ COPY /N /Y "build\v80.com" /B "release"
 ECHO OK.
 EXIT /B 0
 
-
 :RunTest
 REM # ==========================================================================
 ECHO:
