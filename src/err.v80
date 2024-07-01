@@ -1,0 +1,186 @@
+; v80, (C) Kroc Camen 2023-2024, MIT License
+; error stuff
+;
+:_errmsg
+;===============================================================================
+_inval_cond     .b "Invalid condition" 0
+_inval_expr     .b "Invalid expression" 0
+_inval_file     .b "Invalid file-name" 0
+_inval_ins      .b "Invalid instruction" 0
+_inval_key      .b "Invalid keyword" 0
+_inval_num      .b "Invalid number" 0
+_inval_str      .b "Invalid string" 0
+_inval_sym      .b "Invalid symbol name" 0
+_range_disk     .b "Disk full" 0
+_range_heap     .b "Heap overflow" 0
+_range_line     .b "Line too long, 127 cols max." 0
+_range_over     .b "Expression overflow" 0
+_range_param    .b "Expression exceeds 8-bit parameter" 0
+_range_stack    .b "Stack overflow" 0
+_range_str      .b ".w cannot take strings" 0
+_redef_label    .b "Labels cannot be redefined" 0
+_undef_const    .b "Undefined constant" 0
+_undef_file     .b "File not found" 0
+_undef_label    .b "Label was not defined" 0
+_undef_local    .b "Local label without label" 0
+_unexp_defer    .b "Forward-references to labels not allowed here" 0
+_unexp_eol      .b "Expected expression" 0
+
+
+; print error message and quit:
+;===============================================================================
+; this is a fall through 'ladder' that sets HL to the error string addr based
+; on entrypoint. opcode $DD is manually inserted to "skip" the next LD HL $....
+; instruction by converting it to LD IX $.... (with IX not being used)
+; 
+:errInvalCond
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_inval_cond
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errInvalExpr
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_inval_expr
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errInvalFile
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_inval_file
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errInvalIns
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_inval_ins
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errInvalKey
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_inval_key
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errInvalNum
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_inval_num
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errInvalStr
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_inval_str
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errInvalSym
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_inval_sym
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errRangeDisk
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_range_disk
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errRangeHeap
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_range_heap
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errRangeLine
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_range_line
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errRangeOver
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_range_over
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errRangeParam
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_range_param
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errRangeStack
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_range_stack
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errRangeStr
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_range_str
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errRedefLabel
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_redef_label
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errUndefConst
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_undef_const
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errUndefFile
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_undef_file
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errUndefLabel
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_undef_label
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errUndefLocal
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_undef_local
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errUnexpDefer
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_unexp_defer
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errUnexpEOL
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_unexp_eol
+
+        ; fall through
+        ; ...
+
+:err
+;===============================================================================
+; print an error message and quit:
+;
+; in:   HL              error string addr
+; out:  -               program terminates!
+;===============================================================================
+        call    :osPrintNewline         ; print two newlines and a leading
+        call    :osPrintNewline         ;  "ERROR:" string
+        ld.DE   _err                    ; ...
+        call    :osPrintStrZ            ; ...
+
+        ex.DE.HL                        ; swap error string addr to DE
+        call    :osPrintStrZ            ; print passed error-string
+        ld.A    '!                      ; ("!" is shared between all error 
+        call    :osPrintChar            ;  messages. this saves 1 byte each
+        call    :osPrintNewline         ;  error message, after the 8th)
+        ld.DE   _txt                    ; print following line
+        call    :osPrintLn              ;  with note on "error.txt"
+
+        ; if the file-name addr is $0000 this is not a parsing error,
+        ; such as the command line parameter file-name not being found
+        ;
+        ld.A*   [ :file + 1 ]           ; file-names are pushed to the heap
+        and.A                           ;  so it is sufficient to check only
+        jp?z    :osQuit                 ;  if the hi-byte is $00
+
+        ; print file-name, line number and column:
+        ;-----------------------------------------------------------------------
+        ld.DE   _file
+        call    :osPrintStrZ
+
+        ; print file-name:
+        ld.DE*  [ :file ]               ; addr of current file-name
+        call    :printSymbolName        ; print the backwards string
+        call    :osPrintNewline         ;  + newline
+
+        ; print start-of-word line number and column:
+        ; (this is not the same as the line/col of last char read
+        ;  which could be the end-of-line after an expression)
+        ;
+        ld.DE   _row
+        call    :osPrintStrZ
+        ld.BC*  [ :wrow ]
+        call    :printDecNumber
+        call    :osPrintNewline
+        ld.DE   _col
+        call    :osPrintStrZ
+        ld.A*   [ :wcol ]
+        ld.C.A
+        ld.B    0
+        call    :printDecNumber
+
+        jp      :osQuit
+
+_err    .b      "! ERROR: " 0
+_txt    .b      "!        See errors.txt for detailed causes" 0
+_file   .b      "!  FILE: " 0
+_row    .b      "!  LINE: " 0
+_col    .b      "!   COL: " 0

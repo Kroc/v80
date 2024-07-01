@@ -1,0 +1,811 @@
+; v80, (C) Kroc Camen 2023-2024, MIT License
+; a z80 assembler for Z80s
+;
+; constants:
+;
+#NULL                   0
+#LO                     0
+#HI                     1
+
+#ASCII_SPC              $20             ; ASCII space (whitespace)
+#ASCII_TAB              $09             ; ASCII tab (whitespace)
+#ASCII_CR               $0d             ; ASCII carriage-return
+#ASCII_LF               $0a             ; ASCII line-feed
+#ASCII_SUB              $1a             ; ASCII "substitute", end-of-file char
+
+; syntax:
+;
+#CHAR_COMMENT           ';              ; comment
+#CHAR_KEYWORD           '.              ; keyword
+#CHAR_HEX               '$              ; hexadecimal literal or PC
+#CHAR_BIN               '%              ; binary literal
+#CHAR_CHAR              ''              ; character literal
+#CHAR_LABEL             ':              ; a label (16-bit)
+#CHAR_LOCAL             '_              ; local label
+#CHAR_CONST             '#              ; a constant (flexible size)
+#CHAR_STR               '"              ; a string
+#CHAR_COND              '?              ; condition marker
+#CHAR_COND_Z            '=              ; `?=`, condition equal marker
+#CHAR_COND_NZ           '!              ; `?!`, condition not-equal marker
+#CHAR_COND_POS          '+              ; `?+`, condition positive marker
+#CHAR_COND_NEG          '-              ; `?-`, condition negative marker
+#CHAR_OP_LO             '<              ; lo-byte unary operator
+#CHAR_OP_HI             '>              ; hi-byte unary operator
+#CHAR_OP_NOT            '!              ; not unary operator
+#CHAR_OP_NEG            '-              ; negate unary operator
+#CHAR_OP_ADD            '+              ; add operator
+#CHAR_OP_SUB            '-              ; subtract operator
+#CHAR_OP_MUL            '*              ; multiply operator
+#CHAR_OP_DIV            '/              ; divide operator
+#CHAR_OP_AND            '&              ; and operator
+#CHAR_OP_OR             '|              ; or operator
+#CHAR_OP_XOR            '^              ; xor operator
+#CHAR_OP_MOD            '\              ; modulo operator
+#CHAR_EXPR_IN1          '(              ; open parenthesis
+#CHAR_EXPR_OUT1         ')              ; close parenthesis
+#CHAR_EXPR_IN2          '[              ; square brackets for marking
+#CHAR_EXPR_OUT2         ']              ;  memory references in instructions
+
+#DEBUG                  0               ; set to 1 to enable debug features
+
+.i      "cpm.v80"                       ; CP/M bootstrap and interface
+
+; memory map:
+;
+;         $xx80 $xx00
+;   +-----+-----+------+------+-------------------------------+---------+
+;   | v80 | str | word | expr | code->                 <-heap | <-stack |
+;   +-----+-----+------+------+-------------------------------+---------+
+;         | 128 | <-32   <-96 |                               |     256
+;
+;       v80:    the v80 assembler
+;       str:    forward buffer for reading strings, file-names
+;       word:   a buffer for capturing words (symbol names); builds downwards
+;       expr:   expressions are tokenised here; builds downwards
+;       code:   source code is assembled here
+;       heap:   symbols and other in-flight data goes here; builds downwards
+;       stack:  usual Z80 stack; builds downwards
+;
+; (see the end of the file for labels for str, word, expr & code)
+;
+#WORD_LEN       31                      ; maximum symbol name length
+
+;===============================================================================
+; heap:
+;-------------------------------------------------------------------------------
+; as assembly progresses, the dictionary of symbols and deferred expressions
+; will be built up on the heap. it works downwards from the top of memory
+; in order to maximise the available space before the assembled binary
+; and heap collide. during initialisation the heap will be placed 512 bytes
+; below the stack at the top of memory, giving enough room for the stack
+; and other buffers
+;
+; like the stack, the heap is pre-decrement meaning that the heap address
+; is decremented first before writing a value, ergo the heap addr points
+; to a currently occupied byte on the heap
+;
+:sp     .w      $fd00                   ; stack pointer backup
+:heap   .w      $fc00                   ; current position on the heap
+
+; dictionaries:
+;-------------------------------------------------------------------------------
+; labels and constants are stored as a linked-list of dictionary entries.
+; each has its own entry point to avoid wasting time searching for labels
+; amongst constants and vice-versa. $0000 terminates the list
+;
+; although the heap extends downwards, the link address has to point to
+; the lo-byte of the entry's link field which is technically the 2nd byte
+; of the record
+;                     +------+
+;          .----------+ addr |  (entry point)
+;          V          +------+
+; - - -----+------+
+;  ...data | addr |             (heap extends downwards)
+; - - -----+------+
+;
+:label  .w      $0000                   ; addr of last label dictionary-entry
+:const  .w      $0000                   ; addr of last const dictionary-entry
+
+; local labels are appended to the last non-local label defined, a pointer
+; to which is stored here. this addr is updated after each non-local label
+; is defined, where as `label` above is updated after every label; just be
+; aware that despite the name this addr is always the last *non-local* label
+; defined! also this address points directly to the name-length field rather
+; than the link-addr field since its intended to retrieve the last defined
+; label name, not as a dictionary entry point like the others
+;
+:local  .w      $0000                   ; addr of last non-local label
+
+; the name of each file needs to be kept in case of error. a deferred expr
+; could error long after a file has been closed and another opened. each file-
+; name is stored as a symbol on the heap and its addr is used as a reference.
+; this avoids duplicating names for files included multiple times
+;
+:file   .w      $0000                   ; addr of current file-name record
+:files  .w      $0000                   ; dictionary entry point for file-names
+
+; (char and ccol are combined into a word when pushed
+;  to the stack during file-includes)
+;
+:char_ccol
+:char   .b      $00                     ; last char read from input
+:ccol   .b      $00                     ; last char read column-number
+:crow   .w      $0000                   ; last char read line-number
+
+; the line-number / column reported on error should be at the start
+; of a word, not at the last character read, which could be a newline
+;
+:wcol   .b      $00                     ; column number to report on err
+:wrow   .w      $0000                   ; line number to report on err
+
+;===============================================================================
+.i      "err.v80"                       ; error messages
+.i      "asm.v80"                       ; main parsing and assembling loop
+.i      "expr.v80"                      ; expression parsing and evaluation
+.i      "z80.v80"                       ; Z80 parser & opcode binary tree
+
+:main
+;===============================================================================
+        ; initialise stack / heap:
+        ;
+        ; this *assumes* the stack is completely empty, i.e. at $FD00 rather
+        ; than $FCFE. the OS bootstrap *must* JP to main instead of CALL!
+        ;
+        ;   - - - -------+------------------+
+        ;         <-heap |          <-stack |
+        ;   - - - -------+------------------+
+        ;
+        ld.HL   $0000                   ; oddly, there's no `ld HL, SP`!
+        add.HL.SP                       ; get stack address, e.g. $FD00
+        ld*$.HL [ :sp ]                 ; (save value for printing later)
+        dec.H                           ; go down 1 page (e.g. $FD00 > $FC00)
+        ld*$.HL [ :heap ]               ; this will be the top of the heap
+        ld.A.H                          ; patch stack-overflow check routine
+        ld*$.A  [ :checkStackSize_hi + 1 ]
+
+        ; how do you measure the maximum depth of the stack
+        ; used during program execution?
+        ;
+        ; you could record the stack depth every time you push, or at least
+        ; often enough, but that slows down execution. rather, we can write
+        ; an initial value to every stack space and after execution we can
+        ; check how deep the original value remains. But what if the data
+        ; pushed to the stack happens to contain that value?
+        ;
+        ; the only value you can almost guarantee will never be pushed to the
+        ; stack is... the address of the stack itself! For example, if the
+        ; stack is at $FC80 then you won't ever see $FC80 stored there
+        ; -- this is programmatically useless
+        ;
+        ; therefore we fill each stack space with its own address and after
+        ; execution check for stack positions that have changed, revealing
+        ; the deepest push to the stack during execution!
+        ;
+        ld.HL*  [ :sp ]                 ; load HL with the stack pointer
+        ld.B    256 / 2                 ; number of slots in stack, 2 bytes ea.
+_push   dec.HL                          ; decrement HL first to match the
+        dec.HL                          ;  stack-pointer after it pushes HL
+        push.HL                         ;  (stack is decrement-then-copy)
+        djnz    _push                   ; loop all stack pushes
+        ld.SP*  [ :sp ]                 ; restore stack pointer
+
+        ; print addresses:
+        ;
+        ld.DE   _addrc                  ; start with "CODE @ ..."
+        ld.BC   :code                   ; start addr of code-segment
+        call    _echov                  ; print string and value
+        ld.BC*  [ :heap ]               ; start addr of heap
+        call    _echov                  ; print next string and value
+        ld.BC*  [ :sp ]                 ; start addr of stack
+        call    _echov                  ; print next string and value
+        call    :osPrintNewline
+        call    :osPrintNewline
+
+        ; assemble the source file:
+        ;=======================================================================
+        ; parse the command-line parameters and return an addr [DE] to the
+        ; input file-name as a forwards, null-terminated string but also set
+        ; the output file-name privately -- we leave all command-line parsing
+        ; to the OS due to differing file-system limitations
+        ;
+        call    :osParseParameters
+
+        ; the virtual program-counter is permanently pinned to IX since
+        ; it's a value that needs to be incremented often but not read
+        ; back too often. this avoids a bunch of HL/DE register swapping
+        ;
+        ld.IX   $0000                   ; virtual program-counter
+
+        ; the code-segment address (where assembled binary code goes)
+        ; is pinned to IY. as with the virtual program-counter, despite
+        ; the IY register being slower to utilise, it is used sparingly
+        ; and avoids costly register swapping
+        ;
+        ld.IY   :code                   ; code-segment address
+
+        ld.HL*  [ :heap ]               ; start the heap
+        call    :assembleFile           ; assemble! (DE is file-name str addr)
+
+        ; 1st pass complete, calculate RAM usage:
+        ;
+        ; +----------------+----------------------+---------------+
+        ; | code-segment-> |     <-free RAM->     | <-heap        |
+        ; +----------------+----------------------+---------------+
+        ; ^ code           ^ IY                   ^ HL            ^ [heap]
+        ;
+        ; calculate final size of the heap:
+        ; (works downwards from top of RAM)
+        ;
+        call    :checkHeapSize          ; last check for heap overflow!
+        ex.DE.HL                        ; swap heap end-address to DE
+        ld.HL*  [ :heap ]               ; get heap starting address (high!)
+        sbc.HL.DE                       ; calculate end-start difference
+        ld*$.HL  [ _heap + 1 ]          ; save value for printing later
+
+        ; calculate free RAM size:
+        ; (size between end of code-segment and end-of-heap)
+        ;
+        ex.DE.HL                        ; return last heap addr to HL
+        ld.D.IYH                        ; copy code-segment last address
+        ld.E.IYL                        ;  into DE for SBC HL, DE
+        sbc.HL.DE                       ; calculate end-start difference
+        ld*$.HL [ _free + 1 ]           ; save value for printing later
+
+        ; calculate size of code-segment:
+        ; (size of generated binary)
+        ;
+        ex.DE.HL                        ; swap code end addr into HL
+        ld.DE   :code                   ; code-segment start addr
+        sbc.HL.DE                       ; calculate end-start difference
+        ld*$.HL [ _code + 1 ]           ; save value for printing later
+
+        ; 2nd pass!
+        ;-----------------------------------------------------------------------
+        ; (actually more like 1.5 because we aren't reading the code again)
+        ;
+        ; we calculate the stats above first becasue no more data will need
+        ; to be written to the heap and we want to re-use HL for the 2nd pass
+        ;
+        ld*$.IY [ _iy + 1 ]             ; save code-segment end-addr for output
+        ld.HL   :defer                  ; start of deferred expr chain
+        call    _expr                   ; re-evaluate deferred expressions
+
+        ; how deep is your stack?
+        ;-----------------------------------------------------------------------
+        ; since counting towards zero is faster on Z80 we start at the top and
+        ; walk down the stack slots checking if each contains its own address
+        ;
+        ; WARN: this code assumes that stack is at its top (e.g. $FD00),
+        ;       because this code is in the top-most main routine
+        ; 
+_end    ld.HL   0                       ; load HL with the stack pointer
+        add.HL.SP                       ; (oddly, there's no `ld HL, SP`!)
+        ld.BC   256 / 2                 ; begin at the top, report remaining
+        ;-----------------------------------------------------------------------
+_loop   dec.HL                          ; (decrement into hi-byte)
+        ld.A.H                          ; compare hi-byte first
+        cpd                             ; CP A, [HL]; DEC HL; DEC BC
+        jp?nv   _ok                     ; exit when BC = 0 (all stack checked)
+        jr?nz   _loop                   ; skip checking lo-byte if mismatch
+        ld.A.L                          ; compare lo-byte of stack addr
+        cp*HL                           ;  with lo-byte in stack slot
+        jr?nz   _loop                   ; keep looping if mismatch
+        ;-----------------------------------------------------------------------
+        ; we error if the stack reached 0 bytes because we cannot guarantee
+        ; that it went under without a sentinel and an additional check
+        ;
+_ok     ld.A.C                          ; BC is number of unused stack slots
+        add.A                           ; *2 for bytes (RLA won't set z-flag!)
+        jp?z    :errRangeStack          ; if 0, stack overflow!
+        ld*$.A  [ _stack + 1 ]          ; save value for printing later
+
+        ; output file:
+        ;=======================================================================
+        ; the output file-name is already known to the OS which read it
+        ; from the command-line parameters during osParseParameters
+        ;
+        ld.HL   :code                   ; code-segment start addr
+_iy     ld.DE   $0000                   ; code-segment end addr patched in here
+        call    :osSaveCode             ; defer all writing work to the OS
+
+        ; print final stats:
+        ;-----------------------------------------------------------------------
+        call    :osPrintNewline
+        ld.DE   _strc                   ; string to print ("CODE")
+_code   ld.BC   $0000                   ; value to print (code size)
+        call    _size                   ; ...
+        ld.DE   _strh                   ; string to print ("HEAP")
+_heap   ld.BC   $0000                   ; value to print (heap size)
+        call    _size                   ; ...
+        ld.DE   _strf                   ; string to print ("FREE")
+_free   ld.BC   $0000                   ; value to print (free bytes)
+        call    _size                   ; ...
+        ld.DE   _strs                   ; string to print ("STACK")
+        call    :echoCommentStr         ; ...
+_stack  ld.BC   $0000                   ; lastly, the number of bytes free
+        call    :printDecNumberSpc      ;  on the stack at peak usage
+        ld.DE   _peak                   ;  i.e. the deepest the stack got,
+        call    :osPrintLn              ;  not the current level
+
+        jp      :osQuit                 ; jump to CP/M to quit the program
+
+        ; print calculated address:
+        ;-----------------------------------------------------------------------
+_echov  call    :osPrintStrZ            ; print string passed in DE
+_word   jp      :printHexNumber         ; print hex number BC with sigil
+
+_addrc  .b      #CHAR_COMMENT
+        .b      " CODE @ " 0
+_addrh  .b      ", HEAP @ " 0
+_addrs  .b      ", STACK @ " 0
+
+        ; print a string and number and append "bytes":
+        ;-----------------------------------------------------------------------
+_size   call    :echoCommentStr         ; print string [DE] as comment
+        call    :printDecNumberSpc      ; print number with leading spaces
+        ld.DE   _bytes                  ; append " bytes"
+        jp      :osPrintLn              ;  and return
+
+_strc   .b      "CODE : " 0
+_strh   .b      "HEAP : " 0
+_strf   .b      "FREE : " 0
+_bytes  .b      " bytes" 0
+_strs   .b      "STACK: " 0
+_peak   .b      " free" 0
+
+        ; re-evaluate deferred expressions:
+        ;=======================================================================
+        ; once all files are assembled, any labels not defined in earlier
+        ; experssions should have their values by now. we walk the deferred
+        ; expressions attempting to evaluate them and patch in their values
+        ; into the code-segment
+        ;
+        ; - - - -+------------+-------+-----+-----+------+----+------+------+
+        ; <-heap | expr ¦ len | param | col | row | file | pc | code | link |
+        ; - - - -+------------+-------+-----+-----+------+----+------+------+
+        ;
+        ;       link            addr to next deferred expr in chain
+        ;       code            addr in code-segment to write value when known
+        ;       pc              virtual program-counter at the time
+        ;       file            addr to file-name record
+        ;       row             line number of expr
+        ;       col             column number of expr
+        ;       param           parameter & flag-byte for value
+        ;       len             length of expression bytecode
+        ;       expr            expression bytecode
+        ;
+        ; follow this link, but finish if it's $0000
+        ;
+_expr   ld.A*HL                         ; read next expr addr, lo-byte
+        inc.HL                          ; move *up* to link addr hi-byte
+        ld.H*HL                         ; read next expr addr, hi-byte
+        ld.L.A                          ; (complete the addr)
+        or.H                            ; is the link addr $0000?
+        ret?z                           ; return at end of chain
+
+        push.HL                         ; preserve addr to snap back to
+
+        ; set the code-segment addr and virtual
+        ; program-counter for the deferred expr:
+        ;
+        call    _popw                   ; get the code-segment addr
+        ld.IYH.B                        ;  from the deferred expression
+        ld.IYL.C                        ;  and set current code-segment addr
+        call    _popw                   ; likewise get and set
+        ld.IXH.B                        ;  the virtual program-counter
+        ld.IXL.C                        ;  from the deferred expression
+
+        call    _popw                   ; if the expr errors during evaluation
+        ld*$.BC [ :file ]               ;  return the file, line and column
+        call    _popw                   ;  numbers of the deferred expr
+        ld*$.BC [ :wrow ]               ; ...
+        call    _popw                   ; ..
+        ld*$.BC [ :param_ecol ]         ; .
+        ld.A.B                          ; column number needs copying
+        ld*$.A  [ :wcol ]               ;  to current start-of-word
+
+        dec.HL                          ; lastly, the expr bytecode
+        call    :evalExpr               ; evaluate! returns result in DE
+        ld.B.D                          ; swap to BC for emitParam
+        ld.C.E                          ; ...
+
+        ; patch the result into the binary:
+        ;
+        ; with the code-segement address set, the virtual program-counter,
+        ; the source file / line / column and the parameter byte restored
+        ; we just need to emit the value to the code-segment
+        ;
+        call    :emitParam
+
+        pop.HL                          ; snap back to the defer record
+        jr      _expr                   ;  link-field to follow the chain
+
+        ;=======================================================================
+_popw   dec.HL                          ; pop a word off the heap into BC
+        ld.B*HL                         ; (used for pulling fields from
+        dec.HL                          ;  the deferred expr record)
+        ld.C*HL                         ; ...
+        ret
+
+
+:checkStackSize
+;===============================================================================
+; check to see if the stack hasn't overflowed:
+;
+; out:  A               (clobbered)
+;       BC, DE, HL      (preserved)
+;       -               halts with error if stack overflowed
+;-------------------------------------------------------------------------------
+        ld*$.SP [ _sp ]                 ; store current stack pointer
+        ld.A*   [ _sp + #HI ]           ; get hi-byte of stack addr
+_hi     cp      $ff                     ; (this byte patched in main)
+        ret?nc                          ; fast-return if stack is in page
+        jp      :errRangeStack          ; stack overflow!
+
+_sp     .w      $0000
+
+
+:checkHeapSize
+;===============================================================================
+; check to see the heap hasn't overflowed into the code-segment:
+;
+; in:   HL              heap addr
+;       IY              code-segment addr
+; out:  cf              carry-flag is always returned clear
+;       HL, BC, DE, IY  (preserved)
+;       A               (clobbered)
+;       -               halts with error if heap overflows
+;-------------------------------------------------------------------------------
+        ; check that IY is not > HL. they can be equal because the code-segment
+        ; addr points to the last unused byte, where as the heap addr points
+        ; to the last used byte
+        ;
+        ld.A.H                          ; check hi-byte of heap is not
+        cp.IYH                          ;  less than hi-byte of code-segment
+        jr?c    _err                    ; err if heap below code-segment!
+        ret?nz                          ; skip if hi-bytes mismatch
+        ld.A.L                          ; assuming hi-bytes match,
+        cp.IYL                          ;  test lo-bytes
+        ret?nc                          ; OK if heap addr >= code-segment addr
+
+_err    jp      :errRangeHeap           ; err if heap below code-segment!
+
+
+:echoCommentBar
+;===============================================================================
+; echoes a dividing line to the screen:
+;
+; out:  HL, DE, BC      (preserved)
+;       A               (clobbered)
+;-------------------------------------------------------------------------------
+        push.DE
+        ld.DE   _bar                    ; use the pre-defined string below
+        call    :osPrintLn              ; faster than repeating osPrintChar :(
+        pop.DE
+        ret
+
+_bar    .b      #CHAR_COMMENT "------------------------------------" 0
+
+
+:echoCommentLn
+;===============================================================================
+; echoes a "comment" to screen: i.e. "; " + str + newline
+;
+; in:   DE              string-addr, must be 0-terminated
+; out:  HL, DE, BC      (preserved)
+;       A               (clobbered)
+;-------------------------------------------------------------------------------
+        call    :echoCommentStr         ; print string in DE prefixed with "; "
+        jp      :osPrintNewline         ; print system-dependant newline
+
+
+:echoCommentStr
+;===============================================================================
+; echoes the opening comment marker and the given string:
+;
+; in:   DE              string-addr, must be 0-terminated
+; out:  HL, DE, BC      (preserved)
+;       A               (clobbered)
+;-------------------------------------------------------------------------------
+        call    :echoCommentMarker      ; prefix string with "; "
+        push.DE                         ; preserve string starting addr
+        call    :osPrintStrZ            ; echo string in DE
+        pop.DE                          ; restore string starting addr
+        ret                             ; (echo allows string to be reused)
+
+
+:echoCommentNewline
+;===============================================================================
+; echoes an empty comment line, i.e. "; " + newline
+;
+; out:  A               (clobbered)
+;       BC, DE, HL      (preserved)
+;-------------------------------------------------------------------------------
+        call    :echoCommentMarker
+        jp      :osPrintNewline
+
+
+:echoCommentMarker
+;===============================================================================
+; echoes only an opening comment marker:
+;
+; out:  A               (clobbered)
+;       BC, DE, HL      (preserved)
+;-------------------------------------------------------------------------------
+        ld.A    #CHAR_COMMENT           ; print "; "
+        call    :osPrintChar            ; ...
+        ld.A    #ASCII_SPC              ; ..
+        jp      :osPrintChar            ; .
+
+
+:printSymbolName
+;===============================================================================
+; prints a backwards, length-prefixed symbol name:
+;
+; in:   DE              symbol addr positioned at length byte
+; out:  DE              addr returned is positioned at last char in symbol name
+;       BC              symbol name length
+;       HL              (preserved)
+;       A               (clobbered)                BC (out)
+;                                                  |
+;                - - - -+---+---+---+---+---+---+--V--+------+
+;                <-heap | l | o | b | m | y | s | len | link |
+;                - - - -+---+---+---+---+---+---+-----+------+
+;                       ^ DE (out)              ^ DE (in)
+;-------------------------------------------------------------------------------
+        ex.DE.HL                        ; use HL for compactness
+        ld.B*HL                         ; get length of symbol name in B
+        ld.C.B                          ;  and C; after printing B=0
+        ;-----------------------------------------------------------------------
+_loop   dec.HL                          ; (move to next char in string)
+        ld.A*HL                         ; read a character
+        call    :osPrintChar            ;  and print it
+        djnz    _loop                   ;  for all chars in string
+        ;-----------------------------------------------------------------------
+        ex.DE.HL                        ; swap symbol addr to DE
+        ret
+
+
+:printDecNumberSpc
+;===============================================================================
+; prints an unsigned 16-bit number in decimal with leading spaces:
+;
+; in:   BC              number to print
+; out:  *               (clobbered)
+;-------------------------------------------------------------------------------
+        ; calculate the number of leading spaces:
+        ;
+        ld.E    #ASCII_SPC              ; (reusable space)
+        ld.HL   -10                     ; is number greater than 9?
+        add.HL.BC                       ; (subtract by adding negative number)
+        jr?c    _99                     ; if yes, don't print
+        ld.A.E                          ;  leading tens-digit space
+        call    :osPrintChar            ;  ...
+_99     ld.HL   -100                    ; is number greater than 99?
+        add.HL.BC                       ; (subtract by adding negative number)
+        jr?c    _999                    ; if yes, don't print
+        ld.A.E                          ;  leading hundreds-digit space
+        call    :osPrintChar            ;  ...
+_999    ld.HL   -1000                   ; is number greater than 999?
+        add.HL.BC                       ; (subtract by adding negative number)
+        jr?c    _9999                   ; if yes, don't print
+        ld.A.E                          ;  leading thousands-digit space
+        call    :osPrintChar            ;  and thousands separator
+        ld.A.E                          ;  ...
+        call    :osPrintChar            ;  
+_9999   ld.HL   -10000                  ; is number greater than 9'999?
+        add.HL.BC                       ; (subtract by adding negative number)
+        jr?c    :printDecNumber         ; if yes, don't print
+        ld.A.E                          ;  leading ten-thousands-digit space
+        call    :osPrintChar            ;  ...
+
+        ; fall through
+        ; ...
+
+:printDecNumber
+;===============================================================================
+; print an unsigned 16-bit number in decimal:
+;
+; in:   BC              number to print
+; out:  *               (clobbered)
+;-------------------------------------------------------------------------------
+        ld.H.B                          ; working number goes into HL
+        ld.L.C                          ; ...
+
+        ; 10'000s digit:
+        ;-----------------------------------------------------------------------
+        ; we don't want to print leading zeroes -- e.g. "00123". the leading-
+        ; zeroes byte stays at zero so long as there are leading-zeroes. once
+        ; any non-zero digit occurs, the leading-zeroes byte becomes non-zero
+        ; and any additional zeroes are printed, e.g. "1001"
+        ;
+        xor.A                           ; (set A to zero)
+        ld.E.A                          ; set leading-zero state
+        ld.BC   -10000                  ; subtract 10'000s
+        dec.A                           ; start at "0" (with pre-increment)
+_10000  inc.A                           ; next result digit - 0, 1, 2, etc.
+        add.HL.BC                       ; subtract 10'000 (without carry)
+        jr?c    _10000                  ;  keep going for each result >=0
+
+        ; note that ADD HL, BC does *not* modify the zero-flag!
+        ; this JR is based on the value of A, the digit counter!
+        ;
+        jr?z    _1000s                  ; do not print leading zero!
+        dec.E                           ; clear leading-zeroes state
+
+        add     '0                      ; convert to ASCII
+        call    :osPrintChar            ;  and print digit
+
+        ; 1'000s digit:
+        ;-----------------------------------------------------------------------
+        ; subtracting the last 10'000 has made the working number inverted,
+        ; so we add 1'000s to reverse the effect and count resultant digits
+        ; from 9 to 0 to compensate the 10'000 overage
+        ;
+_1000s  ld.BC   1000                    ; add 1'000s
+        ld.A    9 + 1                   ; count result digit from 9 downwards
+_1000   dec.A                           ; next result digit - 9, 8, 7, etc.
+        add.HL.BC                       ; add 1'000
+        jr?nc   _1000                   ;  until crossing the 0 boundary
+
+        ; is this a leading-zero that needs to be skipped? the leading-zeroes
+        ; state is zero by default, but non-zero if the first digit was also
+        ; non-zero, therefore a digit of 0 + a leading-zero state of 0 = 0
+        ;
+        cp.E                            ; if digit is 0 AND leading-zeroes
+        jr?z    _100s                   ;  state is zero, skip digit
+        dec.E                           ; clear leading-zeroes state
+
+        add     '0                      ; convert to ASCII
+        call    :osPrintChar            ;  and print digit
+        ld.A    ''                      ; print thousands
+        call    :osPrintChar            ;  separator
+
+        ; 100s digit:
+        ;-----------------------------------------------------------------------
+_100s   ld.BC   -100                    ; subtract 100s
+        ld.A    <( 0 - 1 )              ; start at 0 (pre-increment)
+_100    inc.A                           ; next result digit - 0, 1, 2, etc.
+        add.HL.BC                       ; subtract 100
+        jr?c    _100                    ;  until underflow
+
+        cp.E                            ; if digit is 0 AND leading-zeroes
+        jr?z    _10s                    ;  state is zero, skip digit
+        dec.E                           ; clear leading-zeroes state
+
+        add     '0                      ; convert to ASCII
+        call    :osPrintChar            ;  and print digit
+
+        ; 10s / 1s digit:
+        ;-----------------------------------------------------------------------
+_10s    ld.A.L                          ; 10s fit into one byte
+        ld.B    9 + 1                   ;  10s digit counting down in B
+_10     dec.B                           ; next digit...
+        add     10                      ; add 10
+        jr?nc   _10                     ;  until crossing 0 boundary
+        ld.C.A                          ; 1s remaining
+        ld.A.B                          ; 10s in B
+
+        cp.E                            ; still leading-zeroes?
+        jr?z    _1s                     ; skip 10s digit
+
+        add     '0                      ; convert to ASCII
+        call    :osPrintChar            ; print 10s digit
+
+_1s     ld.A.C                          ; retrieve 1s digit
+        add     '0                      ; convert to ASCII
+        jp      :osPrintChar            ;  and print
+
+
+:printHexNumber
+;===============================================================================
+; print a hexadecimal number with sigil:
+;
+; in:   BC              word to print
+; out:  BC, DE, HL      (preserved)
+;       A               (clobbered)
+;-------------------------------------------------------------------------------
+        ld.A    #CHAR_HEX
+        call    :osPrintChar
+
+        ; fall through
+        ; ...
+
+:printHexWord
+;===============================================================================
+; print a word as hexadecimal:
+;
+; in:   BC              word to print
+; out:  BC, DE, HL      (preserved)
+;       A               (clobbered)
+;-------------------------------------------------------------------------------
+        ld.A.B
+        call    :printHexByte
+        ld.A.C
+
+        ; fall through
+        ; ...
+
+:printHexByte
+;===============================================================================
+; print a byte as hexadecimal:
+;
+; in:   A               byte to print
+; out:  BC, DE, HL      (preserved)
+;       A               (clobbered)
+;-------------------------------------------------------------------------------
+        push.BC                         ; preserve BC coming in
+        call    :getHexByte             ; convert A to hexadecimal digits B,C
+        ld.A.B                          ; print hi-byte first
+        call    :osPrintChar            ; ...
+        ld.A.C                          ; print lo-byte next
+        pop.BC                          ; (restore BC going out)
+        jp      :osPrintChar            ; ...
+
+
+:getHexByte
+;===============================================================================
+; convert a byte into two ASCII hexadecimal digits:
+;
+; in:   A               input byte
+; out:  BC              ASCII hex digits in hi,lo (printable) order
+;       DE, HL          (preserved)
+;       A               (clobbered)
+;-------------------------------------------------------------------------------
+        ld.B.A                          ; preserve for 2nd digit
+        rra                             ; shift upper nybble down
+        rra                             ; ...
+        rra                             ; ..
+        rra                             ; .
+        call    _digit                  ; convert to ASCII
+        ld.A.B                          ; retrieve 2nd digit
+        ld.B.C                          ; set upper ASCII digit
+
+        ; fall through to convert 2nd digit
+        ; ...
+
+        ; NOTE: multiple online sources cite this method,
+        ;       dating back to at least the 1970s!
+_digit  and     %00001111               ; isolate low-nybble
+        add     $90                     ; magic!
+        daa                             ; adjust to decimal
+        adc     $40                     ; more magic!
+        daa                             ; adjust to decimal
+        ld.C.A
+        ret
+
+:end_of_v80                             ; where code ends before align padding
+
+; buffers:
+;===============================================================================
+.a      $0080                            ; align to half-page
+
+;-------------------------------------------------------------------------------
+; WARNING: ANYTHING PLACED AFTER HERE WILL BE OVERWRITTEN
+
+:buffers
+;///////////////////////////////////////////////////////////////////////////////
+
+; the string buffer is used to capture forwards strings
+; e.g. file-names used in include keywords
+;
+:str                                    ; e.g. $2080...$20FF (128 bytes)
+
+; the word buffer is used to capture symbol names. it works backwards with
+; the top-most byte being the word-length. it must start at a page boundary
+; because the lo-byte addr is assumed to be $00...$1F for optimisation
+;
+$ ( :str + 128 + #WORD_LEN )    :word   ; e.g. $2100...$211F (32 bytes)
+
+; calculations are compiled into bytecode to allow for later evaluation,
+; i.e. for deferred calculations where a symbol is not yet known
+;
+$ ( :str + 128 + 127 )          :expr   ; e.g. $2120...$217F (96 bytes)
+
+; the buffers begin after the end of the v80's code but are aligned to the next
+; page so that their addresses fall within a page and cycles can be saved using
+; INC E instead of INC DE etc. the code-segment, where assembled code is
+; written, begins after the buffers at a page bounadry. this is also
+; necessary for CP/M which writes files in 128-byte sectors
+;
+$ ( :str + 256 )                :code   ; e.g. $2180

@@ -1,0 +1,1345 @@
+; v80, (C) Kroc Camen 2023-2024, MIT License
+; the parsing / assembling loop
+;
+:assembleFile
+;===============================================================================
+; opens a file and assembles it:
+;
+; in:   DE              addr of file-name string, forwards, null-terminated
+;       HL              current heap addr
+; out:  HL              (preserved) -- stuff may be pushed to heap
+;       A, BC, DE       (clobbered)
+;-------------------------------------------------------------------------------
+        call    :echoCommentNewline
+        call    :osFileOpen             ; use the OS to open the file [DE]
+        call    :checkStackSize         ; check for stack overflow
+        call    :echoCommentLn          ; (echo the file-name
+        call    :echoCommentBar         ;  and a dividing line)
+
+        ; search the file-name dictionary and return the address
+        ; of the file-name record (in BC), adding it if not present
+        ;
+        ; this is done *after* opening the file so that if the file
+        ; is missing, the source of the error is reported as the
+        ; file+line containing the include statement
+        ;
+        call    :getFileID              ; search for or add file-name [DE]
+        ld*$.BC [ :file ]               ; set current file-name addr
+
+        ; reset line & column number when changing file:
+        ; (the call to @line will call nextWord which will
+        ;  set the start-of-word line/col number for us)
+        ;
+        xor.A                           ; (set A to zero)
+        ld*$.A  [ :ccol ]               ; reset column number
+        ld.B.A                          ; line number however
+        ld.C    1                       ;  defaults to 1
+        ld*$.BC [ :crow ]               ; ...
+
+        call    :_line                  ; run the parsing loop
+        call    :osFileClose            ; close the file
+
+        ; WARN: this cannot be optimised into a JP due to
+        ;       osFileClose doing stack manipulation
+        ret
+
+        ;=======================================================================
+        ; define label:
+        ;-----------------------------------------------------------------------
+        ; read the label name and search for it. if not found, this routine
+        ; will define the label on the heap as a forward-reference (no value)
+        ; and return carry-set. we will fill in the label's true value below
+        ; using the current virtual program-counter
+        ;
+:_label ld*$.A  [ _local + 1 ]          ; first char determines label or local
+
+        call    :getLabel               ; get label value or push as fwd-ref
+        jp?nc   :errRedefLabel          ; cannot redefine labels!
+
+        ; getLabel has returned the addr of the label name length byte [BC]
+        ; and the addr of the flag-byte of the label record [DE] so we can
+        ; flip the flag and fill in the true value of the label
+        ;
+_local  ld.A    $00                     ; check first char (patched above)
+        cp      #CHAR_LOCAL             ; was this a local label?
+        jr?z    _0                       ; if yes, skip over last-defined
+        ld*$.BC [ :local ]              ; set last defined label addr
+
+_0      push.BC                         ; we'll  print the label name later
+        ex.DE.HL                        ; (swap label addr to HL)
+        ld*HL   1                       ; set flag byte to indicate valid value
+        dec.HL                          ; decrement to label value, hi-byte
+        ld.B.IXH                        ; put virtual program-counter, hi-byte
+        ld*HL.B                         ; ...
+        dec.HL                          ; decrement to label value, lo-byte
+        ld.C.IXL                        ; out virtual program-counter, lo-byte
+        ld*HL.C                         ; ...
+        ex.DE.HL                        ; (return heap to HL)
+
+        ; echo label value & name:
+        ;-----------------------------------------------------------------------
+        ; echo the label as v80 source, address first
+        ; (sets program-counter) followed by the label name:
+        ;
+        call    :printHexNumber         ; print value in BC with "$" sigil
+        ld.A    #ASCII_SPC              ; print a space between
+        call    :osPrintChar            ;  addr and label name
+        pop.DE                          ; restore label-name addr from earlier
+        call    :printSymbolName        ;  and print label name
+        call    :osPrintNewline         ;  + newline
+
+        jp      :_next                  ; return to parsing
+
+        ;=======================================================================
+        ; define constant:
+        ;-----------------------------------------------------------------------
+:_const call    :readWord               ; read symbol name into word buffer
+
+        ; evaluating the expression that follows may overwrite the word buffer!
+        ; e.g. if a const or label is used in the expr, so we push the const
+        ; name to the heap ahead of time. the expr that follows will push to
+        ; the heap if there's a forward-reference, corrupting the constant,
+        ; but constants cannot use forward-references so it's an error anyway
+        ;
+        ld.DE   :const                  ; use constant dictionary
+        call    :findSymbol             ; check if constant already exists
+        jr?nz   _get                    ; if yes, skip pushing name
+
+        ; define new const name on heap:
+        ;-----------------------------------------------------------------------
+        ld.DE*  [ :const ]              ; read prev const addr
+        dec.HL                          ; pre-decrement heap to empty byte
+        ld*HL.D                         ; write prev const addr hi-byte
+        dec.HL                          ; (this is the heap addr we want)
+        ld*HL.E                         ; write prev const addr lo-byte
+        ld*$.HL [ :const ]              ; update entry point with heap addr
+
+        ; push the const name:
+        ; NOTE: findSymbol has returned the length of the const name in BC
+        ;
+        ld.DE   :word                   ; copy const name from word-buffer
+        ex.DE.HL                        ; copy goes *from* [HL] *to* [DE]...
+        inc.C                           ; length +1 to include the length-byte
+
+        ; note that LDDR is post-decrement (copy-then-decrement), whereas
+        ; the heap is pre-decrement like the stack (decrement-then-copy)
+        ; -- decrement DE once to adjust for this before the copy
+        ;
+        dec.DE                          ; adjust heap for post-decrement copy
+        push.DE                         ; this will be the name-length byte
+        lddr                            ; copy BC bytes from [HL] to [DE]!
+
+        ; DE is the addr at the bottom of the heap where the const value will
+        ; be written. copy this to HL and decrement again to ensure the heap
+        ; addr in HL will match DE when the the const value is written
+        ;
+        ld.H.D                          ; LDDR does an additional decrement
+        ld.L.E                          ;  so we save one instruction (:P)
+        inc.DE                          ;  by accomodating for it, correcting
+        dec.HL                          ;  DE up so HL only needs one dec
+
+        call    :checkHeapSize          ; check for heap overflow
+
+        pop.BC                          ; for echoing, restore addr of name
+
+        ; get const value:
+        ;-----------------------------------------------------------------------
+        ; if the const already existed, DE is the heap addr of the const's
+        ; value to overwrite, otherwise DE is the *current* heap address
+        ;
+_get    push.DE                         ; before parsing value, preserve addr
+
+        ; echo const name:
+        ld.D.B                          ; (findSymbol returns the addr
+        ld.E.C                          ;  of the const name in BC)
+        call    :printSymbolName        ; print const name
+        ld.A    #WORD_LEN + 1           ; calculate number of spaces to print
+        sub.C                           ;  for const names up to 32 chars
+        call    :osPrintSpaces          ; print padding spaces
+
+        ; parse following expression for const value:
+        ;
+        call    :nextExpr               ; try evaluate the following expression
+        jp?c    :errUnexpDefer          ; cannot contain forward-references!
+
+        pop.DE                          ; restore const addr
+        ex.DE.HL                        ; swap to HL for writing
+        dec.HL                          ; pre-decrement heap to empty byte
+        ld*HL.B                         ; because we're writing downwards
+        dec.HL                          ;  in RAM, write value hi-byte first
+        ld*HL.C                         ;  followed by value lo-byte
+        ex.DE.HL                        ; restore real heap addr to HL
+
+        ; echo value:
+        ;
+        call    :printHexNumber         ; print const value in BC
+        call    :osPrintNewline         ;  + newline
+
+        jr      :_line                  ; only one const defined per line
+
+        ;=======================================================================
+        ; set virtual program-counter:
+        ;-----------------------------------------------------------------------
+        ; there is no "org" statement to set the program counter as with other
+        ; assemblers; if a line begins with a hexadecimal number the virtual
+        ; program-counter is set to that value, e.g.
+        ;
+        ;       $c000                   ; PC is now $c000
+        ;
+        ; to set the virtual program-counter using an expression,
+        ; begin the line with a lone `$` followed by the expression, e.g.
+        ;
+        ;       $       #boot + $0100   ; set PC to #boot constant + 256
+        ;
+:_pc    call    :parseHexNumber         ; capture the number
+        call?c  :nextExpr               ; if PC, parse the expr that follows
+        jp?c    :errUnexpDefer          ; must be a constant expr!
+
+        ld.IXL.C                        ; change the virtual program-counter
+        ld.IXH.B                        ;  to the number given
+
+        ; note that parseExpr may have read a non-whitespace char as the
+        ; last character read, so don't skip chars if already on one
+        ;
+        ; fall through
+        ; ...
+
+:nextChar
+        ;=======================================================================
+        ; get first char of next word:
+        ;
+        ; unlike nextWord, if the current char is already
+        ; the start of a word, we do not skip it
+        ;
+        ; out:  A       if the current char is non-whitespace, returns that,
+        ;               otherwise skips whitespace and returns either the
+        ;               the first non-whitespace char or a newline/end-of-file
+        ;       zf      zero-flag is always set for newline/end-of-file
+        ;-----------------------------------------------------------------------
+        ld.A*   [ :char ]               ; last read character
+        cp      #ASCII_SPC              ; ASCII<32 = newline (or end-of-file)?
+        jr?c    _eol                    ; return zero-flag set for EOL/EOF
+        call?z  :nextWord               ; SPC = find next char (or newline)
+        ret                             ; return zero-flag from nextWord
+        ;-----------------------------------------------------------------------
+_eol    cp.A                            ; set zero flag without changing A
+        ret                             ; (that is, A-A is always 0)
+
+        ;=======================================================================
+        ; distinguish between newline and end-of-file:
+        ;-----------------------------------------------------------------------
+        ; readChar returns zero-flag set for both newline and end-of-file,
+        ; check the ASCII code to differentiate the two
+        ;
+:_nleof cp      #ASCII_LF               ; check for newline
+        ret?nz                          ; no? end-of-file -- end assembling
+
+        ; at newline fall through to
+        ; the line-starting context
+        ; ...
+
+        ; line context:
+        ;=======================================================================
+        ; at the beginning of the line, labels, constants and
+        ; the program-counter can be defined but nowhere else
+        ;
+:_line  call    :nextWord               ; find first character
+        jr?z    :_nleof                 ; did we hit newline or end-of-file?
+
+        ; conditional assembly markers must appear first as they can skip
+        ; multiple lines. parseCond will parse the condition marker and expr
+        ; and will skip lines if required. when it returns, the current char
+        ; will be the first char of a line, which could be another conditional
+        ; so it is guaranteed to return zero-flag set for this purpose
+        ;
+_cond   cp      #CHAR_COND              ; is condition marker?
+        call?z  :parseCond              ; handle condition, skip lines etc.
+        jr?z    _cond                   ; after skipped lines, re-check
+
+        ; a hexadecimal number at the start of a line
+        ; defines the virtual program-counter
+        ;
+        cp      #CHAR_HEX               ; hexadecimal literal?
+        call?z  :_pc                    ; if yes set virtual program-counter
+        jr?z    :_nleof                 ; this may cause end-of-line|file
+
+        ; after the virtual program counter is set,
+        ; a label or const can still be defined
+        ; e.g.
+        ;       $0100   :boot           ; defines :boot as $0100
+        ;
+        ; defining a label or constant?
+        ;
+        cp      #CHAR_LABEL             ; is label?
+        jp?z    :_label                 ; define a label
+        cp      #CHAR_LOCAL             ; or local label?
+        jp?z    :_label                 ; as above
+        cp      #CHAR_CONST             ; is constant?
+        jp?z    :_const                 ; define a constant
+
+        ; if no label or constant, fall through to body
+        ; context for keywords / instructions etc.
+        ; ...
+
+        ; body context:
+        ;=======================================================================
+        ; the program-counter and labels must be defined first on the line and
+        ; after those, instructions and keywords are allowed. this is known as
+        ; the body context and multiple instructions / keywords can occur until
+        ; either a comment or the end of the line
+        ;
+        ; after a keyword or instruction, parsing returns to the body context
+        ; unless a newline is encountered. in cases where the last-read char
+        ; is whitespace, we need to pickup the next character:
+        ;
+:_next  call    :nextChar               ; use current char or skip whitespace
+        jr?z    :_nleof                 ; did we hit newline or end-of-file?
+
+        ;-----------------------------------------------------------------------
+_body   cp      #CHAR_KEYWORD           ; is this a keyword?
+        jr?z    :_key
+
+        call    :parseInstruction       ; if not, must be an instruction
+
+        jr      :_next
+
+        ;-----------------------------------------------------------------------
+        ; keywords:
+        ;-----------------------------------------------------------------------
+:_key   call    :readChar               ; get next char after the "."
+        jp?z    :errInvalKey            ; no letter follows!?
+        ld.C.A                          ; hold char to check next char first
+        call    :readChar               ; get 2nd char
+        cp      #ASCII_SPC              ; whitespace must follow!
+        jp?nz   :errInvalKey            ; (i.e. no additional chars)
+
+        ld.A.C                          ; return to first char
+        res5.A                          ; force upper-case for "a"-"z"
+        cp      'B                      ; `.b` keyword?
+        jr?z    _b                      ; process bytes
+        cp      'W                      ; `.w' keyword?
+        jr?z    _w                      ; process words
+        cp      'I                      ; .`i` keyword?
+        jp?z    _i                      ; handle file include
+        cp      'A                      ; `.a` keyword?
+        jr?z    _a                      ; handle binary alignment
+        cp      'F                      ; `.f` keyword?
+        jp?nz   :errInvalKey            ; none of the above? invalid keyword!
+
+        ; (fall through to handle fill keyword)
+        ; ...
+
+        ;-----------------------------------------------------------------------
+        ; fill:
+        ;-----------------------------------------------------------------------
+        ; the fill keyword pads the code-segment with a given number of bytes
+        ;
+        ;       .f      '!      26      ; emit "!", 26 times
+        ;
+_f      call    :nextExpr               ; get value to write -- must be 8-bit
+        jp?c    :errUnexpDefer          ; expr cannot contain a fwd-ref!
+        rlc.B                           ; check if hi-byte is non-zero
+        jp?nz   :errRangeParam          ; can't use 16-bit fill parameter!
+        ld.A.C                          ; set the fill value
+        ld*$.A  [ _fill + 3 ]           ;  used in the fill loop
+
+        call    :nextExpr               ; get fill counter value
+        jp?c    :errUnexpDefer          ; expr cannot contain a fwd-ref!
+        add.IX.BC                       ; bump virtual program-counter by count
+        ;-----------------------------------------------------------------------
+_fill   ld*IY   [ 0 ]   $00             ; emit a null to code-segment
+        inc.IY                          ; move to next byte in code-segment
+        dec.BC                          ; decrement byte count
+        ld.A.B                          ; 16-bit decrements don't set flags!
+        or.C                            ; combine lo/hi-bytes to check for 0
+        jr?nz   _fill                   ; continue for all bytes
+        ;-----------------------------------------------------------------------
+        jr      :_line                  ; other keywords cannot follow .f
+
+        ;-----------------------------------------------------------------------
+        ; align:
+        ;-----------------------------------------------------------------------
+        ; the align keyword allows padding the code-segment up to a given
+        ; virtual program-counter -- bytes are emitted until the virtual
+        ; program-counter modulo the parameter = zero, e.g.
+        ;
+        ;       .a      $100            ; align to page
+        ;
+_a      call    :nextExpr               ; get the modulo parameter in BC
+        jp?c    :errUnexpDefer          ; expr cannot contain a fwd-ref!
+
+        ; calculate how many bytes we'd need to skip to reach an address
+        ; that would divide evenly by our given modulus parameter:
+        ;
+        ; if we have a program-counter of $2040 and a modulus of $0100 then
+        ; we need to pad $C0 bytes until we reach the modulus of $0100 --
+        ; $2040 / $0100 = $20 plus $40 remainder, with the difference
+        ; between $40 and $100 being $C0 bytes
+        ;
+        ; FIXME should we check for code overflow after an align?
+        ;       it could be, though not likely, thousands of bytes
+        ;
+        push.HL                         ; (preserve heap addr)
+        ld.D.IXH                        ; calculate the remainder, HL, of
+        ld.E.IXL                        ;  the program-counter, DE, divided be
+        call    :_doDiv                 ;  the modulus (align parameter in BC)
+
+        ld.A.H                          ; if this is zero, no bytes need
+        or.L                            ;  emitting, we're already aligned,
+        jr?z    _ok                     ;  skip over emitting padding bytes!
+
+        ld.D.B                          ; to do BC-HL we'll transfer BC to DE
+        ld.E.C                          ;  and then swap DE to HL, causing
+        ex.DE.HL                        ;  the remainder from HL to swap to DE
+        sbc.HL.DE                       ; do modulus minus remainder
+        jr?z    _ok                     ; if zero, we're already aligned!
+        ex.DE.HL                        ; put padding-count back to DE
+        add.IX.DE                       ; bump virtual program-counter by count
+        ;-----------------------------------------------------------------------
+_pad    ld*IY   [ 0 ]   $00             ; emit a null to code-segment
+        inc.IY                          ; move to next byte in code-segment
+        dec.DE                          ; decrement byte count
+        ld.A.D                          ; 16-bit decrements don't set flags!
+        or.E                            ; combine lo/hi-bytes to check for 0
+        jr?nz      _pad                 ; continue for all bytes
+        ;-----------------------------------------------------------------------
+_ok     pop.HL                          ; (restore heap addr)
+        jp      :_line                  ; other keywords cannot follow .a
+
+        ;-----------------------------------------------------------------------
+        ; words:
+        ;-----------------------------------------------------------------------
+_w      ld.A    2                       ; set parameter size to 2 (words)
+        .b      $01                     ; skip 2 bytes, = LD BC, $....
+        ;-----------------------------------------------------------------------
+        ; bytes:
+        ;-----------------------------------------------------------------------
+_b      ld.A    1                       ; set parameter size to 1 (bytes)
+        ld*$.A  [ :param ]              ; save parameter size to reuse
+
+        ; check if either a string OR an expression follows:
+        ;
+_data   call    :nextWord               ; skip in-between spaces
+        jp?z    :_nleof                 ; stop at EOL/EOF
+        cp      #CHAR_STR               ; a string?
+        jr?z    _str                    ; process string literal
+
+        ; not a string, parse as an expression and output to code-segment:
+        ; deferred expressions will automatically be pushed to the heap
+        ;
+_isexpr call    :nextParam
+
+        ; the last character read by expression parsing will be either EOL/EOF,
+        ; where the line ends without any further expressions, or the fist char
+        ; of the following word which may or may not be an expression
+        ;
+        ld.A*   [ :char ]               ; last character read
+        cp      #ASCII_SPC + 1          ; any non-visible char must be EOL/EOF
+        jp?c    :_nleof                 ; EOL/EOF is always end of keyword
+        cp      '0                      ; a decimal digit 0-9?
+        jp?c    _lt0                    ; handle ASCII codes below "0"
+        cp      '9 + 1                  ; is above 0, is <= 9?
+        jr?c    _isexpr                 ; if 0-9 is expr
+
+_gt9    cp      #CHAR_LABEL             ; a label?
+        jr?z    _isexpr                 ; ...
+        cp      #CHAR_LOCAL             ; (or local label)
+        jr?z    _isexpr                 ; ...
+        cp      #CHAR_OP_LO             ; the lo-byte unary operator?
+        jr?z    _isexpr                 ; ...
+        cp      #CHAR_OP_HI             ; the hi-byte unary operator?
+        jr?z    _isexpr                 ; ...
+        cp      #CHAR_EXPR_IN2          ; the square bracket
+        jr?z    _isexpr                 ; ...
+        jp      :_next                  ; leave if not an expression
+
+_lt0    cp      #CHAR_CONST             ; a constant?
+        jr?z    _isexpr                 ; ...
+        cp      #CHAR_HEX               ; a hexadecimal literal / PC?
+        jr?z    _isexpr                 ; ...
+        cp      #CHAR_BIN               ; a binary literal?
+        jr?z    _isexpr                 ; ...
+        cp      #CHAR_CHAR              ; a character literal?
+        jr?z    _isexpr                 ; ...
+        cp      #CHAR_OP_NEG            ; the negate unary operator
+        jr?z    _isexpr                 ; ...
+        cp      #CHAR_OP_NOT            ; the not unary operator?
+        jr?z    _isexpr                 ; ...
+        cp      #CHAR_EXPR_IN1          ; a parenthesis
+        jr?z    _isexpr                 ; ...
+        cp      #CHAR_STR               ; a string?
+        jp?nz   :_next                  ; leave if not an expression
+
+        ; fall through to handle string
+        ; ...
+
+        ;-----------------------------------------------------------------------
+        ; string literal:
+        ;-----------------------------------------------------------------------
+        ; it's important to note that a string is not a value and *cannot* be
+        ; a part of an expression or a parameter; it is a series of bytes, so
+        ; strings and expressions are complimentary but mutually-exclusive
+        ;
+_str    ld.A*   [ :param ]              ; a string cannot be a part of 
+        cp      2                       ;  a list of words!
+        jp?z    :errRangeStr            ;  (i.e. `.w` keyword)
+        ;-----------------------------------------------------------------------
+_0      call    :readChar               ; read next character
+        jp?z    :errInvalStr            ; sudden EOL/EOF? unterminated string!
+        cp      #CHAR_STR               ; string terminator?
+        jr?z    _data                   ; yes, check for next string|expr
+        ld*IY.A [ 0 ]                   ; emit byte to code-segment
+        inc.IY                          ; move to next byte in code-segment
+        inc.IX                          ; increment virtual program-counter
+        jr      _0                      ; keep reading
+
+        ;-----------------------------------------------------------------------
+        ; include:
+        ;-----------------------------------------------------------------------
+        ; TODO: should we read ALL bytes until the end of the line, including
+        ;       expressions? where do we store these? (need a 127B temp string)
+        ;       we could temporarily relocate the code-segment addr (IY) and
+        ;       reuse the `.b` bytes parser but we'd need to disallow defers
+        ;
+        ; next parameter must be a string. unlike other strings this shouldn't
+        ; be written directly to the code-segment but is instead captured in
+        ; the string-buffer
+        ;
+_i      call    :nextWord               ; skip in-between spaces
+        jp?z    :errUnexpEOL            ; error if no parameter!
+        cp      #CHAR_STR               ; is it a string?
+        jp?nz   :errInvalFile           ; error if not a string
+        ld.DE   :str                    ; addr of forwards string-buffer $xx80
+        ;-----------------------------------------------------------------------
+_1      call    :readChar               ; read next character
+        jp?z    :errInvalStr            ; sudden EOL/EOF? unterminated string!
+        cp      #CHAR_STR               ; string terminator?
+        jr?z    _2                       ; yes, stop reading chars
+        ld*DE.A                         ; add char to word-buffer
+        inc.E                           ; move to next byte in string-buffer
+        jr      _1                       ; keep reading
+        ;-----------------------------------------------------------------------
+_2      xor.A                           ; add null terminator
+        ld*DE.A                         ; ...
+        ld.E    <:str                   ; rewind addr to start of string
+
+        ; backup the current file-name, col & row:
+        ;
+        ld.BC*  [ :file ]               ; address of current file-name
+        push.BC                         ; ...
+        ld.BC*  [ :crow ]               ; the row (line) number is 16-bit
+        push.BC                         ; ...
+        ld.BC*  [ :char_ccol ]          ; last char and column number are
+        push.BC                         ;  combined together to fill a word
+
+        call    :assembleFile           ; assemble the included file
+
+        pop.BC                          ; pop column number
+        ld*$.BC [ :char_ccol ]          ;  and last read char
+        pop.BC                          ; pop row (line) number
+        ld*$.BC [ :crow ]               ; restore current file row-number
+        pop.BC                          ; pop file-name addr
+        ld*$.BC [ :file ]               ; ...
+
+        call    :echoCommentBar
+
+        ; skip any whitespace / comment following the file-name and return
+        ; to the line context (other keywords cannot follow `.i`)
+        jp      :_line
+
+
+:nextWord
+;===============================================================================
+; reads input and skips spaces until either:
+;
+; - the next non-terminating character
+; - a newline or end-of-line character
+; - a comment -- the comment text is skipped over and the next newline /
+;   end-of-file is returned instead! therefore this routine MUST NOT
+;   be used to skip over whitespace in string literals etc.
+;
+; WARN: this routine will return on newline and that there may be more leading
+;       whitespace on the next line -- if you want to skip to the next non-
+;       whitespace character, call the routine again after a newline!
+;
+; out:  A               ASCII code
+;       zf              zero-flag is set for "no word", i.e. when the line
+;                       ends before another valid word. check A for newline
+;                       (ASCII_LF) to differentiate those. end-of-file might
+;                       NOT be null! (e.g. CP/M uses ASCII_SUB)
+;       HL, DE          (preserved)
+;       BC              (clobbered)
+;-------------------------------------------------------------------------------
+_get    call    :readChar               ; read a character (returns z-flag)
+        ret?z                           ; return z-flag set if newline/EOF
+
+        ; we need to be careful not to wrongly return z-flag set!
+        ;
+        ; we cannot check for ASCII_SPC+1 ("!") as if this character appears,
+        ; the parser will think the file ended. instead look for space itself
+        ; -- for any ASCII code below we continue looping, and space itself
+        ; is caught with the zero-flag and re-looped
+        ; 
+        cp      #ASCII_SPC              ; is ASCII code a space?
+        jr?c    _get                    ; keep reading if codes 1-31
+        jr?z    _get                    ; also, keep reading if space
+
+        cp      #CHAR_COMMENT           ; is this the start of a comment?
+        jr?z    _skip                   ; if yes, skip comment
+
+        ; start of a word, update the line/col number for errors
+        ;
+        ld.BC*  [ :crow ]               ; copy current line number
+        ld*$.BC [ :wrow ]               ;  to start-of-word line-number
+        ld.C.A                          ; preserve read character
+        ld.A*   [ :ccol ]               ; copy current column number
+        ld*$.A  [ :wcol ]               ;  to start-of-word column-number
+        ld.A.C                          ; restore read character
+        ret
+
+        ; skip over a comment until the newline / end-of-line:
+        ;-----------------------------------------------------------------------
+_skip   call    :readChar               ; read a character (returns z-flag)
+        jr?nz   _skip                   ; read until newline / end-of-file
+
+        ret
+
+
+:readWord
+;===============================================================================
+; read symbol name:
+;
+; if the symbol begins with `_` it's a local label and the last-defined label
+; name will automatically be prepended to the symbol name being read in
+;
+; NOTE: the word is written *downwards* in RAM, to match how symbol names
+;       are pushed to the heap, for faster comparison -- we use the bottom
+;       of a page to hold the incoming word so that we can get away with
+;       using `DEC E` instead of `DEC DE`
+;
+; in:   A               first char is already read
+; out:  A               length of word
+;       DE              DE is set to the first byte (length) of `word`
+;       [char]          the last character read will always be some kind
+;                       of whitespace -- space, newline or end-of-file
+;       HL              (preserved)
+;       BC              (clobbered)
+;-------------------------------------------------------------------------------
+        ld.DE   :word                   ; top of word-buffer
+        cp      #CHAR_LOCAL             ; is this a local label?
+        call?z  _local                  ; prepend last label defined
+        jr      _in                     ; (first character already read)
+        ;-----------------------------------------------------------------------
+_read   call    :readChar               ; read char from input file
+        cp      #ASCII_SPC + 1          ; whitespace or end-of-line/file?
+        jr?c    _ok                     ; (leave loop at whitespace)
+_in     dec.E                           ; move to next space in buffer
+        ld*DE.A                         ; add the character to the buffer
+        jp?p    _read                   ; keep going until buffer full
+        ;-----------------------------------------------------------------------
+        jp      :errInvalSym            ; quit with invalid symbol error
+
+        ;-----------------------------------------------------------------------
+_ok     ld.A    #WORD_LEN               ; max size - characters remaining
+        sub.E                           ;  = length of word
+        ld.E    <:word                  ; snap back to length byte
+        ld*DE.A                         ; write word-length byte
+        ret
+
+        ; prepend last label name:
+        ;=======================================================================
+_local  push.HL                         ; preserve HL before copy
+
+        ld.HL*  [ :local ]              ; last non-local label record addr
+        ld.A.H                          ; but make sure it's not $0000!
+        or.L                            ; can't define local label before label
+        jp?z    :errUndefLocal          ; error if no label defined yet
+        ld.C*HL                         ; read label-name length for copy
+        ld.B    0                       ; (LDDR copies BC bytes...)
+        inc.C                           ; +1 to include label-name length byte
+        lddr                            ; copy BC bytes from [HL] to [DE]
+
+        inc.E                           ; compensate for last DEC before return
+        ld.A    #CHAR_LOCAL             ; local label sigil must be included
+        pop.HL                          ; restore HL used for copy
+        ret
+
+
+:readChar
+;===============================================================================
+; reads the next character in the file:
+; current row and column are maintained
+;
+; out:  A               ASCII code. 0 = end-of-file
+;       zf              zero-flag is set *both* for end-of-file and newline!
+;       [char]          the character read is also written to RAM
+;       [crow], [ccol]  line & column number are advanced accordingly
+;       BC, DE, HL      (preserved)
+;       -               halts with error if line exceeds 127 cols
+;-------------------------------------------------------------------------------
+        call    :osGetChar              ; read a char from file
+        ld*$.A  [ :char ]               ; retain returned character
+
+        ?!      #DEBUG
+                ;///////////////////////////////////////////////////////////////
+                push.AF
+                call    :osPrintChar    ; print each character as we receive it
+                pop.AF                  ; (zero-flag must be preserved)
+                ;///////////////////////////////////////////////////////////////
+        ret?z                           ; return on end-of-file
+
+        ; check for end-of-line:
+        ;-----------------------------------------------------------------------
+        cp      #ASCII_CR               ; /r is always ignored,
+        jr?z    :readChar               ;  don't advance row/col, get next char
+
+        exx                             ; must preserve HL & DE
+        ld.HL'  :ccol                   ; prepare to increment column number
+
+        cp      #ASCII_LF               ; /n is newline
+        jr?z    _row                    ; handle newline
+        cp      #ASCII_TAB              ; /t is tab
+        jr?z    _tab                    ; handle tab
+
+        ; increment column number:
+        ;-----------------------------------------------------------------------
+        ; lines in v80 source code are hard limited to 127 columns to ensure
+        ; PC-users don't write code that exceeds real 8-bit hardware's limits,
+        ; although 80 cols is strongly recommended as this is the practical
+        ; width of many 8-bit system's displays
+        ;
+_col    inc*HL'                         ; line length is limited to 127 bytes
+        jp?m    :errRangeLine           ; 128th char (sign bit) line too long!
+        exx                             ; restore HL/DE
+        ret
+
+        ;-----------------------------------------------------------------------
+        ; increment line-number:
+        ;
+_row    ld.DE'* [ :crow ]               ; 16-bit load,
+        inc.DE'                         ;  and increment,
+        ld*$.DE' [ :crow ]              ;  and write
+        ld*HL'  $00                     ; reset column number
+
+        exx                             ; restore HL/DE
+        ret                             ; return z-flag set for newline/EOF
+
+        ;-----------------------------------------------------------------------
+        ; handle tab-character:
+        ;
+_tab    dec.A                           ; \t = 9, so change to 8 (width of tab)
+        add*HL'                         ; add 8 to current column
+        and     %11111000               ; clip to every 8th column
+        jp?m    :errRangeLine           ; stop if line too long! (>=128 chars)
+        ld*HL'A                         ; update column number
+        ld.A    #ASCII_SPC              ; return a single space instead
+        ld*$.A  [ :char ]       ; update retained value to match
+        and.A                           ; ensure zero-flag is clear!
+
+        exx                             ; restore HL/DE
+        ret
+
+
+:getFileID
+;===============================================================================
+; find, and if it doesn't exist, add a file-name to the heap:
+;
+; in:   DE              addr of file-name string, forwards, null-terminated
+; out:  BC              addr of file-name record (backwards), length-byte
+;       DE              addr of byte following the file-name in the record
+;                       (for storing arbitrary data in the file-name record)
+;       HL              if unknown, the file-name string is pushed to the heap
+;       A               (clobbered)
+;
+;              - - - ---+---+---+---+---+---+---+---+---+---+-----+------+
+;            <-heap     | ? | e | m | a | n | e | l | i | f | len | link |
+;              - - - ---+---+---+---+---+---+---+---+---+---+-----+------+
+;                    DE ^   ^ HL (if file-name pushed)      ^ BC
+;-------------------------------------------------------------------------------
+        ; copy the forwards string file-name from the string-buffer into the
+        ; word-buffer, backwards, to do a symbol search. if the file-name is
+        ; not known it's added to the heap in this backwards form
+        ;
+        ; FIXME this places a limit of 31 characters on the file-name even
+        ;       though we can read a much longer string. this is acceptable
+        ;       for CP/M but Agon MOS / Zeal support subdirectories. this
+        ;       will have to be resolved for later versions of v80
+        ;
+        push.HL                         ; preserve current heap-addr
+        ld.HL   :word                   ; destination is word-buffer
+        jr      _in                     ; jump into loop (skip length-byte)
+        ;-----------------------------------------------------------------------
+_get    ld.A*DE                         ; read char from string-buffer
+        and.A                           ; check for null terminator (set flags)
+        ld*HL.A                         ; write to backwards word-buffer
+        jr?z    _ok                     ; stop copying at null terminator
+        inc.E                           ; move to next char in string-buffer
+_in     dec.L                           ; move to next char in word-buffer
+        jp?nv   _get                    ; loop for max. 31 chars (L >= 0)
+        ;-----------------------------------------------------------------------
+        jp      :errInvalFile           ; error if string > 31 chars
+
+        ; the length of the string has to be written
+        ; at the topmost byte of the word-buffer
+        ;
+_ok     ld.A    #WORD_LEN               ; max size - characters remaining
+        sub.L                           ;  = length of word
+        ld.L    #WORD_LEN               ; snap back to length byte
+        ld*HL.A                         ; write word-length byte
+        pop.HL                          ; restore heap-addr
+
+        ; check if this file name is already known:
+        ;
+        ; if an include file is used many times (like a macro), we don't
+        ; want the heap bloated with repeated instances of the same file-name
+        ;
+        ld.DE   :files                  ; use the files dictionary
+        call    :findSymbol             ; search for file-name in word-buffer
+        ret?nz                          ; if found, return the ID
+
+        ; add the file-name to the heap:
+        ;=======================================================================
+        ; link this file-name to the previous one: (for searching)
+        ;
+        ld.DE*  [ :files ]              ; read prev addr in files dictionary
+        dec.HL                          ; pre-decrement heap to empty byte
+        ld*HL.D                         ; write prev file-name addr hi-byte
+        dec.HL                          ; (this is the heap addr we want)
+        ld*HL.E                         ; write prev file-name addr lo-byte
+        ld*$.HL [ :files ]              ; update entry point with heap addr
+
+        ; copy the file-name to the heap:
+        ; note that BC is set to the file-name length by findSymbol
+        ;
+        ld.DE   :word                   ; word-buffer addr ($xx00)
+        ld.A*DE                         ; get symbol length
+        dec.E                           ; (move past length byte)
+        dec.HL                          ; pre-decrement the heap
+        ld*HL.A                         ; push symbol length
+
+        ; this address is what will be used to identify the file-name,
+        ; it has to be returned in BC (below) to match findSymbol behaviour
+        push.HL
+
+        ; note that LDDR is post-decrement (copy-then-decrement), whereas
+        ; the heap is pre-decrement like the stack (decrement-then-copy)
+        ; -- decrement HL once to adjust for this before the copy
+        ;
+        dec.HL                          ; adjust heap for post-decrement copy
+        ex.DE.HL                        ; copy goes *from* [HL] *to* [DE]...
+        lddr                            ; copy BC bytes from [HL] to [DE]!
+        ex.DE.HL                        ; swap back to heap in HL
+        ld.D.H                          ; the byte following the file-name str
+        ld.E.L                          ;  is returned in DE like findSymbol
+        inc.HL                          ; fix heap addr after LDDR copy
+
+        call    :checkHeapSize          ; check heap didn't overflow
+
+        pop.BC                          ; return the file-name addr
+        ret
+
+
+:getConst
+;===============================================================================
+; reads a constant name from input and searches the const dictionary for it:
+;
+; out:  A               non-zero if found. 0 if constant not found
+;       zf              zero-flag is set according to the above
+;       BC              if const found, BC holds its value
+;                       if const doesn't exist, **BC retains the name length**
+;       DE              addr of the last byte in the const record,
+;                       i.e. the lo-byte of the const value
+;                       otherwise $0000 if not found
+;       HL              (preserved)
+;
+;                       | DE (found)                       | BC (not-found)
+;                - - - -+-------+---+---+---+---+---+---+--V--+------+
+;                <-heap | value | t | s | n | o | c | # | len | link |
+;                - - - -+---^---+---+---+---+---+---+---+-----+------+
+;                           | BC (found)
+;-------------------------------------------------------------------------------
+        call    :readWord               ; read const name into word buffer
+        ld.DE   :const                  ; use the constant dictionary entry
+        call    :findSymbol             ; search for the const in word-buffer
+        ret?z                           ; if not found, return 0 & zf-set
+
+        ; constant found, return value:
+        ;-----------------------------------------------------------------------
+        ; the address of the last byte of the const record is returned in DE.
+        ; when we want to redefine a constant we can just walk up the bytes
+        ;
+        ex.DE.HL                        ; swap to HL for reg-loading
+        ld.B*HL                         ; constant value hi-byte
+        dec.HL                          ; move to value lo-byte
+        ld.C*HL                         ; return BC = constant value
+        ex.DE.HL                        ; return DE = last addr
+
+        ; (note that DEC HL will have cleared the zero-flag
+        ;  as a constant could never end on address $0000)
+        ;
+        ret
+
+
+:getLabel
+;===============================================================================
+; reads a label from input and does a number of things:
+;
+; if the label exists:
+; - if it's not a forward-reference, its value is returned
+; - for forward-references, carry-set is returned
+;
+; if the label does not exist:
+; - the label is created on the heap as a forward-reference
+;   and carry-set is returned
+;
+; out:  cf              carry set indicates the label is a forward-reference.
+;                       if the label doesn't exist, it is automatically added
+;                       as a forward-reference
+;       BC              - if label found and isn't a fwd-ref, BC is its value
+;                       - if label doesn't exist, it is added as a fwd-ref
+;                         and BC is as returned from findSymbol, which is the
+;                         addr of the name-length byte in the label record
+;       DE              if label is a forward-reference (carry-set), then DE
+;                       is the addr of the flag-byte
+;       HL              if label doesn't exist, it will be pushed to the heap
+;                       as a forward-reference
+;       A               (clobbered)
+;
+;                       | DE    | DE (fwd-ref)                 | BC (fwd-ref)
+;                - - - -v-------v------+---+---+---+---+---+---v-----+------+
+;                <-heap | value | flag | l | e | b | a | l | : | len | link |
+;                - - - -+---^---+------+---+---+---+---+---+---+-----+------+
+;                           | BC
+;-------------------------------------------------------------------------------
+        call    :readWord               ; read label name into word buffer
+        ld.DE   :label                  ; use the label dictionary entry
+        call    :findSymbol             ; search for label from word-buffer
+        jr?z    _add                    ; add the label if doesn't exist
+
+        ; label found:
+        ;-----------------------------------------------------------------------
+        ; the flag byte is used to indicate a forward-reference on a label;
+        ; i.e. the label name is known, but doesn't have a value yet. we return
+        ; this flag in the carry-flag by shifting it out of the byte
+        ;
+        ; for a deferred value the byte is 0; the shift keeps this as zero,
+        ; sets zero-flag and CCF sets the carry-flag accordingly. for a valid
+        ; value the byte is 1; the shift sets carry AND bit 7 (=$80), clearing
+        ; zero-flag and CCF clears the carry
+        ;
+        ld.A*DE                         ; read forward-reference flag byte
+        rrca                            ; shift bit 0 into bit 7 AND carry!
+        ccf                             ; flip carry so forward-reference = 1
+        ret?c                           ; return early on forward-reference
+
+        ; return the label's value in BC:
+        ;-----------------------------------------------------------------------
+        dec.DE                          ; step past flag byte
+        ex.DE.HL                        ; swap to HL for reg-loading
+        ld.B*HL                         ; symbol value hi-byte
+        dec.HL                          ; move to value lo-byte
+        ld.C*HL                         ; return BC = symbol value
+        ex.DE.HL                        ; return last addr in DE
+        ret
+
+        ; create a new label record on the heap:
+        ;=======================================================================
+        ; (any reference to a label that doesn't exist is a forward-reference)
+        ;
+        ;       - - - -+-------+------+---+---+---+---+---+---+-----+------+
+        ;       <-heap | rsrvd | flag | l | e | b | a | l | : | len | link |
+        ;       - - - -+-------+------+---+---+---+---+---+---+-----+------+
+        ;
+        ; - the link addr to the previous label
+        ; - the label name length; here for faster searching
+        ; - the label name, written right-to-left -- heap extends downwards!
+        ; - a flag to indicate a forward-reference: this happens when a label
+        ;   that does not exist is encountered in an expr, a placeholder label
+        ;   is added to the heap to be filled in later. this is necessary for
+        ;   the expr to be re-evaluated in the 2nd pass
+        ; - two bytes are reserved for the value
+        ;
+        ; link this label to the previous one:
+        ;
+_add    ld.DE*  [ :label ]              ; read prev label addr
+        dec.HL                          ; pre-decrement heap to empty byte
+        ld*HL.D                         ; write prev label addr hi-byte
+        dec.HL                          ; (this is the heap addr we want)
+        ld*HL.E                         ; write prev label addr lo-byte
+        ld*$.HL [ :label ]              ; update entry point with heap addr
+
+        ; push the label name:
+        ;-----------------------------------------------------------------------
+        ld.DE   :word                   ; word-buffer addr
+        inc.C                           ; length +1 to include the length-byte
+
+        ; note that LDDR is post-decrement (copy-then-decrement), whereas
+        ; the heap is pre-decrement like the stack (decrement-then-copy)
+        ; -- decrement HL once to adjust for this before the copy
+        ;
+        dec.HL                          ; adjust heap for post-decrement copy
+        push.HL                         ; this will be the length byte addr
+        ex.DE.HL                        ; copy goes *from* [HL] *to* [DE]...
+        lddr                            ; copy BC bytes *from* [HL] *to* [DE]!
+        ex.DE.HL                        ; swap back to heap in HL
+
+        ; push forward-reference flag:
+        ;-----------------------------------------------------------------------
+        ; the flag byte is designed so that findSymbol will return zero-flag
+        ; set for forward-references, i.e. the label is considered undefined,
+        ; but carry is set to distinguish labels that exist in the dictionary
+        ; vs. those that don't (required for deferring expressions)
+        ;
+        ; the flag is flipped to allow some trickery on read out to return
+        ; A=0 and set both zero-flag AND carry-flag for forward-references
+        ;
+        ; NOTE: LDDR has already decremented HL for us
+        ;
+        ld*HL   0                       ; forward-reference = 0
+        ld.D.H                          ; addr of flag-byte for forward-
+        ld.E.L                          ;  references is returned in DE
+
+        dec.HL                          ; reserve two bytes on the heap
+        dec.HL                          ;  for the label value
+
+        call    :checkHeapSize          ; check for heap overflow
+
+        pop.BC                          ; return length byte addr in BC
+        scf                             ; return carry-flag set
+        ret                             ;  for forward-references
+
+
+:findSymbol
+;===============================================================================
+; searches for a symbol in a dictionary:
+;
+; in:   DE              dictionary entry point: an addr that contains the
+;                       addr of the last symbol added to the dictionary,
+;                       i.e. `label` for labels & `const` for constants
+;       word            the symbol name needs to already be in the
+;                       word-buffer, e.g. after calling `readWord`
+;
+; out:  A               non-zero if found. 0 if symbol not found
+;       zf              zero-flag is set according to the above
+;       BC              if symbol found, BC is addr of symbol length byte
+;                       if symbol not found, BC is the symbol name length
+;       DE              $0000 if not found, otherwise an addr pointing to
+;                       the byte following the symbol name (e.g. the value)
+;       HL              (preserved)
+;-------------------------------------------------------------------------------
+        push.HL                         ; preserve heap addr coming in
+        ld.HL   :word                   ; start of word buffer
+        ld.C*HL                         ; first byte is name length
+        ld.B    0                       ; load this into BC
+        ex.DE.HL                        ; DE = word buffer, HL = dict. addr
+        jr      _next                   ; jump into the loop
+
+        ;=======================================================================
+        ; names do not match!
+        ;
+_nope   ld.E    <:word                  ; return to word-buffer length byte
+        ld.A*DE                         ; restore the word-length to BC
+        ld.C.A                          ; ...
+        pop.HL                          ; return symbol length byte
+_link   inc.HL                          ; move *up* to link addr lo-byte
+
+        ;-----------------------------------------------------------------------
+        ; the link field of a symbol points to      - - -+------+
+        ; the lo-byte of the next symbol's link          | link |
+        ; field in the chain, with the remaining    - - -+--|---+
+        ; fields extending *downwards* in RAM       .-------'
+        ;                                           v
+        ;          ---+---+---+---+---+---+---+-----+------+
+        ;  < heap     | l | o | b | m | y | s | len | link |
+        ;          ---+---+---+---+---+---+---+-----+------+
+        ;
+        ; follow this link, but exit if it's $0000
+        ; (also setting the zero-flag and clearing carry
+        ;  -- did you know that OR cleared carry!??)
+        ;
+_next   ld.A*HL                         ; read next symbol addr, lo-byte
+        inc.HL                          ; move *up* to link addr hi-byte
+        ld.H*HL                         ; read next symbol addr, hi-byte
+        ld.L.A                          ; (complete the addr)
+        or.H                            ; is the link addr $0000?
+        jr?z    _end                    ; terminate at end of chain
+
+        ; (HL is now the next symbol addr in the heap)
+
+        dec.HL                          ; move down to length byte
+        ld.A*HL                         ; get symbol name length
+        cp.C                            ; compare with word-buffer length
+        jr?nz    _link                  ; different? return to link and follow
+
+        ; symbol length matches, check characters:
+        ;=======================================================================
+        push.HL                         ; store symbol length addr to snap back
+        dec.HL                          ; (skip length byte)
+        ld.E    <:word                  ; start at top of word-buffer
+        ;-----------------------------------------------------------------------
+_char   dec.E                           ; move down a char in word-buffer
+        ld.A*DE                         ; read char from word-buffer
+        cpd                             ; = CP A, [HL]; DEC HL; DEC BC
+        jr?nz   _nope                   ; stop looping if mismatch
+        jp?v    _char                   ; keep looping until chars run out
+        ;-----------------------------------------------------------------------
+        ; if all characters match we fall through to here. CPD ensures
+        ; that HL is pointing to the byte following the symbol-name
+        ;
+        ; the addr of the byte following (downwards) the symbol-name
+        ; is returned in DE  -- on a const this is the value (hi-byte),
+        ; and for labels this is the flag-byte
+        ;
+        ;          ---+---+---+---+---+---+---+---+-----+------+
+        ;  < heap     | ? | l | o | b | m | y | s | len | link |
+        ;          ---+---+---+---+---+---+---+---+-----+------+
+        ;             ^ DE                        ^ BC
+        ;
+        pop.BC                          ; return symbol-length addr
+        and.A                           ; A != 0, clear z-flag & carry-flag
+_end    ex.DE.HL                        ; return last addr as DE
+        pop.HL                          ; restore old heap addr
+        ret
+
+
+:parseCond
+;===============================================================================
+; parses and evaluates a condition marker:
+;
+; if the condition does not match, indented lines are skipped until
+; the first line of *equal or less* indent to the condition marker
+;
+; out:  A               if condition passes, A will be the EOL/EOF char
+;                       following the condition expression
+;                       if condition does not pass, lines will be skipped
+;                       and A will be the first *non-space* char following
+;                       the skipped lines, with the exception of end-of-file
+;                       which is not guaranteed to be null! (e.g. CP/M)
+;       zf              if condition passes, zero-flag is indeterminate
+;                       if condition fails, zero-flag is guaranteed to be set
+;       HL              (preserved) -- condition expr cannot be deferred
+;       A, BC, DE       (clobbered)
+;-------------------------------------------------------------------------------
+        ; the start-of-word column of the condition marker is what
+        ; will be used to guage what lines are within the condition
+        ;
+        ld.A*   [ :wcol ]               ; current start-of-word column number
+        inc.A                           ; a fix to allow <= with CP
+        ld*$.A  [ _skip + 1 ]           ; keep if we need to skip lines
+
+        ; get condition type and value:
+        ;-----------------------------------------------------------------------
+        call    :readChar               ; which conditon marker?
+        jp?z    :errInvalCond           ; a 2nd char must follow
+        push.AF                         ; keep condition type until after expr
+
+        call    :nextWord               ; skip space after condition marker
+        jp?z    :errUnexpEOL            ; error if expression missing!
+        call    :parseExpr              ; evaluate the expr that follows
+        jp?c    :errUnexpDefer          ; must be a constant expr!
+
+        ; test the condition against the value:
+        ;-----------------------------------------------------------------------
+        pop.AF                          ; restore conditon type
+        cp      #CHAR_COND_Z            ; zero?
+        jr?z    _z                      ; ...
+        cp      #CHAR_COND_NZ           ; not-zero?
+        jr?z    _nz                     ; ...
+        cp      #CHAR_COND_POS          ; positive?
+        jr?z    _pos                    ; ...
+        cp      #CHAR_COND_NEG          ; negative?
+        jp?nz   :errInvalCond           ; not one of the condition markers!
+
+        ; fall through for neagtive
+        ; ...
+
+        ;-----------------------------------------------------------------------
+        ; condition negative:
+        ;-----------------------------------------------------------------------
+_neg    bit7.B                          ; is the value BC <0? (hi-bit set)
+        ret?nz                          ; if yes, continue parsing lines
+        jr      _skip                   ; if no, skip indented lines
+        ;-----------------------------------------------------------------------
+        ; condition positive:
+        ;-----------------------------------------------------------------------
+_pos    bit7.B                          ; is the value BC >= 0? (hi-bit clear)
+        ret?z                           ; if yes, continue parsing lines
+        jr      _skip                   ; if no, skip indented lines
+        ;-----------------------------------------------------------------------
+        ; condition non-zero:
+        ;-----------------------------------------------------------------------
+_nz     ld.A.B                          ; is the value BC != 0?
+        or.C                            ; (combine bits)
+        ret?nz                          ; if yes, continue parsing lines
+        jr      _skip                   ; if no, skip indented lines
+        ;-----------------------------------------------------------------------
+        ; condition zero:
+        ;-----------------------------------------------------------------------
+_z      ld.A.B                          ; is the value BC = 0?
+        or.C                            ; (combine bits)
+        ret?z                           ; if yes, continue parsing lines
+
+        ; fall through
+        ; ...
+
+        ; condition mismatch, skip lines:
+        ;-----------------------------------------------------------------------
+        ; keep reading chars until we reach a non-space character
+        ; at or before the column number of the condition marker
+        ;
+_skip   ld.E    $ff                     ; retain condition marker col in E
+        ;-----------------------------------------------------------------------
+_line   call    :nextWord               ; skip as much whitespace as possible
+        jr?nz   _col                    ; distinguish EOL from EOF --
+        cp      #ASCII_LF               ; check EOL because EOF might not be 0!
+        ret?nz                          ; stop skipping when we hit end-of-file
+        jr      _line                   ; keep going if leading space
+
+        ; non-space char -- is column equal or less than condition mark?
+        ; NOTE: nextWord also skips lines that contain only comments,
+        ;       so a comment won't terminate a condition block
+        ;
+_col    ld.A*   [ :ccol ]               ; column number of last char read
+        cp.E                            ; compare with condition marker
+        jr?c    _ret                    ; return to parsing if <=
+
+        ; line is indented past condition, skip line
+        ;
+_eol    call    :readChar               ; fetch next char from input
+        jr?nz   _eol                    ; skip chars until EOL|EOF
+        cp      #ASCII_LF               ; check EOL because EOF might not be 0!
+        jr?z    _line                   ; if end-of-line, keep skipping
+        ;-----------------------------------------------------------------------
+_ret    xor.A                           ; return zero-flag set for optimisation
+        ld.A*   [ :char ]               ;  but with A = last char read
+        ret                             ; also return regardless on end-of-file
+
+
+:parseInstruction
+;===============================================================================
+; parse an instruction into opcodes:
+;
+; the CPU-specific module (e.g. "z80.wla") provides a binary tree, `opcodes`,
+; that this routine walks to match instruction names to opcodes and a CPU-
+; specific set of flags that determines which parameters are required
+;
+; in:   A               first character of word to parse
+;       HL              heap addr
+; out:  HL              heap addr is advanced for any expressions deferred
+;       IY              binary code is appended to the code-segment,
+;       IX              and the virtual program-counter is advanced
+;       A, BC|DE        (clobbered)
+;-------------------------------------------------------------------------------
+        ex.DE.HL                        ; swap heap to DE for now
+        ld.HL   :opcodes                ; start at beginning of opcode tree
+
+        ; the first character is already in A
+        ;
+        set5.A                          ; force lowercase (see desc. below)
+        jr      _0                      ; jump into the parsing loop
+
+        ;=======================================================================
+        ; match; follow the branch:
+        ;-----------------------------------------------------------------------
+        ; once a character matches, the next two bytes are either
+        ; an offset to the next branch to follow, or an opcode pair
+        ;
+_match  inc.HL                          ; step over the matched character
+        ld.C*HL                         ; read the offset lo-byte | opcode-byte
+        inc.HL                          ; move to next byte in tree
+        ld.B*HL                         ; read the offset hi-byte | opcode-flags
+
+        bit7.B                          ; is hi-bit of hi-byte set?
+        jr?nz   _opcode                 ; if so, this is an opcode
+
+        ; add the offset to the current position to jump to the new branch:
+        ; NOTE: the offset in the binary tree is reduced by 1 to compensate
+        ; for adding from the hi-byte addr, rather than the lo-byte addr
+        ;
+        adc.HL.BC
+
+        ; if the hi-bit is set on the hi-byte, then it's an opcode + flag pair,
+        ; not a jump! we branch away after the add to get a free flag-check
+        ;
+        ; TODO: this requires bit 6 of the opcode-flags to always be zero
+        ;       otherwise the ADC can overflow, voiding this check. this
+        ;       would leave us only 5 unique bits for any CPU
+        ;
+        ;jp?m      ,      @opcode         ; if hi-bit set, emit opcode
+
+        ; get character from input file:
+        ;-----------------------------------------------------------------------
+_next   call    :readChar               ; read from input file
+        cp      #ASCII_SPC + 1          ; is it whitespace? (hold carry...)
+
+        ; force lowercase, without also affecting
+        ; numbers / [most] punctuation:
+        ;
+        ; this essentially forces ASCII codes 64-95 (@A-Z[\]^_) to codes
+        ; 96-127 (`a-z{|}~) which makes A-Z lowercase with the caveat that
+        ; some punctuation cannot be differentiated "@"<->"`", "[]"<->"{}",
+        ; "\"<->"|" and "^"<->"~" but we aren't using any of those in the
+        ; instruction names anyway
+        ;
+        ; it also means that ASCII codes 0-31 (non-visible) are promoted
+        ; to 32-64 (visible), but we have already checked for ASCII codes
+        ; 32 (space) or below and this is signalled by the carry flag; so
+        ; even though the below instruction would change tab into ")", we
+        ; will undo this afterwards
+        ;
+        set5.A                          ; force partial lowercase
+        jr?nc   _0                      ; was this a non-visible char before?
+        xor.A                           ; any whitespace = end-of-word (0)
+_0      ld.BC   3                       ; this is faster than INC HL x 3!
+
+        ; compare with opcode tree:
+        ;-----------------------------------------------------------------------
+_cp     cp*HL                           ; compare input char with tree char
+        jr?z    _match                  ; characters match?
+
+        ; if the hi-bit of the character from the opcode tree is set, it's
+        ; either a continuation character (>128) or the end of a branch (=255)
+        ;
+        bit7*HL                         ; check bit 7 of character
+        jr?nz   _cont                   ; handle continuation char / end
+
+        ; no match; try the next character:
+        ;
+_skip   add.HL.BC                       ; skip 3 bytes in opcode tree
+        jr      _cp                     ; compare next char in tree
+
+        ;-----------------------------------------------------------------------
+        ; handle continuation character / end-of-branch:
+        ;
+        ; a continuation character has no branch -- one character has to
+        ; immediately follow another -- any mismatch is an unknown opcode
+        ;
+_cont   or      %10000000               ; *add* top bit to input char
+        cp*HL                           ; redo comparison with tree
+        inc.HL                          ; (move to next char in tree)
+        jr?z    _next                   ; match, check next char
+        jp      :errInvalIns            ; error for continuation mismatch
+
+        ;=======================================================================
+        ; emit opcode(s):
+        ;-----------------------------------------------------------------------
+        ; if a branch ends in an opcode then no more characters must follow,
+        ; with one exception -- an apostrophe can be appended to an instruction
+        ; for indicating shadow registers. this is a crude hack as no check is
+        ; made to ensure it's a register at the end, but it saves hundreds of
+        ; extra branches in the opcode tree
+        ;
+_opcode and.A                           ; if the last char is already 0,
+        jr?z    _ok                     ; then no further check is needed
+
+_get    call    :readChar               ; read one more character
+        cp      ''                      ; if it is apostrophe,
+        jr?z    _get                    ;  then ignore and go again
+        cp      #ASCII_SPC + 1          ; is it whitespace (or eof)?
+        jp?nc   :errInvalIns            ; if not, invalid instruction!
+
+_ok     ex.DE.HL                        ; swap heap back to HL
+
+        ; emit the opcode and parse any necessary parameters
+        ; (this routine is in the CPU-specific module, e.g. "z80.wla")
+        jp      :emitOpcode

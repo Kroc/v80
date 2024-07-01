@@ -1,0 +1,1160 @@
+; v80, (C) Kroc Camen 2023-2024, MIT License
+; expression parsing / evaluation
+;
+; expression bytecode:
+;-------------------------------------------------------------------------------
+; calculations are compiled into bytecode to allow for later evaluation,
+; i.e. for deferred calculations where a symbol is not yet known.
+; the expr bytecode buffer appears before the code-segment
+;
+;   +-----+--------+--------+-------+------- - - -
+;   | v80 | <-word | <-expr | str-> | code->
+;   +-----+--------+--------+-------+------- - - -
+;         |     32       96   128   |       
+;
+:defer  .w      $0000                   ; addr of last deferred expr
+
+; the starting line/column number of an expr is recorded because the whole
+; expression is parsed before evaluation so an error in evaluation may give
+; the line/col number of the next word or line
+;
+; NOTE: these two bytes are specifically grouped together because they
+;       are required by deferred expressions written to the heap
+;       and are pushed together as a single word
+:param_ecol
+:param  .b      $00                     ; parameter type / relative-flag
+:ecol   .b      $00                     ; start-of-expr column number
+:erow   .w      $0000                   ; start-of-expr line number
+
+
+:parseParam
+;===============================================================================
+; parse, evaluate and emit an expression to the code-segment:
+;
+; in:   A               parameter size & relative-jump flag:
+;                       set to the number of bytes the parameter must occupy
+;                       in the code-segment. bit 7 set indicates relative jump
+;       HL              current heap position -- if the expression is deferred
+;                       it will be copied to the heap
+;       [param]         the param size & rel-flag byte must be set
+;                       (e.g. parseParam above)
+;
+; out:  BC              expr value. if deferred, BC is length of expr bytecode
+;       HL              heap addr will be modified if expr is deferred
+;       A, DE           (clobbered)
+;-------------------------------------------------------------------------------
+        ld*$.A  [ :param ]
+
+        ; fall through
+        ; ...
+
+:nextParam
+        ;=======================================================================
+        ; parse the next expression and evaluate it. if it contains a
+        ; forward-reference, the parameter cannot be evaluated (yet)
+        ; and it'll be pushed to the heap for later evaluation
+        ;
+        call    :nextExpr               ; parse and evaluate expression
+        jr?c    :_defer                 ; defer to heap? (note early exit)
+
+        ; fall through
+        ; ...
+
+:emitParam
+;===============================================================================
+; emit a value to the code-segment:
+;
+; in:   BC              parameter value
+;       [param]         param size & rel-flag byte; this defines the number of
+;                       bytes the value occupies in the code-segment and if the
+;                       value is a relative jump which needs calculating
+; out:  HL              (preserved) -- does not push to heap
+;       A, BC, DE       (clobbered)
+;-------------------------------------------------------------------------------
+        ; validate size / value:
+        ;-----------------------------------------------------------------------
+        ld.A*   [ :param ]              ; retrieve the parameter type
+        rla                             ; pop hi-bit (relative-flag) into carry
+        jr?c    _rel                    ; handle relative jump parameter
+        rra                             ; correct param byte from above shift
+
+        ; write lo-byte of result:
+        ld*IY.C [ 0 ]                   ; write value lo-byte
+        inc.IY                          ; move to next byte in code-segment
+        inc.IX                          ; increment virtual program-counter
+
+        ; is this a 16-bit parameter?
+        dec.A                           ; decement byte count; if it's not 0
+        jr?nz   _hi                     ;  then it was 2, do upper-byte
+
+        ; 8-bit parameter, but is the result 16-bit? (parameter overflow)
+        ; note that A = 0 due to above check falling through
+        ;
+        or.B                            ; are any bits in hi-byte 1?
+        ret?z                           ; if zero, value fits in 8-bits
+        jp      :errRangeParam          ; out-of-range instruction parameter!
+
+        ;-----------------------------------------------------------------------
+        ; write upper-byte of 16-bit result:
+        ;
+_hi     ld*IY.B [ 0 ]                   ; write value hi-byte
+        inc.IY                          ; move to next byte in code-segment
+        inc.IX                          ; increment virtual program-counter
+
+        ret
+
+        ;=======================================================================
+        ; (for now, we assume a relative parameter is the only parameter and is
+        ;  1-byte wide as that's the case with most 8-bit CPUs I'm aware of)
+        ;
+_rel    ex.DE.HL                        ; preserve heap-addr in DE
+
+        ; BC is the value of the expr -- the address to jump to. we calculate
+        ; the relative offset with 'value - PC' so that positive is forward and
+        ; negative is backward. we can only do 16-bit subtractions in HL so we
+        ; swap BC & HL and then load BC with the virtual program-counter
+        ;
+        ld.H.B                          ; copy BC (destination)
+        ld.L.C                          ;  into HL (for SBC HL, BC)
+
+        ; the relative offset byte has to account for the automatic increment
+        ; of the program-counter after every instruction, here compensated by
+        ; carry already being set! (this was done by the rel-flag check at
+        ; the start of this routine)
+        ;
+        ld.B.IXH                        ; load BC with current
+        ld.C.IXL                        ;  virtual program-counter (IX)
+        sbc.HL.BC                       ; do 'destination - PC'
+
+        ; check for 8-bit signed bounds:
+        ;-----------------------------------------------------------------------
+        ; the carry-flag indicates if the jump is forward (clear) or backward
+        ; (set). we set A to 0 or -1 ($FF) depending on carry-flag: (any value
+        ; minus itself is 0, but the carry-flag is an additional -1)
+        sbc.A
+
+        ; detect 8-bit overflow in either direction: if the distance is > 255
+        ; then the hi-byte will not be all 1s (negative) or all 0s (positive)
+        ; therefore we expect A = H. compare sets flags without changing A,
+        ; allowing us to do two tests using the same A value!
+        cp.H
+        jp?nz   :errRangeParam          ; err if hi-byte is not 'empty'
+
+        ; because the relative-distance byte is signed, we expect its sign
+        ; to match that of the result -- a forward jump can only produce
+        ; a positive distance; if the lo-byte is negative it's a positive
+        ; distance that's too large (>127, i.e. hi-bit set)
+        xor.L
+        jp?m    :errRangeParam          ; if sign bits differ, error
+
+        ; output relative-distance byte:
+        ;-----------------------------------------------------------------------
+        ld*IY.L [ 0 ]                   ; write relative distance byte
+        inc.IY                          ; move to next byte in code-segment
+        inc.IX                          ; increment virtual program-counter
+        ex.DE.HL                        ; restore heap-addr to HL
+        ret
+
+
+; defer expression:
+;===============================================================================
+; when an expression contains a reference to a label not yet defined the space
+; in the code-segment (byte or word) is reserved and the expr is pushed to the
+; heap in a defer record (below) to be re-evaluated after all source-code has
+; been parsed
+;
+;        - - - -+--------------+-------+-----+-----+------+----+------+------+
+;        <-heap | <expr> ¦ len | param | col | row | file | pc | code | link |
+;        - - - -+--------------+-------+-----+-----+------+----+------+------+
+;
+;       link    addr to next deferred expr in chain
+;       code    addr in code-segment to write value when known
+;       pc      virtual program-counter at the time
+;       file    addr to file-name record
+;       row     line number of expr
+;       col     column number of expr
+;       param   parameter & flag-byte for value
+;       len     length of expression bytecode
+;       expr    expression bytecode
+;
+; link this expression to the previous one:
+;
+:_defer ld.DE*  [ :defer ]              ; read prev defer addr
+        dec.HL                          ; pre-decrement heap to empty byte
+        ld*HL.D                         ; write prev defer addr hi-byte
+        dec.HL                          ; (this is the heap addr we want)
+        ld*HL.E                         ; write prev defer addr lo-byte
+        ld*$.HL [ :defer ]              ; update entry point with heap addr
+
+        ; we need to push a bunch of values to the heap and the fastest way
+        ; to write 16-bit values easily is... the stack! simply make the heap
+        ; into the stack and we can PUSH our stuff on to it!
+        ;
+        ; WE DO NOT NEED TO DISABLE INTERRUPTS!!! any interrupt is going to
+        ; push to our heap and then pop the address off when it returns,
+        ; which has no effect on the values we're pushing
+        ;
+        ld*$.SP [ :sp ]                 ; backup stack pointer
+        ld.SP.HL                        ; move stack to heap!
+        ;-----------------------------------------------------------------------
+        ; push the current code-segment address; this is where
+        ; the expression result will be filled in after evaluation
+        push.IY
+
+        ; push the current virtual program-counter
+        ; (for calculating relative jumps)
+        push.IX                         ; PC is always stored in IX
+
+        ; push the starting line/column number of the expression
+        ; -- if an error occurs during evaluation in the 2nd pass
+        ;    these line/col numbers will be used for the error
+        ;
+        ld.HL*  [ :file ]               ; push the file ID
+        push.HL                         ;  (addr of file-name symbol record)
+        ld.HL*  [ :erow ]               ; push the source file
+        push.HL                         ;  line-number (16-bits)
+        ld.HL*  [ :param_ecol ]         ; push parameter-flags & column-number
+        push.HL                         ; (combined because they're 1-byte ea.)
+
+        ; since the expression result is not known we can't validate it and we
+        ; need to skip over the parameter bytes for now. the parameter size &
+        ; rel-flag byte is kept (above) for when the deferred expr is evaluated
+        ;
+        ld.A.L                          ; (from combined address above)
+        and     %01111111               ; strip rel-flag in hi-bit
+_inc    inc.IY                          ; step over byte in code-segment
+        inc.IX                          ; advance program-counter to match
+        dec.A                           ; is there another byte?
+        jr?nz    _inc                   ; if yes, skip another byte
+
+        ;-----------------------------------------------------------------------
+        ld.HL   0                       ; there is no `LD HL, SP` (!?), so
+        add.HL.SP                       ;  it's quicker to just add SP to 0!
+        ld.SP*  [ :sp ]                 ; restore stack pointer!
+
+        ; copy expression bytecode to the heap:
+        ;
+        ; note that LDDR is post-decrement (copy-then-decrement), whereas
+        ; the heap is pre-decrement like the stack (decrement-then-copy)
+        ;
+        dec.HL                          ; fix heap addr for copy-then-DEC
+        ld.DE   :expr                   ; ...
+        ex.DE.HL                        ; ...
+        lddr                            ; copy BC bytes *from* [HL] *to* [DE]!
+        ex.DE.HL                        ; ...
+        inc.HL                          ; fix heap addr after copy
+
+        jp      :checkHeapSize          ; check for heap overflow
+
+
+:nextExpr
+;===============================================================================
+; skip spaces before parsing an expression:
+; (see parseExpr below for parameters)
+;
+;-------------------------------------------------------------------------------
+        ld.A*   [ :char ]               ; last character read
+        cp      #ASCII_SPC              ; space is the only valid whitespace
+        call?z  :nextWord               ; if space, skip spaces
+        cp      #ASCII_SPC + 1          ; non-visible character?
+        jp?c    :errUnexpEOL            ; error if end-of-line / end-of-file
+
+        ; fall through
+        ; ...
+
+:parseExpr
+;===============================================================================
+; parse an expression from the input file, tokenise and evaluate it,
+; returning the result:
+;
+; in:   HL              current heap addr
+;       [char]          the first character of the expression is assumed to be
+;                       read. DO NOT call this routine with whitespace as the
+;                       last character read!
+;
+; out:  BC              the result of the expression evaluation. if the expr
+;                       cannot be evaluated and has to be deferred, BC is the
+;                       length of the expression bytecode
+;       cf              carry-clear indicates success
+;                       carry-set indicates the expression includes
+;                       forward-references and couldn't be evaluated
+;       [char]          depending where an expression ends, the last character
+;                       read can be either whitespace/EOL/EOF *OR* the first-
+;                       character of the following word
+;       HL              forward-references to labels are pushed to the heap
+;       A, DE           (clobbered)
+;-------------------------------------------------------------------------------
+        ; capture the starting line/col number of the expression,
+        ; if an error doesn't occur during parsing, these values
+        ; we be used for errors during evaluation
+        ;
+        ld.BC*  [ :wrow ]               ; current start-of-word line number
+        ld*$.BC [ :erow ]               ; backup for current expression
+        ld.A*   [ :wcol ]               ; current start-of-word column number
+        ld*$.A  [ :ecol ]               ; backup for current expression
+
+        ; if a reference to a label that isn't defined yet is encountered,
+        ; the whole expression has to be deferred until the 2nd pass
+        ;
+        xor.A                           ; set A to zero
+        ld*$.A  [ _flag ]               ; clear 'defer' flag
+        ld*$.A  [ _nest ]               ; clear parenthesis depth-count
+
+        ; expressions are tokenised into a buffer below the code-segment. this
+        ; is because any forward-references to labels will need to be pushed
+        ; to the heap so we can't write the expr on the heap at the same time!
+        ;
+        push.HL                         ; preserve heap addr
+        ld.HL   :expr                   ; addr of expr bytecode space
+        ld.A*   [ :char ]               ; get current unused input char
+        jr      _unary                  ; jump into the parsing loop
+
+        ;-----------------------------------------------------------------------
+_flag   .b      $00                     ; defer flag
+_nest   .b      $00                     ; parenthesis nested depth counter
+
+        ;=======================================================================
+        ; label:
+        ;-----------------------------------------------------------------------
+_label  cp      #CHAR_LABEL             ; a label?
+        jr?z    _in                      ; ...
+        cp      #CHAR_LOCAL             ; or local label?
+        jp?nz   :errUnexpEOL            ; no? expression has no value!!
+        ;-----------------------------------------------------------------------
+
+        ; swap our current position within the token space with the
+        ; heap position preserved at the beginning of the routine!
+_in     ex*SP.HL
+
+        ; this routine does most of the work for us by reading the label's name
+        ; from input, searching for it, and if it doesn't exist automatically
+        ; creating the label as a forward-reference on the heap
+        ;
+        call    :getLabel               ; try get the label's value
+
+        ; save updated heap position for return and
+        ; swap back to our position in token space
+        ex*SP.HL
+
+        ; if the label exists and isn't a forward-reference,
+        ; its value is in BC to go into the expr bytecode
+        jr?nc   _num
+
+        ; this label has not been seen before but because it's in an expression
+        ; this is a forward-reference -- a placeholder for the label has been
+        ; pushed to the heap. any expression that contains a forward-reference
+        ; to a label causes the whole expression to be deferred. instead of
+        ; the label value, the address of the label's flag-byte on the heap
+        ; is tokenised
+        ;
+        ld.A    %10000000               ; set the deferred flag -- this will be
+        ld*$.A  [ _flag ]               ;  checked at the end of the expression
+
+        ; NOTE: it is very important to be aware that in the case of carry-set,
+        ;       getLabel has returned the addr of the label's flag byte in DE
+        ;
+        ld*HL   #CHAR_LABEL             ; push the label token
+        ld.B.D                          ; copy label addr to BC and jump to
+        ld.C.E                          ;  where tokens are added to the expr
+        jr      _val                    ;  bytecode to save a few bytes
+
+        ;=======================================================================
+        ; constant:
+        ;-----------------------------------------------------------------------
+_const  call    :getConst               ; try get the constant's value
+        jr?nz   _num                    ; (fast path for common case)
+        jp      :errUndefConst          ; expression contains undefined const!
+
+        ;=======================================================================
+        ; open parenthesis:
+        ;-----------------------------------------------------------------------
+_paren  ex.DE.HL                        ; put token addr aside
+        ld.HL   _nest                   ; address of our counter
+        inc*HL                          ; increment it by one
+        ex.DE.HL                        ; return HL to token space
+
+        ; with the parenthesis open,
+        ; fall through to new expr
+        ; ...
+
+        ;-----------------------------------------------------------------------
+        ; add token and fall through to the next operand:
+        ;
+_next   ld*HL.A                         ; push token in A to expr
+        dec.HL                          ; move to next token space
+
+        call    :nextWord               ; read first character of the next word
+        jp?z    :errUnexpEOL            ; newline/EOF = unexpected expr end!
+
+        ; fall through to check if a unary
+        ; operator preceeds a value
+        ; ...
+
+        ; unary operators:
+        ;=======================================================================
+        ; an expression must begin with either a value,
+        ; or unary operator(s) and a value
+        ;
+        ; unary operators can always precede values,
+        ; even after an operator, e.g. `$10 + <:label`
+        ;
+        ; unary operators can be stacked, e.g. `!<#value`
+        ;
+_unary  cp      #CHAR_OP_LO             ; lo-byte operator?
+        jr?z    _next                   ; add unary operator and check again
+        ;-----------------------------------------------------------------------
+        cp      #CHAR_OP_HI             ; hi-byte operator?
+        jr?z    _next                   ; add unary operator and check again
+        ;-----------------------------------------------------------------------
+        cp      #CHAR_OP_NOT            ; not operator?
+        jr?z    _next                   ; add unary operator and check again
+        ;-----------------------------------------------------------------------
+        cp      #CHAR_OP_NEG            ; negate operator?
+        jr?z    _next                   ; add unary operator and check again
+        
+        ; after unary operator(s), a value *must* follow
+        ; ...
+
+        ; values:
+        ;=======================================================================
+_value  cp      #CHAR_EXPR_IN1          ; parenthesis?
+        jr?z    _paren                  ; handle nested expression!
+        cp      #CHAR_EXPR_IN2          ; (and its square cousin)
+        jr?z    _paren                  ; ...
+
+        ; PRO-TIP: check for decimal digits first! the result of the comparison
+        ; automatically excludes certain ASCII ranges. in our case, "#", "$"
+        ; and "%" are all below "0", where as ":" & "_" are above!
+        ;
+        cp      '0                      ; decimal digit "0" or above?
+        jr?nc   _0                      ; ...
+
+        cp      #CHAR_HEX               ; a hexadecimal literal?
+        jr?z    _hex                    ; ...
+        cp      #CHAR_CONST             ; a constant?
+        jr?z    _const                  ; ...
+        cp      #CHAR_BIN               ; a binary literal?
+        jr?z    _bin                    ; ...
+        cp      #CHAR_CHAR              ; a character literal?
+        jp?nz   :errUnexpEOL            ; no? expression has no value!
+
+        ; fall through
+        ; ...
+
+        ;-----------------------------------------------------------------------
+        ; character literal:
+        ;-----------------------------------------------------------------------
+        ; the character following the sigil determines the value,
+        ; although it must be non-whitespace
+        ;
+        call    :readChar               ; get next char from input
+        cp      #ASCII_SPC + 1          ; is it non-visible? SPC, EOL, EOF
+        jp?c    :errInvalNum            ; error if sigil followed by whitespace
+        ld.C.A                          ; load character value into BC
+        ld.B    0                       ; ...
+        jr      _num                    ; add to expr bytecode
+
+        ;-----------------------------------------------------------------------
+        ; char is "0" or above:
+        ;
+_0      cp      '9 + 1                  ; is decimal "0"-"9"?
+        jr?nc   _label                  ; if not, only labels remain!
+
+        ; fall through
+        ; ...
+
+        ;-----------------------------------------------------------------------
+        ; decimal literal:
+        ;-----------------------------------------------------------------------
+_dec    call    :parseDecNumber         ; parse decimal number into BC
+        ;-----------------------------------------------------------------------
+        ; binary literal:
+        ;-----------------------------------------------------------------------
+        ; (micro-optimisation: the zero-flag conditional here is to allow the
+        ;  fall through from above to skip this instruction -- parseBinNumber
+        ;  is guaranteed to return zero-flag clear, also falling through the
+        ;  next instruction!)
+        ;
+_bin    call?z  :parseBinNumber         ; parse the binary number into BC
+        ;-----------------------------------------------------------------------
+        ; hexadecimal literal:
+        ;-----------------------------------------------------------------------
+        ; (micro-optimisation: the zero-flag conditional here is to allow
+        ;  the fall through from above to skip this one instruction)
+        ;
+_hex    call?z  :parseHexNumber         ; parse the hex number into BC
+
+        ; push a number literal token:
+        ;-----------------------------------------------------------------------
+_num    ld*HL   #CHAR_HEX               ; push a number token
+_val    dec.HL                          ; move to next token space
+        ld*HL.B                         ; push the number hi-byte
+        dec.HL                          ; move to next token space
+        ld*HL.C                         ; push the number lo-byte
+        dec.HL                          ; move to next token space
+
+        ; an operator can follow a value
+        ; ...
+
+        ; operators:
+        ;=======================================================================
+        ; a value has been added, check for the presence of an operator:
+        ; if there's no operator, the expression ends here
+        ;
+_op     ld.A*   [ :char ]               ; last read character
+        cp      #ASCII_SPC              ; ASCII<32 = newline (or end-of-file)?
+        jr?c    _end                    ; no op? expression ends here
+        call    :nextWord               ; read first character of the next word
+        jr?z    _end                    ; end expr at newline / end-of-file
+
+_more   cp      #CHAR_OP_ADD            ; add operator?
+        jr?z    _next                   ; push token to heap, find next operand
+        cp      #CHAR_OP_SUB            ; subtract operator?
+        jr?z    _next                   ; ...
+        cp      #CHAR_OP_AND            ; and operator?
+        jr?z    _next                   ; ...
+        cp      #CHAR_OP_OR             ; or operator?
+        jr?z    _next                   ; ...
+        cp      #CHAR_OP_XOR            ; xor operator?
+        jr?z    _next                   ; ...
+        cp      #CHAR_OP_MUL            ; multiply operator?
+        jr?z    _next                   ; ...
+        cp      #CHAR_OP_MOD            ; modulo operator?
+        jr?z    _next                   ; ...
+        cp      #CHAR_OP_DIV            ; divide operator?
+        jp?z    _next                   ; ...
+
+        ; closing parenthesis?
+        ;-----------------------------------------------------------------------
+        cp      #CHAR_EXPR_OUT1         ; check for closing parenthesis
+        jr?z    _out                    ; ...
+        cp      #CHAR_EXPR_OUT2         ; (and our square cousin)
+        jr?nz   _end                    ; if not, expr has ended
+
+_out    ex.DE.HL                        ; put HL aside
+        ld.HL   _nest                   ; address of our counter
+        dec*HL                          ; decrement it by one
+        ex.DE.HL                        ; return HL to token space
+        ld*HL.A                         ; push close parenthesis token
+        dec.HL                          ; move to next token space
+
+        ; once a parenthesis is closed we expect either an operator,
+        ; to extend the expression, or the end of the expression to occur
+        ;
+        call    :nextWord               ; read first character of the next word
+        jr?nz   _more                   ; if it's not EOL/EOF, check for op
+
+        ; whatever it is, it isn't an operator or closing parenthesis;
+        ; fall through and terminate the expression
+        ; ...
+
+        ; end of expr:
+        ;=======================================================================
+_end    ld.A*   [ _nest ]               ; get parenthesis nested depth
+        and.A                           ; check for zero (set flags)
+        jp?nz   :errInvalExpr           ; parenthesis aren't matched!
+
+        ld.A*   [ _flag ]               ; get the defer flag
+        sla.A                           ; pop the hi-bit off into carry
+        ld*HL.A                         ; end expr with null terminator
+        jr?c    _defer                  ; do not evaluate forward-refs!
+
+        ; before evaluation, set the line / column number reported
+        ; in errors to the ones at the start of the expression
+        ;
+        ld.BC*  [ :erow ]               ; get line-number at start of expr
+        ld*$.BC [ :wrow ]               ; set line number used for errors
+        ld.A*   [ :ecol ]               ; get column-number at start of expr
+        ld*$.A  [ :wcol ]               ; set col number used for error
+
+        ld.HL   :expr                   ; eval expr from temp bytecode space
+        call    :evalExpr               ; returns expr result in DE
+        ld.B.D                          ; return expr result in BC
+        ld.C.E                          ;  as expected elsewhere
+
+        xor.A                           ; carry-flag *must* be clear
+        pop.HL                          ; restore heap addr to HL
+        ret
+
+        ;=======================================================================
+        ; (exit-route for forward-references:)
+        ;
+        ; calculate length of expression; this is needed to defer the expr
+        ; to the heap. the bytecode is ordered *downwards* in memory, so the
+        ; difference from the end address to the starting address is the length
+        ;
+        ; the expr buffer runs from $xx7F downwards to $xx20
+        ; so an 8-bit subtraction is sufficient
+        ;
+_defer  ld.B.A                          ; B must be 0 (LDDR uses BC)
+        ld.A    <:expr                  ; start with highest addr (expr-start)
+        sub.L                           ; subtract lowest addr (expr-end)
+        ld.C.A                          ; this is the expr length (1-based)
+        inc.C                           ; +1 to include null-terminator
+
+        ; because the expression could not be evaluated
+        ; we must return carry-flag set to indicate no-value
+        ;
+        pop.HL                          ; restore heap addr to HL
+        scf                             ; "set carry-flag"
+        ret
+
+
+:evalExpr
+;===============================================================================
+; evaluates an expr:
+;
+; WARN: this routine DOES NOT CHECK if the expression is deferred!
+;       expressions are deferred when parsed from source code; it is assumed
+;       once all code is parsed that all labels will have been defined and
+;       evaluation will now succeed -- any label that is still undefined
+;       at evaluation time is a hard error!
+;
+; in:   HL              addr of expr tokens
+; out:  DE              result value
+;       HL              token addr is decremented for the tokens read
+;       A, BC           (clobbered)
+;-------------------------------------------------------------------------------
+        call    :evalValue              ; get left-hand operand in BC
+        ld.D.B                          ; should there be no operator
+        ld.E.C                          ;  value will be returned in DE
+
+        ; check if an operator follows:
+        ;
+_isop   ld.A*HL                         ; read token type
+        and.A                           ; (set CPU flags!)
+        ret?z                           ; end on expr terminator
+        dec.HL                          ; move to next token space
+        cp      #CHAR_EXPR_OUT1         ; close parenthesis?
+        ret?z                           ; also end of current expr
+        cp      #CHAR_EXPR_OUT2         ; (also our square cousin)
+        ret?z                           ; ...
+
+        ; an operator follows:
+        ;-----------------------------------------------------------------------
+        push.DE                         ; remember the left-hand operand
+        push.AF                         ;  and the chosen operator
+
+        ; get right-hand operand in BC. be aware that due to parenthesis
+        ; this call can recurse some depth -- only HL (token addr)
+        ; will be preserved throughout
+        ;
+        call    :evalValue              ; get right-hand operand in BC
+        pop.AF                          ; restore chosen operator
+        pop.DE                          ; restore left-hand operand to DE
+
+        call    _op                     ; apply operator to values
+
+        jr      _isop                   ; check for next operator in chain...
+
+        ;=======================================================================
+        ; apply an operator:
+        ;-----------------------------------------------------------------------
+        ; (these operators do not need to use HL)
+        ;
+_op     cp      #CHAR_OP_AND            ; bitwise AND operator?
+        jr?z    _and                    ; ...
+        cp      #CHAR_OP_OR             ; bitwise OR operator?
+        jr?z    _or                     ; ...
+        cp      #CHAR_OP_XOR            ; bitwise XOR operator?
+        jr?z    _xor                    ; ...
+
+        ; the +/- operators require HL:
+        ;
+        ex.DE.HL                        ; swap operand to HL, token-addr to DE
+        cp      #CHAR_OP_ADD            ; add operator?
+        jr?z    _add                    ; ...
+        cp      #CHAR_OP_SUB            ; subtract operator?
+        jr?z    _sub                    ; ...
+
+        ; the multiply / divide / modulo
+        ; operators use all registers:
+        ;
+        push.DE                         ; preserve token addr
+        ex.DE.HL                        ; swap left-hand operand to DE
+
+        cp      #CHAR_OP_MUL            ; multiply operator?
+        jr?z    _mul                    ; ...
+        cp      #CHAR_OP_MOD            ; modulo operator?
+        jr?z    _mod                    ; ...
+
+        ; only remaining operator is DIV!
+        ; ...
+
+        ; operators:
+        ;=======================================================================
+        ; divide operator:
+        ;-----------------------------------------------------------------------
+_div    call    :_doDiv                 ; returns DE divided by BC in DE
+        pop.HL                          ; restore token addr
+        ret
+        ;-----------------------------------------------------------------------
+        ; modulo operator:
+        ;-----------------------------------------------------------------------
+_mod    call    :_doDiv                 ; returns DE / BC, remainder in HL
+        ex.DE.HL                        ; return remainder in DE
+        pop.HL                          ; restore token addr
+        ret
+        ;-----------------------------------------------------------------------
+        ; multiply operator:
+        ;-----------------------------------------------------------------------
+        ; multiply routine used from here:
+        ; <http://z80-heaven.wikidot.com/math#toc4>
+        ; multiplies DE by BC, result in DEHL
+        ;
+        ; TODO: we don't need the upper 16-bits of a 32-bit result so this
+        ;       might be able to be simplified further; we could add the
+        ;       multiplier in A as we shift bits off DE and after 8-bits,
+        ;       swap A to H and loop again, i.e. do two 8*8-bit multiplies
+        ;
+_mul    ld.HL   $0000                   ; HL is lower 16-bits of 32-bit result
+        ld.A    16                      ; number of bit shifts to do
+_0      add.HL.HL                       ;
+        rl.E                            ; shift DE up by 1 bit
+        rl.D                            ; 
+        jr?nc   _no                     ; if the popped bit is 1
+        add.HL.BC                       ;  then add the multiplier
+        jr?nc   _no
+        inc.DE
+_no     dec.A
+        jr?nz   _0
+
+        ; did the multiplication overflow? 
+        ld.A.E                          ; check the upper 16-bits of the
+        or.D                            ;  32-bit result are all zero
+        jr?nz   _err                    ; v80 is limited to 16-bits!
+
+        ex.DE.HL                        ; return lower 16-bits in DE
+        pop.HL                          ; restore token addr
+        ret
+
+_err    jp      :errRangeOver           ; v80 is limited to 16-bits!
+        ;-----------------------------------------------------------------------
+        ; add operator:
+        ;-----------------------------------------------------------------------
+_add    add.HL.BC                       ; add value to total
+        jr?c    _err                    ; error if we go above 16-bits!
+        ex.DE.HL                        ; return value in DE, token-addr in HL
+        ret
+        ;-----------------------------------------------------------------------
+        ; subtract operator:
+        ;-----------------------------------------------------------------------
+        ; NOTE: underflows are allowed! e.g. the negate unary operator this
+        ;
+_sub    sbc.HL.BC                       ; subtract value from total
+        ex.DE.HL                        ; return value in DE, token-addr in HL
+        ret
+        ;-----------------------------------------------------------------------
+        ; bitwise AND operator:
+        ;-----------------------------------------------------------------------
+_and    ld.A.D                          ; bitwise AND hi-bytes together
+        and.B                           ; ...
+        ld.D.A                          ; ...
+        ld.A.E                          ; bitwise AND lo-bytes together
+        and.C                           ; ...
+        ld.E.A                          ; ...
+        ret
+        ;-----------------------------------------------------------------------
+        ; bitwise OR operator:
+        ;-----------------------------------------------------------------------
+_or     ld.A.D                          ; bitwise OR hi-bytes together
+        or.B                            ; ...
+        ld.D.A                          ; ..
+        ld.A.E                          ; bitwise OR lo-bytes together
+        or.C                            ; ...
+        ld.E.A                          ; ...
+        ret
+        ;-----------------------------------------------------------------------
+        ; bitwise XOR operator:
+        ;-----------------------------------------------------------------------
+_xor    ld.A.D                          ; bitwise XOR hi-bytes together
+        xor.B                           ; ...
+        ld.D.A                          ; ..
+        ld.A.E                          ; bitwise XOR lo-bytes together
+        xor.C                           ; ...
+        ld.E.A                          ; ...
+        ret
+
+        ; divide routine used from here:
+        ; <http://z80-heaven.wikidot.com/math#toc15>
+        ; divide DE by BC, result in DE, remainder in HL
+        ;
+:_doDiv ld.A    16                      ; number of bit-shifts to do
+        ld.HL   $0000                   ; initialise remainder
+        jr      _in                     ; jump into divide loop
+
+_add    add.HL.BC
+_dec    dec.A
+        ret?z
+
+_in     sla.E                           ; shift DE left by one,
+        rl.D                            ;  popping the top bit off
+        adc.HL.HL                       ; multiply HL by 2 and subtract
+        sbc.HL.BC                       ;  divisor to get current remainder
+        jr?c    _add
+        inc.E
+        jr      _dec
+
+;_doDivDE:
+;        ; BC / DE = AC % HL, DE=DE
+;        ld.HL   $0000
+;        ld.A.B
+;        ld.B    16
+;-       sll.C
+;        rla
+;        adc.HL.HL
+;        sbc.HL.DE
+;        jr?nc   +
+;        add.HL.DE
+;        dec.c
+;        djnz    -
+;+       ret
+
+
+:evalValue
+;===============================================================================
+; evaluate a value from expr bytecode:
+;
+; read the next value from expr bytecode and returns it in BC:
+; - if present, unary operator(s) are applied before return
+; - parentheses are evaluated recursively
+;
+; in:   HL              current address in expr tokens
+; out:  BC              value
+;       HL              token addr is decremented for tokens read
+;       A, DE           (clobbered)
+;-------------------------------------------------------------------------------
+        ld.A*HL                         ; read token type
+        dec.HL                          ; move to next token space
+
+        ; take fast-path for values without a unary operator
+        ;
+        cp      #CHAR_HEX               ; number literal?
+        jr?z    _hex                    ; ...
+        cp      #CHAR_LABEL             ; a label? (that was deferred)
+        jr?z    _label                  ; ...
+
+        cp      #CHAR_EXPR_IN1          ; check for parenthesis
+        jr?z    _paren                  ; recurse for parens
+        cp      #CHAR_EXPR_IN2          ; (and our square cousin)
+        jr?z    _paren                  ; ...
+
+        ; we don't care what unary operator is present, we'll need
+        ; the value first, so store the unary operator until later
+        push.AF
+
+        ; recurse, fetching the value that follows --
+        ; this allows for multiple unary operators per value
+        ;
+        call    :evalValue              ; (returns value in BC)
+        pop.AF                          ; restore the unary operator
+        cp      #CHAR_OP_LO             ; lo-byte unary operator?
+        jr?z    _lo                     ; ...
+        cp      #CHAR_OP_HI             ; hi-byte unary operator?
+        jr?z    _hi                     ; ...
+        cp      #CHAR_OP_NEG            ; negate unary operator?
+        jr?z    _neg                    ; ...
+
+        ; ...
+
+        ; NOT unary operator:
+        ;-----------------------------------------------------------------------
+_not    ld.A.B                          ; invert bits in B
+        cpl                             ; ...
+        ld.B.A                          ; ...
+        ld.A.C                          ; invert bits in C
+        cpl                             ; ...
+        ld.C.A                          ; ...
+        ret
+        ;-----------------------------------------------------------------------
+        ; LO-byte unary operator:
+        ;-----------------------------------------------------------------------
+_lo     ld.B    $00                     ; clear the hi-byte
+        ret                             ; and pass C through as-is
+        ;-----------------------------------------------------------------------
+        ; HI-byte unary operator:
+        ;-----------------------------------------------------------------------
+_hi     ld.C.B                          ; copy the hi-byte into the lo-byte
+        ld.B    $00                     ;  and clear the hi-byte
+        ret
+        ;-----------------------------------------------------------------------
+        ; NEGate unary operator:
+        ;-----------------------------------------------------------------------
+        ; 16-bit negate taken from:
+        ; <www.smspower.org/Development/Z80ProgrammingTechniques#x16bitNeg>
+        ; underflow (but not overflow) is allowed for this purpose
+        ;
+_neg    xor.A                           ; set A to zero and clear flags
+        sub.C                           ; do 0-C
+        ld.C.A                          ;  and return in C
+        sbc.A                           ; set A to 0 or -1 based on carry
+        sub.B                           ; do 0-C (+carry)
+        ld.B.A                          ;  and return in B
+        ret                             ; WARN: carry may be set!
+
+        ;=======================================================================
+        ; open parenthesis:
+        ;-----------------------------------------------------------------------
+_paren  call    :evalExpr               ; returns nested expr value in DE
+        ld.B.D                          ; return result in BC
+        ld.C.E                          ;  as intended by evalValue
+        ret
+
+        ;=======================================================================
+        ; read a number literal:
+        ;-----------------------------------------------------------------------
+_hex    ld.B*HL                         ; the selection of registers used for
+        dec.HL                          ;  evaluation (HL/DE/BC) was chosen to
+        ld.C*HL                         ;  ensure reading number literals was
+        dec.HL                          ;  no slower than this
+        ret
+
+        ;-----------------------------------------------------------------------
+        ; read a label addr:
+        ;-----------------------------------------------------------------------
+        ; known labels are always resolved to number literals during parsing,
+        ; so the only labels that remain at evaluation are forward-references:
+        ; the token value contains the address of the label's flag-byte
+        ;
+        ; the selection of registers for evaluation are entirely chosen to
+        ; optimise for reading labels in expressions, beside number literals;
+        ; this span comes first and register use elsewhere works around it
+        ;
+_label  xor.A                           ; set A to zero for flag-byte check
+        ld.D*HL                         ; read label flag-byte addr hi-byte
+        dec.HL                          ; ...
+        ld.E*HL                         ; read label flag-byte addr lo-byte
+        dec.HL                          ; (we must preserve this token addr)
+        ex.DE.HL                        ; label addr in HL, token addr in DE
+        or*HL                           ; is label flag-byte zero?
+        jr?z    _err                    ; error if label was never defined!
+        dec.HL                          ; move past label flag-byte
+        ld.B*HL                         ; get label value hi-byte
+        dec.HL                          ; ...
+        ld.C*HL                         ; get label value lo-byte
+        ex.DE.HL                        ; restore token addr to HL      ;(78)
+        ret                             ; return label value in BC      ;cycles
+
+        ; (a JR above was used to save 3 cycles for every label read)
+_err    jp      :errUndefLabel
+
+
+:parseHexNumber
+;===============================================================================
+; parses an ASCII hexadecimal number and returns the value:
+;
+; a hexadecimal sigil without a number (`$`) is a special case
+; that always returns the current virtual program-counter
+;
+; out:  BC              the value, 0 padded for numbers < 256
+;       cf              carry-flag is set for virtual program-counter return
+;       [char]          the last character read will always be some kind
+;                       of whitespace -- space, newline or end-of-file
+;       HL              (preserved)
+;       A, DE           (clobbered)
+;-------------------------------------------------------------------------------
+        ; try to read up to 4 digits; the 5th character
+        ; must be whitespace or newline / end-of-file!
+        ;
+        ; the bottom of the word-buffer is used for temporary bytes as
+        ; we know this is page-aligned and can use INC E instead of INC DE
+        ;
+        ld.BC   5 * 256                 ; B=5, C=0
+        ld.DE   :buffers                ; where to write the bytes
+        ;-----------------------------------------------------------------------
+_loop   call    :readChar               ; read a char from file
+        cp      #ASCII_SPC + 1          ; ASCII space or below?
+        jr?c    _ok                     ; stop when reaching whitespace
+        ld*DE.A                         ; append byte
+        inc.E                           ; space for next digit
+        djnz    _loop                   ; decrement B, loop until 0
+        ;-----------------------------------------------------------------------
+        ; if a 5th byte was read that wasn't whitespace,
+        ; it's an error -- the number is too long!
+        jp      :errRangeOver           ; (use expr-overflow in this instance)
+
+        ;-----------------------------------------------------------------------
+_ok     ld.E    <:buffers               ; go back to the start of the number
+
+        ; number of digits in hex number is reversed;
+        ; B=1 for 4 digits, B=2 for 3 digits, B=3 for 2 digits and B=4 for 1,
+        ; and lastly B=5 for 0 digits, i.e. `$`, the program-counter
+        ;
+        dec.B                           ; 4 digits?
+        jr?z    _four                   ; ...
+        dec.B                           ; 3 digits?
+        jr?z    _three                  ; ...
+        dec.B                           ; 2 digits?
+        jr?z    _two                    ; ...
+        dec.B                           ; 1 digit?
+        jr?z    _one                    ; ...
+
+        ; return virtual program counter:
+        ;-----------------------------------------------------------------------
+        ; a hex sigil without a number (i.e. `$`) is a special symbol
+        ; that always returns the current virtual program-counter
+        ;
+        scf                             ; carry-flag indicates substitution
+        ld.B.IXH                        ; transfer virtual program-counter
+        ld.C.IXL                        ;  to return value
+
+        ret
+
+        ; four-digit hex number:
+        ;=======================================================================
+        ; a 4th digit must go in the upper nybble of B:
+        ;
+_four   call    _digit                  ; convert digit to number
+        add.A                           ;
+        add.A                           ; left-shift (faster than `sla A`)
+        add.A                           ; (shift lo-nybble to hi-nybble)
+        add.A                           ;
+        ld.B.A                          ; answer goes in B
+        inc.E                           ; move to 3rd digit
+        ;-----------------------------------------------------------------------
+        ; a 3rd digit goes in the lower nybble of B:
+        ;
+_three  call    _digit                  ; convert digit to number
+        or.B                            ; combine with hi-nybble (if present)
+        ld.B.A                          ; answer goes in B
+        inc.E                           ; move to 2nd digit
+        ;-----------------------------------------------------------------------
+        ; a 2nd digit goes in the upper nybble of C:
+        ;
+_two    call    _digit                  ; convert digit to number
+        add.A                           ;
+        add.A                           ; left-shift (faster than `sla A`)
+        add.A                           ; (shift lo-nybble to hi-nybble)
+        add.A                           ;
+        ld.C.A                          ; answer goes in C
+        inc.E                           ; move to 1st digit
+        ;-----------------------------------------------------------------------
+        ; 1st digit goes in the lower nybble of C:
+        ;
+_one    call    _digit                  ; convert digit to number
+        or.C                            ; combine with hi-nybble (if present)
+        ld.C.A                          ; answer goes in C
+
+        ret                             ; ship it!
+
+        ; convert a digit to a number:
+        ;=======================================================================
+        ; whitespace must already be precluded. err if not hex-digit
+        ;
+        ; if we unset bit 5 then ASCII "a"-"f" ($61-) becomes "A"-"F" ($41-)
+        ; without also altering existing uppercase letters. This also has the
+        ; side-effect of changing ASCII "0"-"9" ($30-$39) to codes $10-$19!
+        ; (this is why ASCII codes 0-32 must be precluded beforehand)
+        ;
+_digit  ld.A*DE                         ; get digit
+        res5.A                          ; force upper-case for "a"-"f"
+
+        ; TODO: check for >"F" and reject early, allowing us to avoid
+        ;       the `add 10` at the end with some rework?
+
+        ; by subtracting $41 ("A"), "A" = 0 & "F" = 5 with everything else,
+        ; including "0"-"9", being 'above' this (negative is >=128)
+        ;
+        sub     $41                     ; rebase to "A"
+        cp      6                       ; check for "A"-"F"
+        jr?c    _af                     ; if "A"-"F", exit
+
+        ; having eliminated characters above "F", shift the axis right
+        ; so that "0" is at 0. any character below "0" will be negative
+        add     $31
+        cp      10                      ; check for 0-9
+        ret?c                           ; (conditional RET first is slightly
+        jp      :errInvalNum            ;  faster than conditional JP first)
+
+_af     add     10                      ; change "A"-"F" to 10-15
+        ret
+
+
+:parseBinNumber
+;===============================================================================
+; parses an ASCII binary number and returns the value:
+;
+; out:  BC              the value, 0 padded for numbers < 256
+;       [char]          the last character read will always be some kind
+;                       of whitespace -- space, newline or end-of-file
+;       zf              zero-flag is guaranteed to be clear
+;       HL              (preserved)
+;       A, DE           (clobbered)
+;       -               halts with error if a digit is non-binary,
+;                       or the number of digits exceeed 16
+;-------------------------------------------------------------------------------
+        ld.DE   $0000                   ; starting value
+        ld.B    17                      ; following char must be whitespace!
+        ;-----------------------------------------------------------------------
+_loop   call    :readChar               ; read char from input
+        sub     '0                      ; rebase to 0 for digits "0" and above
+        jr?c     _last                   ; check chars < "0" for end-of-number
+        sub     2                       ; eliminate digits above 1
+        jr?nc   _err                    ; error if ASCII code was > "1"
+        add     1                       ; cause a carry only for "1" digit
+        rl.E                            ; shift bit into E
+        rl.D                            ;  and ripple into D
+        djnz    _loop                   ; loop for all digits...
+        ;-----------------------------------------------------------------------
+        ; we only drop through here if a 17th digit is read
+        ; that isn't whitespace -- too many binary digits!
+_err    jp      :errInvalNum
+
+        ; note that on return zero-flag will be clear because the ADD to check
+        ; for correct end-of-number character considers zero an error; we use
+        ; this for an optimisation in the expression parser
+        ;
+_last   add     ( '0 - #ASCII_SPC - 1 ) ; adjust again so <= SPC is negative
+        jr?c    _err                    ; error on invalid digit
+        ld.B.D                          ; copy value to BC
+        ld.C.E                          ;  for return
+        ret
+
+
+:parseDecNumber
+;===============================================================================
+; parse an ASCII decimal number and returns the value:
+;
+; out:  BC              the value, 0 padded for numbers < 256
+;       [char]          the last character read will always be some kind
+;                       of whitespace -- space, newline or end-of-file
+;       HL              (preserved)
+;       A, DE           (clobbered)
+;       -               halts with error if a digit is non-decimal,
+;                       or the number exceeds 16-bits (65'535)
+;-------------------------------------------------------------------------------
+        ; adapted from "string_to_uint16.z80" from:
+        ; <github.com/Zeda/Z80-Optimized-Routines>
+        ;
+        ex.DE.HL                        ; put incoming HL aside
+        ld.HL   $0000                   ; initialise working value
+        jr      _1st                    ; jump into loop as 1st char known
+        ;-----------------------------------------------------------------------
+_loop   call    :readChar               ; get digit from input
+_1st    sub     '0                      ; re-base "0" to 0
+        jr?c    _last                   ; if < "0", check for end-of-number
+        cp      10                      ; check if >9
+        jr?nc   _last                   ; if > "9", check for end-of-number
+        ld.B.H                          ; take a copy of current value
+        ld.C.L                          ;  as part of multiplying by 10
+        add.HL.HL                       ; multiply by 2
+        add.HL.HL                       ; multiply by 4
+        add.HL.BC                       ; add 1x, effectively multiply by 5
+        add.HL.HL                       ; double again, effectively x10
+        add.L                           ; add the single digit
+        ld.L.A                          ; ...
+        jr?nc   _loop                   ; overflow lo-byte?
+        inc.H                           ; ripple carry to hi-byte
+        jr?nz   _loop                   ; keep looping if <=65'535
+        ;-----------------------------------------------------------------------
+_err    jp      :errInvalNum            ; err if >65'535 or invalid digit
+
+        ; the loop exits here on any any non-decimal digit; check if the digit
+        ; is a valid end-of-number separator such as space, end-of-line|file
+        ;
+_last   add     ('0 - #ASCII_SPC - 1 )  ; adjust again so <= SPC is negative
+        jr?c    _err                    ; error on invalid digit
+        ld.B.H                          ; copy result from HL
+        ld.C.L                          ; ... to BC
+        ex.DE.HL                        ; restore caller's HL
+        ret

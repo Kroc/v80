@@ -1,0 +1,854 @@
+; v80, (C) Kroc Camen 2023-2024, MIT License
+; CP/M-2.2 interface
+;
+; each supported operating system must implement this interface:
+; (see routine headers below for details)
+;
+;       :osBoot                         bootstrap, always first code run
+;       :osQuit                         quit app and return to the OS
+;       :osParseParameters              parse the command-line parameters
+;       :osFileOpen                     open file (read-only)
+;       :osFileClose                    close file (read-only)
+;       :osSaveCode                     save binary to file-name parsed
+;                                       in osParseParameters
+;       :osGetChar                      read char from current open file
+;       :osPrintLn                      print null-terminated string + newline
+;       :osPrintNewline                 print a newline (sys/OS-dependant)
+;       :osPrintChar                    print a single character
+;       :osPrintStrZ                    print a null-terminated string
+;       :osPrintSpaces                  print a bunch of spaces
+;
+; system constants:
+;-------------------------------------------------------------------------------
+#CPM_VER                $22             ; CP/M version as BCD
+
+; BDOS calls:
+$0005                   :BDOS           ; call address to access BDOS
+
+; details of the CP/M 2.2 interface gleaned from here:
+; http://www.gaby.de/cpm/manuals/archive/cpm22htm/ch5.htm
+;
+; function:             ; C = ?         ; notes:
+#BDOS_RESET             0               ; system reset
+#BDOS_CONIN             1               ; console input
+#BDOS_CONOUT            2               ; console output
+#BDOS_RDRIN             3               ; reader input
+#BDOS_PUNOUT            4               ; punch output
+#BDOS_LISTOUT           5               ; list output
+#BDOS_CONIO             6               ; direct console control
+#BDOS_GETIO             7               ; get I/O byte
+#BDOS_SETIO             8               ; set I/O byte
+#BDOS_PRNSTR            9               ; print string
+#BDOS_CONBUF            10              ; buffered console input (line input)
+#BDOS_CONSTAT           11              ; get console status
+#BDOS_VER               12              ; get version number
+#BDOS_RSTDSK            13              ; reset disk system
+#BDOS_SELDSK            14              ; select disk
+#BDOS_OPEN              15              ; open file
+#BDOS_CLOSE             16              ; close file
+#BDOS_FIND1ST           17              ; search for first file
+#BDOS_FINDNEXT          18              ; search for next file
+#BDOS_DEL               19              ; delete file
+#BDOS_READSEQ           20              ; read sequential
+#BDOS_WRITESEQ          21              ; write sequential
+#BDOS_MAKEFILE          22              ; create new file
+#BDOS_RENFILE           23              ; rename file
+#BDOS_LOGIN             24              ; return bitmap of present drives A-P
+#BDOS_CURDSK            25              ; get current disk
+#BDOS_SETDMA            26              ; set DMA address at $0008
+#BDOS_GETADDR           27              ; get addr of disk allocation
+#BDOS_WRTPTRCT          28              ; write protect disk
+#BDOS_GETRO             29              ; get read-only bitmap for drives A-P
+#BDOS_SETATTR           30              ; set file attributes
+#BDOS_DSKPARMS          31              ; get file parameters addr
+#BDOS_USER              32              ; set/return user number
+#BDOS_READRND           33              ; read random-access
+#BDOS_WRITERND          34              ; write random-access
+#BDOS_FILESIZE          35              ; get file size
+#BDOS_RECORD            36              ; get random-access record
+#BDOS_RSTDRV            37              ; reset drive
+#BDOS_FILLZERO          40              ; random-access zero-out
+
+; File Control Block:
+;-------------------------------------------------------------------------------
+$005c   :cpm_fcb
+                _drive                  ; 0 = default, 1 = A: ... 16 = P:
+$       $ + 1   _name                   ; file-name, first 8-letters
+$       $ + 8   _type                   ; file-name, extension. NB: no dot!
+$       $ + 3   _extent                 ; extent, for files > 128 records
+$       $ + 1   _rsvrd                  ; reserved
+$       $ + 2   _rec_count              ; number of records in extent, 0-127
+$       $ + 1   _data                   ; internal use -- directory record
+$       $ + 16  _cur_rec                ; current record number
+$       $ + 1   _rnd_rec                ; optional random record number
+
+$0080   :cpm_dma                        ; deafult sector read address
+
+
+; bootstrap:
+;===============================================================================
+$0100   :cpm_tpa                        ; start of transient program area
+
+:osBoot
+;===============================================================================
+        ; check CP/M version -- it's not likely we're going to be running
+        ; on CP/M-1 but this same check will be required for a CP/M-3 version
+        ;
+        ld.C    #BDOS_VER
+        call    :BDOS
+        ld.A.L                          ; compare returned version
+        cp      #CPM_VER                ;  with required CP/M version
+        jr?c    _err                    ; ver < CPM_VER, quit with error
+
+        ;-----------------------------------------------------------------------
+        ; when a program is loaded in CP/M a small stack is created, enough
+        ; to call the BDOS/BIOS. we want to set the stack to the top of
+        ; memory although that depends were the TPA ends and the BDOS begins
+        ;
+        ; the address at $06/07 points to the beginning of BDOS,
+        ; so if we set the stack there the first push will go to BDOS-1.
+        ; on RunCPM this is $FD00
+        ;
+        ld.HL*  [ :BDOS + 1 ]           ; get BDOS address from `JP $xxxx`
+        ld.L    0                       ; normalise to beginning of page
+        ld.SP.HL                        ; set stack pointer
+
+        ; always print the banner first,
+        ; it differs for each OS/platform
+        ;
+        ld.DE   _banner                 ; print the program banner
+        call    :osPrintLn
+
+        ; run the program:
+        jp      :main                   ; we will not return from here!
+
+        ;-----------------------------------------------------------------------
+_banner .b      #CHAR_COMMENT " v80 CP/M v0.1.3 - github.com/kroc/v80"
+        .b      #ASCII_CR #ASCII_LF
+        .b      #CHAR_COMMENT " (C) Kroc Camen 2023-2024, MIT License" 0
+
+        ;=======================================================================
+        ; CP/M version less than 2.2 -- call BDOS manually for safety
+        ;
+_err    ld.DE   _str                    ; version error string
+        ld.C    #BDOS_PRNSTR            ; print using BDOS directly
+        jp      :BDOS                   ; call BDOS but also return to CCP
+
+        ; string is "$" terminated for compatibility with CP/M < v2.2?
+_str    .b      "! ERROR: CP/M 2.2 or higher required!$"
+
+
+:osQuit
+;===============================================================================
+; quit the application and return to the OS: (if present)
+;-------------------------------------------------------------------------------
+        ld.C    #BDOS_RESET             ; CP/M doesn't require us to unwind
+        jp      :BDOS                   ;  the stack, we can just reset
+
+
+:_infile                                ; command-line input file-name param
+        .b      "            " 0        ; ("8.3")
+:_outfile                               ; command-line output file-name param
+        .b      "            " 0        ; ("8.3")
+
+:osParseParameters
+;===============================================================================
+; parse the command-line parameters:
+;
+; return an address to a forwards, null-terminated string of the input
+; file-name and also read or generate the output file-name and store
+; it privately (the OS does the binary write-out by itself)
+;
+; out:  DE              addr of input file-name, forwards, null-terminated
+;       A, BC, HL       (clobbered)
+;-------------------------------------------------------------------------------
+        ; in CP/M the "command tail", the portion of the command line following
+        ; the executable name is in the DMA buffer ($80) by default. the first
+        ; byte is the length, but the string is also null-terminated
+        ;
+        ; WARN: the command-tail in the DMA buffer is overwritten by the first
+        ;       sector read of a file so we must copy the parameters out!
+        ;
+        ; search for a first parameter: (input file-name)
+        ;-----------------------------------------------------------------------
+        ld.HL   :cpm_dma + 1            ; begin search from 1st char
+        ld.DE   :_infile                ; copy to here
+        call    :_getParam              ; look for / copy 1st parameter
+        jr?z    _help                   ; if none, show help text
+
+        ; the optional 2nd param sets the output file-name:
+        ;-----------------------------------------------------------------------
+        ld.DE   :_outfile               ; this time, copy here
+        call    :_getParam              ; look for a 2nd parameter
+        jr?nz   _out                    ; if output file-name specified, skip
+
+        ; no output file-name specified --
+        ; create one from the input file-name:
+        ;
+        ld.B    8                       ; copy up-to the first 8 chars
+        ld.HL   :_infile                ;  from the input file-name
+        ;-----------------------------------------------------------------------
+_0      ld.A*HL                         ; read a source character
+        inc.HL                          ; move to next source character
+        and.A                           ; (set zero-flag)
+        jr?z    _1                      ; stop copying at null-terminator
+        cp      '.                      ; is it a dot? (file/ext separator)
+        jr?z    _1                      ; also stop copying at dot
+        ld*DE.A                         ; write fixed char to output file-name
+        inc.DE                          ;  and move to next char
+        djnz    _0                      ; loop until all chars copied
+        ;-----------------------------------------------------------------------
+_1      ld.BC   5                       ; now append ".com", NULL, the default
+        ld.HL   _com                    ;  file extension assumed for CP/M
+        ldir                            ; = copy BC bytes from HL to DE
+        ld.DE   :_outfile               ; restore DE to start of file-name str
+
+        ; use the default FCB for the output file:
+        ;-----------------------------------------------------------------------
+        ; clear the default FCB. we can zero the whole thing as
+        ; _setFCBFileName will pad the file-name field with spaces
+        ;
+_out    xor.A                           ; set A to zero
+        ld.HL   :cpm_fcb                ; start of FileControlBlock
+        ld.B    36                      ; clear 36 bytes
+_3      ld*HL.A                         ; clear one byte
+        inc.L                           ; move to next byte
+        djnz    _3                      ; loop for whole FCB
+
+        ; parse the output file-name into the default FCB
+        ; that will be used after assembling to output the binary
+        ;
+        ld.HL   :cpm_fcb                ; default FCB addr
+        call    :_setFCBFileName        ; configure FCB for output file
+
+        ld.DE   :_infile                ; return input param str addr
+        ret                             ; ...
+
+        ;-----------------------------------------------------------------------
+_com    .b      ".COM" 0                ; default output file-name extension
+
+        ;=======================================================================
+_help   ld.DE   _str                    ; no parameters!
+        call    :osPrintStrZ            ; print the command usage
+        jp      :osQuit                 ;  and quit
+
+_str    .b      "    V80 FILE.V80 [FILE.COM]" 0
+
+
+:_getParam
+;===============================================================================
+; finds and copies a command-line parameter:
+;
+; this routine walks along the command tail and finds the start of a parameter
+; word (any non-space chars) which will be copied to the destination addr [DE]
+;
+; for CP/M a limit of 12 characters is imposed as CP/M files must be in 8.3
+; format, even though CP/M doesn't store the "." internally, meaning that the
+; file-name could still be invalid if the dot is missing or in the wrong place
+; -- these checks are done when opening the file
+;
+; in:   HL              addr of command-line string, null-terminated
+;       DE              addr of space to copy parameter to, up to 12 characters
+;                       will be copied and a null-terminator appended
+;
+; out:  HL              the string addr is advanced according to the param read
+;       zf              zero-flag is set if null-terminator occurs before any
+;                       characters are captured!
+;       DE              (preserved) -- rewound to the start of the param str
+;       A, BC           (clobbered)
+;       -               halts with error if file-name exceeds 12 chars
+;-------------------------------------------------------------------------------
+        ld.BC   13                      ; reset char limit
+        .b      $e6                     ; skip next instruction; $E6 = AND $..
+        ;-----------------------------------------------------------------------
+_skip   inc.L                           ; move to next char in command tail
+        ld.A*HL                         ; read char from command tail
+        and.A                           ; is it a null-terminator?
+        ret?z                           ; null-terminator before any parameter!
+        cp      #ASCII_SPC + 1          ; is it <=ASCII space (tab)
+        jr?c    _skip                   ; skip any spaces/tabs
+        ;-----------------------------------------------------------------------
+        push.DE                         ; start of param str will be returned
+        ld.A    #ASCII_SPC + 1          ; pre-load comparison (spc, tab, null)
+        ;-----------------------------------------------------------------------
+_copy   ldi                             ; = ld*DE*HL; inc.DE; inc.HL; inc.BC
+        jp?nv   :errInvalFile           ; error if copied 13th char w/o NULL
+        cp*HL                           ; is char <=ASCII space (inc. tab, null)
+        jr?c    _copy                   ; if not keep going
+        ;-----------------------------------------------------------------------
+        ld.A    0                       ; patch in null terminator
+        ld*DE.A                         ; (mustn't set zero-flag!)
+        pop.DE                          ; return start of param str
+        ret
+
+
+:osFileOpen
+;===============================================================================
+; open a file:
+;
+; for reasons of code density and simplicity, file reading *must* be nested,
+; that is, files must be opened and closed in LIFO order so that reads are not
+; interleaved; if a file is opened it must be closed before you can return to
+; the previously open file. this works fine for source file includes that only
+; read files start to finish, nesting inwards
+;
+; this state can occupy a lot of stack space (34 bytes on CP/M!) which will
+; limit the maximum nesting depth -- v80 recommends no more than 4 levels
+;
+; NOTE: CP/M-3 has a "parse file-name" BDOS function, no.152
+; FIXME support files on other drives? ("A:" prefix)
+;       and user-numbers?? ("0A:" prefix), this would be difficult
+;       due to user-numbers going up to 15
+;
+; in:   DE              addr of the file-name to use, forwards, null-terminated
+; out:  SP              stack is manipulated -- do not JP to this routine!
+;       HL, DE          (preserved)
+;       A, BC   (clobbered)
+;-------------------------------------------------------------------------------
+        ; allocate a new FileControlBlock on the stack:
+        ;
+        pop.BC                          ; steal the return address!
+        exx                             ; put aside input parameters for now
+
+        ; preserve the current FileControlBlock address under the new one
+        ; to return to it once the file closes. if this is the first file
+        ; being opened, we do not need to backup the sector char index
+        ;
+        ld.HL'* [ :_readSector_fcb + 1 ]
+        push.HL'                        ; backup previous FCB addr
+        xor.A                           ; set A to zero
+        cp.H'                           ; is hi-byte of FCB in zero-page? 
+        jr?z    _empty                  ; if yes, skip over rewind record
+
+        ; also write the current record byte index into the FCB
+        ; (in the random record field that isn't used by us)
+        ;
+        ld.A.L'                         ; FCB+33 is random-record byte
+        add     33                      ;  we use to backup the read index
+        ld.L'A                          ;  (random records are not used)
+        ld.A*   [ :osGetChar_index + 1 ]
+        ld*HL'A
+
+        ; CP/M automatically increments the record number after each sector
+        ; read. pre-decrement the current record so that the same record is
+        ; re-read when restored from the stack
+        ;
+_rewind dec.HL'                         ; current record byte is no.32
+        dec*HL'                         ; if underflow, we need to also
+        jp?nv   _empty                  ;  move to the previous extent
+
+        ; FIXME extent underflow? there are 32 extents (0-31)
+        ;       (CPM/3 uses FCB's SR2 byte for larger files,
+        ;        this would be needed for files > 2MB)
+        ;
+        ld.A.L'                         ; extent field is byte 12
+        sub     20                      ; (subtract 20 from addr)
+        ld.L'A                          ; ...
+        dec*HL'                         ;  and decrement by 1
+
+        ; construct an empty FileControlBlock on the stack, working backwards
+        ; (we don't use random records so the last 2 bytes are excluded to save
+        ; stack space). we can zero all fields as _setFCBFileName will pad the
+        ; file-name field with spaces
+        ;
+_empty  ld.DE'  0                       ; fill 34 bytes with zeroes
+        ld.B'   34 / 2                  ; (half because pushing 2 bytes)
+_push   push.DE'                        ; push 2 zeroes to the stack
+        djnz    _push                   ; ...
+
+        ; (the current stack-position is now the start of a new, empty, FCB)
+
+        ld*$.SP [ _fcb ]                ; backup current stack-position (FCB)
+        exx                             ; return to input parameters
+        push.BC                         ; restore the return address!
+        push.HL                         ; (preserve caller's HL)
+        push.DE                         ; (preserve file-name addr)
+
+        ; copy new file-name [DE] to the new FCB:
+        ; (note _setFCBFileName preserves HL & DE)
+        ;
+        ld.HL*  [ _fcb ]                ; retrieve new FCB addr
+        call    :_setFCBFileName        ; copy and validate file-name to FCB
+
+        ; now attempt to open the file:
+        ; (CP/M will check if the file exists)
+        ;-----------------------------------------------------------------------
+        ld.C    #BDOS_OPEN              ; BDOS function number
+        ex.DE.HL                        ; DE = address of the FileControlBlock
+        call    :BDOS                   ; call BDOS -> BIOS etc.
+        and.A                           ; OK = 0, file not found = $FF
+        jp?nz   :errUndefFile           ; error if not zero
+
+        ; read file's first sector:
+        ;
+        ld.HL*  [ _fcb ]                ; update FCB addr for reading sectors
+        ld*$.HL [ :_readSector_fcb + 1 ]
+        pop.DE                          ; (restore file-name addr)
+        pop.HL                          ; (restore caller's HL)
+        jp      :_readSector            ; read the first record from the file
+
+_fcb    .w      $0000
+
+:_setFCBFileName
+;===============================================================================
+; prepares a CP/M FileControlBlock from a file-name string:
+;
+; in:   HL              addr of FCB structure, e.g. $5C (default CP/M FCB)
+;       DE              addr of file-name string, forwards, null-terminated
+; out:  HL, DE          (preserved)
+;       A, BC           (clobbered)
+;       -               any invalid char halts with error
+;-------------------------------------------------------------------------------
+        ld*HL   0                       ; set default drive code
+        inc.HL                          ; next byte is start of FCB file-name
+        push.DE                         ; preserve start addr of file-name str
+
+        ; copy & validate file-name according to CP/M rules:
+        ;
+        ld.B    8                       ; max file-name chars (sans extension)
+        call    _copy                   ; test/fix and copy up to 8 chars
+        jr?z    _0                       ; if null encountered, no extension
+
+        ; copy file extension:
+        ; (the dot has already been skipped by `@copy`)
+        ;
+        ld.B    3                       ; max extension chars (sans dot)
+        call    _copy                   ; copy up to 3 chars for extension
+        jr?nz   _err                    ; dot not allowed in extensions!
+
+        ; return start of FCB addr:
+_0       ld.BC   -12                     ; (use negative add to avoid SBC)
+        add.HL.BC                       ; rewind HL to start of FCB addr
+        pop.DE                          ; restore file-name str start addr
+        ret
+
+        ; test, fix & copy chars to FCB:
+        ;=======================================================================
+        ; in:   B                       max. number of chars to copy; remaining
+        ;                               chars are padded with spaces
+        ; out:  A                       last character read
+        ;       zf                      zf-set   = reached a null
+        ;                               zf-clear = reached a dot
+        ;       -                       any invalid char halts with error
+        ;-----------------------------------------------------------------------
+_copy   ld.A*DE                         ; read a source character
+        inc.DE                          ; move to next source character
+        and.A                           ; (set zero-flag)
+        jr?z    _spc                    ; stop copying at null-terminator
+        cp      '.                      ; is it a dot? (file/ext separator)
+        jr?z    _spc                    ; stop copying at dot
+        call    _valid                  ; test/fix char (will err on invalid)
+        ld*HL.A                         ; write fixed char to FCB
+        inc.L                           ;  and move to next char
+        djnz    _copy                   ; loop until all chars copied
+        ;-----------------------------------------------------------------------
+        ; if all chars are copied, the next char *must* be a dot (file-name)
+        ; or the null-terminator (file-name or extension)
+        ;
+        ld.A*DE                         ; read ahead next character
+        and.A                           ; set flags -- check for 0
+        ret?z                           ; if null return zf-set
+        cp      '.                      ; check for dot
+        inc.DE                          ; (skip over the dot for extension)
+        jr?nz   _err                    ; not null or dot -- too many chars!
+        and.A                           ; set | clear zero-flag for null | dot
+        ret                             ; ...
+        ;-----------------------------------------------------------------------
+_spc    ld*HL   #ASCII_SPC              ; fill remaining characters with space
+        inc.L                           ; (without changing last char in A)
+        djnz    _spc                    ; ...
+        ;-----------------------------------------------------------------------
+        and.A                           ; set | clear zero-flag for null | dot
+        ret                             ; (A is last char code)
+
+        ; test / fix char for CP/M file-names:
+        ;=======================================================================
+        ; the CP/M manual says that the following characters are not
+        ; allowed in file-names: < > = , ! | * ? & / $ [ ] ( ) . : ; \ + -
+        ;
+        ; (note that whilst the dot is used as the separator for the
+        ;  file extension, multiple dots cannot occur in a file-name!)
+        ;
+        ; with such a long list it is perhaps clearer to state the
+        ; non-alphanum characters that _are_ valid: " # % ' @ ^ _ ` { } ~
+        ; the chart below shows valid chars by "<" & ranges between "|"
+        ;
+        ;   $20        $30  0  <  $40  @  <  $50  P  |  $60  `  |  $70  p  |
+        ;   $21  !     $31  1  |  $41  A  |  $51  Q  |  $61  a  |  $71  q  |
+        ;   $22  "  <  $32  2  |  $42  B  |  $52  R  |  $62  b  |  $72  r  |
+        ;   $23  #  <  $33  3  |  $43  C  |  $53  S  |  $63  c  |  $73  s  |
+        ;   $24  $     $34  4  |  $44  D  |  $54  T  |  $64  d  |  $74  t  |
+        ;   $25  %  <  $35  5  |  $45  E  |  $55  U  |  $65  e  |  $75  u  |
+        ;   $26  &     $36  6  |  $46  F  |  $56  V  |  $66  f  |  $76  v  |
+        ;   $27  '  <  $37  7  |  $47  G  |  $57  W  |  $67  g  |  $77  w  |
+        ;   $28  (     $38  8  |  $48  H  |  $58  X  |  $68  h  |  $78  x  |
+        ;   $29  )     $39  9  <  $49  I  |  $59  Y  |  $69  i  |  $79  y  |
+        ;   $2A  *     $3A  :     $4A  J  |  $5A  Z  <  $6A  j  |  $7A  z  |
+        ;   $2B  +     $3B  ;     $4B  K  |  $5B  [     $6B  k  |  $7B  {  <
+        ;   $2C  ,     $3C  <     $4C  L  |  $5C  \     $6C  l  |  $7C  |   
+        ;   $2D  -     $3D  =     $4D  M  |  $5D  ]     $6D  m  |  $7D  }  <
+        ;   $2E  .     $3E  >     $4E  N  |  $5E  ^  <  $6E  n  |  $7E  ~  <
+        ;   $2F  /     $3F  ?     $4F  O  |  $5F  _  |  $6F  o  |  $7F  ⌂   
+        ;
+        ; the CP/M file-system is upper-case only so we must fix file-names
+        ; coming from source code. we expect v80 source files to use lower-
+        ; case names so we optimise for that case, handling them first
+        ;
+_valid  cp      'a                      ; ASCII code after lower-case A?
+        jr?c    _lt_a                   ; branch to handle code below 'a'
+
+        cp      'z + 1                  ; ASCII code above lower-case Z?
+        jr?nc   _gt_z                   ; check only codes >'z'
+
+        res5.A                          ; unset bit 5 to switch a-z to A-Z
+        ret                             ; return with case-fixed char
+
+        ;-----------------------------------------------------------------------
+        ; codes above lower-case Z: ($7B+)
+        ;
+_gt_z   cp      $7F                     ; any char >= 127 (DEL) is invalid
+        jr?nc   _err                    ; this leaves only "{", "|", "}" & "~"
+        cp      '|                      ;  of which only "|" is invalid
+        ret?nz                          ; return if not "|", i.e. "{", "}" & "~"
+        jr      _err                    ; error for "|"
+
+        ;-----------------------------------------------------------------------
+        ; codes below lower-case A ($61) make up the majority.
+        ; the largest contiguous block is @ followed by upper-case A-Z
+        ;
+_lt_a   cp      '@                      ; ASCII code @ or above?
+        jr?c    _lt_at                  ; no, handle codes below @ (numbers)
+        cp      'Z + 1                  ; ASCII code below upper-case Z?
+        ret?c                           ; upper-case A-Z is valid as-is
+        cp      '^                      ;  but above upper-case Z, only
+        ret?nc                          ;  "^", "_" and "`" are valid, and
+        jr      _err                    ;  "[", "|" and "]" are invalid
+
+        ;-----------------------------------------------------------------------
+        ; note that due to the branches already taken,
+        ; any greater-than check assumes a ceiling below "@"
+        ;
+_lt_at  cp      '0                      ; >= "0"?
+        jr?c    _lt_0                   ; if no, handle codes below "0"
+        cp      '9 + 1                  ; <= "9"?
+        ret?c                           ; "0"-"9" are valid as-is
+
+        ; there are no valid chars after "9" and before "@"!
+        ;
+        jr      _err                    ; ":", ";", "<", "=", ">" & "?" invalid
+
+        ;-----------------------------------------------------------------------
+        ; there are only 4 valid characters below "0":
+        ;
+_lt_0   cp      '"      ret?z
+        cp      '#      ret?z
+        cp      '%      ret?z
+        cp      ''      ret?z
+
+        ; if none of the above,
+        ; fall through to error
+        ; ...
+
+        ;=======================================================================
+        ; hard error for file-names containing invalid characters
+        ;
+_err    jp      :errInvalFile
+
+
+:osFileClose
+;===============================================================================
+; closes the currently open file:
+; (and return to the previously open file)
+;
+; this routine must be called at the same stack level as the last osFileOpen
+; call because the previous FileControlBlock is restored from the stack
+;
+; out:  SP              stack is manipulated -- do not JP to this routine!
+;       HL              (preserved)
+;       A, BC, DE       (clobbered)
+;-------------------------------------------------------------------------------
+        pop.BC                          ; steal our return address!
+
+        ; discard the current FileControlBlock on the stack:
+        ;
+        ex.HL.DE                        ; (put aside current caller's HL)
+        ld.HL   34                      ; move the stack pointer up 34 bytes
+        add.HL.SP                       ;  throwing away the FileControlBlock
+        ld.SP.HL                        ;  from the currently open file
+        ex.DE.HL                        ; (restore caller's HL)
+
+        ; re-read last file's current sector:
+        ;-----------------------------------------------------------------------
+        ; if closing the first file opened, there is no FCB to restore
+        ;
+        pop.DE                          ; pop previous FCB addr
+        xor.A                           ; (set A to zero)
+        cp.D                            ; is hi-byte of FCB in zero-page?
+        jr?z    _ok                     ; skip sector re-read if last file out
+
+        ld*$.DE [ :_readSector_fcb + 1 ]
+        call    :_readSector            ; re-read the previous file's sector
+        ld.A.E                          ; restore the read index
+        add     33                      ;  that was written to byte 33
+        ld.E.A                          ;  of the FCB
+        ld.A*DE                         ;  ...
+        ld*$.A  [ :osGetChar_index + 1 ]
+
+_ok     push.BC                         ; (restore our return address)
+        ret
+
+
+:osSaveCode
+;===============================================================================
+; saves the code-segment memory region in one go:
+;
+; the output file-name was captured to `_outfile` when parsing the command-line
+; parameters (`osParseParameters`)
+;
+; in:   HL              start addr of code-segment to save
+;       DE              end addr of  code-segment to save
+; out:  *               (clobbered)
+;-------------------------------------------------------------------------------
+        ; CP/M 2.2 only measures file sizes in 128 byte sectors
+        ; so we pad the binary with zeroes up to the next sector
+        ;
+        ld*$.HL [ _loop + 1 ]           ; inject start addr into write-loop
+        ex.DE.HL                        ; swap end addr to HL for padding
+        jr      _0                      ; jump into loop (optimises exit cond.)
+        ;-----------------------------------------------------------------------
+_pad    ld*HL   #NULL                   ; append a null byte
+        inc.HL                          ; increment end addr
+_0      ld.A.L                          ; check if the lo-byte addr
+        and     %01111111               ;  is $00 or $80 (every 128 bytes)
+        jr?nz   _pad                    ; if not, keep padding
+        ;-----------------------------------------------------------------------
+        ex.HL.DE                        ; transfer end-addr to DE for later
+        ld.BC   128                     ; pre-load sector size for later
+        exx                             ; preserve DE & BC for now
+
+        ; the default CP/M FileControlBlock has already been configured
+        ; for the output file. we need to check if the file already exists!
+        ;
+        ld.C'   #BDOS_OPEN              ; check if the file exists
+        ld.DE'  :cpm_fcb                ;  by trying to open it
+        call    :BDOS                   ; ...
+        and.A                           ; OK = 0, file not found = $FF
+        jr?nz   _out                    ; skip ahead if file doesn't exist
+
+        ; the output file already exists on disk,
+        ; delete it before recreating it:
+        ;
+        ld.C'   #BDOS_DEL               ; select delete-file function
+        call    :BDOS                   ; (for output file-name)
+
+        ; output binary to disk:
+        ;-----------------------------------------------------------------------
+_out    ld.C'   #BDOS_MAKEFILE          ; create new, blank output file
+        call    :BDOS                   ; (note: equivalent to a BDOS open)
+        inc.A                           ; $00 = OK, $FF = disk full
+        jp?z    :errRangeDisk           ; error if disk is full
+
+        ; for CP/M 2.2 we must write 128 bytes at a time which requires
+        ; setting the DMA address and moving it 128 bytes forward after
+        ; each write
+        ;
+        ; NOTE: CP/M 3 has multi-sector write
+        ;-----------------------------------------------------------------------
+_loop   ld.DE'  $0000                   ; current position in binary
+        ld.C'   #BDOS_SETDMA            ; set the DMA addr to the addr
+        call    :BDOS                   ;  to write 128 bytes from
+        ld.DE'  :cpm_fcb                ; default FCB defines output file
+        ld.C'   #BDOS_WRITESEQ          ; write 1 sector (128 bytes)
+        call    :BDOS                   ;  of data...
+        and.A                           ; $00 = OK, $01/$02 = disk full
+        jp?nz   :errRangeDisk           ; error if disk full
+
+        exx                             ; restore end-addr [DE]
+        ld.HL*  [ _loop + 1 ]           ; get current addr in binary
+        add.HL.BC                       ; move to next sector (BC=128)
+        ld*$.HL [ _loop + 1 ]           ; inject addr into loop for write
+        sbc.HL.DE                       ; have we finished? (addresses equal)
+        exx                             ; (swap back to BDOS registers)
+        jr?nz   _loop                   ; if not, go write next sector
+
+        ; close file:
+        ;-----------------------------------------------------------------------
+        ld.C    #BDOS_SETDMA            ; reset default DMA address
+        ld.DE   :cpm_dma                ; (not required but wise to do)
+        call    :BDOS                   ; ...
+        ld.C    #BDOS_CLOSE             ; files written to must be
+        ld.DE   :cpm_fcb                ;  explicitly closed in CP/M
+        jp      :BDOS                   ; ...
+
+
+:osGetChar
+;===============================================================================
+; read an ASCII character from the currently open file:
+;
+; out:  A               character read
+;       zf              zero-flag is set for end-of-file. NOTE: the character
+;                       returned for end-of-file might not be NULL! CP/M uses
+;                       ASCII_SUB for file termination
+;       BC, DE, HL      (preserved)
+;
+; NOTE: this assumes no other file activity or user-input between reads!
+;-------------------------------------------------------------------------------
+        ; get byte:
+        ;
+        ; the sector is read to the "DMA" address, which is $80 by default.
+        ; the address "$0080" is assembled into the instruction and the code
+        ; increments this addr after each character read! when it overflows
+        ; a new sector is read from disk and the index is reset to $80 again
+        ;
+_index  ld.A*   [ :cpm_dma ]            ; get byte at current index
+
+        ; in CP/M the ASCII SUB control code ($1A) terminates the file
+        ; because all CP/M files are padded to 128 bytes sectors!
+        ; <https://en.wikipedia.org/wiki/Substitute_character>
+        ;
+        cp      #ASCII_SUB              ; is this a CP/M sector padding byte?
+        ret?z                           ; return zero-flag set for EOF
+
+        ; increment index:
+        ;-----------------------------------------------------------------------
+        ex.AF.AF'                       ; preserve read character
+        ld.A'*  [ _index + 1 ]          ; get current read index
+        inc.A'                          ; move to next byte in sector
+        jr?z    _ok                     ; if overflow, fetch next sector
+        ld*$.A' [ _index + 1 ]          ; update index
+        ex.AF'AF                        ; restore read character
+        ret
+
+        ;-----------------------------------------------------------------------
+_ok     call    :_readSector            ; read next sector from disk
+        ex.AF'AF                        ; return read character
+        ret
+
+:_readSector
+        ;=======================================================================
+        ld.A    <:cpm_dma               ; reset read index
+        ld*$.A  [ :osGetChar_index + 1 ]
+
+        ; read 1 sector from disk:
+        exx                             ; preserve BC/DE/HL
+        ld.C'   #BDOS_READSEQ           ; select BDOS function number
+_fcb    ld.DE'  :cpm_fcb                ; select FileControlBlock
+        call    :BDOS                    ; do the disk read
+        exx                             ; (restore BC/DE/HL before return)
+        dec.A                           ; check for A=1, EOF
+        ret?nz                          ; return if no-error
+
+        ; if an end-of-file occurs at a sector boundary then we need to return
+        ; EOF on the *NEXT* call as the last character has already been read:
+        ;
+        ld.A    #ASCII_SUB              ; write the CP/M EOF marker
+        ld*$.A  [ :cpm_dma ]            ;  to the first byte for next read
+
+        ret
+
+
+:osPrintLn
+;===============================================================================
+; prints a null-terminated string and appends a newline:
+;
+; in:   DE              string-addr, must be 0-terminated
+; out:  DE              DE is advanced according to the length of the string
+;       HL, BC          (preserved)
+;       A               (clobbered)
+;-------------------------------------------------------------------------------
+        call    :osPrintStrZ
+
+        ; fall through
+        ; ...
+
+:osPrintNewline
+;===============================================================================
+; print a newline!
+;
+; out:  BC, DE, HL      (preserved)
+;       A               (clobbered)
+;-------------------------------------------------------------------------------
+        ld.A    #ASCII_CR               ; NOTE: on CP/M newlines are CRLF,
+        call    :osPrintChar            ;  which is where MS-DOS / Windows
+        ld.A    #ASCII_LF               ;  got it from!
+
+        ; fall through
+        ; ...
+
+:osPrintChar
+;===============================================================================
+; prints a single ASCII character:
+;
+; in:   A               input character
+; out:  BC, DE, HL      (preserved)
+;       A               (clobbered)
+;-------------------------------------------------------------------------------
+        exx                             ; swap to shadow registers
+
+        ld.C'   #BDOS_CONOUT            ; = BDOS function to call
+        ld.E'A                          ; = character to print
+        call    :BDOS                   ; print char
+
+        exx                             ; restore register set
+        ret
+
+
+:osPrintStrZ
+;===============================================================================
+; print a null-terminated string:
+;
+; in:   DE              string-addr, must be 0-terminated
+; out:  DE              DE is advanced according to the length of the string
+;       A               zero, by nature of the null-terminator
+;       HL, BC          (preserved)
+;-------------------------------------------------------------------------------
+        ld.A*DE                         ; read a character
+        and.A                           ; (set CPU flags!)
+        inc.DE                          ; (go to next char, does not set zf!)
+        ret?z                           ; return after null-terminator
+        exx                             ; swap to shadow registers
+
+        ld.E'A                          ; BDOS param for character
+        ld.C'   #BDOS_CONOUT            ; BDOS function to use
+        call    :BDOS                   ; print character!
+
+        exx                             ; return to normal registers
+        jr      :osPrintStrZ            ; keep looping until null-terminator
+
+
+:osPrintSpaces
+;===============================================================================
+; print a bunch of spaces:
+;
+; in:   A               number of spaces to print, limited to 32 to match max.
+;                       symbol name length (+1) and not waste too many bytes
+; out:  BC, DE, HL      (preserved)
+;-------------------------------------------------------------------------------
+        exx                             ; touch nothing!
+
+        ; printing anything in CP/M is incredibly slow; if setting up BDOS
+        ; calls was not slow enough, each character has to go through a lot
+        ; of logic to handle device mapping and checking for control keys
+        ;
+        ; there is a 'print string' call that avoids calling BDOS for each
+        ; character, BUT THEY CHOSE THE WORST POSSIBLE STRING TERMINATOR, "$".
+        ; this cannot be changed in CP/M 2.2, meaning we cannot reliably print
+        ; arbitrary strings, unless by one character at a time
+        ;
+        ; thankfully, if we only want to print a bunch of spaces then we know
+        ; we won't encounter a "$". this routine does a lot of nonsense to
+        ; print from the middle of a string of spaces based on count
+        ;
+        ld.HL'  _spc + 32               ; from the end of the str of spaces
+        ld.C'A                          ; (load count in BC')
+        ld.B'   0                       ; ...
+        sbc.HL'BC'                      ; go back BC' bytes from end of str
+        ex.DE'HL'                       ; swap str addr to DE' for CP/M
+        ld.C'   #BDOS_PRNSTR            ; use the print-string function
+        call    :BDOS                   ; print!
+
+        exx                             ; you saw nothing
+        ret                             ; right?
+
+_spc    .f      #ASCII_SPC      32      ; a pool of spaces
+        .b      '$                      ; + CP/M string terminator
