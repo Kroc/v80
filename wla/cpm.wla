@@ -5,6 +5,7 @@
 ; (see routine headers below for details)
 ;
 ;       osBoot                          bootstrap, always first code run
+;       osQuitErr                       quit app with an error-number
 ;       osQuit                          quit app and return to the OS
 ;       osParseParameters               parse the command-line parameters
 ;       osFileOpen                      open file (read-only)
@@ -85,6 +86,9 @@ BDOS_RECORD             = 36            ; get random-access record
 BDOS_RSTDRV             = 37            ; reset drive
 BDOS_FILLZERO           = 40            ; random-access zero-out
 
+; CPM 3 or emulator only!
+BDOS_RETURNCODE         = 108           ; get/set program return code
+
 .STRUCT FileControlBlock
         drive           BYTE            ; 0 = default, 1 = A: ... 16 = P:
         name            DSB 8           ; file-name, first 8-letters
@@ -163,6 +167,41 @@ osBoot:
         ; string is "$" terminated for compatibility with CP/M < v2.2?
 @@str   .BYTE "! ERROR: CP/M ", CPM_VER_STR, " or higher required!$"
 
+
+osQuitErr:
+;===============================================================================
+; quit the application, returning an error-code to the OS: (if supported)
+;
+; in:   A               error-code, 0 for no-error. it's recommended not to
+;                       use $FF as this ends up being incompatible with CP/M
+;-------------------------------------------------------------------------------
+        ; set return code:
+        ;
+        ; CP/M 2.2 doesn't have a standard way of returning error codes, it was
+        ; added to CP/M 3 and support for this call has been added to NTVCM
+        ; even though it only simulates CP/M 2.2. thankfully, making calls to
+        ; non-existant BDOS functions isn't harmful; the CP/M 3 manual states:
+        ;
+        ;      "If a transient program makes a BDOS call to a nonsupported
+        ;       function number in the range of 0 to 127, the BDOS returns
+        ;       with register pair HL set to 0FFFFH. For compatibility with
+        ;       MP/M, the BDOS returns with register pair HL set to 0000H on
+        ;       nonsupported function numbers in the range of 128 to 255.
+        ;       Note that CP/M 2 returns with HL set to zero on all invalid
+        ;       function calls."
+        ;
+        ; the BDOS function uses DE values $FF00-$FF7F for user return codes
+        ; that imply fault ($0000-$FEFF imply success), $FF80+ are reserved
+        ; with $FFFD/E having meanings and $FFFF being used to return the
+        ; current value instead of setting it
+        ;
+        ld      D,      $ff             ; use $FFxx to imply fault
+        ld      E,      A               ; use A as the lo-byte
+        ld      C,      BDOS_RETURNCODE ; CP/M 3 "Get/Set Return Program Code"
+        call    BDOS                    ; (will do nothing on CP/M 2.2)
+
+        ; fall through
+        ; ...
 
 osQuit:
 ;===============================================================================

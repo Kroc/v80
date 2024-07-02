@@ -179,7 +179,9 @@ err:
         ld      B,      0
         call    printDecNumber
 
-        jp      osQuit
+        ;-----------------------------------------------------------------------
+        ld      A,      1               ; return non-zero error-number to host
+        jp      osQuitErr
 
 @err    .BYTE   "! ERROR: ", 0
 @txt    .BYTE   "!        See errors.txt for detailed causes", 0
