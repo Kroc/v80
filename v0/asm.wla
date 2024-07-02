@@ -978,7 +978,7 @@ getLabel:
         dec     HL                      ; adjust heap for post-decrement copy
         push    HL                      ; this will be the length byte addr
         ex      DE,     HL              ; LDDR copies *from* [HL] *to* [DE]...
-        lddr                            ; copy from word buffer to heap
+        lddr                            ; copy from word-buffer to heap
 
         ; push forward-reference flag:
         ;-----------------------------------------------------------------------

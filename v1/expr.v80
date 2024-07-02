@@ -1066,7 +1066,7 @@ _one    call    _digit                  ; convert digit to number
         ; (this is why ASCII codes 0-32 must be precluded beforehand)
         ;
 _digit  ld.A*DE                         ; get digit
-        res5.A                          ; force upper-case for "a"-"f"
+        and     %11011111               ; unset bit 5 to switch a-z to A-Z
 
         ; TODO: check for >"F" and reject early, allowing us to avoid
         ;       the `add 10` at the end with some rework?
