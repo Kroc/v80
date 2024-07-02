@@ -5,6 +5,7 @@
 ; (see routine headers below for details)
 ;
 ;       osBoot                          bootstrap, always first code run
+;       osQuitErr                       quit app with an error-number
 ;       osQuit                          quit app and return to the OS
 ;       osParseParameters               parse the command-line parameters
 ;       osFileOpen                      open file (read-only)
@@ -85,6 +86,9 @@ BDOS_RECORD             = 36            ; get random-access record
 BDOS_RSTDRV             = 37            ; reset drive
 BDOS_FILLZERO           = 40            ; random-access zero-out
 
+; CPM 3 or emulator only!
+BDOS_RETURNCODE         = 108           ; get/set program return code
+
 .STRUCT FileControlBlock
         drive           BYTE            ; 0 = default, 1 = A: ... 16 = P:
         name            DSB 8           ; file-name, first 8-letters
@@ -129,12 +133,12 @@ osBoot:
 
         ;-----------------------------------------------------------------------
         ; when a program is loaded in CP/M a small stack is created, enough
-        ; to call the BDOS/BIOS. we want to set the stack to the top of
-        ; memory although that depends were the TPA ends and the BDOS begins
+        ; to call the BDOS / BIOS. we want to set the stack to the top of
+        ; memory although that depends where the TPA ends and BDOS begins
         ;
         ; the address at $06/07 points to the beginning of BDOS,
         ; so if we set the stack there the first push will go to BDOS-1.
-        ; on RunCPM this is $FD00
+        ; on RunCPM this is $FD00, on NTVCM it's $FE00
         ;
         ld      HL,     [BDOS+1]        ; get BDOS address from `JP $xxxx`
         ld      L,      0               ; normalise to beginning of page
@@ -163,6 +167,41 @@ osBoot:
         ; string is "$" terminated for compatibility with CP/M < v2.2?
 @@str   .BYTE "! ERROR: CP/M ", CPM_VER_STR, " or higher required!$"
 
+
+osQuitErr:
+;===============================================================================
+; quit the application, returning an error-code to the OS: (if supported)
+;
+; in:   A               error-code, 0 for no-error. it's recommended not to
+;                       use $FF as this ends up being incompatible with CP/M
+;-------------------------------------------------------------------------------
+        ; set return code:
+        ;
+        ; CP/M 2.2 doesn't have a standard way of returning error codes, it was
+        ; added to CP/M 3 and support for this call has been added to NTVCM
+        ; even though it only simulates CP/M 2.2. thankfully, making calls to
+        ; non-existant BDOS functions isn't harmful; the CP/M 3 manual states:
+        ;
+        ;      "If a transient program makes a BDOS call to a nonsupported
+        ;       function number in the range of 0 to 127, the BDOS returns
+        ;       with register pair HL set to 0FFFFH. For compatibility with
+        ;       MP/M, the BDOS returns with register pair HL set to 0000H on
+        ;       nonsupported function numbers in the range of 128 to 255.
+        ;       Note that CP/M 2 returns with HL set to zero on all invalid
+        ;       function calls."
+        ;
+        ; the BDOS function uses DE values $FF00-$FF7F for user return codes
+        ; that imply fault ($0000-$FEFF imply success), $FF80+ are reserved
+        ; with $FFFD/E having meanings and $FFFF being used to return the
+        ; current value instead of setting it
+        ;
+        ld      D,      $ff             ; use $FFxx to imply fault
+        ld      E,      A               ; use A as the lo-byte
+        ld      C,      BDOS_RETURNCODE ; CP/M 3 "Get/Set Return Program Code"
+        call    BDOS                    ; (will do nothing on CP/M 2.2)
+
+        ; fall through
+        ; ...
 
 osQuit:
 ;===============================================================================
@@ -295,15 +334,15 @@ _getParam:
         jr      c,      -               ; skip any spaces/tabs
         ;-----------------------------------------------------------------------
         push    DE                      ; start of param str will be returned
-        ld      A,      ASCII_SPC+1     ; pre-load comparison (spc, tab, null)
+        ld      A,      ASCII_SPC+1     ; pre-load comparison (spc/tab/null)
         ;-----------------------------------------------------------------------
 -       ldi                             ; LD [DE], [HL]; INC DE; INC HL; DEC BC
         jp      po,     errInvalFile    ; error if copied 13th char w/o NULL
-        cp      [HL]                    ; is char <=ASCII space (inc. tab, null)
+        cp      [HL]                    ; is char <=ASCII space (inc. tab/null)
         jr      c,      -               ; if not keep going
         ;-----------------------------------------------------------------------
         ld      A,      0               ; patch in null terminator
-        ld      [DE],   A               ; (mustn't set zero-flag!)
+        ld      [DE],   A               ; (musn't set zero-flag!)
         pop     DE                      ; return start of param str
         ret
 
@@ -322,9 +361,6 @@ osFileOpen:
 ; limit the maximum nesting depth -- v80 recommends no more than 4 levels
 ;
 ; NOTE: CP/M-3 has a "parse file-name" BDOS function, no.152
-; FIXME support files on other drives? ("A:" prefix)
-;       and user-numbers?? ("0A:" prefix), this would be difficult
-;       due to user-numbers going up to 15
 ;
 ; in:   DE              addr of the file-name to use, forwards, null-terminated
 ; out:  SP              stack is manipulated -- do not JP to this routine!
@@ -527,7 +563,7 @@ _setFCBFileName:
         cp      'z'+1                   ; ASCII code above lower-case Z?
         jr      nc,     @gt_z           ; check only codes >'z'
 
-        res     5,      A               ; unset bit 5 to switch a-z to A-Z
+        and     %11011111               ; unset bit 5 to switch a-z to A-Z
         ret                             ; return with case-fixed char
 
         ;-----------------------------------------------------------------------

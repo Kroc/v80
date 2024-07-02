@@ -34,9 +34,8 @@ assembleFile:
         ;
         xor     A                       ; (set A to zero)
         ld      [ccol], A               ; reset column number
-        ld      B,      A               ; line number however
-        ld      C,      1               ;  defaults to 1
-        ld      [crow], BC              ; ...
+        ld      BC,     1               ; line number however
+        ld      [crow], BC              ;  defaults to 1
 
         call    _line                   ; run the parsing loop
         call    osFileClose             ; close the file
@@ -314,7 +313,7 @@ _next:  call    nextChar                ; use current char or skip whitespace
         jp      nz,     errInvalKey     ; (i.e. no additional chars)
 
         ld      A,      C               ; return to first char
-        res     5,      A               ; force upper-case for "a"-"z"
+        and     %11011111               ; unset bit 5 to switch a-z to A-Z
         cp      'B'                     ; `.b` keyword?
         jr      z,      @b              ; process bytes
         cp      'W'                     ; `.w' keyword?
@@ -978,9 +977,8 @@ getLabel:
         ;
         dec     HL                      ; adjust heap for post-decrement copy
         push    HL                      ; this will be the length byte addr
-        ex      DE,     HL              ; copy goes *from* [HL] *to* [DE]...
-        lddr                            ; copy BC bytes *from* [HL] *to* [DE]!
-        ex      DE,     HL              ; swap back to heap in HL
+        ex      DE,     HL              ; LDDR copies *from* [HL] *to* [DE]...
+        lddr                            ; copy from word buffer to heap
 
         ; push forward-reference flag:
         ;-----------------------------------------------------------------------
@@ -994,9 +992,9 @@ getLabel:
         ;
         ; NOTE: LDDR has already decremented HL for us
         ;
-        ld      [HL],   0               ; forward-reference = 0
-        ld      D,      H               ; addr of flag-byte for forward-
-        ld      E,      L               ;  references is returned in DE
+        ld      H,      D               ; addr of flag-byte for forward-
+        ld      L,      E               ;  references is returned in DE
+        ld      [HL],   C               ; fwd-ref = 0 (LDDR guarantees C=0)
 
         dec     HL                      ; reserve two bytes on the heap
         dec     HL                      ;  for the label value
