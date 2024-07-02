@@ -112,7 +112,6 @@ REM # link test.o to input named .com file
 REM # return with result of the link
 EXIT /B %ERRORLEVEL%
 
-
 :v80
 REM # assemble with V80
 REM # --------------------------------------------------------------------------
@@ -121,9 +120,8 @@ PUSHD "%DIR_NTVCM%"
 %BIN_NTVCM% v80.com %~1.v80
 
 REM # if NTVCM hits a HALT instruction, launch RunCPM
-IF ERRORLEVEL 1 POPD & START "RunCPM" /D "%DIR_RUNCPM%" %BIN_RUNCPM% & EXIT /B 1
+IF %ERRORLEVEL% EQU -1 POPD & START "RunCPM" /D "%DIR_RUNCPM%" %BIN_RUNCPM% & EXIT /B 1
 
 POPD
 ECHO:
-
 GOTO:EOF
