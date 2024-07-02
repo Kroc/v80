@@ -21,20 +21,20 @@ SET BIN_NTVCM=ntvcm.exe -l -p
 REM # VBinDiff for visual difference comparing
 SET "BIN_VBINDIFF=%BIN_DIR%\vbindiff\VBinDiff.exe"
 
-REM # build v80 assembler from WLA-DX source:
+REM # build v80 assembler [v0] from WLA-DX source:
 REM # ==========================================================================
 IF NOT EXIST "build" MKDIR "build"
 DEL /F /Q "build\*.*"
 
 %WLA_Z80% -v ^
-    -I "wla" ^
+    -I "v0" ^
     -o "build\v80.o" ^
        "v80.wla"
 
 IF ERRORLEVEL 1 EXIT /B 1
 
 %WLA_LINK% -v -b ^
-    "wla\link.ini" ^
+    "v0\link.ini" ^
     "build\v80.com"
 
 IF ERRORLEVEL 1 EXIT /B 1
@@ -74,20 +74,20 @@ IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
 REM # --------------------------------------------------------------------------
 REM # if no errors, use v80 to assemble itself
 
-REM # copy v80 source into NTVCM directory
-COPY /N /Y "src\*.v80" /B "%DIR_NTVCM%" /A
+REM # copy v80 [v1] source into NTVCM directory
+COPY /N /Y "v1\*.v80" /B "%DIR_NTVCM%" /A
 REM # and RunCPM
-COPY /N /Y "src\*.v80" /A "%DIR_RUNCPM%\A\0" /A
+COPY /N /Y "v1\*.v80" /A "%DIR_RUNCPM%\A\0" /A
 
-REM # do a 1st-generation build of v80 using v80!
+REM # do a 1st-generation build of v80 [v1] using v80 [v0]!
 CALL :v80   v80
 IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
 
-REM # compare WLA-built v80 against v80-built v80
+REM # compare v80 [v0] against v80 built with v80 [v1]
 REM FC /B "build\v80.com" "%DIR_NTVCM%\v80.com"
 REM IF ERRORLEVEL 1 START "" %BIN_VBINDIFF% "build\v80.com" "%DIR_NTVCM%\v80.com"
 
-REM # do a 2nd-generation build of v80-built v80 building v80!
+REM # do a 2nd-generation build of v80, i.e. v80 [v1] building v80 [v1]
 CALL :v80   v80
 IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
 
