@@ -133,12 +133,12 @@ osBoot:
 
         ;-----------------------------------------------------------------------
         ; when a program is loaded in CP/M a small stack is created, enough
-        ; to call the BDOS/BIOS. we want to set the stack to the top of
-        ; memory although that depends were the TPA ends and the BDOS begins
+        ; to call the BDOS / BIOS. we want to set the stack to the top of
+        ; memory although that depends where the TPA ends and BDOS begins
         ;
         ; the address at $06/07 points to the beginning of BDOS,
         ; so if we set the stack there the first push will go to BDOS-1.
-        ; on RunCPM this is $FD00
+        ; on RunCPM this is $FD00, on NTVCM it's $FE00
         ;
         ld      HL,     [BDOS+1]        ; get BDOS address from `JP $xxxx`
         ld      L,      0               ; normalise to beginning of page
@@ -334,15 +334,15 @@ _getParam:
         jr      c,      -               ; skip any spaces/tabs
         ;-----------------------------------------------------------------------
         push    DE                      ; start of param str will be returned
-        ld      A,      ASCII_SPC+1     ; pre-load comparison (spc, tab, null)
+        ld      A,      ASCII_SPC+1     ; pre-load comparison (spc/tab/null)
         ;-----------------------------------------------------------------------
 -       ldi                             ; LD [DE], [HL]; INC DE; INC HL; DEC BC
         jp      po,     errInvalFile    ; error if copied 13th char w/o NULL
-        cp      [HL]                    ; is char <=ASCII space (inc. tab, null)
+        cp      [HL]                    ; is char <=ASCII space (inc. tab/null)
         jr      c,      -               ; if not keep going
         ;-----------------------------------------------------------------------
         ld      A,      0               ; patch in null terminator
-        ld      [DE],   A               ; (mustn't set zero-flag!)
+        ld      [DE],   A               ; (musn't set zero-flag!)
         pop     DE                      ; return start of param str
         ret
 
@@ -361,9 +361,6 @@ osFileOpen:
 ; limit the maximum nesting depth -- v80 recommends no more than 4 levels
 ;
 ; NOTE: CP/M-3 has a "parse file-name" BDOS function, no.152
-; FIXME support files on other drives? ("A:" prefix)
-;       and user-numbers?? ("0A:" prefix), this would be difficult
-;       due to user-numbers going up to 15
 ;
 ; in:   DE              addr of the file-name to use, forwards, null-terminated
 ; out:  SP              stack is manipulated -- do not JP to this routine!
@@ -566,7 +563,7 @@ _setFCBFileName:
         cp      'z'+1                   ; ASCII code above lower-case Z?
         jr      nc,     @gt_z           ; check only codes >'z'
 
-        res     5,      A               ; unset bit 5 to switch a-z to A-Z
+        and     %11011111               ; unset bit 5 to switch a-z to A-Z
         ret                             ; return with case-fixed char
 
         ;-----------------------------------------------------------------------

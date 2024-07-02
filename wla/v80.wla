@@ -372,6 +372,8 @@ main:
         ld      DE,     @bytes          ; append " bytes"
         jp      osPrintLn               ;  and return
 
+@strd   .BYTE   "DEFER: ", 0
+@stre   .BYTE   " exprs", 0
 @strc   .BYTE   " CODE: ", 0
 @strh   .BYTE   " HEAP: ", 0
 @strf   .BYTE   " FREE: ", 0
@@ -458,10 +460,6 @@ main:
 
         pop     HL                      ; snap back to the defer record
         jr      @expr                   ;  link-field to follow the chain
-
-        ;-----------------------------------------------------------------------
-@strd   .BYTE   "DEFER: ", 0
-@stre   .BYTE   " exprs", 0
 
         ;=======================================================================
 @popw:  dec     HL                      ; pop a word off the heap into BC
