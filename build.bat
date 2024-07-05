@@ -71,6 +71,14 @@ IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
 CALL :RunTest jr
 IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
 
+REM DEL /F /Q "%BIN_DIR%\agon\sdcard\v80\*.*"
+REM COPY /N /Y "release\v80.com" /B "%BIN_DIR%\agon\sdcard\v80\V80.COM" /B
+REM COPY /N /Y "v1\*.v80" /A "%BIN_DIR%\agon\sdcard\v80\*.v80" /A
+REM 
+REM PUSHD "%BIN_DIR%\agon"
+REM "fab-agon-emulator.exe" --scale integer --mode 3
+REM POPD & EXIT
+
 REM # --------------------------------------------------------------------------
 REM # if no errors, use v80 to assemble itself
 
@@ -94,7 +102,7 @@ IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
 REM # --------------------------------------------------------------------------
 REM # if no errors, copy v80 binary to release folder
 
-COPY /N /Y "%DIR_NTVCM%\v80.com" /B "release"
+COPY /N /Y "%DIR_NTVCM%\v80.com" /B "release\v80.com" /B
 
 ECHO OK.
 EXIT /B 0

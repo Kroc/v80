@@ -689,7 +689,7 @@ readChar:
         ; check for end-of-line:
         ;-----------------------------------------------------------------------
         cp      ASCII_CR                ; /r is always ignored,
-        jr      z, -                    ;  don't advance row/col, get next char
+        jr      z,      -               ;  don't advance row/col, get next char
 
         exx                             ; must preserve HL & DE
         ld      HL',    ccol            ; prepare to increment column number

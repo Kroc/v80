@@ -331,6 +331,8 @@ main:
         ; the output file-name is already known to the OS which read it
         ; from the command-line parameters during osParseParameters
         ;
+        ld      BC,     $0000           ; don't show file/line/col if an
+        ld      [file], BC              ;  error occurs during write out
         ld      HL,     code            ; code-segment start addr
 @iy     ld      DE,     $0000           ; code-segment end addr patched in here
         call    osSaveCode              ; defer all writing work to the OS

@@ -502,7 +502,7 @@ _fcb    .w      $0000
         jr?nz   _err                    ; dot not allowed in extensions!
 
         ; return start of FCB addr:
-_0       ld.BC   -12                     ; (use negative add to avoid SBC)
+_0      ld.BC   -12                     ; (use negative add to avoid SBC)
         add.HL.BC                       ; rewind HL to start of FCB addr
         pop.DE                          ; restore file-name str start addr
         ret
@@ -724,11 +724,13 @@ _0      ld.A.L                          ; check if the lo-byte addr
         ; delete it before recreating it:
         ;
         ld.C'   #BDOS_DEL               ; select delete-file function
+        ld.DE'  :cpm_fcb                ; re-select the FileControlBlock
         call    :BDOS                   ; (for output file-name)
 
         ; output binary to disk:
         ;-----------------------------------------------------------------------
 _out    ld.C'   #BDOS_MAKEFILE          ; create new, blank output file
+        ld.DE'  :cpm_fcb                ; re-select the FileControlBlock
         call    :BDOS                   ; (note: equivalent to a BDOS open)
         inc.A                           ; $00 = OK, $FF = disk full
         jp?z    :errRangeDisk           ; error if disk is full
@@ -818,7 +820,7 @@ _ok     call    :_readSector            ; read next sector from disk
         exx                             ; preserve BC/DE/HL
         ld.C'   #BDOS_READSEQ           ; select BDOS function number
 _fcb    ld.DE'  :cpm_fcb                ; select FileControlBlock
-        call    :BDOS                    ; do the disk read
+        call    :BDOS                   ; do the disk read
         exx                             ; (restore BC/DE/HL before return)
         dec.A                           ; check for A=1, EOF
         ret?nz                          ; return if no-error

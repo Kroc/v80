@@ -757,11 +757,13 @@ osSaveCode:
         ; delete it before recreating it:
         ;
         ld      C',     BDOS_DEL        ; select delete-file function
+        ld      DE',    cpm_fcb         ; re-select the FileControlBlock
         call    BDOS                    ; (for output file-name)
 
         ; output binary to disk:
         ;-----------------------------------------------------------------------
 +       ld      C',     BDOS_MAKEFILE   ; create new, blank output file
+        ld      DE',    cpm_fcb         ; re-select the FileControlBlock
         call    BDOS                    ; (note: equivalent to a BDOS open)
         inc     A                       ; $00 = OK, $FF = disk full
         jp      z,      errRangeDisk    ; error if disk is full

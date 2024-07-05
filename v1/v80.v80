@@ -259,19 +259,6 @@ _push   dec.HL                          ; decrement HL first to match the
         sbc.HL.DE                       ; calculate end-start difference
         ld*$.HL [ _code + 1 ]           ; save value for printing later
 
-        ; 2nd pass!
-        ;-----------------------------------------------------------------------
-        ; (actually more like 1.5 because we aren't reading the code again)
-        ;
-        ; we calculate the stats above first becasue no more data will need
-        ; to be written to the heap and we want to re-use HL for the 2nd pass
-        ;
-        ; note that IX (virtual program-counter) & IY (code-segment addr)
-        ; will be changed to repeat each deferred expression
-        ;
-        ld*$.IY [ _iy + 1 ]             ; save code-segment end-addr for output
-        call    _defer                  ; re-evaluate deferred expressions
-
         ; how deep is your stack?
         ;-----------------------------------------------------------------------
         ; since counting towards zero is faster on Z80 we start at the top and
@@ -301,11 +288,26 @@ _ok     ld.A.C                          ; BC is number of unused stack slots
         jp?z    :errRangeStack          ; if 0, stack overflow!
         ld*$.A  [ _stack + 1 ]          ; save value for printing later
 
+        ; 2nd pass!
+        ;-----------------------------------------------------------------------
+        ; (actually more like 1.5 because we aren't reading the code again)
+        ;
+        ; we calculate the stats above first becasue no more data will need
+        ; to be written to the heap and we want to re-use HL for the 2nd pass
+        ;
+        ; note that IX (virtual program-counter) & IY (code-segment addr)
+        ; will be changed to repeat each deferred expression
+        ;
+        ld*$.IY [ _iy + 1 ]             ; save code-segment end-addr for output
+        call    _defer                  ; re-evaluate deferred expressions
+
         ; output file:
         ;=======================================================================
         ; the output file-name is already known to the OS which read it
         ; from the command-line parameters during osParseParameters
         ;
+        ld.BC   $0000                   ; don't show file/line/col if an
+        ld*$.BC [ :file ]               ; error occurs during write out
         ld.HL   :code                   ; code-segment start addr
 _iy     ld.DE   $0000                   ; code-segment end addr patched in here
         call    :osSaveCode             ; defer all writing work to the OS
