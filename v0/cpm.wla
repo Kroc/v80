@@ -212,9 +212,9 @@ osQuit:
 
 
 _infile:                                ; command-line input file-name param
-        .BYTE   "            ", 0       ;
+        .BYTE   "            ", 0       ; (max 8.3, including dot)
 _outfile:                               ; command-line output file-name param
-        .BYTE   "            ", 0       ;
+        .BYTE   "            ", 0       ; (max 8.3, including dot)
 
 osParseParameters:
 ;===============================================================================
@@ -227,46 +227,51 @@ osParseParameters:
 ; out:  DE              addr of input file-name, forwards, null-terminated
 ;       A, BC, HL       (clobbered)
 ;-------------------------------------------------------------------------------
+        ; search for a first parameter:
+        ; (input file-name)
+        ;
         ; in CP/M the "command tail", the portion of the command line following
-        ; the executable name is in the DMA buffer ($80) by default. the first
-        ; byte is the length, but the string is also null-terminated
+        ; the executable name, is in the DMA buffer ($80) by default. the first
+        ; byte is the length but the string is also null-terminated, thankfully
         ;
         ; WARN: the command-tail in the DMA buffer is overwritten by the first
         ;       sector read of a file so we must copy the parameters out!
         ;
-        ; search for a first parameter: (input file-name)
-        ;-----------------------------------------------------------------------
         ld      HL,     cpm_dma+1       ; begin search from 1st char
         ld      DE,     _infile         ; copy to here
         call    _getParam               ; look for / copy 1st parameter
         jr      z,      @help           ; if none, show help text
 
-        ; the optional 2nd param sets the output file-name:
+        ; in case the output file-name is not specified, we don't check for
+        ; an input name file-extension yet otherwise it would be copied to
+        ; the output name when we want to default to ".COM" for that!
+        ;
+        ; optional 2nd param -- output file-name:
         ;-----------------------------------------------------------------------
         ld      DE,     _outfile        ; this time, copy here
         call    _getParam               ; look for a 2nd parameter
         jr      nz,     @out            ; if output file-name specified, skip
 
-        ; no output file-name specified --
-        ; create one from the input file-name:
+        ; copy input file-name to output file-name as-is:
         ;
-        ld      B,      8               ; copy up-to the first 8 chars
-        ld      HL,     _infile         ;  from the input file-name
-        ;-----------------------------------------------------------------------
--       ld      A,      [HL]            ; read a source character
-        inc     HL                      ; move to next source character
-        and     A                       ; (set zero-flag)
-        jr      z,      +               ; stop copying at null-terminator
-        cp      '.'                     ; is it a dot? (file/ext separator)
-        jr      z,      +               ; also stop copying at dot
-        ld      [DE],   A               ; write fixed char to output file-name
-        inc     DE                      ;  and move to next char
-        djnz    -                       ; loop until all chars copied
-        ;-----------------------------------------------------------------------
-+       ld      BC,     5               ; now append ".com", NULL, the default
-        ld      HL,     @com            ;  file extension assumed for CP/M
+        ld      C,      13              ; full field, including null-terminator
+        ld      HL,     _infile         ; copying from input file-name
+        ldir                            ; copy BC bytes from HL to DE
+
+        ; since we copied the input file-name, we will need to replace the
+        ; input file-extension (".V80"), if present, with the default output
+        ; file-extension (".COM"). walk the output file-name until the first
+        ; dot or null where the extension will be, but be aware that there
+        ; may not be enough space to append a file-extension
+        ;
+        ld      DE,     _outfile        ; rewind output file-name string
+        call    @dot                    ; walk string to first dot or null
+        ld      A,      4               ; must be at least 4 chars free
+        cp      C                       ; is that the case?
+        jr      nc,     @out            ; if not, skip appending file-extension
+        ld      HL,     @com            ; ".COM", NULL string
+        ld      C,      5               ; number of bytes
         ldir                            ; = copy BC bytes from HL to DE
-        ld      DE,     _outfile        ; restore DE to start of file-name str
 
         ; use the default FCB for the output file:
         ;-----------------------------------------------------------------------
@@ -283,21 +288,65 @@ osParseParameters:
         ; parse the output file-name into the default FCB
         ; that will be used after assembling to output the binary
         ;
+        ld      DE,     _outfile        ; use the output file-name
         ld      HL,     cpm_fcb         ; default FCB addr
         call    _setFCBFileName         ; configure FCB for output file
 
-        ld      DE,     _infile         ; return input param str addr
-        ret                             ; ...
+        ; return input file-name:
+        ;-----------------------------------------------------------------------
+        ; last, but not least, check if the input file-name is missing
+        ; an extension. this has been delayed to allow generating the
+        ; output file-name first
+        ;
+@in:    ld      DE,     _infile         ; switch to input file-name string
+        call    @dot                    ; walk string to first dot or null
+        jr      z,      +               ; if extension already present, skip
+        ld      A,      4               ; must be at least 4 chars free
+        cp      C                       ; is that the case?
+        jr      nc,     +               ; if not, skip appending file-extension
+        ld      HL,     @v80            ; ".V80", NULL string
+        ld      C,      5               ; number of bytes
+        ldir                            ; = copy BC bytes from HL to DE
+
++       ld      DE,     _infile         ; return input name str addr
+        ret
 
         ;-----------------------------------------------------------------------
+@v80    .BYTE   ".V80", 0               ; default input file-name extension
 @com    .BYTE   ".COM", 0               ; default output file-name extension
+
+        ;=======================================================================
+        ; find the first dot in a file-name:
+        ; 
+        ; in:   DE      file-name string addr
+        ; out:  zf      zero-flag set if "." found
+        ;               zero-flag clear if stopped at null-terminator
+        ;       DE      string addr is position ON the first dot or null
+        ;       BC      13 minus the number of chars walked , i.e. how many
+        ;               chars remain in the maximum allowed file-name length
+        ;       HL      (preserved)
+        ;       A       (clobbered)
+        ;-----------------------------------------------------------------------
+@dot:   ld      BC,     13              ; (we need to track string-length)
+        jr      +                       ; jump into loop
+        ;-----------------------------------------------------------------------
+-       inc     DE                      ; next char in file-name
+        dec     BC                      ; decrement character count
++       ld      A,      [DE]            ; get current char
+        cp      '.'                     ; check for dot
+        ret     z                       ; if dot, break loop
+        cp      NULL                    ; check for null-terminator
+        jr      nz,     -               ; keep looping until either
+        ;-----------------------------------------------------------------------
+        cp      '.'                     ; don't return zero-flag set for null
+        ret
 
         ;=======================================================================
 @help:  ld      DE,     @@str           ; no parameters!
         call    osPrintStrZ             ; print the command usage
         jp      osQuit                  ;  and quit
 
-@@str   .BYTE   "    V80 FILE.V80 [FILE.COM]\r\n", 0
+@@str   .BYTE   "    V80 INPUT.V80 [OUTPUT.COM]\r\n", 0
 
 
 _getParam:
@@ -319,6 +368,8 @@ _getParam:
 ; out:  HL              the string addr is advanced according to the param read
 ;       zf              zero-flag is set if null-terminator occurs before any
 ;                       characters are captured!
+;       BC              13 minus the length of the param, i.e. how many chars
+;                       remain in the maximum allowed length + 1
 ;       DE              (preserved) -- rewound to the start of the param str
 ;       A, BC           (clobbered)
 ;       -               halts with error if file-name exceeds 12 chars
@@ -341,8 +392,8 @@ _getParam:
         cp      [HL]                    ; is char <=ASCII space (inc. tab/null)
         jr      c,      -               ; if not keep going
         ;-----------------------------------------------------------------------
-        ld      A,      0               ; patch in null terminator
-        ld      [DE],   A               ; (musn't set zero-flag!)
+        ld      A,      0               ; (musn't set zero-flag!)
+        ld      [DE],   A               ; patch in null terminator
         pop     DE                      ; return start of param str
         ret
 

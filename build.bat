@@ -137,7 +137,9 @@ REM # assemble with V80
 REM # --------------------------------------------------------------------------
 PUSHD "%DIR_NTVCM%"
 
-%BIN_NTVCM% v80.com %~1.v80
+REM # we exclude the ".v80" file extension and output file-name
+REM # in order to exercise the CP/M parameter parsing
+%BIN_NTVCM% v80.com %~1
 
 REM # if NTVCM hits a HALT instruction, launch RunCPM
 IF %ERRORLEVEL% EQU -1 POPD & START "RunCPM" /D "%DIR_RUNCPM%" %BIN_RUNCPM% & EXIT /B 1
