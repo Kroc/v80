@@ -142,7 +142,8 @@
 .i      "echo.v80"                      ; various printing routines
 .i      "err.v80"                       ; error messages
 .i      "expr.v80"                      ; expression parsing and evaluation
-.i      "z80.v80"                       ; Z80 parser & opcode binary tree
+.i      "z80code.v80"                   ; Z80 opcode specific code
+.i      "z80data.v80"                   ; Z80 opcode data
 .i      "asm.v80"                       ; main parsing and assembling loop
 
 :main
