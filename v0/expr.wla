@@ -16,6 +16,11 @@
 ;
 defer:  .ADDR   $0000                   ; addr of last deferred expr
 
+deferCount:
+        .WORD   $0000                   ; number of deferred expressions
+deferBytes:
+        .WORD   $0000                   ; size of deferred expressions in bytes
+
 ; the starting line/column number of an expr is recorded because the whole
 ; expression is parsed before evaluation so an error in evaluation may give
 ; the line/col number of the next word or line
@@ -248,6 +253,7 @@ deferExpr:
         ; note that LDDR is post-decrement (copy-then-decrement), whereas
         ; the heap is pre-decrement like the stack (decrement-then-copy)
         ;
+        push    BC                      ; (remember bytecode size for counter)
         dec     HL                      ; fix heap addr for copy-then-DEC
         ld      DE,     expr            ; ...
         ex      DE,     HL              ; ...
@@ -255,17 +261,22 @@ deferExpr:
         ex      DE,     HL              ; return heap to HL
         inc     HL                      ; fix heap addr after LDDR copy
 
-        ; add one to the deferred expression counter:
+        ; update the deferred-expressions stats:
+        ; (number of expressions, total size in bytes)
         ;
-        ld      DE,     [deferCount]    ; (we're going to just assume
-        inc     DE                      ;  that you will keep this
-        ld      [deferCount],   DE      ;  under 65'535...)
+        ld      DE,     [deferCount]    ; increment the deferred
+        inc     DE                      ;  expression counter
+        ld      [deferCount],   DE      ;
+        ex      DE,     HL              ; (put heap aside in DE)
+        ld      HL,     [deferBytes]    ; get our size counter
+        pop     BC                      ; restore expr bytecode size
+        add     HL,     BC              ; add that to total
+        ld      BC,     13              ; plus the other bytes in the record
+        add     HL,     BC              ; 
+        ld      [deferBytes],   HL      ; 
+        ex      DE,     HL              ; (swap heap back to HL)
 
         jp      checkHeapSize           ; check for heap overflow
-
-deferCount:
-        ;-----------------------------------------------------------------------
-        .WORD   $0000
 
 
 nextExpr:

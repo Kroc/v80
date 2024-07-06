@@ -379,7 +379,7 @@ main:
 @strc   .BYTE   " CODE: ", 0
 @strh   .BYTE   " HEAP: ", 0
 @strf   .BYTE   " FREE: ", 0
-@bytes  .BYTE   " bytes", 0
+@bytes  .BYTE   " bytes ", 0
 @strs   .BYTE   "STACK: ", 0
 @peak   .BYTE   " free", 0
 
@@ -404,12 +404,16 @@ main:
         ;       len             length of expression bytecode
         ;       expr            expression bytecode
         ;
-        ; print deferred expression count:
+        ; print deferred expression stats:
         ;
 @defer: call    osPrintNewline
         call    echoCommentBar
         ld      DE,     @strd
         call    echoCommentStr
+        ld      BC,     [deferBytes]
+        CALL    printDecNumberSpc
+        ld      DE,     @bytes
+        CALL    osPrintStrZ
         ld      BC,     [deferCount]
         call    printDecNumberSpc
         ld      DE,     @stre
