@@ -61,7 +61,7 @@
         ;
 _local  ld.A    $00                     ; check first char (patched above)
         cp      #CHAR_LOCAL             ; was this a local label?
-        jr?z    _0                       ; if yes, skip over last-defined
+        jr?z    _0                      ; if yes, skip over last-defined
         ld*$.BC [ :local ]              ; set last defined label addr
 
 _0      push.BC                         ; we'll  print the label name later
@@ -83,8 +83,9 @@ _0      push.BC                         ; we'll  print the label name later
         call    :printHexNumber         ; print value in BC with "$" sigil
         call    :echoSpc                ; print spc between addr & label name
         pop.DE                          ; restore label-name addr from earlier
-        call    :printSymbolName        ;  and print label name
-        call    :osPrintNewline         ;  + newline
+        ld.A    #CHAR_LABEL             ;  and print label name
+        call    :printSymbolNameSigil   ;  + newline
+        call    :osPrintNewline         ;  ...
 
         jp      :_next                  ; return to parsing
 
@@ -150,7 +151,8 @@ _get    push.DE                         ; before parsing value, preserve addr
         ; echo const name:
         ld.D.B                          ; (findSymbol returns the addr
         ld.E.C                          ;  of the const name in BC)
-        call    :printSymbolName        ; print const name
+        ld.A    #CHAR_CONST             ; print const name
+        call    :printSymbolNameSigil   ;  (+ prepend sigil)
         ld.A    #WORD_LEN + 1           ; calculate number of spaces to print
         sub.C                           ;  for const names up to 32 chars
         call    :osPrintSpaces          ; print padding spaces
@@ -610,6 +612,9 @@ _skip   call    :readChar               ; read a character (returns z-flag)
 ; if the symbol begins with `_` it's a local label and the last-defined label
 ; name will automatically be prepended to the symbol name being read in
 ;
+; to save bytes in the heap, ":" and "#"" sigils are automatically skipped,
+; causing labels and consts to be stored on the heap without sigils
+;
 ; NOTE: the word is written *downwards* in RAM, to match how symbol names
 ;       are pushed to the heap, for faster comparison -- we use the bottom
 ;       of a page to hold the incoming word so that we can get away with
@@ -626,14 +631,17 @@ _skip   call    :readChar               ; read a character (returns z-flag)
         ld.DE   :word                   ; top of word-buffer
         cp      #CHAR_LOCAL             ; is this a local label?
         call?z  _local                  ; prepend last label defined
-        jr      _in                     ; (first character already read)
+        cp      #CHAR_LABEL             ; skip sigil for label?
+        jr?z    _loop                   ; enter loop at point that skips char
+        cp      #CHAR_CONST             ; do the same for const sigil
+        jr?nz   _in                     ; otherwise, append first char
         ;-----------------------------------------------------------------------
-_read   call    :readChar               ; read char from input file
+_loop   call    :readChar               ; read char from input file
         cp      #SPC + 1                ; whitespace or end-of-line/file?
         jr?c    _ok                     ; (leave loop at whitespace)
 _in     dec.E                           ; move to next space in buffer
         ld*DE.A                         ; add the character to the buffer
-        jp?p    _read                   ; keep going until buffer full
+        jp?p    _loop                   ; keep going until buffer full
         ;-----------------------------------------------------------------------
         jp      :errInvalSym            ; quit with invalid symbol error
 
@@ -850,10 +858,10 @@ _ok     ld.A    #WORD_LEN               ; max size - characters remaining
 ;                       otherwise $0000 if not found
 ;       HL              (preserved)
 ;
-;                       | DE (found)                       | BC (not-found)
-;                - - - -+-------+---+---+---+---+---+---+--V--+------+
-;                <-heap | value | t | s | n | o | c | # | len | link |
-;                - - - -+---^---+---+---+---+---+---+---+-----+------+
+;                       | DE (found)                   | BC (not-found)
+;                - - - -+-------+---+---+---+---+---+--V--+------+
+;                <-heap | value | t | s | n | o | c | len | link |
+;                - - - -+---^---+---+---+---+---+---+-----+------+
 ;                           | BC (found)
 ;-------------------------------------------------------------------------------
         call    :readWord               ; read const name into word buffer
@@ -903,10 +911,10 @@ _ok     ld.A    #WORD_LEN               ; max size - characters remaining
 ;                       as a forward-reference
 ;       A               (clobbered)
 ;
-;                       | DE    | DE (fwd-ref)                 | BC (fwd-ref)
-;                - - - -v-------v------+---+---+---+---+---+---v-----+------+
-;                <-heap | value | flag | l | e | b | a | l | : | len | link |
-;                - - - -+---^---+------+---+---+---+---+---+---+-----+------+
+;                       | DE    | DE (fwd-ref)             | BC (fwd-ref)
+;                - - - -v-------v------+---+---+---+---+---v-----+------+
+;                <-heap | value | flag | l | e | b | a | l | len | link |
+;                - - - -+---^---+------+---+---+---+---+---+-----+------+
 ;                           | BC
 ;-------------------------------------------------------------------------------
         call    :readWord               ; read label name into word buffer
@@ -944,9 +952,9 @@ _ok     ld.A    #WORD_LEN               ; max size - characters remaining
         ;=======================================================================
         ; (any reference to a label that doesn't exist is a forward-reference)
         ;
-        ;       - - - -+-------+------+---+---+---+---+---+---+-----+------+
-        ;       <-heap | rsrvd | flag | l | e | b | a | l | : | len | link |
-        ;       - - - -+-------+------+---+---+---+---+---+---+-----+------+
+        ;       - - - -+-------+------+---+---+---+---+---+-----+------+
+        ;       <-heap | rsrvd | flag | l | e | b | a | l | len | link |
+        ;       - - - -+-------+------+---+---+---+---+---+-----+------+
         ;
         ; - the link addr to the previous label
         ; - the label name length; here for faster searching

@@ -405,7 +405,8 @@ parseExpr:
         push    DE
         ld      D,      B
         ld      E,      C
-        call    printSymbolName
+        ld      A,      CHAR_LABEL
+        call    printSymbolNameSigil
         call    osPrintNewline
         pop     DE
 .ENDIF  ;///////////////////////////////////////////////////////////////////////

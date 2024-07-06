@@ -620,6 +620,19 @@ printThis:
         ret
 
 
+printSymbolNameSigil:
+;===============================================================================
+; prints a backwards, length-prefixed symbol name, with sigil provided in A:
+; (labels and consts are stored on the heap without their sigil)
+;
+; in:   A               sigil character to print before symbol name
+;       *               see printSymbolName below
+;-------------------------------------------------------------------------------
+        call    osPrintChar
+
+        ; fall through
+        ; ...
+
 printSymbolName:
 ;===============================================================================
 ; prints a backwards, length-prefixed symbol name:
