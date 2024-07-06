@@ -704,7 +704,7 @@ _local  push.HL                         ; preserve HL before copy
 
         cp      #LF                     ; /n is newline
         jr?z    _row                    ; handle newline
-        cp      #ASCII_TAB              ; /t is tab
+        cp      #TAB                    ; /t is tab
         jr?z    _tab                    ; handle tab
 
         ; increment column number:

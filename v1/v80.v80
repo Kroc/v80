@@ -8,10 +8,10 @@
 #HI                     1
 
 #SPC                    $20             ; ASCII space (whitespace)
-#ASCII_TAB              $09             ; ASCII tab (whitespace)
+#TAB                    $09             ; ASCII tab (whitespace)
 #CR                     $0d             ; ASCII carriage-return
 #LF                     $0a             ; ASCII line-feed
-#ASCII_SUB              $1a             ; ASCII "substitute", end-of-file char
+#SUB                    $1a             ; ASCII "substitute", end-of-file char
 
 ; syntax:
 ;

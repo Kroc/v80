@@ -792,7 +792,7 @@ _index  ld.A*   [ :cpm_dma ]            ; get byte at current index
         ; because all CP/M files are padded to 128 bytes sectors!
         ; <https://en.wikipedia.org/wiki/Substitute_character>
         ;
-        cp      #ASCII_SUB              ; is this a CP/M sector padding byte?
+        cp      #SUB                    ; is this a CP/M sector padding byte?
         ret?z                           ; return zero-flag set for EOF
 
         ; increment index:
@@ -827,7 +827,7 @@ _fcb    ld.DE'  :cpm_fcb                ; select FileControlBlock
         ; if an end-of-file occurs at a sector boundary then we need to return
         ; EOF on the *NEXT* call as the last character has already been read:
         ;
-        ld.A    #ASCII_SUB              ; write the CP/M EOF marker
+        ld.A    #SUB                    ; write the CP/M EOF marker
         ld*$.A  [ :cpm_dma ]            ;  to the first byte for next read
 
         ret
