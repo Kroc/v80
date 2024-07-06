@@ -10,7 +10,7 @@
 ;   +-----+--------+--------+-------+------- - - -
 ;   | v80 | <-word | <-expr | str-> | code->
 ;   +-----+--------+--------+-------+------- - - -
-;         |     32       96   128   |       
+;         |     32       96   128   |
 ;
 :defer  .w      $0000                   ; addr of last deferred expr
 
@@ -493,7 +493,7 @@ _0      cp      '9 + 1                  ; is decimal "0"-"9"?
         ;-----------------------------------------------------------------------
         ; decimal literal:
         ;-----------------------------------------------------------------------
-_dec    call    :parseDecNumber         ; parse decimal number into BC
+_dec    call    :parseDecNum            ; parse decimal number into BC
         ;-----------------------------------------------------------------------
         ; binary literal:
         ;-----------------------------------------------------------------------
@@ -502,14 +502,14 @@ _dec    call    :parseDecNumber         ; parse decimal number into BC
         ;  is guaranteed to return zero-flag clear, also falling through the
         ;  next instruction!)
         ;
-_bin    call?z  :parseBinNumber         ; parse the binary number into BC
+_bin    call?z  :parseBinNum            ; parse the binary number into BC
         ;-----------------------------------------------------------------------
         ; hexadecimal literal:
         ;-----------------------------------------------------------------------
         ; (micro-optimisation: the zero-flag conditional here is to allow
         ;  the fall through from above to skip this one instruction)
         ;
-_hex    call?z  :parseHexNumber         ; parse the hex number into BC
+_hex    call?z  :parseHexNum            ; parse the hex number into BC
 
         ; push a number literal token:
         ;-----------------------------------------------------------------------
@@ -966,7 +966,7 @@ _label  xor.A                           ; set A to zero for flag-byte check
 _err    jp      :errUndefLabel
 
 
-:parseHexNumber
+:parseHexNum
 ;===============================================================================
 ; parses an ASCII hexadecimal number and returns the value:
 ;
@@ -1097,7 +1097,7 @@ _af     add     10                      ; change "A"-"F" to 10-15
         ret
 
 
-:parseBinNumber
+:parseBinNum
 ;===============================================================================
 ; parses an ASCII binary number and returns the value:
 ;
@@ -1138,7 +1138,7 @@ _last   add     ( '0 - #SPC - 1 )       ; adjust again so <= SPC is negative
         ret
 
 
-:parseDecNumber
+:parseDecNum
 ;===============================================================================
 ; parse an ASCII decimal number and returns the value:
 ;

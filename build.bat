@@ -96,8 +96,8 @@ REM FC /B "build\v80.com" "%DIR_NTVCM%\v80.com"
 REM IF ERRORLEVEL 1 START "" %BIN_VBINDIFF% "build\v80.com" "%DIR_NTVCM%\v80.com"
 
 REM # do a 2nd-generation build of v80, i.e. v80 [v1] building v80 [v1]
-REM CALL :v80   v80
-REM IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
+CALL :v80   v80
+IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
 
 REM # --------------------------------------------------------------------------
 REM # if no errors, copy v80 binary to release folder

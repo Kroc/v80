@@ -80,7 +80,7 @@ _0      push.BC                         ; we'll  print the label name later
         ; echo the label as v80 source, address first
         ; (sets program-counter) followed by the label name:
         ;
-        call    :printHexNumber         ; print value in BC with "$" sigil
+        call    :printHexNum            ; print value in BC with "$" sigil
         call    :echoSpc                ; print spc between addr & label name
         pop.DE                          ; restore label-name addr from earlier
         ld.A    #CHAR_LABEL             ;  and print label name
@@ -172,7 +172,7 @@ _get    push.DE                         ; before parsing value, preserve addr
 
         ; echo value:
         ;
-        call    :printHexNumber         ; print const value in BC
+        call    :printHexNum            ; print const value in BC
         call    :osPrintNewline         ;  + newline
 
         jr      :_line                  ; only one const defined per line
@@ -191,7 +191,7 @@ _get    push.DE                         ; before parsing value, preserve addr
         ;
         ;       $       #boot + $0100   ; set PC to #boot constant + 256
         ;
-:_pc    call    :parseHexNumber         ; capture the number
+:_pc    call    :parseHexNum            ; capture the number
         call?c  :nextExpr               ; if PC, parse the expr that follows
         jp?c    :errUnexpDefer          ; must be a constant expr!
 
@@ -299,7 +299,7 @@ _cond   cp      #CHAR_COND              ; is condition marker?
 _body   cp      #CHAR_KEYWORD           ; is this a keyword?
         jr?z    :_key
 
-        call    :parseInstruction       ; if not, must be an instruction
+        call    :parseMnemonic          ; if not, must be an instruction
 
         jr      :_next
 
@@ -1218,7 +1218,7 @@ _ret    xor.A                           ; return zero-flag set for optimisation
         ret                             ; also return regardless on end-of-file
 
 
-:parseInstruction
+:parseMnemonic
 ;===============================================================================
 ; parse an instruction into opcodes:
 ;

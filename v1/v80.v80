@@ -139,10 +139,11 @@
 :wrow   .w      $0000                   ; line number to report on err
 
 ;===============================================================================
+.i      "echo.v80"                      ; various printing routines
 .i      "err.v80"                       ; error messages
-.i      "asm.v80"                       ; main parsing and assembling loop
 .i      "expr.v80"                      ; expression parsing and evaluation
 .i      "z80.v80"                       ; Z80 parser & opcode binary tree
+.i      "asm.v80"                       ; main parsing and assembling loop
 
 :main
 ;===============================================================================
@@ -194,17 +195,17 @@ _push   dec.HL                          ; decrement HL first to match the
         call    :printThisComment
                 .b      "CODE @ " 0
         ld.BC   :code                   ; start addr of code-segment
-        call    :printHexNumber         ; print addr as hex-number
+        call    :printHexNum            ; print addr as hex-number
 
         call    :printThis
                 .b      ", HEAP @ " 0
         ld.BC*  [ :heap ]               ; start addr of heap
-        call    :printHexNumber         ; print addr as hex-number
+        call    :printHexNum            ; print addr as hex-number
 
         call    :printThis
                 .b      ", STACK @ " 0
         ld.BC*  [ :sp ]                 ; start addr of stack
-        call    :printHexNumber         ; print addr as hex-number
+        call    :printHexNum            ; print addr as hex-number
 
         call    :osPrintNewline
         call    :osPrintNewline
@@ -339,11 +340,11 @@ _heap   ld.BC   $0000                   ; value to print (heap size)
         call    :printThisComment       ; print deferred-expression stats
                 .b      "DEFER: " 0     ; ...
         ld.BC*  [ :deferBytes + 1 ]     ; first, number of bytes for all
-        CALL    :printDecNumberSpc      ;  deferred-expressions
+        CALL    :printDecNumSpc         ;  deferred-expressions
         ld.DE   _bytes                  ; (re-use "bytes" string below)
         CALL    :osPrintStrZ            ; ...
         ld.BC*  [ :deferCount + 1 ]     ; total number of deferred-expressions
-        call    :printDecNumberSpc      ; 
+        call    :printDecNumSpc         ; 
         call    :printThis              ; 
                 .b      " exprs" #LF 0  ; 
         ;-----------------------------------------------------------------------
@@ -355,7 +356,7 @@ _free   ld.BC   $0000                   ; value to print (free bytes)
         call    :printThisComment       ; 
                 .b      "STACK: " 0     ; 
 _stack  ld.BC   $0000                   ; lastly, the number of bytes free
-        call    :printDecNumberSpc      ;  on the stack at peak usage
+        call    :printDecNumSpc         ;  on the stack at peak usage
         call    :printThis              ; 
                 .b      " free" #LF 0   ; 
 
@@ -363,7 +364,7 @@ _stack  ld.BC   $0000                   ; lastly, the number of bytes free
 
         ; print a decimal number and append "bytes":
         ;-----------------------------------------------------------------------
-_size   call    :printDecNumberSpc      ; print number with leading spaces
+_size   call    :printDecNumSpc         ; print number with leading spaces
         call    :printThis              ; append "bytes"
 _bytes          .b      " bytes " 0     ; ...
         jp      :osPrintNewline         ; + newline
@@ -486,361 +487,6 @@ _sp     .w      $0000
 
 _err    jp      :errRangeHeap           ; err if heap below code-segment!
 
-
-:echoCommentBar
-;===============================================================================
-; echoes a dividing line to the screen:
-;
-; out:  HL, DE, BC      (preserved)
-;       A               (clobbered)
-;-------------------------------------------------------------------------------
-        push.DE
-        call    :printThis
-                .b      #CHAR_COMMENT "------------------------------------"
-                .b      #LF 0
-        pop.DE
-        ret
-
-:echoCommentLn
-;===============================================================================
-; echoes a "comment" to screen: i.e. "; " + str + newline
-;
-; in:   DE              string-addr, must be 0-terminated
-; out:  HL, DE, BC      (preserved)
-;       A               (clobbered)
-;-------------------------------------------------------------------------------
-        call    :echoCommentStr         ; print string in DE prefixed with "; "
-        jp      :osPrintNewline         ; print system-dependant newline
-
-
-:echoCommentStr
-;===============================================================================
-; echoes the opening comment marker and the given string:
-;
-; in:   DE              string-addr, must be 0-terminated
-; out:  HL, DE, BC      (preserved)
-;       A               (clobbered)
-;-------------------------------------------------------------------------------
-        call    :echoCommentMarker      ; prefix string with "; "
-        push.DE                         ; preserve string starting addr
-        call    :osPrintStrZ            ; echo string in DE
-        pop.DE                          ; restore string starting addr
-        ret                             ; (echo allows string to be reused)
-
-
-:echoCommentNewline
-;===============================================================================
-; echoes an empty comment line, i.e. "; " + newline
-;
-; out:  A               (clobbered)
-;       BC, DE, HL      (preserved)
-;-------------------------------------------------------------------------------
-        call    :echoCommentMarker
-        jp      :osPrintNewline
-
-
-:echoCommentMarker
-;===============================================================================
-; echoes only an opening comment marker:
-;
-; out:  A               (clobbered)
-;       BC, DE, HL      (preserved)
-;-------------------------------------------------------------------------------
-        ld.A    #CHAR_COMMENT           ; print "; "
-        call    :osPrintChar            ; ...
-
-        ; fall through
-        ; ...
-
-:echoSpc
-;===============================================================================
-; echoes a singe space:
-;
-; out:  A               (clobbered)
-;       BC, DE, HL      (preserved)
-;-------------------------------------------------------------------------------
-        ld.A    #SPC                    ; this routine costs 17 cycles
-        jp      :osPrintChar            ;  but saves 2 bytes each time
-
-
-:printThisComment
-;===============================================================================
-; print (with comment prefix) the null-terminated string that immediately
-; follows the CALL here!
-;
-; in:   SP              string is read from the program-counter on the stack!
-; out:  HL, BC          (preserved)
-;       A, DE           (clobbered)
-;-------------------------------------------------------------------------------
-        call    :echoCommentMarker
-
-        ; fall through
-        ; ...
-
-:printThis
-;===============================================================================
-; print the null-terminated string that immediately follows the CALL here!
-;
-; in:   SP              string is read from the program-counter on the stack!
-; out:  HL, BC          (preserved)
-;       A, DE           (clobbered)
-;-------------------------------------------------------------------------------
-        ex*SP.HL                        ; swap heap with return-addr
-        ex.DE.HL                        ; new string-addr to DE
-        call    :osPrintStrZ            ; print null-terminated string from PC
-        ex.DE.HL                        ; return updated program-counter to HL
-        ex*SP.HL                        ; return new PC to stack, heap to HL
-        ret
-
-
-:printSymbolNameSigil
-;===============================================================================
-; prints a backwards, length-prefixed symbol name, with sigil provided in A:
-; (labels and consts are stored on the heap without their sigil)
-;
-; in:   A               sigil character to print before symbol name
-;       *               see printSymbolName below
-;-------------------------------------------------------------------------------
-        call    :osPrintChar
-
-        ; fall through
-        ; ...
-
-:printSymbolName
-;===============================================================================
-; prints a backwards, length-prefixed symbol name:
-;
-; in:   DE              symbol addr positioned at length byte
-; out:  DE              addr returned is positioned at last char in symbol name
-;       BC              symbol name length
-;       HL              (preserved)
-;       A               (clobbered)                BC (out)
-;                                                  |
-;                - - - -+---+---+---+---+---+---+--V--+------+
-;                <-heap | l | o | b | m | y | s | len | link |
-;                - - - -+---+---+---+---+---+---+-----+------+
-;                       ^ DE (out)              ^ DE (in)
-;-------------------------------------------------------------------------------
-        ex.DE.HL                        ; use HL for compactness
-        ld.B*HL                         ; get length of symbol name in B
-        ld.C.B                          ;  and C; after printing B=0
-        ;-----------------------------------------------------------------------
-_loop   dec.HL                          ; (move to next char in string)
-        ld.A*HL                         ; read a character
-        call    :osPrintChar            ;  and print it
-        djnz    _loop                   ;  for all chars in string
-        ;-----------------------------------------------------------------------
-        ex.DE.HL                        ; swap symbol addr to DE
-        ret
-
-
-:printDecNumberSpc
-;===============================================================================
-; prints an unsigned 16-bit number in decimal with leading spaces:
-;
-; in:   BC              number to print
-; out:  *               (clobbered)
-;-------------------------------------------------------------------------------
-        ; calculate the number of leading spaces:
-        ;
-        ld.E    #SPC                    ; (reusable space)
-        ld.HL   -10                     ; is number greater than 9?
-        add.HL.BC                       ; (subtract by adding negative number)
-        jr?c    _99                     ; if yes, don't print
-        ld.A.E                          ;  leading tens-digit space
-        call    :osPrintChar            ;  ...
-_99     ld.HL   -100                    ; is number greater than 99?
-        add.HL.BC                       ; (subtract by adding negative number)
-        jr?c    _999                    ; if yes, don't print
-        ld.A.E                          ;  leading hundreds-digit space
-        call    :osPrintChar            ;  ...
-_999    ld.HL   -1000                   ; is number greater than 999?
-        add.HL.BC                       ; (subtract by adding negative number)
-        jr?c    _9999                   ; if yes, don't print
-        ld.A.E                          ;  leading thousands-digit space
-        call    :osPrintChar            ;  and thousands separator
-        ld.A.E                          ;  ...
-        call    :osPrintChar            ;  
-_9999   ld.HL   -10000                  ; is number greater than 9'999?
-        add.HL.BC                       ; (subtract by adding negative number)
-        jr?c    :printDecNumber         ; if yes, don't print
-        ld.A.E                          ;  leading ten-thousands-digit space
-        call    :osPrintChar            ;  ...
-
-        ; fall through
-        ; ...
-
-:printDecNumber
-;===============================================================================
-; print an unsigned 16-bit number in decimal:
-;
-; in:   BC              number to print
-; out:  *               (clobbered)
-;-------------------------------------------------------------------------------
-        ld.H.B                          ; working number goes into HL
-        ld.L.C                          ; ...
-
-        ; 10'000s digit:
-        ;-----------------------------------------------------------------------
-        ; we don't want to print leading zeroes -- e.g. "00123". the leading-
-        ; zeroes byte stays at zero so long as there are leading-zeroes. once
-        ; any non-zero digit occurs, the leading-zeroes byte becomes non-zero
-        ; and any additional zeroes are printed, e.g. "1001"
-        ;
-        xor.A                           ; (set A to zero)
-        ld.E.A                          ; set leading-zero state
-        ld.BC   -10000                  ; subtract 10'000s
-        dec.A                           ; start at "0" (with pre-increment)
-_10000  inc.A                           ; next result digit - 0, 1, 2, etc.
-        add.HL.BC                       ; subtract 10'000 (without carry)
-        jr?c    _10000                  ;  keep going for each result >=0
-
-        ; note that ADD HL, BC does *not* modify the zero-flag!
-        ; this JR is based on the value of A, the digit counter!
-        ;
-        jr?z    _1000s                  ; do not print leading zero!
-        dec.E                           ; clear leading-zeroes state
-
-        add     '0                      ; convert to ASCII
-        call    :osPrintChar            ;  and print digit
-
-        ; 1'000s digit:
-        ;-----------------------------------------------------------------------
-        ; subtracting the last 10'000 has made the working number inverted,
-        ; so we add 1'000s to reverse the effect and count resultant digits
-        ; from 9 to 0 to compensate the 10'000 overage
-        ;
-_1000s  ld.BC   1000                    ; add 1'000s
-        ld.A    9 + 1                   ; count result digit from 9 downwards
-_1000   dec.A                           ; next result digit - 9, 8, 7, etc.
-        add.HL.BC                       ; add 1'000
-        jr?nc   _1000                   ;  until crossing the 0 boundary
-
-        ; is this a leading-zero that needs to be skipped? the leading-zeroes
-        ; state is zero by default, but non-zero if the first digit was also
-        ; non-zero, therefore a digit of 0 + a leading-zero state of 0 = 0
-        ;
-        cp.E                            ; if digit is 0 AND leading-zeroes
-        jr?z    _100s                   ;  state is zero, skip digit
-        dec.E                           ; clear leading-zeroes state
-
-        add     '0                      ; convert to ASCII
-        call    :osPrintChar            ;  and print digit
-        ld.A    ''                      ; print thousands
-        call    :osPrintChar            ;  separator
-
-        ; 100s digit:
-        ;-----------------------------------------------------------------------
-_100s   ld.BC   -100                    ; subtract 100s
-        ld.A    <( 0 - 1 )              ; start at 0 (pre-increment)
-_100    inc.A                           ; next result digit - 0, 1, 2, etc.
-        add.HL.BC                       ; subtract 100
-        jr?c    _100                    ;  until underflow
-
-        cp.E                            ; if digit is 0 AND leading-zeroes
-        jr?z    _10s                    ;  state is zero, skip digit
-        dec.E                           ; clear leading-zeroes state
-
-        add     '0                      ; convert to ASCII
-        call    :osPrintChar            ;  and print digit
-
-        ; 10s / 1s digit:
-        ;-----------------------------------------------------------------------
-_10s    ld.A.L                          ; 10s fit into one byte
-        ld.B    9 + 1                   ;  10s digit counting down in B
-_10     dec.B                           ; next digit...
-        add     10                      ; add 10
-        jr?nc   _10                     ;  until crossing 0 boundary
-        ld.C.A                          ; 1s remaining
-        ld.A.B                          ; 10s in B
-
-        cp.E                            ; still leading-zeroes?
-        jr?z    _1s                     ; skip 10s digit
-
-        add     '0                      ; convert to ASCII
-        call    :osPrintChar            ; print 10s digit
-
-_1s     ld.A.C                          ; retrieve 1s digit
-        add     '0                      ; convert to ASCII
-        jp      :osPrintChar            ;  and print
-
-
-:printHexNumber
-;===============================================================================
-; print a hexadecimal number with sigil:
-;
-; in:   BC              word to print
-; out:  BC, DE, HL      (preserved)
-;       A               (clobbered)
-;-------------------------------------------------------------------------------
-        ld.A    #CHAR_HEX
-        call    :osPrintChar
-
-        ; fall through
-        ; ...
-
-:printHexWord
-;===============================================================================
-; print a word as hexadecimal:
-;
-; in:   BC              word to print
-; out:  BC, DE, HL      (preserved)
-;       A               (clobbered)
-;-------------------------------------------------------------------------------
-        ld.A.B
-        call    :printHexByte
-        ld.A.C
-
-        ; fall through
-        ; ...
-
-:printHexByte
-;===============================================================================
-; print a byte as hexadecimal:
-;
-; in:   A               byte to print
-; out:  BC, DE, HL      (preserved)
-;       A               (clobbered)
-;-------------------------------------------------------------------------------
-        push.BC                         ; preserve BC coming in
-        call    :getHexByte             ; convert A to hexadecimal digits B,C
-        ld.A.B                          ; print hi-byte first
-        call    :osPrintChar            ; ...
-        ld.A.C                          ; print lo-byte next
-        pop.BC                          ; (restore BC going out)
-        jp      :osPrintChar            ; ...
-
-
-:getHexByte
-;===============================================================================
-; convert a byte into two ASCII hexadecimal digits:
-;
-; in:   A               input byte
-; out:  BC              ASCII hex digits in hi,lo (printable) order
-;       DE, HL          (preserved)
-;       A               (clobbered)
-;-------------------------------------------------------------------------------
-        ld.B.A                          ; preserve for 2nd digit
-        rra                             ; shift upper nybble down
-        rra                             ; ...
-        rra                             ; ..
-        rra                             ; .
-        call    _digit                  ; convert to ASCII
-        ld.A.B                          ; retrieve 2nd digit
-        ld.B.C                          ; set upper ASCII digit
-
-        ; fall through to convert 2nd digit
-        ; ...
-
-        ; NOTE: multiple online sources cite this method,
-        ;       dating back to at least the 1970s!
-_digit  and     %00001111               ; isolate low-nybble
-        add     $90                     ; magic!
-        daa                             ; adjust to decimal
-        adc     $40                     ; more magic!
-        daa                             ; adjust to decimal
-        ld.C.A
-        ret
 
 :end_of_v80                             ; where code ends before align padding
 

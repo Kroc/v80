@@ -166,13 +166,13 @@ _unexp_eol      .b "Expected expression" 0
         call    :printThis
                 .b      "!  LINE: " 0
         ld.BC*  [ :wrow ]
-        call    :printDecNumber
+        call    :printDecNum
         call    :printThis
                 .b      #LF
                 .b      "!   COL: " 0
         ld.A*   [ :wcol ]
         ld.C.A
         ld.B    0
-        call    :printDecNumber
+        call    :printDecNum
 
         jp      :osQuit
