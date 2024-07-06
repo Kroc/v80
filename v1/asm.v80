@@ -1129,10 +1129,8 @@ _end    ex.DE.HL                        ; return last addr as DE
         call    :readChar               ; which conditon marker?
         jp?z    :errInvalCond           ; a 2nd char must follow
         push.AF                         ; keep condition type until after expr
-
-        call    :nextWord               ; skip space after condition marker
-        jp?z    :errUnexpEOL            ; error if expression missing!
-        call    :parseExpr              ; evaluate the expr that follows
+        call    :readChar               ; skip 2nd char
+        call    :nextExpr               ; evaluate the expr that follows
         jp?c    :errUnexpDefer          ; must be a constant expr!
 
         ; test the condition against the value:
