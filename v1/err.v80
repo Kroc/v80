@@ -131,18 +131,18 @@ _unexp_eol      .b "Expected expression" 0
 ; in:   HL              error string addr
 ; out:  -               program terminates!
 ;===============================================================================
-        call    :osPrintNewline         ; print two newlines and a leading
-        call    :osPrintNewline         ;  "ERROR:" string
-        ld.DE   _err                    ; ...
-        call    :osPrintStrZ            ; ...
+        call    :printThis
+                .b      #LF #LF         ; print two newlines
+                .b      "! ERROR: " 0   ;  and a leading error marker
 
         ex.DE.HL                        ; swap error string addr to DE
         call    :osPrintStrZ            ; print passed error-string
-        ld.A    '!                      ; ("!" is shared between all error 
-        call    :osPrintChar            ;  messages. this saves 1 byte each
-        call    :osPrintNewline         ;  error message, after the 8th)
-        ld.DE   _txt                    ; print following line
-        call    :osPrintLn              ;  with note on "error.txt"
+
+        ; (a trailing "!" is shared between all error messages,
+        ;  this saves 1 byte each error message, after the 8th)
+        call    :printThis
+                .b      "!" #LF
+                .b      "!        See errors.txt for detailed causes" #LF 0
 
         ; if the file-name addr is $0000 this is not a parsing error,
         ; such as the command line parameter file-name not being found
@@ -153,10 +153,8 @@ _unexp_eol      .b "Expected expression" 0
 
         ; print file-name, line number and column:
         ;-----------------------------------------------------------------------
-        ld.DE   _file
-        call    :osPrintStrZ
-
-        ; print file-name:
+        call    :printThis
+                .b      "!  FILE: " 0
         ld.DE*  [ :file ]               ; addr of current file-name
         call    :printSymbolName        ; print the backwards string
         call    :osPrintNewline         ;  + newline
@@ -165,22 +163,16 @@ _unexp_eol      .b "Expected expression" 0
         ; (this is not the same as the line/col of last char read
         ;  which could be the end-of-line after an expression)
         ;
-        ld.DE   _row
-        call    :osPrintStrZ
+        call    :printThis
+                .b      "!  LINE: " 0
         ld.BC*  [ :wrow ]
         call    :printDecNumber
-        call    :osPrintNewline
-        ld.DE   _col
-        call    :osPrintStrZ
+        call    :printThis
+                .b      #LF
+                .b      "!   COL: " 0
         ld.A*   [ :wcol ]
         ld.C.A
         ld.B    0
         call    :printDecNumber
 
         jp      :osQuit
-
-_err    .b      "! ERROR: " 0
-_txt    .b      "!        See errors.txt for detailed causes" 0
-_file   .b      "!  FILE: " 0
-_row    .b      "!  LINE: " 0
-_col    .b      "!   COL: " 0

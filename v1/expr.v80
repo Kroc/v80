@@ -246,6 +246,7 @@ _inc    inc.IY                          ; step over byte in code-segment
         ; note that LDDR is post-decrement (copy-then-decrement), whereas
         ; the heap is pre-decrement like the stack (decrement-then-copy)
         ;
+        push.bc                         ; (remmeber bytecode size for counter)
         dec.HL                          ; fix heap addr for copy-then-DEC
         ld.DE   :expr                   ; ...
         ex.DE.HL                        ; ...
@@ -253,17 +254,24 @@ _inc    inc.IY                          ; step over byte in code-segment
         ex.DE.HL                        ; return heap to HL
         inc.HL                          ; fix heap addr after LDDR copy
 
-        ; add one to the deferred expression counter:
+        ; update the deferred-expressions stats:
+        ; (number of expressions, total size in bytes)
         ;
-        ld.DE*  [ :deferCount ]         ; (we're just going to assume
-        inc.DE                          ;  that you will keep this
-        ld*$.DE [ :deferCount ]         ;  under 65'535...)
+:deferCount
+        ld.DE   $0000                   ; increment the deferred
+        inc.DE                          ;  expression counter
+        ld*$.DE [ :deferCount + 1 ]     ;
+        ex.DE.HL                        ; (put heap aside in DE)
+:deferBytes
+        ld.HL   $0000                   ; get our size counter
+        pop.BC                          ; restore expr bytecode size
+        add.HL.BC                       ; add that to total
+        ld.BC   13                      ; plus the other bytes in the record
+        add.HL.BC                       ; 
+        ld*$.HL [ :deferBytes + 1 ]     ; 
+        ex.DE.HL                        ; (swap heap back to HL)
 
         jp      :checkHeapSize          ; check for heap overflow
-
-:deferCount
-        ;-----------------------------------------------------------------------
-        .w      $0000                   ; number of deferred expressions
 
 
 :nextExpr
@@ -273,9 +281,9 @@ _inc    inc.IY                          ; step over byte in code-segment
 ;
 ;-------------------------------------------------------------------------------
         ld.A*   [ :char ]               ; last character read
-        cp      #ASCII_SPC              ; space is the only valid whitespace
+        cp      #SPC                    ; space is the only valid whitespace
         call?z  :nextWord               ; if space, skip spaces
-        cp      #ASCII_SPC + 1          ; non-visible character?
+        cp      #SPC + 1                ; non-visible character?
         jp?c    :errUnexpEOL            ; error if end-of-line / end-of-file
 
         ; fall through
@@ -467,7 +475,7 @@ _value  cp      #CHAR_EXPR_IN1          ; parenthesis?
         ; although it must be non-whitespace
         ;
         call    :readChar               ; get next char from input
-        cp      #ASCII_SPC + 1          ; is it non-visible? SPC, EOL, EOF
+        cp      #SPC + 1                ; is it non-visible? SPC, EOL, EOF
         jp?c    :errInvalNum            ; error if sigil followed by whitespace
         ld.C.A                          ; load character value into BC
         ld.B    0                       ; ...
@@ -521,7 +529,7 @@ _val    dec.HL                          ; move to next token space
         ; if there's no operator, the expression ends here
         ;
 _op     ld.A*   [ :char ]               ; last read character
-        cp      #ASCII_SPC              ; ASCII<32 = newline (or end-of-file)?
+        cp      #SPC                    ; ASCII<32 = newline (or end-of-file)?
         jr?c    _end                    ; no op? expression ends here
         call    :nextWord               ; read first character of the next word
         jr?z    _end                    ; end expr at newline / end-of-file
@@ -982,7 +990,7 @@ _err    jp      :errUndefLabel
         ld.DE   :buffers                ; where to write the bytes
         ;-----------------------------------------------------------------------
 _loop   call    :readChar               ; read a char from file
-        cp      #ASCII_SPC + 1          ; ASCII space or below?
+        cp      #SPC + 1                ; ASCII space or below?
         jr?c    _ok                     ; stop when reaching whitespace
         ld*DE.A                         ; append byte
         inc.E                           ; space for next digit
@@ -1123,7 +1131,7 @@ _err    jp      :errInvalNum
         ; for correct end-of-number character considers zero an error; we use
         ; this for an optimisation in the expression parser
         ;
-_last   add     ( '0 - #ASCII_SPC - 1 ) ; adjust again so <= SPC is negative
+_last   add     ( '0 - #SPC - 1 )       ; adjust again so <= SPC is negative
         jr?c    _err                    ; error on invalid digit
         ld.B.D                          ; copy value to BC
         ld.C.E                          ;  for return
@@ -1171,7 +1179,7 @@ _err    jp      :errInvalNum            ; err if >65'535 or invalid digit
         ; the loop exits here on any any non-decimal digit; check if the digit
         ; is a valid end-of-number separator such as space, end-of-line|file
         ;
-_last   add     ('0 - #ASCII_SPC - 1 )  ; adjust again so <= SPC is negative
+_last   add     ('0 - #SPC - 1 )        ; adjust again so <= SPC is negative
         jr?c    _err                    ; error on invalid digit
         ld.B.H                          ; copy result from HL
         ld.C.L                          ; ... to BC

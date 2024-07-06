@@ -7,10 +7,10 @@
 #LO                     0
 #HI                     1
 
-#ASCII_SPC              $20             ; ASCII space (whitespace)
+#SPC                    $20             ; ASCII space (whitespace)
 #ASCII_TAB              $09             ; ASCII tab (whitespace)
-#ASCII_CR               $0d             ; ASCII carriage-return
-#ASCII_LF               $0a             ; ASCII line-feed
+#CR                     $0d             ; ASCII carriage-return
+#LF                     $0a             ; ASCII line-feed
 #ASCII_SUB              $1a             ; ASCII "substitute", end-of-file char
 
 ; syntax:
@@ -191,13 +191,21 @@ _push   dec.HL                          ; decrement HL first to match the
 
         ; print addresses:
         ;
-        ld.DE   _addrc                  ; start with "CODE @ ..."
+        call    :printThisComment
+                .b      "CODE @ " 0
         ld.BC   :code                   ; start addr of code-segment
-        call    _echov                  ; print string and value
+        call    :printHexNumber         ; print addr as hex-number
+
+        call    :printThis
+                .b      ", HEAP @ " 0
         ld.BC*  [ :heap ]               ; start addr of heap
-        call    _echov                  ; print next string and value
+        call    :printHexNumber         ; print addr as hex-number
+
+        call    :printThis
+                .b      ", STACK @ " 0
         ld.BC*  [ :sp ]                 ; start addr of stack
-        call    _echov                  ; print next string and value
+        call    :printHexNumber         ; print addr as hex-number
+
         call    :osPrintNewline
         call    :osPrintNewline
 
@@ -299,6 +307,7 @@ _ok     ld.A.C                          ; BC is number of unused stack slots
         ; will be changed to repeat each deferred expression
         ;
         ld*$.IY [ _iy + 1 ]             ; save code-segment end-addr for output
+        ld.HL   :defer                  ; start of deferred expression chain
         call    _defer                  ; re-evaluate deferred expressions
 
         ; output file:
@@ -314,49 +323,50 @@ _iy     ld.DE   $0000                   ; code-segment end addr patched in here
 
         ; print final stats:
         ;-----------------------------------------------------------------------
-        ld.DE   _strc                   ; string to print ("CODE")
+        call    :osPrintNewline
+        call    :echoCommentBar
+
+        call    :printThisComment
+                .b      " CODE: " 0
 _code   ld.BC   $0000                   ; value to print (code size)
         call    _size                   ; ...
-        ld.DE   _strh                   ; string to print ("HEAP")
+        ;-----------------------------------------------------------------------
+        call    :printThisComment
+                .b      " HEAP: " 0
 _heap   ld.BC   $0000                   ; value to print (heap size)
         call    _size                   ; ...
-        ld.DE   _strf                   ; string to print ("FREE")
+        ;-----------------------------------------------------------------------
+        call    :printThisComment       ; print deferred-expression stats
+                .b      "DEFER: " 0     ; ...
+        ld.BC*  [ :deferBytes + 1 ]     ; first, number of bytes for all
+        CALL    :printDecNumberSpc      ;  deferred-expressions
+        ld.DE   _bytes                  ; (re-use "bytes" string below)
+        CALL    :osPrintStrZ            ; ...
+        ld.BC*  [ :deferCount + 1 ]     ; total number of deferred-expressions
+        call    :printDecNumberSpc      ; 
+        call    :printThis              ; 
+                .b      " exprs" #LF 0  ; 
+        ;-----------------------------------------------------------------------
+        call    :printThisComment       ; 
+                .b      " FREE: " 0     ; 
 _free   ld.BC   $0000                   ; value to print (free bytes)
         call    _size                   ; ...
-        ld.DE   _strs                   ; string to print ("STACK")
-        call    :echoCommentStr         ; ...
+        ;-----------------------------------------------------------------------
+        call    :printThisComment       ; 
+                .b      "STACK: " 0     ; 
 _stack  ld.BC   $0000                   ; lastly, the number of bytes free
         call    :printDecNumberSpc      ;  on the stack at peak usage
-        ld.DE   _peak                   ;  i.e. the deepest the stack got,
-        call    :osPrintLn              ;  not the current level
+        call    :printThis              ; 
+                .b      " free" #LF 0   ; 
 
         jp      :osQuit                 ; jump to CP/M to quit the program
 
-        ; print calculated address:
+        ; print a decimal number and append "bytes":
         ;-----------------------------------------------------------------------
-_echov  call    :osPrintStrZ            ; print string passed in DE
-_word   jp      :printHexNumber         ; print hex number BC with sigil
-
-_addrc  .b      #CHAR_COMMENT
-        .b      " CODE @ " 0
-_addrh  .b      ", HEAP @ " 0
-_addrs  .b      ", STACK @ " 0
-
-        ; print a string and number and append "bytes":
-        ;-----------------------------------------------------------------------
-_size   call    :echoCommentStr         ; print string [DE] as comment
-        call    :printDecNumberSpc      ; print number with leading spaces
-        ld.DE   _bytes                  ; append " bytes"
-        jp      :osPrintLn              ;  and return
-
-_strd   .b      "DEFER: " 0
-_stre   .b      " exprs" 0
-_strc   .b      " CODE: " 0
-_strh   .b      " HEAP: " 0
-_strf   .b      " FREE: " 0
-_bytes  .b      " bytes" 0
-_strs   .b      "STACK: " 0
-_peak   .b      " free" 0
+_size   call    :printDecNumberSpc      ; print number with leading spaces
+        call    :printThis              ; append "bytes"
+_bytes          .b      " bytes " 0     ; ...
+        jp      :osPrintNewline         ; + newline
 
         ; re-evaluate deferred expressions:
         ;=======================================================================
@@ -379,21 +389,10 @@ _peak   .b      " free" 0
         ;       len             length of expression bytecode
         ;       expr            expression bytecode
         ;
-        ; print deferred expression count:
-        ;
-_defer  call    :osPrintNewline
-        call    :echoCommentBar
-        ld.DE   _strd
-        call    :echoCommentStr
-        ld.BC*  [ :deferCount ]
-        call    :printDecNumberSpc
-        ld.DE   _stre
-        call    :osPrintLn
-
-        ld.HL   :defer                  ; start of deferred expr chain
         ;-----------------------------------------------------------------------
         ; follow the link, but finish if it's $0000
-_expr   ld.A*HL                         ; read next expr addr, lo-byte
+        ;
+_defer  ld.A*HL                         ; read next expr addr, lo-byte
         inc.HL                          ; move *up* to link addr hi-byte
         ld.H*HL                         ; read next expr addr, hi-byte
         ld.L.A                          ; (complete the addr)
@@ -435,7 +434,7 @@ _expr   ld.A*HL                         ; read next expr addr, lo-byte
         call    :emitParam
 
         pop.HL                          ; snap back to the defer record
-        jr      _expr                   ;  link-field to follow the chain
+        jr      _defer                  ;  link-field to follow the chain
 
         ;=======================================================================
 _popw   dec.HL                          ; pop a word off the heap into BC
@@ -496,13 +495,11 @@ _err    jp      :errRangeHeap           ; err if heap below code-segment!
 ;       A               (clobbered)
 ;-------------------------------------------------------------------------------
         push.DE
-        ld.DE   _bar                    ; use the pre-defined string below
-        call    :osPrintLn              ; faster than repeating osPrintChar :(
+        call    :printThis
+                .b      #CHAR_COMMENT "------------------------------------"
+                .b      #LF 0
         pop.DE
         ret
-
-_bar    .b      #CHAR_COMMENT "------------------------------------" 0
-
 
 :echoCommentLn
 ;===============================================================================
@@ -562,8 +559,38 @@ _bar    .b      #CHAR_COMMENT "------------------------------------" 0
 ; out:  A               (clobbered)
 ;       BC, DE, HL      (preserved)
 ;-------------------------------------------------------------------------------
-        ld.A    #ASCII_SPC              ; this routine costs 17 cycles
+        ld.A    #SPC                    ; this routine costs 17 cycles
         jp      :osPrintChar            ;  but saves 2 bytes each time
+
+
+:printThisComment
+;===============================================================================
+; print (with comment prefix) the null-terminated string that immediately
+; follows the CALL here!
+;
+; in:   SP              string is read from the program-counter on the stack!
+; out:  HL, BC          (preserved)
+;       A, DE           (clobbered)
+;-------------------------------------------------------------------------------
+        call    :echoCommentMarker
+
+        ; fall through
+        ; ...
+
+:printThis
+;===============================================================================
+; print the null-terminated string that immediately follows the CALL here!
+;
+; in:   SP              string is read from the program-counter on the stack!
+; out:  HL, BC          (preserved)
+;       A, DE           (clobbered)
+;-------------------------------------------------------------------------------
+        ex*SP.HL                        ; swap heap with return-addr
+        ex.DE.HL                        ; new string-addr to DE
+        call    :osPrintStrZ            ; print null-terminated string from PC
+        ex.DE.HL                        ; return updated program-counter to HL
+        ex*SP.HL                        ; return new PC to stack, heap to HL
+        ret
 
 
 :printSymbolName
@@ -603,7 +630,7 @@ _loop   dec.HL                          ; (move to next char in string)
 ;-------------------------------------------------------------------------------
         ; calculate the number of leading spaces:
         ;
-        ld.E    #ASCII_SPC              ; (reusable space)
+        ld.E    #SPC                    ; (reusable space)
         ld.HL   -10                     ; is number greater than 9?
         add.HL.BC                       ; (subtract by adding negative number)
         jr?c    _99                     ; if yes, don't print

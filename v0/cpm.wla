@@ -154,7 +154,7 @@ osBoot:
         jp      main                    ; we will not return from here!
 
         ;-----------------------------------------------------------------------
-@banner .BYTE   CHAR_COMMENT, " v80 CP/M v0.1.4 - github.com/kroc/v80\r\n"
+@banner .BYTE   CHAR_COMMENT, " v80 CP/M v0.1.4 - github.com/kroc/v80\n"
         .BYTE   CHAR_COMMENT, " (C) Kroc Camen 2023-2024, MIT License", 0
 
         ;=======================================================================
@@ -346,7 +346,7 @@ osParseParameters:
         call    osPrintStrZ             ; print the command usage
         jp      osQuit                  ;  and quit
 
-@@str   .BYTE   "    V80 INPUT.V80 [OUTPUT.COM]\r\n", 0
+@@str   .BYTE   "    V80 INPUT.V80 [OUTPUT.COM]\n", 0
 
 
 _getParam:
@@ -923,9 +923,9 @@ osPrintStrZ:
 ;       HL, BC          (preserved)
 ;-------------------------------------------------------------------------------
 -       ld      A,      [DE]            ; read a character
-        and     A                       ; (set CPU flags!)
-        inc     DE                      ; (go to next char, does not set zf!)
-        ret     z                       ; return after null-terminator
+        cp      ASCII_SPC               ; check for ASCII control codes
+        inc     DE                      ; (go to next char, preserves flags!)
+        jr      c,      @cc             ; handle control codes
         exx                             ; swap to shadow registers
 
         ld      E',     A               ; BDOS param for character
@@ -934,6 +934,18 @@ osPrintStrZ:
 
         exx                             ; return to normal registers
         jr      -                       ; keep looping until null-terminator
+
+        ;-----------------------------------------------------------------------
+@cc:    and     A                       ; set flags, check for null-terminator
+        ret     z                       ; stop printing at null-terminator
+        cp      ASCII_LF                ; check for newline
+        jr      nz,     -
+
+        ld      A,      ASCII_CR
+        call    osPrintChar
+        ld      A,      ASCII_LF
+        call    osPrintChar
+        jr      -
 
 
 osPrintSpaces:

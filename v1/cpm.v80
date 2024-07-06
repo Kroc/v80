@@ -127,8 +127,7 @@ $0100   :cpm_tpa                        ; start of transient program area
         jp      :main                   ; we will not return from here!
 
         ;-----------------------------------------------------------------------
-_banner .b      #CHAR_COMMENT " v80 CP/M v1.0-dev - github.com/kroc/v80"
-        .b      #ASCII_CR #ASCII_LF
+_banner .b      #CHAR_COMMENT " v80 CP/M v1.0-dev - github.com/kroc/v80" #LF
         .b      #CHAR_COMMENT " (C) Kroc Camen 2023-2024, MIT License" 0
 
         ;=======================================================================
@@ -320,7 +319,7 @@ _help   ld.DE   _str                    ; no parameters!
         call    :osPrintStrZ            ; print the command usage
         jp      :osQuit                 ;  and quit
 
-_str    .b      "    V80 INPUT.V80 [OUTPUT.COM]" #ASCII_CR #ASCII_LF 0
+_str    .b      "    V80 INPUT.V80 [OUTPUT.COM]" #LF 0
 
 
 :_getParam
@@ -353,11 +352,11 @@ _skip   inc.L                           ; move to next char in command tail
         ld.A*HL                         ; read char from command tail
         and.A                           ; is it a null-terminator?
         ret?z                           ; null-terminator before any parameter!
-        cp      #ASCII_SPC + 1          ; is it <=ASCII space (tab)
+        cp      #SPC + 1                ; is it <=ASCII space (tab)
         jr?c    _skip                   ; skip any spaces/tabs
         ;-----------------------------------------------------------------------
         push.DE                         ; start of param str will be returned
-        ld.A    #ASCII_SPC + 1          ; pre-load comparison (spc/tab/null)
+        ld.A    #SPC + 1                ; pre-load comparison (spc/tab/null)
         ;-----------------------------------------------------------------------
 _copy   ldi                             ; = ld*DE*HL; inc.DE; inc.HL; inc.BC
         jp?nv   :errInvalFile           ; error if copied 13th char w/o NULL
@@ -539,7 +538,7 @@ _copy   ld.A*DE                         ; read a source character
         and.A                           ; set | clear zero-flag for null | dot
         ret                             ; ...
         ;-----------------------------------------------------------------------
-_spc    ld*HL   #ASCII_SPC              ; fill remaining characters with space
+_spc    ld*HL   #SPC                    ; fill remaining characters with space
         inc.L                           ; (without changing last char in A)
         djnz    _spc                    ; ...
         ;-----------------------------------------------------------------------
@@ -855,9 +854,9 @@ _fcb    ld.DE'  :cpm_fcb                ; select FileControlBlock
 ; out:  BC, DE, HL      (preserved)
 ;       A               (clobbered)
 ;-------------------------------------------------------------------------------
-        ld.A    #ASCII_CR               ; NOTE: on CP/M newlines are CRLF,
+        ld.A    #CR                     ; NOTE: on CP/M newlines are CRLF,
         call    :osPrintChar            ;  which is where MS-DOS / Windows
-        ld.A    #ASCII_LF               ;  got it from!
+        ld.A    #LF                     ;  got it from!
 
         ; fall through
         ; ...
@@ -890,9 +889,9 @@ _fcb    ld.DE'  :cpm_fcb                ; select FileControlBlock
 ;       HL, BC          (preserved)
 ;-------------------------------------------------------------------------------
         ld.A*DE                         ; read a character
-        and.A                           ; (set CPU flags!)
+        cp      #SPC                    ; check for ASCII control codes!)
         inc.DE                          ; (go to next char, does not set zf!)
-        ret?z                           ; return after null-terminator
+        jr?c    _cc                     ; handle control codes
         exx                             ; swap to shadow registers
 
         ld.E'A                          ; BDOS param for character
@@ -901,6 +900,18 @@ _fcb    ld.DE'  :cpm_fcb                ; select FileControlBlock
 
         exx                             ; return to normal registers
         jr      :osPrintStrZ            ; keep looping until null-terminator
+
+        ;-----------------------------------------------------------------------
+_cc     and.A                           ; set flags, check for null-terminator
+        ret?z                           ; stop printing at null-terminator
+        cp      #LF                     ; expand LF to CRLF for CP/M?
+        jr?nz   :osPrintStrZ            ; loop if not LF
+
+        ld.A    #CR
+        call    :osPrintChar
+        ld.A    #LF
+        call    :osPrintChar
+        jr      :osPrintStrZ
 
 
 :osPrintSpaces
@@ -937,5 +948,5 @@ _fcb    ld.DE'  :cpm_fcb                ; select FileControlBlock
         exx                             ; you saw nothing
         ret                             ; right?
 
-_spc    .f      #ASCII_SPC      32      ; a pool of spaces
+_spc    .f      #SPC    32              ; a pool of spaces
         .b      '$                      ; + CP/M string terminator

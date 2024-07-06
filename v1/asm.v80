@@ -215,7 +215,7 @@ _get    push.DE                         ; before parsing value, preserve addr
         ;       zf      zero-flag is always set for newline/end-of-file
         ;-----------------------------------------------------------------------
         ld.A*   [ :char ]               ; last read character
-        cp      #ASCII_SPC              ; ASCII<32 = newline (or end-of-file)?
+        cp      #SPC                    ; ASCII<32 = newline (or end-of-file)?
         jr?c    _eol                    ; return zero-flag set for EOL/EOF
         call?z  :nextWord               ; SPC = find next char (or newline)
         ret                             ; return zero-flag from nextWord
@@ -229,7 +229,7 @@ _eol    cp.A                            ; set zero flag without changing A
         ; readChar returns zero-flag set for both newline and end-of-file,
         ; check the ASCII code to differentiate the two
         ;
-:_nleof cp      #ASCII_LF               ; check for newline
+:_nleof cp      #LF                     ; check for newline
         ret?nz                          ; no? end-of-file -- end assembling
 
         ; at newline fall through to
@@ -308,7 +308,7 @@ _body   cp      #CHAR_KEYWORD           ; is this a keyword?
         jp?z    :errInvalKey            ; no letter follows!?
         ld.C.A                          ; hold char to check next char first
         call    :readChar               ; get 2nd char
-        cp      #ASCII_SPC              ; whitespace must follow!
+        cp      #SPC                    ; whitespace must follow!
         jp?nz   :errInvalKey            ; (i.e. no additional chars)
 
         ld.A.C                          ; return to first char
@@ -432,7 +432,7 @@ _isexpr call    :nextParam
         ; of the following word which may or may not be an expression
         ;
         ld.A*   [ :char ]               ; last character read
-        cp      #ASCII_SPC + 1          ; any non-visible char must be EOL/EOF
+        cp      #SPC + 1                ; any non-visible char must be EOL/EOF
         jp?c    :_nleof                 ; EOL/EOF is always end of keyword
         cp      '0                      ; a decimal digit 0-9?
         jp?c    _lt0                    ; handle ASCII codes below "0"
@@ -578,7 +578,7 @@ _get    call    :readChar               ; read a character (returns z-flag)
         ; -- for any ASCII code below we continue looping, and space itself
         ; is caught with the zero-flag and re-looped
         ; 
-        cp      #ASCII_SPC              ; is ASCII code a space?
+        cp      #SPC                    ; is ASCII code a space?
         jr?c    _get                    ; keep reading if codes 1-31
         jr?z    _get                    ; also, keep reading if space
 
@@ -629,7 +629,7 @@ _skip   call    :readChar               ; read a character (returns z-flag)
         jr      _in                     ; (first character already read)
         ;-----------------------------------------------------------------------
 _read   call    :readChar               ; read char from input file
-        cp      #ASCII_SPC + 1          ; whitespace or end-of-line/file?
+        cp      #SPC + 1                ; whitespace or end-of-line/file?
         jr?c    _ok                     ; (leave loop at whitespace)
 _in     dec.E                           ; move to next space in buffer
         ld*DE.A                         ; add the character to the buffer
@@ -688,13 +688,13 @@ _local  push.HL                         ; preserve HL before copy
 
         ; check for end-of-line:
         ;-----------------------------------------------------------------------
-        cp      #ASCII_CR               ; /r is always ignored,
+        cp      #CR                     ; /r is always ignored,
         jr?z    :readChar               ;  don't advance row/col, get next char
 
         exx                             ; must preserve HL & DE
         ld.HL'  :ccol                   ; prepare to increment column number
 
-        cp      #ASCII_LF               ; /n is newline
+        cp      #LF                     ; /n is newline
         jr?z    _row                    ; handle newline
         cp      #ASCII_TAB              ; /t is tab
         jr?z    _tab                    ; handle tab
@@ -730,7 +730,7 @@ _tab    dec.A                           ; \t = 9, so change to 8 (width of tab)
         and     %11111000               ; clip to every 8th column
         jp?m    :errRangeLine           ; stop if line too long! (>=128 chars)
         ld*HL'A                         ; update column number
-        ld.A    #ASCII_SPC              ; return a single space instead
+        ld.A    #SPC                    ; return a single space instead
         ld*$.A  [ :char ]       ; update retained value to match
         and.A                           ; ensure zero-flag is clear!
 
@@ -1188,7 +1188,7 @@ _skip   ld.E    $ff                     ; retain condition marker col in E
         ;-----------------------------------------------------------------------
 _line   call    :nextWord               ; skip as much whitespace as possible
         jr?nz   _col                    ; distinguish EOL from EOF --
-        cp      #ASCII_LF               ; check EOL because EOF might not be 0!
+        cp      #LF                     ; check EOL because EOF might not be 0!
         ret?nz                          ; stop skipping when we hit end-of-file
         jr      _line                   ; keep going if leading space
 
@@ -1204,7 +1204,7 @@ _col    ld.A*   [ :ccol ]               ; column number of last char read
         ;
 _eol    call    :readChar               ; fetch next char from input
         jr?nz   _eol                    ; skip chars until EOL|EOF
-        cp      #ASCII_LF               ; check EOL because EOF might not be 0!
+        cp      #LF                     ; check EOL because EOF might not be 0!
         jr?z    _line                   ; if end-of-line, keep skipping
         ;-----------------------------------------------------------------------
 _ret    xor.A                           ; return zero-flag set for optimisation
@@ -1267,7 +1267,7 @@ _match  inc.HL                          ; step over the matched character
         ; get character from input file:
         ;-----------------------------------------------------------------------
 _next   call    :readChar               ; read from input file
-        cp      #ASCII_SPC + 1          ; is it whitespace? (hold carry...)
+        cp      #SPC + 1                ; is it whitespace? (hold carry...)
 
         ; force lowercase, without also affecting
         ; numbers / [most] punctuation:
@@ -1332,7 +1332,7 @@ _opcode and.A                           ; if the last char is already 0,
 _get    call    :readChar               ; read one more character
         cp      ''                      ; if it is apostrophe,
         jr?z    _get                    ;  then ignore and go again
-        cp      #ASCII_SPC + 1          ; is it whitespace (or eof)?
+        cp      #SPC + 1                ; is it whitespace (or eof)?
         jp?nc   :errInvalIns            ; if not, invalid instruction!
 
 _ok     ex.DE.HL                        ; swap heap back to HL

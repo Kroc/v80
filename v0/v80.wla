@@ -216,13 +216,21 @@ main:
 
         ; print addresses:
         ;
-        ld      DE,     @addrc          ; start with "CODE @ ..."
+        call    printThisComment
+                .BYTE   "CODE @ ", 0
         ld      BC,     code            ; start addr of code-segment
-        call    @echov                  ; print string and value
+        call    printHexNumber          ; print addr as hex-number
+
+        call    printThis
+                .BYTE   ", HEAP @ ", 0
         ld      BC,     [heap]          ; start addr of heap
-        call    @echov                  ; print next string and value
+        call    printHexNumber
+
+        call    printThis
+                .BYTE   ", STACK @ ", 0
         ld      BC,     [sp]            ; start addr of stack
-        call    @echov                  ; print next string and value
+        call    printHexNumber          ; print addr as hex-number
+
         call    osPrintNewline
         call    osPrintNewline
 
@@ -324,6 +332,7 @@ main:
         ; will be changed to repeat each deferred expression
         ;
         ld      [@iy+1],IY              ; save code-segment end-addr for output
+        ld      HL,     defer           ; start of deferred expression chain
         call    @defer                  ; re-evaluate deferred expressions
 
         ; output file:
@@ -339,49 +348,51 @@ main:
 
         ; print final stats:
         ;-----------------------------------------------------------------------
-        ld      DE,     @strc           ; string to print ("CODE")
+        call    osPrintNewline
+        call    echoCommentBar
+
+        call    printThisComment        ;
+                .BYTE   " CODE: ", 0    ;
 @code   ld      BC,     $0000           ; value to print (code size)
         call    @size                   ; ...
-        ld      DE,     @strh           ; string to print ("HEAP")
+        call    printThisComment        ;
+                .BYTE   " HEAP: ", 0    ;
 @heap   ld      BC,     $0000           ; value to print (heap size)
         call    @size                   ; ...
-        ld      DE,     @strf           ; string to print ("FREE")
+        ;-----------------------------------------------------------------------
+        call    printThisComment        ; print deferred-expression stats
+                .BYTE   "DEFER: ", 0    ; ...
+        ld      BC,     [deferBytes+1]  ; first, number of bytes for all
+        CALL    printDecNumberSpc       ;  deferred-expressions
+        ld      DE,     @bytes          ; (re-use "bytes" string below)
+        CALL    osPrintStrZ             ; ...
+        ld      BC,     [deferCount+1]  ; total number of deferred-expressions
+        call    printDecNumberSpc       ; 
+        call    printThis               ; 
+                .BYTE   " exprs"        ; 
+                .BYTE   ASCII_LF, 0     ; 
+        ;-----------------------------------------------------------------------
+        call    printThisComment        ;
+                .BYTE   " FREE: ", 0    ;
 @free   ld      BC,     $0000           ; value to print (free bytes)
         call    @size                   ; ...
-        ld      DE,     @strs           ; string to print ("STACK")
-        call    echoCommentStr          ; ...
+        ;-----------------------------------------------------------------------
+        call    printThisComment        ;
+                .BYTE   "STACK: ", 0    ;
 @stack  ld      BC,     $0000           ; lastly, the number of bytes free
         call    printDecNumberSpc       ;  on the stack at peak usage
-        ld      DE,     @peak           ;  i.e. the deepest the stack got,
-        call    osPrintLn               ;  not the current level
+        call    printThis               ;  i.e. the deepest the stack got,
+                .BYTE   " free"         ;  not the current level
+                .BYTE   ASCII_LF, 0     ;
 
         jp      osQuit                  ; jump to CP/M to quit the program
 
-        ; print calculated address:
+        ; print a decimal number and append "bytes":
         ;-----------------------------------------------------------------------
-@echov: call    osPrintStrZ             ; print string passed in DE
-@word:  jp      printHexNumber          ; print hex number BC with sigil
-
-@addrc  .BYTE   CHAR_COMMENT
-        .BYTE    " CODE @ ", 0
-@addrh  .BYTE   ", HEAP @ ", 0
-@addrs  .BYTE   ", STACK @ ", 0
-
-        ; print a string and number and append "bytes":
-        ;-----------------------------------------------------------------------
-@size:  call    echoCommentStr          ; print string [DE] as comment
-        call    printDecNumberSpc       ; print number with leading spaces
-        ld      DE,     @bytes          ; append " bytes"
-        jp      osPrintLn               ;  and return
-
-@strd   .BYTE   "DEFER: ", 0
-@stre   .BYTE   " exprs", 0
-@strc   .BYTE   " CODE: ", 0
-@strh   .BYTE   " HEAP: ", 0
-@strf   .BYTE   " FREE: ", 0
-@bytes  .BYTE   " bytes ", 0
-@strs   .BYTE   "STACK: ", 0
-@peak   .BYTE   " free", 0
+@size:  call    printDecNumberSpc       ; print number with leading spaces
+        call    printThis               ; append " bytes"
+@bytes          .BYTE   " bytes ", 0    ; ...
+        jp      osPrintNewline          ; + newline
 
         ; re-evaluate deferred expressions:
         ;=======================================================================
@@ -404,26 +415,10 @@ main:
         ;       len             length of expression bytecode
         ;       expr            expression bytecode
         ;
-        ; print deferred expression stats:
-        ;
-@defer: call    osPrintNewline
-        call    echoCommentBar
-        ld      DE,     @strd
-        call    echoCommentStr
-        ld      BC,     [deferBytes]
-        CALL    printDecNumberSpc
-        ld      DE,     @bytes
-        CALL    osPrintStrZ
-        ld      BC,     [deferCount]
-        call    printDecNumberSpc
-        ld      DE,     @stre
-        call    osPrintLn
-
-        ld      HL,     defer           ; start of deferred expr chain
         ;-----------------------------------------------------------------------
         ; follow the link, but finish if it's $0000
         ;
-@expr:  ld      A,      [HL]            ; read next expr addr, lo-byte
+@defer: ld      A,      [HL]            ; read next expr addr, lo-byte
         inc     HL                      ; move *up* to link addr hi-byte
         ld      H,      [HL]            ; read next expr addr, hi-byte
         ld      L,      A               ; (complete the addr)
@@ -465,7 +460,7 @@ main:
         call    emitParam
 
         pop     HL                      ; snap back to the defer record
-        jr      @expr                   ;  link-field to follow the chain
+        jr      @defer                  ;  link-field to follow the chain
 
         ;=======================================================================
 @popw:  dec     HL                      ; pop a word off the heap into BC
@@ -526,12 +521,11 @@ echoCommentBar:
 ;       A               (clobbered)
 ;-------------------------------------------------------------------------------
         push    DE
-        ld      DE,     @bar            ; use the pre-defined string below
-        call    osPrintLn               ; faster than repeating osPrintChar :(
+        call    printThis
+                .BYTE   CHAR_COMMENT, "------------------------------------"
+                .BYTE   ASCII_LF, 0
         pop     DE
         ret
-
-@bar:   .BYTE   CHAR_COMMENT, "------------------------------------", 0
 
 
 echoCommentLn:
@@ -594,6 +588,36 @@ echoSpc:
 ;-------------------------------------------------------------------------------
         ld      A,      ASCII_SPC       ; this routine costs 17 cycles
         jp      osPrintChar             ;  but saves 2 bytes each time
+
+
+printThisComment:
+;===============================================================================
+; print (with comment prefix) the null-terminated string that immediately
+; follows the CALL here!
+;
+; in:   SP              string is read from the program-counter on the stack!
+; out:  HL, BC          (preserved)
+;       A, DE           (clobbered)
+;-------------------------------------------------------------------------------
+        call    echoCommentMarker
+
+        ; fall through
+        ; ...
+
+printThis:
+;===============================================================================
+; print the null-terminated string that immediately follows the CALL here!
+;
+; in:   SP              string is read from the program-counter on the stack!
+; out:  HL, BC          (preserved)
+;       A, DE           (clobbered)
+;-------------------------------------------------------------------------------
+        ex      [SP],   HL              ; swap heap with return-addr
+        ex      DE,     HL              ; new string-addr to DE
+        call    osPrintStrZ             ; print null-terminated string from PC
+        ex      DE,     HL              ; return updated program-counter to HL
+        ex      [SP],   HL              ; return new PC to stack, heap to HL
+        ret
 
 
 printSymbolName:
