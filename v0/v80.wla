@@ -864,9 +864,9 @@ end_of_v80:                             ; where code ends before align padding
 ; to match CP/M's behaviour for build tests,
 ; pad the binary to the next 128 byte boundary
 ;
-.DSB    $80 - (end_of_v80 # $80), $00
+.DSB    $100 - (end_of_v80 # $100), $00
 
-.ALIGN  $0080                            ; align to half-page
+.ALIGN  $0100                           ; align to page
 
 buffers:
 ;-------------------------------------------------------------------------------

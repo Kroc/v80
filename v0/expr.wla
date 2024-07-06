@@ -243,6 +243,37 @@ deferExpr:
         add     HL,     SP              ;  it's quicker to just add SP to 0!
         ld      SP,     [sp]            ; restore stack pointer!
 
+.IFDEF  DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        push    HL                      ; NOTE: printDecNumber clobbers HL
+        push    BC                      ; preserve expr bytecode size
+        call    printThisComment
+                .BYTE   "DEFER <' ", 0
+        ld      HL,     13              ; add 13 to expre bytecode size
+        add     HL,     BC              ;  to get full record size
+        push    HL                      ; (print size at end)
+        ld      DE,     [file]
+        call    printSymbolName
+        ld      A,      '@'
+        call    osPrintChar
+        ld      BC,     [erow]          ;
+        call    printDecNumber
+        ld      A,      ':'
+        call    osPrintChar
+        ld      A,      [ecol]
+        ld      C,      A
+        ld      B,      0
+        call    printDecNumber
+        call    printThis
+                .BYTE   " x " 0
+        pop     BC
+        call    printDecNumber
+        call    printThis
+                .BYTE   " bytes\n" 0
+        pop     BC
+        pop     HL
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
+
         ; copy expression bytecode to the heap:
         ;
         ; note that LDDR is post-decrement (copy-then-decrement), whereas
@@ -367,7 +398,19 @@ parseExpr:
 
         ; if the label exists and isn't a forward-reference,
         ; its value is in BC to go into the expr bytecode
-        jr      nc,      @num
+        jp      nc,      @num
+
+.IFDEF  DEBUG
+        ;///////////////////////////////////////////////////////////////////////
+        call    printThis
+                .BYTE   "; FWDREF | ", 0
+        push    DE
+        ld      D,      B
+        ld      E,      C
+        call    printSymbolName
+        call    osPrintNewline
+        pop     DE
+.ENDIF  ;///////////////////////////////////////////////////////////////////////
 
         ; this label has not been seen before but because it's in an expression
         ; this is a forward-reference -- a placeholder for the label has been
@@ -487,7 +530,7 @@ parseExpr:
         ; char is "0" or above:
         ;
 +       cp      '9'+1                   ; is decimal "0"-"9"?
-        jr      nc,     @label          ; if not, only labels remain!
+        jp      nc,     @label          ; if not, only labels remain!
 
         ; fall through
         ; ...
