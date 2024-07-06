@@ -165,19 +165,17 @@ deferExpr:
 ; heap in a defer record (below) to be re-evaluated after all source-code has
 ; been parsed
 ;
-;        - - - -+--------------+-------+-----+-----+------+----+------+------+
-;        <-heap | <expr> ¦ len | param | col | row | file | pc | code | link |
-;        - - - -+--------------+-------+-----+-----+------+----+------+------+
+;        - - - -+--------+-------+-----+-----+------+------+------+
+;        <-heap | <expr> | param | col | row | file | code | link |
+;        - - - -+--------+-------+-----+-----+------+------+------+
 ;
 ;       link    addr to next deferred expr in chain
 ;       code    addr in code-segment to write value when known
-;       pc      virtual program-counter at the time
 ;       file    addr to file-name record
 ;       row     line number of expr
 ;       col     column number of expr
 ;       param   parameter & flag-byte for value
-;       len     length of expression bytecode
-;       expr    expression bytecode
+;       expr    expression bytecode, null terminated
 ;
 ; in:   BC              length of expression bytecode; returned by nextExpr
 ;                       when an forward-reference is encountered
@@ -249,16 +247,16 @@ deferExpr:
         push    BC                      ; preserve expr bytecode size
         call    printThisComment
                 .BYTE   "DEFER <' ", 0
-        ld      HL,     13              ; add 13 to expre bytecode size
+        ld      HL,     12              ; add 12 to expre bytecode size
         add     HL,     BC              ;  to get full record size
         push    HL                      ; (print size at end)
         ld      DE,     [file]
         call    printSymbolName
-        ld      A,      '@'
+        ld      A,      ':'
         call    osPrintChar
         ld      BC,     [erow]          ;
         call    printDecNumber
-        ld      A,      ':'
+        ld      A,      ','
         call    osPrintChar
         ld      A,      [ecol]
         ld      C,      A
@@ -299,7 +297,7 @@ deferBytes:
         ld      HL,     $0000           ; get our size counter
         pop     BC                      ; restore expr bytecode size
         add     HL,     BC              ; add that to total
-        ld      BC,     13              ; plus the other bytes in the record
+        ld      BC,     12              ; plus the other bytes in the record
         add     HL,     BC              ; 
         ld      [deferBytes+1], HL      ; 
         ex      DE,     HL              ; (swap heap back to HL)
