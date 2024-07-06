@@ -8,6 +8,7 @@ SET "BIN_DIR=bin"
 REM # the PC assembler and linker is WLA-DX
 SET WLA_Z80="%BIN_DIR%\wla-dx\wla-z80.exe" -x
 SET WLA_LINK="%BIN_DIR%\wla-dx\wlalink.exe" -A -S
+SET WLA_DEBUG=-DDEBUG=1
 
 REM # RunCPM "emulator"
 SET "DIR_RUNCPM=%BIN_DIR%\RunCPM"
@@ -26,7 +27,7 @@ REM # ==========================================================================
 IF NOT EXIST "build" MKDIR "build"
 DEL /F /Q "build\*.*"
 
-%WLA_Z80% -v -DDEBUG=1 ^
+%WLA_Z80% -v ^
     -I "v0" ^
     -o "build\v80.o" ^
        "v80.wla"
