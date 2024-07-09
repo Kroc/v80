@@ -42,6 +42,7 @@ $	( $ + $0100 )	:next		; parenthesis require internal spaces
 ; limited to 31 chars, including the sigil
 ;
 :123456789012345678901234567890
+#123456789012345678901234567890	0
 
 :label					; local labels, are directly
 _local					;  appended to last label defined

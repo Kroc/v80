@@ -1,0 +1,14 @@
+; v80, (C) Kroc Camen 2023-2024, MIT License
+; an 8-bit native multi-platform, multi-ISA assembler
+;
+; this file produces a build of v80 that:
+;
+; - is z80 code (v80)
+; - runs on CP/M
+; - assembles z80 instructions
+;
+#CPU_Z80        1                       ; the target CPU is Z80
+#SYS_CPM        1                       ; the OS is CP/M (on Z80)
+#ISA_Z80        1                       ; embed parser for Z80 instructions
+
+.i      "sys_cpm.v80"

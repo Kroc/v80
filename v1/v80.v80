@@ -1,18 +1,10 @@
 ; v80, (C) Kroc Camen 2023-2024, MIT License
-; a z80 assembler for Z80s
+; an 8-bit native multi-platform, multi-ISA assembler
 ;
-; constants:
+; you cannot assemble this file! -- you must assemble from a chosen operating-
+; system and ISA pair such as "cpm_z80.v80" which assembles a version of v80
+; that runs on CP/M, and assembles z80 instructions
 ;
-#NULL                   0
-#LO                     0
-#HI                     1
-
-#SPC                    $20             ; ASCII space (whitespace)
-#TAB                    $09             ; ASCII tab (whitespace)
-#CR                     $0d             ; ASCII carriage-return
-#LF                     $0a             ; ASCII line-feed
-#SUB                    $1a             ; ASCII "substitute", end-of-file char
-
 ; syntax:
 ;
 #CHAR_COMMENT           ';              ; comment
@@ -47,8 +39,6 @@
 #CHAR_EXPR_OUT2         ']              ;  memory references in instructions
 
 #DEBUG                  0               ; set to 1 to enable debug features
-
-.i      "v80_cpm.v80"                   ; CP/M bootstrap and interface
 
 ; memory map:
 ;
@@ -142,8 +132,7 @@
 .i      "v80_echo.v80"                  ; various printing routines
 .i      "v80_err.v80"                   ; error messages
 .i      "v80_expr.v80"                  ; expression parsing and evaluation
-.i      "v80_z80.v80"                   ; Z80 opcode specific code
-.i      "isa_z80.v80"                   ; Z80 opcode data
+.i      "v80_z80.v80"                   ; Z80 ISA support
 .i      "v80_asm.v80"                   ; main parsing and assembling loop
 
 :main
@@ -218,7 +207,7 @@ _push   dec.HL                          ; decrement HL first to match the
         ; the output file-name privately -- we leave all command-line parsing
         ; to the OS due to differing file-system limitations
         ;
-        call    :osParseParameters
+        call    :osParseParams
 
         ; the virtual program-counter is permanently pinned to IX since
         ; it's a value that needs to be incremented often but not read
@@ -315,7 +304,7 @@ _ok     ld.A.C                          ; BC is number of unused stack slots
         ; output file:
         ;=======================================================================
         ; the output file-name is already known to the OS which read it
-        ; from the command-line parameters during osParseParameters
+        ; from the command-line parameters during osParseParams
         ;
         ld.BC   $0000                   ; don't show file/line/col if an
         ld*$.BC [ :file ]               ; error occurs during write out
@@ -489,17 +478,31 @@ _sp     .w      $0000
 _err    jp      :errRangeHeap           ; err if heap below code-segment!
 
 
-:end_of_v80                             ; where code ends before align padding
+;///////////////////////////////////////////////////////////////////////////////
+; WARNING: ANYTHING PLACED AFTER HERE WILL BE OVERWRITTEN
+;-------------------------------------------------------------------------------
+; this entire section and anything included in the binary after this point
+; are in the code-segment and will be overwritten by the binary as it is
+; assembled! v80 places once-off initialisation routines here that are safe
+; to obliterate once assembly starts to save RAM -- see the system file
+; (such as "sys_cpm.v80") which, after including this file, appends more code
+;
+:end_of_v80
 
 ; buffers:
-;===============================================================================
-.a      $0080                            ; align to half-page
-
-;-------------------------------------------------------------------------------
-; WARNING: ANYTHING PLACED AFTER HERE WILL BE OVERWRITTEN
-
+;
+; the buffers are placed at the end of v80's fixed code, but have to be aligned
+; to a page. the line of code below adds the remainder of a page to the current
+; addr and then defines the buffer addresses, without emitting any bytes
+;
+;         $xx00         $xx80
+;   +-----+------+------+-----+-------------------------------+---------+
+;   | v80 | word | expr | str | code->                 <-heap | <-stack |
+;   +-----+------+------+-----+-------------------------------+---------+
+;         | <-32   <-96 | 128 |                               |     256
+;
+$       $ + ( $100 - ( $ \ $100 ))      ; align to page
 :buffers
-;///////////////////////////////////////////////////////////////////////////////
 
 ; the word buffer is used to capture symbol names. it works backwards with
 ; the top-most byte being the word-length. it must start at a page boundary
@@ -524,3 +527,9 @@ $ ( :buffers + 128 )            :str    ; e.g. $2180...$21FF (128 bytes)
 ; necessary for CP/M which writes files in 128-byte sectors
 ;
 $ ( :buffers + 256 )            :code   ; e.g. $2200
+
+;///////////////////////////////////////////////////////////////////////////////
+; after defining the buffer addresses, return the program-counter
+; to what it was to allow for any further once-off code
+;
+$       :end_of_v80

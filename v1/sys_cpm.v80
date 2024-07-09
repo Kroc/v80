@@ -1,17 +1,21 @@
 ; v80, (C) Kroc Camen 2023-2024, MIT License
 ; CP/M-2.2 interface
 ;
+; do not assemble this file directly! assemble a "cpm_*.v80" file which selects
+; the desired ISA parser, e.g. "cpm_z80.v80", which assembles a version of v80
+; that runs on CP/M and assembles z80 instructions
+;
 ; each supported operating system must implement this interface:
 ; (see routine headers below for details)
 ;
 ;       :osBoot                         bootstrap, always first code run
 ;       :osQuitErr                      quit app with an error-number
 ;       :osQuit                         quit app and return to the OS
-;       :osParseParameters              parse the command-line parameters
+;       :osParseParams                  parse the command-line parameters
 ;       :osFileOpen                     open file (read-only)
 ;       :osFileClose                    close file (read-only)
 ;       :osSaveCode                     save binary to file-name parsed
-;                                       in osParseParameters
+;                                       in osParseParams
 ;       :osGetChar                      read char from current open file
 ;       :osPrintLn                      print null-terminated string + newline
 ;       :osPrintNewline                 print a newline (sys/OS-dependant)
@@ -21,6 +25,16 @@
 ;
 ; system constants:
 ;-------------------------------------------------------------------------------
+#NULL                   0
+#LO                     0
+#HI                     1
+
+#SPC                    $20             ; ASCII space (whitespace)
+#TAB                    $09             ; ASCII tab (whitespace)
+#CR                     $0d             ; ASCII carriage-return
+#LF                     $0a             ; ASCII line-feed
+#EOF                    $1a             ; ASCII "substitute", end-of-file char
+
 #CPM_VER                $22             ; CP/M version as BCD
 
 ; BDOS calls:
@@ -91,54 +105,24 @@ $0080   :cpm_dma                        ; deafult sector read address
 
 ; bootstrap:
 ;===============================================================================
-$0100   :cpm_tpa                        ; start of transient program area
+; assembly begins with the system file instead of "v80.v80" because the first
+; code to execute is determined by the platform / OS we're running on. CP/Ms
+; starting address is $0100:
+;
+$0100   :osBoot
 
-:osBoot
-;===============================================================================
-        ; check CP/M version -- it's not likely we're going to be running
-        ; on CP/M-1 but this same check will be required for a CP/M-3 version
+        ; to save RAM, the once off intitialisation code is at the end of this
+        ; file, in the code-segment that gets overwritten once assembly begins!
         ;
-        ld.C    #BDOS_VER
-        call    :BDOS
-        ld.A.L                          ; compare returned version
-        cp      #CPM_VER                ;  with required CP/M version
-        jr?c    _err                    ; ver < CPM_VER, quit with error
+        jp      :osInit
 
-        ;-----------------------------------------------------------------------
-        ; when a program is loaded in CP/M a small stack is created, enough
-        ; to call the BDOS/BIOS. we want to set the stack to the top of
-        ; memory although that depends where the TPA ends and BDOS begins
-        ;
-        ; the address at $06/07 points to the beginning of BDOS,
-        ; so if we set the stack there the first push will go to BDOS-1.
-        ; on RunCPM this is $FD00, on NTVCM it's $FE00
-        ;
-        ld.HL*  [ :BDOS + 1 ]           ; get BDOS address from `JP $xxxx`
-        ld.L    0                       ; normalise to beginning of page
-        ld.SP.HL                        ; set stack pointer
-
-        ; always print the banner first,
-        ; it differs for each OS/platform
-        ;
-        ld.DE   _banner                 ; print the program banner
-        call    :osPrintLn
-
-        ; run the program:
-        jp      :main                   ; we will not return from here!
-
-        ;-----------------------------------------------------------------------
-_banner .b      #CHAR_COMMENT " v80 CP/M v1.0-dev - github.com/kroc/v80" #LF
-        .b      #CHAR_COMMENT " (C) Kroc Camen 2023-2024, MIT License" 0
-
-        ;=======================================================================
-        ; CP/M version less than 2.2 -- call BDOS manually for safety
-        ;
-_err    ld.DE   _str                    ; version error string
-        ld.C    #BDOS_PRNSTR            ; print using BDOS directly
-        jp      :BDOS                   ; call BDOS but also return to CCP
-
-        ; string is "$" terminated for compatibility with CP/M < v2.2?
-_str    .b      "! ERROR: CP/M 2.2 or higher required!$"
+;-------------------------------------------------------------------------------
+; osParseParams captures the input & output file-name here:
+;
+:_infile                                ; command-line input file-name param
+        .b      "            " 0        ; (max 8.3, including dot)
+:_outfile                               ; command-line output file-name param
+        .b      "            " 0        ; (max 8.3, including dot)
 
 
 :osQuitErr
@@ -182,191 +166,6 @@ _str    .b      "! ERROR: CP/M 2.2 or higher required!$"
 ;-------------------------------------------------------------------------------
         ld.C    #BDOS_RESET             ; CP/M doesn't require us to unwind
         jp      :BDOS                   ;  the stack, we can just reset
-
-
-:_infile                                ; command-line input file-name param
-        .b      "            " 0        ; (max 8.3, including dot)
-:_outfile                               ; command-line output file-name param
-        .b      "            " 0        ; (max 8.3, including dot)
-
-:osParseParameters
-;===============================================================================
-; parse the command-line parameters:
-;
-; return an address to a forwards, null-terminated string of the input
-; file-name and also read or generate the output file-name and store
-; it privately (the OS does the binary write-out by itself)
-;
-; out:  DE              addr of input file-name, forwards, null-terminated
-;       A, BC, HL       (clobbered)
-;-------------------------------------------------------------------------------
-        ; search for a first parameter:
-        ; (input file-name)
-        ;
-        ; in CP/M the "command tail", the portion of the command line following
-        ; the executable name, is in the DMA buffer ($80) by default. the first
-        ; byte is the length but the string is also null-terminated, thankfully
-        ;
-        ; WARN: the command-tail in the DMA buffer is overwritten by the first
-        ;       sector read of a file so we must copy the parameters out!
-        ;
-        ld.HL   :cpm_dma + 1            ; begin search from 1st char
-        ld.DE   :_infile                ; copy to here
-        call    :_getParam              ; look for / copy 1st parameter
-        jr?z    _help                   ; if none, show help text
-
-        ; in case the output file-name is not specified, we don't check for
-        ; an input name file-extension yet otherwise it would be copied to
-        ; the output name when we want to default to ".COM" for that!
-        ;
-        ; optional 2nd param -- output file-name:
-        ;-----------------------------------------------------------------------
-        ld.DE   :_outfile               ; this time, copy here
-        call    :_getParam              ; look for a 2nd parameter
-        jr?nz   _out                    ; if output file-name specified, skip
-
-        ; copy input file-name to output file-name as-is:
-        ;
-        ld.C    13                      ; full field, including null-terminator
-        ld.HL   :_infile                ; copying from input file-name
-        ldir                            ; copy BC bytes from HL to DE
-
-        ; since we copied the input file-name, we will need to replace the
-        ; input file-extension (".V80"), if present, with the default output
-        ; file-extension (".COM"). walk the output file-name until the first
-        ; dot or null where the extension will be, but be aware that there
-        ; may not be enough space to append a file-extension
-        ;
-        ld.DE   :_outfile               ; rewind output file-name string
-        call    _dot                    ; walk string to first dot or null
-        ld.A    4                       ; must be at least 4 chars free
-        cp.C                            ; is that the case?
-        jr?nc   _out                    ; if not, skip appending file-extension
-        ld.HL   _com                    ; ".COM", NULL string
-        ld.C    5                       ; number of bytes
-        ldir                            ; = copy BC bytes from HL to DE
-
-        ; use the default FCB for the output file:
-        ;-----------------------------------------------------------------------
-        ; clear the default FCB. we can zero the whole thing as
-        ; _setFCBFileName will pad the file-name field with spaces
-        ;
-_out    xor.A                           ; set A to zero
-        ld.HL   :cpm_fcb                ; start of FileControlBlock
-        ld.B    36                      ; clear 36 bytes
-_clear  ld*HL.A                         ; clear one byte
-        inc.L                           ; move to next byte
-        djnz    _clear                  ; loop for whole FCB
-
-        ; parse the output file-name into the default FCB
-        ; that will be used after assembling to output the binary
-        ;
-        ld.DE   :_outfile               ; use the output file-name
-        ld.HL   :cpm_fcb                ; default FCB addr
-        call    :_setFCBFileName        ; configure FCB for output file
-
-        ; return input file-name:
-        ;-----------------------------------------------------------------------
-        ; last, but not least, check if the input file-name is missing
-        ; an extension. this has been delayed to allow generating the
-        ; output file-name first
-        ;
-        ld.DE   :_infile                ; switch to input file-name string
-        call    _dot                    ; walk string to first dot or null
-        jr?z    _ok                     ; if extension already present, skip
-        ld.A    4                       ; must be at least 4 chars free
-        cp.C                            ; is that the case?
-        jr?nc   _ok                     ; if not, skip appending file-extension
-        ld.HL   _v80                    ; ".V80", NULL string
-        ld.C    5                       ; number of bytes
-        ldir                            ; = copy BC bytes from HL to DE
-
-_ok     ld.DE   :_infile                ; return input name str addr
-        ret
-
-        ;-----------------------------------------------------------------------
-_v80    .b      ".V80" 0                ; default input file-name extension
-_com    .b      ".COM" 0                ; default output file-name extension
-
-        ;=======================================================================
-        ; find the first dot in a file-name:
-        ; 
-        ; in:   DE      file-name string addr
-        ; out:  zf      zero-flag set if "." found
-        ;               zero-flag clear if stopped at null-terminator
-        ;       DE      string addr is position ON the first dot or null
-        ;       BC      13 minus the number of chars walked , i.e. how many
-        ;               chars remain in the maximum allowed file-name length
-        ;       HL      (preserved)
-        ;       A       (clobbered)
-        ;-----------------------------------------------------------------------
-_dot    ld.BC   13                      ; (we need to track string-length)
-        jr      _in                     ; jump into loop
-        ;-----------------------------------------------------------------------
-_loop   inc.DE                          ; next char in file-name
-        dec.BC                          ; decrement character count
-_in     ld.A*DE                         ; get current char
-        cp      '.                      ; check for dot
-        ret?z                           ; if dot, break loop
-        cp      0                       ; check for null-terminator
-        jr?nz   _loop                   ; keep looping until either
-        ;-----------------------------------------------------------------------
-        cp      '.                      ; don't return zero-flag set for null
-        ret
-
-        ;=======================================================================
-_help   ld.DE   _str                    ; no parameters!
-        call    :osPrintStrZ            ; print the command usage
-        jp      :osQuit                 ;  and quit
-
-_str    .b      "    V80 INPUT.V80 [OUTPUT.COM]" #LF 0
-
-
-:_getParam
-;===============================================================================
-; finds and copies a command-line parameter:
-;
-; this routine walks along the command tail and finds the start of a parameter
-; word (any non-space chars) which will be copied to the destination addr [DE]
-;
-; for CP/M a limit of 12 characters is imposed as CP/M files must be in 8.3
-; format, even though CP/M doesn't store the "." internally, meaning that the
-; file-name could still be invalid if the dot is missing or in the wrong place
-; -- these checks are done when opening the file
-;
-; in:   HL              addr of command-line string, null-terminated
-;       DE              addr of space to copy parameter to, up to 12 characters
-;                       will be copied and a null-terminator appended
-;
-; out:  HL              the string addr is advanced according to the param read
-;       zf              zero-flag is set if null-terminator occurs before any
-;                       characters are captured!
-;       DE              (preserved) -- rewound to the start of the param str
-;       A, BC           (clobbered)
-;       -               halts with error if file-name exceeds 12 chars
-;-------------------------------------------------------------------------------
-        ld.BC   13                      ; reset char limit
-        .b      $e6                     ; skip next instruction; $E6 = AND $..
-        ;-----------------------------------------------------------------------
-_skip   inc.L                           ; move to next char in command tail
-        ld.A*HL                         ; read char from command tail
-        and.A                           ; is it a null-terminator?
-        ret?z                           ; null-terminator before any parameter!
-        cp      #SPC + 1                ; is it <=ASCII space (tab)
-        jr?c    _skip                   ; skip any spaces/tabs
-        ;-----------------------------------------------------------------------
-        push.DE                         ; start of param str will be returned
-        ld.A    #SPC + 1                ; pre-load comparison (spc/tab/null)
-        ;-----------------------------------------------------------------------
-_copy   ldi                             ; = ld*DE*HL; inc.DE; inc.HL; inc.BC
-        jp?nv   :errInvalFile           ; error if copied 13th char w/o NULL
-        cp*HL                           ; is char <=ASCII space (inc. tab/null)
-        jr?c    _copy                   ; if not keep going
-        ;-----------------------------------------------------------------------
-        ld.A    0                       ; patch in null terminator
-        ld*DE.A                         ; (musn't set zero-flag!)
-        pop.DE                          ; return start of param str
-        ret
 
 
 :osFileOpen
@@ -687,7 +486,7 @@ _ok     push.BC                         ; (restore our return address)
 ; saves the code-segment memory region in one go:
 ;
 ; the output file-name was captured to `_outfile` when parsing the command-line
-; parameters (`osParseParameters`)
+; parameters (`osParseParams`)
 ;
 ; in:   HL              start addr of code-segment to save
 ;       DE              end addr of  code-segment to save
@@ -792,7 +591,7 @@ _index  ld.A*   [ :cpm_dma ]            ; get byte at current index
         ; because all CP/M files are padded to 128 bytes sectors!
         ; <https://en.wikipedia.org/wiki/Substitute_character>
         ;
-        cp      #SUB                    ; is this a CP/M sector padding byte?
+        cp      #EOF                    ; is this a CP/M sector padding byte?
         ret?z                           ; return zero-flag set for EOF
 
         ; increment index:
@@ -827,7 +626,7 @@ _fcb    ld.DE'  :cpm_fcb                ; select FileControlBlock
         ; if an end-of-file occurs at a sector boundary then we need to return
         ; EOF on the *NEXT* call as the last character has already been read:
         ;
-        ld.A    #SUB                    ; write the CP/M EOF marker
+        ld.A    #EOF                    ; write the CP/M EOF marker
         ld*$.A  [ :cpm_dma ]            ;  to the first byte for next read
 
         ret
@@ -950,3 +749,240 @@ _cc     and.A                           ; set flags, check for null-terminator
 
 _spc    .f      #SPC    32              ; a pool of spaces
         .b      '$                      ; + CP/M string terminator
+
+; CP/M code finished, include v80 proper:
+;///////////////////////////////////////////////////////////////////////////////
+.i      "v80.v80"
+;///////////////////////////////////////////////////////////////////////////////
+; WARNING: ALL CODE AFTER THIS POINT IS OVERWRITTEN ONCE ASSEMBLY BEGINS!
+;
+; at the end of "v80.v80" the code-segment starts which is where binary data
+; is assembled when running. to save RAM, the once-off initialisation code
+; is placed in this area
+
+:osInit
+;===============================================================================
+        ; check CP/M version -- it's not likely we're going to be running
+        ; on CP/M-1 but this same check will be required for a CP/M-3 version
+        ;
+        ld.C    #BDOS_VER
+        call    :BDOS
+        ld.A.L                          ; compare returned version
+        cp      #CPM_VER                ;  with required CP/M version
+        jr?c    _err                    ; ver < CPM_VER, quit with error
+
+        ;-----------------------------------------------------------------------
+        ; when a program is loaded in CP/M a small stack is created, enough
+        ; to call the BDOS/BIOS. we want to set the stack to the top of
+        ; memory although that depends where the TPA ends and BDOS begins
+        ;
+        ; the address at $06/07 points to the beginning of BDOS,
+        ; so if we set the stack there the first push will go to BDOS-1.
+        ; on RunCPM this is $FD00, on NTVCM it's $FE00
+        ;
+        ld.HL*  [ :BDOS + 1 ]           ; get BDOS address from `JP $xxxx`
+        ld.L    0                       ; normalise to beginning of page
+        ld.SP.HL                        ; set stack pointer
+
+        ; always print the banner first,
+        ; it differs for each OS/platform
+        ;
+        ld.DE   _banner                 ; print the program banner
+        call    :osPrintLn
+
+        ; run the program:
+        jp      :main                   ; we will not return from here!
+
+        ;-----------------------------------------------------------------------
+_banner .b      "; v80 CP/M v1.0-dev - github.com/kroc/v80" #LF
+        .b      "; (C) Kroc Camen 2023-2024, MIT License" 0
+
+        ;=======================================================================
+        ; CP/M version less than 2.2 -- call BDOS manually for safety
+        ;
+_err    ld.DE   _str                    ; version error string
+        ld.C    #BDOS_PRNSTR            ; print using BDOS directly
+        jp      :BDOS                   ; call BDOS but also return to CCP
+
+        ; string is "$" terminated for compatibility with CP/M < v2.2?
+_str    .b      "! ERROR: CP/M 2.2 or higher required!$"
+
+
+:osParseParams
+;===============================================================================
+; parse the command-line parameters:
+;
+; return an address to a forwards, null-terminated string of the input
+; file-name and also read or generate the output file-name and store
+; it privately (the OS does the binary write-out by itself)
+;
+; out:  DE              addr of input file-name, forwards, null-terminated
+;       A, BC, HL       (clobbered)
+;-------------------------------------------------------------------------------
+        ; search for a first parameter:
+        ; (input file-name)
+        ;
+        ; in CP/M the "command tail", the portion of the command line following
+        ; the executable name, is in the DMA buffer ($80) by default. the first
+        ; byte is the length but the string is also null-terminated, thankfully
+        ;
+        ; WARN: the command-tail in the DMA buffer is overwritten by the first
+        ;       sector read of a file so we must copy the parameters out!
+        ;
+        ld.HL   :cpm_dma + 1            ; begin search from 1st char
+        ld.DE   :_infile                ; copy to here
+        call    :_getParam              ; look for / copy 1st parameter
+        jr?z    _help                   ; if none, show help text
+
+        ; in case the output file-name is not specified, we don't check for
+        ; an input name file-extension yet otherwise it would be copied to
+        ; the output name when we want to default to ".COM" for that!
+        ;
+        ; optional 2nd param -- output file-name:
+        ;-----------------------------------------------------------------------
+        ld.DE   :_outfile               ; this time, copy here
+        call    :_getParam              ; look for a 2nd parameter
+        jr?nz   _out                    ; if output file-name specified, skip
+
+        ; copy input file-name to output file-name as-is:
+        ;
+        ld.C    13                      ; full field, including null-terminator
+        ld.HL   :_infile                ; copying from input file-name
+        ldir                            ; copy BC bytes from HL to DE
+
+        ; since we copied the input file-name, we will need to replace the
+        ; input file-extension (".V80"), if present, with the default output
+        ; file-extension (".COM"). walk the output file-name until the first
+        ; dot or null where the extension will be, but be aware that there
+        ; may not be enough space to append a file-extension
+        ;
+        ld.DE   :_outfile               ; rewind output file-name string
+        call    _dot                    ; walk string to first dot or null
+        ld.A    4                       ; must be at least 4 chars free
+        cp.C                            ; is that the case?
+        jr?nc   _out                    ; if not, skip appending file-extension
+        ld.HL   _com                    ; ".COM", NULL string
+        ld.C    5                       ; number of bytes
+        ldir                            ; = copy BC bytes from HL to DE
+
+        ; use the default FCB for the output file:
+        ;-----------------------------------------------------------------------
+        ; clear the default FCB. we can zero the whole thing as
+        ; _setFCBFileName will pad the file-name field with spaces
+        ;
+_out    xor.A                           ; set A to zero
+        ld.HL   :cpm_fcb                ; start of FileControlBlock
+        ld.B    36                      ; clear 36 bytes
+_clear  ld*HL.A                         ; clear one byte
+        inc.L                           ; move to next byte
+        djnz    _clear                  ; loop for whole FCB
+
+        ; parse the output file-name into the default FCB
+        ; that will be used after assembling to output the binary
+        ;
+        ld.DE   :_outfile               ; use the output file-name
+        ld.HL   :cpm_fcb                ; default FCB addr
+        call    :_setFCBFileName        ; configure FCB for output file
+
+        ; return input file-name:
+        ;-----------------------------------------------------------------------
+        ; last, but not least, check if the input file-name is missing
+        ; an extension. this has been delayed to allow generating the
+        ; output file-name first
+        ;
+        ld.DE   :_infile                ; switch to input file-name string
+        call    _dot                    ; walk string to first dot or null
+        jr?z    _ok                     ; if extension already present, skip
+        ld.A    4                       ; must be at least 4 chars free
+        cp.C                            ; is that the case?
+        jr?nc   _ok                     ; if not, skip appending file-extension
+        ld.HL   _v80                    ; ".V80", NULL string
+        ld.C    5                       ; number of bytes
+        ldir                            ; = copy BC bytes from HL to DE
+
+_ok     ld.DE   :_infile                ; return input name str addr
+        ret
+
+        ;-----------------------------------------------------------------------
+_v80    .b      ".V80" 0                ; default input file-name extension
+_com    .b      ".COM" 0                ; default output file-name extension
+
+        ;=======================================================================
+        ; find the first dot in a file-name:
+        ; 
+        ; in:   DE      file-name string addr
+        ; out:  zf      zero-flag set if "." found
+        ;               zero-flag clear if stopped at null-terminator
+        ;       DE      string addr is position ON the first dot or null
+        ;       BC      13 minus the number of chars walked , i.e. how many
+        ;               chars remain in the maximum allowed file-name length
+        ;       HL      (preserved)
+        ;       A       (clobbered)
+        ;-----------------------------------------------------------------------
+_dot    ld.BC   13                      ; (we need to track string-length)
+        jr      _in                     ; jump into loop
+        ;-----------------------------------------------------------------------
+_loop   inc.DE                          ; next char in file-name
+        dec.BC                          ; decrement character count
+_in     ld.A*DE                         ; get current char
+        cp      '.                      ; check for dot
+        ret?z                           ; if dot, break loop
+        cp      0                       ; check for null-terminator
+        jr?nz   _loop                   ; keep looping until either
+        ;-----------------------------------------------------------------------
+        cp      '.                      ; don't return zero-flag set for null
+        ret
+
+        ;=======================================================================
+_help   ld.DE   _str                    ; no parameters!
+        call    :osPrintStrZ            ; print the command usage
+        jp      :osQuit                 ;  and quit
+
+_str    .b      "    V80 INPUT.V80 [OUTPUT.COM]" #LF 0
+
+
+:_getParam
+;===============================================================================
+; finds and copies a command-line parameter:
+;
+; this routine walks along the command tail and finds the start of a parameter
+; word (any non-space chars) which will be copied to the destination addr [DE]
+;
+; for CP/M a limit of 12 characters is imposed as CP/M files must be in 8.3
+; format, even though CP/M doesn't store the "." internally, meaning that the
+; file-name could still be invalid if the dot is missing or in the wrong place
+; -- these checks are done when opening the file
+;
+; in:   HL              addr of command-line string, null-terminated
+;       DE              addr of space to copy parameter to, up to 12 characters
+;                       will be copied and a null-terminator appended
+;
+; out:  HL              the string addr is advanced according to the param read
+;       zf              zero-flag is set if null-terminator occurs before any
+;                       characters are captured!
+;       DE              (preserved) -- rewound to the start of the param str
+;       A, BC           (clobbered)
+;       -               halts with error if file-name exceeds 12 chars
+;-------------------------------------------------------------------------------
+        ld.BC   13                      ; reset char limit
+        .b      $e6                     ; skip next instruction; $E6 = AND $..
+        ;-----------------------------------------------------------------------
+_skip   inc.L                           ; move to next char in command tail
+        ld.A*HL                         ; read char from command tail
+        and.A                           ; is it a null-terminator?
+        ret?z                           ; null-terminator before any parameter!
+        cp      #SPC + 1                ; is it <=ASCII space (tab)
+        jr?c    _skip                   ; skip any spaces/tabs
+        ;-----------------------------------------------------------------------
+        push.DE                         ; start of param str will be returned
+        ld.A    #SPC + 1                ; pre-load comparison (spc/tab/null)
+        ;-----------------------------------------------------------------------
+_copy   ldi                             ; = ld*DE*HL; inc.DE; inc.HL; inc.BC
+        jp?nv   :errInvalFile           ; error if copied 13th char w/o NULL
+        cp*HL                           ; is char <=ASCII space (inc. tab/null)
+        jr?c    _copy                   ; if not keep going
+        ;-----------------------------------------------------------------------
+        ld.A    0                       ; patch in null terminator
+        ld*DE.A                         ; (musn't set zero-flag!)
+        pop.DE                          ; return start of param str
+        ret

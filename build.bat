@@ -89,16 +89,16 @@ REM # and RunCPM
 COPY /N /Y "v1\*.v80" /A "%DIR_RUNCPM%\A\0" /A
 
 REM # do a 1st-generation build of v80 [v1] using v80 [v0]!
-CALL :v80   v80
+CALL :v80   cpm_z80 v80.com
 IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
-
-REM # compare v80 [v0] against v80 built with v80 [v1]
-REM FC /B "build\v80.com" "%DIR_NTVCM%\v80.com"
-REM IF ERRORLEVEL 1 START "" %BIN_VBINDIFF% "build\v80.com" "%DIR_NTVCM%\v80.com"
 
 REM # do a 2nd-generation build of v80, i.e. v80 [v1] building v80 [v1]
-CALL :v80   v80
+CALL :v80   cpm_z80 v80_2nd.com
 IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
+
+REM # compare 1st and 2nd generation builds
+FC /B "%DIR_NTVCM%\v80.com" "%DIR_NTVCM%\v80_2nd.com"
+IF ERRORLEVEL 1 START "" %BIN_VBINDIFF% "%DIR_NTVCM%\v80.com" "%DIR_NTVCM%\v80_2nd.com"
 
 REM # --------------------------------------------------------------------------
 REM # if no errors, copy v80 binary to release folder
@@ -146,9 +146,7 @@ REM # assemble with V80
 REM # --------------------------------------------------------------------------
 PUSHD "%DIR_NTVCM%"
 
-REM # we exclude the ".v80" file extension and output file-name
-REM # in order to exercise the CP/M parameter parsing
-%BIN_NTVCM% v80.com %~1
+%BIN_NTVCM% v80.com %~1 %~2
 
 REM # if NTVCM hits a HALT instruction, launch RunCPM
 IF %ERRORLEVEL% EQU -1 POPD & START "RunCPM" /D "%DIR_RUNCPM%" %BIN_RUNCPM% & EXIT /B 1

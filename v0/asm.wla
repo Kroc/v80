@@ -155,7 +155,7 @@ _const: call    readWord                ; read symbol name into word buffer
         ld      E,      C               ;  of the const name in BC)
         ld      A,      CHAR_CONST      ; print const name
         call    printSymbolNameSigil    ;  (+ prepend sigil)
-        ld      A,      WORD_LEN+1      ; calculate number of spaces to print
+        ld      A,      WORD_LEN        ; calculate number of spaces to print
         sub     C                       ;  for const names up to 32 chars
         call    osPrintSpaces           ; print padding spaces
 

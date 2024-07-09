@@ -241,7 +241,7 @@ main:
         ; the output file-name privately -- we leave all command-line parsing
         ; to the OS due to differing file-system limitations
         ;
-        call    osParseParameters
+        call    osParseParams
 
         ; the virtual program-counter is permanently pinned to IX since
         ; it's a value that needs to be incremented often but not read
@@ -338,7 +338,7 @@ main:
         ; output file:
         ;=======================================================================
         ; the output file-name is already known to the OS which read it
-        ; from the command-line parameters during osParseParameters
+        ; from the command-line parameters during osParseParams
         ;
         ld      BC,     $0000           ; don't show file/line/col if an
         ld      [file], BC              ;  error occurs during write out

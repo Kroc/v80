@@ -1,6 +1,8 @@
 ; v80, (C) Kroc Camen 2023-2024, MIT License
-; z80 ISA specific code to emit opcodes
+; z80 ISA support
 ;
+.i      "isa_z80.v80"
+
 :emitOpcode
 ;===============================================================================
 ; write CPU opcode bytes, parsing any required parameters:

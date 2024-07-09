@@ -7,11 +7,11 @@
 ;       osBoot                          bootstrap, always first code run
 ;       osQuitErr                       quit app with an error-number
 ;       osQuit                          quit app and return to the OS
-;       osParseParameters               parse the command-line parameters
+;       osParseParams                   parse the command-line parameters
 ;       osFileOpen                      open file (read-only)
 ;       osFileClose                     close file (read-only)
 ;       osSaveCode                      save binary to file-name parsed
-;                                       in osParseParameters
+;                                       in osParseParams
 ;       osGetChar                       read char from current open file
 ;       osPrintLn                       print null-terminated string + newline
 ;       osPrintNewline                  print a newline (sys/OS-dependant)
@@ -216,7 +216,7 @@ _infile:                                ; command-line input file-name param
 _outfile:                               ; command-line output file-name param
         .BYTE   "            ", 0       ; (max 8.3, including dot)
 
-osParseParameters:
+osParseParams:
 ;===============================================================================
 ; parse the command-line parameters:
 ;
@@ -721,7 +721,7 @@ osSaveCode:
 ; saves the code-segment memory region in one go:
 ;
 ; the output file-name was captured to `_outfile` when parsing the command-line
-; parameters (`osParseParameters`)
+; parameters (`osParseParams`)
 ;
 ; in:   HL              start addr of code-segment to save
 ;       DE              end addr of  code-segment to save
