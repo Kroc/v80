@@ -302,7 +302,7 @@ deferBytes:
         ld      [deferBytes+1], HL      ; 
         ex      DE,     HL              ; (swap heap back to HL)
 
-        jp      checkHeapSize           ; check for heap overflow
+        jp      errIfHeapOverflow       ; check for heap overflow
 
 
 nextExpr:

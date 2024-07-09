@@ -176,3 +176,46 @@ _unexp_eol      .b "Expected expression" 0
         call    :printDecNum
 
         jp      :osQuit
+
+
+:errIfStackOverflow
+;===============================================================================
+; check to see if the stack hasn't overflowed:
+;
+; out:  A               (clobbered)
+;       BC, DE, HL      (preserved)
+;       -               halts with error if stack overflowed
+;-------------------------------------------------------------------------------
+        ld*$.SP [ _sp ]                 ; store current stack pointer
+        ld.A*   [ _sp + #HI ]           ; get hi-byte of stack addr
+_hi     cp      $ff                     ; (this byte patched in main)
+        ret?nc                          ; fast-return if stack is in page
+        jp      :errRangeStack          ; stack overflow!
+
+_sp     .w      $0000
+
+
+:errIfHeapOverflow
+;===============================================================================
+; check to see the heap hasn't overflowed into the code-segment:
+;
+; in:   HL              heap addr
+;       IY              code-segment addr
+; out:  cf              carry-flag is always returned clear
+;       HL, BC, DE, IY  (preserved)
+;       A               (clobbered)
+;       -               halts with error if heap overflows
+;-------------------------------------------------------------------------------
+        ; check that IY is not > HL. they can be equal because the code-segment
+        ; addr points to the last unused byte, where as the heap addr points
+        ; to the last used byte
+        ;
+        ld.A.H                          ; check hi-byte of heap is not
+        cp.IYH                          ;  less than hi-byte of code-segment
+        jr?c    _err                    ; err if heap below code-segment!
+        ret?nz                          ; skip if hi-bytes mismatch
+        ld.A.L                          ; assuming hi-bytes match,
+        cp.IYL                          ;  test lo-bytes
+        ret?nc                          ; OK if heap addr >= code-segment addr
+
+_err    jp      :errRangeHeap           ; err if heap below code-segment!

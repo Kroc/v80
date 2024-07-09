@@ -132,7 +132,11 @@
 .i      "v80_echo.v80"                  ; various printing routines
 .i      "v80_err.v80"                   ; error messages
 .i      "v80_expr.v80"                  ; expression parsing and evaluation
+
+; include the selected ISA:
+;-------------------------------------------------------------------------------
 .i      "v80_z80.v80"                   ; Z80 ISA support
+;-------------------------------------------------------------------------------
 .i      "v80_asm.v80"                   ; main parsing and assembling loop
 
 :main
@@ -152,7 +156,7 @@
         dec.H                           ; go down 1 page (e.g. $FD00 > $FC00)
         ld*$.HL [ :heap ]               ; this will be the top of the heap
         ld.A.H                          ; patch stack-overflow check routine
-        ld*$.A  [ :checkStackSize_hi + 1 ]
+        ld*$.A  [ :errIfStackOverflow_hi + 1 ]
 
         ; how do you measure the maximum depth of the stack
         ; used during program execution?
@@ -235,7 +239,7 @@ _push   dec.HL                          ; decrement HL first to match the
         ; calculate final size of the heap:
         ; (works downwards from top of RAM)
         ;
-        call    :checkHeapSize          ; last check for heap overflow!
+        call    :errIfHeapOverflow      ; last check for heap overflow!
         ex.DE.HL                        ; swap heap end-address to DE
         ld.HL*  [ :heap ]               ; get heap starting address (high!)
         sbc.HL.DE                       ; calculate end-start difference
@@ -433,49 +437,6 @@ _popw   dec.HL                          ; pop a word off the heap into BC
         dec.HL                          ;  the deferred expr record)
         ld.C*HL                         ; ...
         ret
-
-
-:checkStackSize
-;===============================================================================
-; check to see if the stack hasn't overflowed:
-;
-; out:  A               (clobbered)
-;       BC, DE, HL      (preserved)
-;       -               halts with error if stack overflowed
-;-------------------------------------------------------------------------------
-        ld*$.SP [ _sp ]                 ; store current stack pointer
-        ld.A*   [ _sp + #HI ]           ; get hi-byte of stack addr
-_hi     cp      $ff                     ; (this byte patched in main)
-        ret?nc                          ; fast-return if stack is in page
-        jp      :errRangeStack          ; stack overflow!
-
-_sp     .w      $0000
-
-
-:checkHeapSize
-;===============================================================================
-; check to see the heap hasn't overflowed into the code-segment:
-;
-; in:   HL              heap addr
-;       IY              code-segment addr
-; out:  cf              carry-flag is always returned clear
-;       HL, BC, DE, IY  (preserved)
-;       A               (clobbered)
-;       -               halts with error if heap overflows
-;-------------------------------------------------------------------------------
-        ; check that IY is not > HL. they can be equal because the code-segment
-        ; addr points to the last unused byte, where as the heap addr points
-        ; to the last used byte
-        ;
-        ld.A.H                          ; check hi-byte of heap is not
-        cp.IYH                          ;  less than hi-byte of code-segment
-        jr?c    _err                    ; err if heap below code-segment!
-        ret?nz                          ; skip if hi-bytes mismatch
-        ld.A.L                          ; assuming hi-bytes match,
-        cp.IYL                          ;  test lo-bytes
-        ret?nc                          ; OK if heap addr >= code-segment addr
-
-_err    jp      :errRangeHeap           ; err if heap below code-segment!
 
 
 ;///////////////////////////////////////////////////////////////////////////////

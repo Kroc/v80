@@ -271,7 +271,7 @@ _inc    inc.IY                          ; step over byte in code-segment
         ld*$.HL [ :deferBytes + 1 ]     ; 
         ex.DE.HL                        ; (swap heap back to HL)
 
-        jp      :checkHeapSize          ; check for heap overflow
+        jp      :errIfHeapOverflow      ; check for heap overflow
 
 
 :nextExpr

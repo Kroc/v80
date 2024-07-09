@@ -246,6 +246,7 @@ _push   push.DE'                        ; push 2 zeroes to the stack
         push.BC                         ; restore the return address!
         push.HL                         ; (preserve caller's HL)
         push.DE                         ; (preserve file-name addr)
+        call    :errIfStackOverflow     ; sanity check stack
 
         ; copy new file-name [DE] to the new FCB:
         ; (note _setFCBFileName preserves HL & DE)

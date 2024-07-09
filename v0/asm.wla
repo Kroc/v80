@@ -14,7 +14,6 @@ assembleFile:
 ;-------------------------------------------------------------------------------
         call    echoCommentNewline
         call    osFileOpen              ; use the OS to open the file [DE]
-        call    checkStackSize          ; check for stack overflow
         call    echoCommentLn           ; (echo the file-name
         call    echoCommentBar          ;  and a dividing line)
 
@@ -139,7 +138,7 @@ _const: call    readWord                ; read symbol name into word buffer
         inc     DE                      ;  by accomodating for it, correcting
         dec     HL                      ;  DE up so HL only needs one dec
 
-        call    checkHeapSize           ; check for heap overflow
+        call    errIfHeapOverflow       ; check for heap overflow
 
         pop     BC                      ; for echoing, restore addr of name
 
@@ -833,7 +832,7 @@ getFileID:
         ld      E,      L               ;  is returned in DE like findSymbol
         inc     HL                      ; fix heap addr after LDDR copy
 
-        call    checkHeapSize           ; check heap didn't overflow
+        call    errIfHeapOverflow       ; check heap didn't overflow
 
         pop     BC                      ; return the file-name addr
         ret
@@ -1001,7 +1000,7 @@ getLabel:
         dec     HL                      ; reserve two bytes on the heap
         dec     HL                      ;  for the label value
 
-        call    checkHeapSize           ; check for heap overflow
+        call    errIfHeapOverflow       ; check for heap overflow
 
         pop     BC                      ; return length byte addr in BC
         scf                             ; return carry-flag set
