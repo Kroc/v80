@@ -128,15 +128,9 @@
 :wcol   .b      $00                     ; column number to report on err
 :wrow   .w      $0000                   ; line number to report on err
 
-;===============================================================================
 .i      "v80_echo.v80"                  ; various printing routines
 .i      "v80_err.v80"                   ; error messages
 .i      "v80_expr.v80"                  ; expression parsing and evaluation
-
-; include the selected ISA:
-;-------------------------------------------------------------------------------
-.i      "v80_z80.v80"                   ; Z80 ISA support
-;-------------------------------------------------------------------------------
 .i      "v80_asm.v80"                   ; main parsing and assembling loop
 
 :main
@@ -446,7 +440,7 @@ _popw   dec.HL                          ; pop a word off the heap into BC
 ; are in the code-segment and will be overwritten by the binary as it is
 ; assembled! v80 places once-off initialisation routines here that are safe
 ; to obliterate once assembly starts to save RAM -- see the system file
-; (such as "sys_cpm.v80") which, after including this file, appends more code
+; (such as "v80_cpm.v80") which, after including this file, appends more code
 ;
 :end_of_v80
 

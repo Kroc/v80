@@ -1,0 +1,192 @@
+; v80 test file; 6502 instructions:
+;
+$0100   ; MOS 6502                      ; v80-6502              ; opcodes
+        ;=======================================================================
+:adc    adc     $ff                     ; adc # $ff             ; 69 FF
+        adc.z   $00                     ; adc $00               ; 65 00
+        adc.z.x $00                     ; adc $00, x            ; 75 00
+        adc*    $ff00                   ; adc $ff00             ; 60 00 FF
+        adc.x*  $ff00                   ; adc $ff00, x          ; 70 00 FF
+        adc.y*  $ff00                   ; adc $ff00, y          ; 79 00 FF
+        adc*z.x $00                     ; adc ($00, x)          ; 61 00
+        adc.y*z $00                     ; adc ($00), y          ; 71 00
+        ;-----------------------------------------------------------------------
+:and    and     $ff                     ; and # $ff             ; 29 FF
+        and.z   $00                     ; and $00               ; 25 00
+        and.z.x $00                     ; and $00, x            ; 35 00
+        and*    $ff00                   ; and $ff00             ; 2D 00 FF
+        and.x*  $ff00                   ; and $ff00, x          ; 3D 00 FF
+        and.y*  $ff00                   ; and $ff00, y          ; 39 00 FF
+        and*z.x $00                     ; and ($00, x)          ; 21 00
+        and.y*z $00                     ; and ($00), y          ; 31 00
+        ;-----------------------------------------------------------------------
+:asl    asl                             ; asl                   ; 0A
+        asl.z   $00                     ; asl $00               ; 06 00
+        asl.z.x $00                     ; asl $00, x            ; 16 00
+        asl*    $ff00                   ; asl $ff00             ; 0E 00 FF
+        asl.x*  $ff00                   ; asl $ff00, x          ; 1E 00 FF
+        ;-----------------------------------------------------------------------
+:bpl    bpl     :bpl                    ; bpl *                 ; 10 ??
+:bmi    bmi     :bmi                    ; bmi *                 ; 30 ??
+:bvc    bvc     :bvc                    ; bvc *                 ; 50 ??
+:bvs    bvs     :bvs                    ; bvs *                 ; 70 ??
+:bcc    bcc     :bcc                    ; bcc *                 ; 90 ??
+:bcs    bcs     :bcs                    ; bcs *                 ; B0 ??
+:bne    bne     :bne                    ; bne *                 ; D0 ??
+:beq    beq     :beq                    ; beq *                 ; F0 ??
+        ;-----------------------------------------------------------------------
+:bit    bit.z   $ff                     ; bit $ff               ; 24 FF
+        bit*    $ff00                   ; bit $ff00             ; 2C 00 FF
+        ;-----------------------------------------------------------------------
+        ; WLA always inserts an additional BRK for NMOS 6502s!
+        ;
+:brk    brk     .b $00                  ; brk                   ; 00
+        ;-----------------------------------------------------------------------
+:clc    clc                             ; clc                   ; 18
+:cli    cli                             ; cli                   ; 58
+:clv    clv                             ; clv                   ; B8
+:cld    cld                             ; cld                   ; D8
+        ;-----------------------------------------------------------------------
+:cmp    cmp     $ff                     ; cmp # $ff             ; C9 FF
+        cmp.z   $00                     ; cmp $00               ; C5 00
+        cmp.z.x $00                     ; cmp $00, x            ; D5 00
+        cmp*    $ff00                   ; cmp $ff00             ; CD 00 FF
+        cmp.x*  $ff00                   ; cmp $ff00, x          ; DD 00 FF
+        cmp.y*  $ff00                   ; cmp $ff00, y          ; D9 00 FF
+        cmp*z.x $00                     ; cmp ($00, x)          ; C1 00
+        cmp.y*z $00                     ; cmp ($00), y          ; D1 00
+:cpx    cpx     $ff                     ; cpx # $ff             ; E0 FF
+        cpx.z   $00                     ; cpx $00               ; E4 00
+        cpx*    $ff00                   ; cpx $ff00             ; EC 00 FF
+:cpy    cpy     $ff                     ; cpy # $ff             ; C0 FF
+        cpy.z   $00                     ; cpy $00               ; C4 00
+        cpy*    $ff00                   ; cpy $ff00             ; CC 00 FF
+        ;-----------------------------------------------------------------------
+:dec    dec.z   $00                     ; dec $00               ; C6 00
+        dec.z.x $00                     ; dec $00, x            ; D6 00
+        dec*    $ff00                   ; dec $ff00             ; CE 00 FF
+        dec.x*  $ff00                   ; dec $ff00, x          ; DE 00 FF
+:dex    dex                             ; dex                   ; CA
+:dey    dey                             ; dey                   ; 88
+        ;-----------------------------------------------------------------------
+        ; EOR is an alias for XOR
+        ;
+:eor    eor     $ff                     ; eor # $ff             ; 49 FF
+        eor.z   $00                     ; eor $00               ; 45 00
+        eor.z.x $00                     ; eor $00, x            ; 55 00
+        eor*    $ff00                   ; eor $ff00             ; 40 00 FF
+        eor.x*  $ff00                   ; eor $ff00, x          ; 50 00 FF
+        eor.y*  $ff00                   ; eor $ff00, y          ; 59 00 FF
+        eor*z.x $00                     ; eor ($00, x)          ; 41 00
+        eor.y*z $00                     ; eor ($00), y          ; 51 00
+        ;-----------------------------------------------------------------------
+:inc    inc.z   $00                     ; inc $00               ; E6 00
+        inc.z.x $00                     ; inc $00, x            ; F6 00
+        inc*    $ff00                   ; inc $ff00             ; EE 00 FF
+        inc.x*  $ff00                   ; inc $ff00, x          ; FE 00 FF
+:inx    inx                             ; inx                   ; E8
+:iny    iny                             ; iny                   ; C8
+        ;-----------------------------------------------------------------------
+:jmp    jmp     $ff00                   ; jmp $ff00             ; 4C 00 FF
+        jmp*    $ff00                   ; jmp ($ff00)           ; 6C 00 FF
+:jsr    jsr     $ff00                   ; jsr $ff00             ; 20 00 FF
+        ;-----------------------------------------------------------------------
+:lda    lda     $ff                     ; lda # $ff             ; A9 FF
+        lda.z   $00                     ; lda $00               ; A5 00
+        lda.z.x $00                     ; lda $00, x            ; B5 00
+        lda*    $ff00                   ; lda $ff00             ; AD 00 FF
+        lda.x*  $ff00                   ; lda $ff00, x          ; BD 00 FF
+        lda.y*  $ff00                   ; lda $ff00, y          ; B9 00 FF
+        lda*z.x $00                     ; lda ($00, x)          ; A1 00
+        lda.y*z $00                     ; lda ($00), y          ; B1 00
+:ldx    ldx     $ff                     ; ldx # $ff             ; A2 FF
+        ldx.z   $00                     ; ldx $00               ; A6 00
+        ldx.z.y $00                     ; ldx $00, y            ; B6 00
+        ldx*    $ff00                   ; ldx $ff00             ; AE 00 FF
+        ldx.y*  $ff00                   ; ldx $ff00, y          ; BE 00 FF
+:ldy    ldy     $ff                     ; ldy # $ff             ; A0 FF
+        ldy.z   $00                     ; ldy $00               ; A4 00
+        ldy.z.x $00                     ; ldy $00, x            ; B4 00
+        ldy*    $ff00                   ; ldy $ff00             ; AC 00 FF
+        ldy.x*  $ff00                   ; ldy $ff00, x          ; BC 00 FF
+        ;-----------------------------------------------------------------------
+:lsr    lsr                             ; lsr                   ; 4A
+        lsr.z   $00                     ; lsr $00               ; 46 00
+        lsr.z.x $00                     ; lsr $00, x            ; 56 00
+        lsr*    $ff00                   ; lsr $ff00             ; 4E 00 FF
+        lsr.x*  $ff00                   ; lsr $ff00, x          ; 5E 00 FF
+        ;-----------------------------------------------------------------------
+:nop    nop                             ; nop                   ; EA
+        ;-----------------------------------------------------------------------
+:ora    ora     $ff                     ; ora # $ff             ; 09 FF
+        ora.z   $00                     ; ora $00               ; 05 00
+        ora.z.x $00                     ; ora $00, x            ; 15 00
+        ora*    $ff00                   ; ora $ff00             ; 0D 00 FF
+        ora.x*  $ff00                   ; ora $ff00, x          ; 1D 00 FF
+        ora.y*  $ff00                   ; ora $ff00, y          ; 19 00 FF
+        ora*z.x $00                     ; ora ($00, x)          ; 01 00
+        ora.y*z $00                     ; ora ($00), y          ; 11 00
+        ;-----------------------------------------------------------------------
+:php    php                             ; php                   ; 08
+:plp    plp                             ; plp                   ; 28
+:pha    pha                             ; pha                   ; 48
+:pla    pla                             ; pla                   ; 68
+        ;-----------------------------------------------------------------------
+:rol    rol                             ; rol                   ; 2A
+        rol.z   $00                     ; rol $00               ; 26 00
+        rol.z.x $00                     ; rol $00, x            ; 36 00
+        rol*    $ff00                   ; rol $ff00             ; 2E 00 FF
+        rol.x*  $ff00                   ; rol $ff00, x          ; 3E 00 FF
+:ror    ror                             ; ror                   ; 6A
+        ror.z   $00                     ; ror $00               ; 66 00
+        ror.z.x $00                     ; ror $00, x            ; 76 00
+        ror*    $ff00                   ; ror $ff00             ; 6E 00 FF
+        ror.x*  $ff00                   ; ror $ff00, x          ; 7E 00 FF
+        ;-----------------------------------------------------------------------
+:rti    rti                             ; rti                   ; 4D
+:rts    rts                             ; rts                   ; 60
+        ;-----------------------------------------------------------------------
+:sbc    sbc     $ff                     ; sbc # $ff             ; E9 FF
+        sbc.z   $00                     ; sbc $00               ; E5 00
+        sbc.z.x $00                     ; sbc $00, x            ; F5 00
+        sbc*    $ff00                   ; sbc $ff00             ; ED 00 FF
+        sbc.x*  $ff00                   ; sbc $ff00, x          ; FD 00 FF
+        sbc.y*  $ff00                   ; sbc $ff00, y          ; F9 00 FF
+        sbc*z.x $00                     ; sbc ($00, x)          ; E1 00
+        sbc.y*z $00                     ; sbc ($00), y          ; F1 00
+        ;-----------------------------------------------------------------------
+:sec    sec                             ; sec                   ; 38
+:sei    sei                             ; sei                   ; 78
+:sed    sed                             ; sed                   ; F8
+        ;-----------------------------------------------------------------------
+:sta    sta.z   $00                     ; sta $00               ; 85 00
+        sta.z.x $00                     ; sta $00, x            ; 95 00
+        sta*    $ff00                   ; sta $ff00             ; 80 00 FF
+        sta.x*  $ff00                   ; sta $ff00, x          ; 90 00 FF
+        sta.y*  $ff00                   ; sta $ff00, y          ; 99 00 FF
+        sta*z.x $00                     ; sta ($00, x)          ; 81 00
+        sta.y*z $00                     ; sta ($00), y          ; 91 00
+:stx    stx.z   $00                     ; stx $00               ; 86 00
+        stx.z.y $00                     ; stx $00, y            ; 96 00
+        stx*    $ff00                   ; stx $ff00             ; 8E 00 FF
+:sty    sty.z   $00                     ; sty $00               ; 84 00
+        sty.z.x $00                     ; sty $00, x            ; 94 00
+        sty*    $ff00                   ; sty $ff00             ; 8C 00 FF
+        ;-----------------------------------------------------------------------
+:txa    txa                             ; txa                   ; 8A
+:tya    tya                             ; tya                   ; 98
+:txs    txs                             ; txs                   ; 9A
+:tay    tay                             ; tay                   ; A8
+:tax    tax                             ; tax                   ; AA
+:tsx    tsx                             ; tsx                   ; BA
+        ;-----------------------------------------------------------------------
+        ; XOR is an alias for EOR
+        ;
+:xor    xor     $ff                     ; eor # $ff             ; 49 FF
+        xor.z   $00                     ; eor $00               ; 45 00
+        xor.z.x $00                     ; eor $00, x            ; 55 00
+        xor*    $ff00                   ; eor $ff00             ; 40 00 FF
+        xor.x*  $ff00                   ; eor $ff00, x          ; 50 00 FF
+        xor.y*  $ff00                   ; eor $ff00, y          ; 59 00 FF
+        xor*z.x $00                     ; eor ($00, x)          ; 41 00
+        xor.y*z $00                     ; eor ($00), y          ; 51 00

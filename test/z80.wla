@@ -3,8 +3,6 @@
 .BANK 0 SLOT "TPA"
 .ORGA TBASE
 
-.SECTION        "test"  SIZE 128 * 22
-
 	; z80				; v80			; opcodes
 	;-----------------------------------------------------------------------
 adc:	adc	A,	[HL]		; adc*hl		;    8E
@@ -1481,4 +1479,8 @@ xor:	xor	A, 	[HL]		; xor*hl		;    AE
 	xor	A,	IYH		; xor.iyh		; FD AC
 	xor	A,	IYL		; xor.iyl		; FD AD
 
-.ENDS
+; to match CP/M's behaviour for build tests,
+; pad the binary to the next 128 byte boundary
+;
+end_of_code:
+	.DSB	$80 - (end_of_code # $80), $00

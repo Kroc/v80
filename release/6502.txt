@@ -1,0 +1,264 @@
+Legend:
+--------------------------------------------------------------------------------
+params: $zz     zero-page address
+        $nn     8-bit value
+        $nnnn   16-bit value, e.g. label
+
+flags:  unless otherwise noted, flags are preserved by default.
+
+        c       carry
+        z       zero
+        s       sign
+        v       overflow
+        i       interrupts (set=disabled, clear=enabled)
+        d       decimal-mode (set=enabled, clear=disabled)
+
+        +       set
+        -       clear
+        =       set|clear according to value:
+
+        z=      zero-flag (z) set if result is 0, otherwise clear
+        s=      sign-bit (z) is bit 7, 0=positive, 1=negative
+        v=      overlflow set if sign flips, otherwise clear
+
+        [^n]    see footnote n
+
+cols:   #       number of bytes, including parameter(s)
+        =       number of cycles
+        *       +1 if addr crosses a page-boundary
+
+instructions:                                               flags:
+v80_6502            MOS 6502                    #   cycles  c,z,s,v,i,d
+================================================================================
+:: add with carry:                              #   cycles  flags
+================================================================================
+adc     $nn         adc # $nn                   2   2       c=,z=,s=,v=
+adc.z   $zz         adc $zz                     2   3       c=,z=,s=,v=
+adc.z.x $zz         adc $zz, x                  2   4       c=,z=,s=,v=
+adc*    $nnnn       adc $nnnn                   3   4       c=,z=,s=,v=
+adc.x*  $nnnn       adc $nnnn, x                3   4*      c=,z=,s=,v=
+adc.y*  $nnnn       adc $nnnn, y                3   4*      c=,z=,s=,v=
+adc*z.x $zz         adc ($zz, x)                2   6       c=,z=,s=,v=
+adc.y*z $zz         adc ($zz), y                2   5*      c=,z=,s=,v=
+================================================================================
+:: bitwise AND:                                 #   cycles  flags
+================================================================================
+and     $nn         and # $nn                   2   2       z=,s=
+and.z   $zz         and $zz                     2   3       z=,s=
+and.z.x $zz         and $zz, x                  2   4       z=,s=
+and*    $nnnn       and $nnnn                   3   4       z=,s=
+and.x*  $nnnn       and $nnnn, x                3   4*      z=,s=
+and.y*  $nnnn       and $nnnn, y                3   4*      z=,s=
+and*z.x $zz         and ($zz, x)                2   6       z=,s=
+and.y*z $zz         and ($zz), y                2   5       z=,s=
+================================================================================
+:: arithmetic shift left:                       #   cycles  flags
+================================================================================
+asl                 asl                         1   2       c=,z=,s=
+asl.z   $zz         asl $zz                     2   5       c=,z=,s=
+asl.z.x $zz         asl $zz, x                  2   6       c=,z=,s=
+asl*    $nnnn       asl $nnnn                   3   6       c=,z=,s=
+asl.x*  $nnnn       asl $nnnn, x                3   7       c=,z=,s=
+================================================================================
+:: branches:                                    #   cycles  flags
+================================================================================
+beq     $nnnn       beq $nnnn                   2   3*      preserved
+bne     $nnnn       bne $nnnn                   2   3*      preserved
+bcc     $nnnn       bcc $nnnn                   2   3*      preserved
+bcs     $nnnn       bcs $nnnn                   2   3*      preserved
+bpl     $nnnn       bpl $nnnn                   2   3*      preserved
+bmi     $nnnn       bmi $nnnn                   2   3*      preserved
+bvc     $nnnn       bvc $nnnn                   2   3*      preserved
+bvs     $nnnn       bvs $nnnn                   2   3*      preserved
+================================================================================
+:: bit compare:                                 #   cycles  flags
+================================================================================
+bit.z   $zz         bit $zz                     2   3       z=,s=,v=[^1]
+bit     $nnnn       bit $nnnn                   3   4       z=,s=,v=[^1]
+================================================================================
+:: break:                                       #   cycles  flags
+================================================================================
+brk                 brk                         1   7       i+
+================================================================================
+:: clear flags:                                 #   cycle   flags
+================================================================================
+clc                 clc                         1   2       c-
+cld                 cld                         1   2       d-
+cli                 cli                         1   2       i-
+clv                 clv                         1   2       v-
+================================================================================
+:: compare:                                     #   cycles  flags
+================================================================================
+cmp     $nn         cmp # $nn                   2   2       c=,z=,s=
+cmp.z   $zz         cmp $zz                     2   3       c=,z=,s=
+cmp.z.x $zz         cmp $zz, x                  2   4       c=,z=,s=
+cmp*    $nnnn       cmp $nnnn                   3   4       c=,z=,s=
+cmp.x*  $nnnn       cmp $nnnn, x                3   4*      c=,z=,s=
+cmp.y*  $nnnn       cmp $nnnn, y                3   4*      c=,z=,s=
+cmp*z.x $zz         cmp ($zz, x)                2   6       c=,z=,s=
+cmp.y*z $zz         cmp ($zz), y                2   5*      c=,z=,s=
+--------------------------------------------------------------------------------
+cpx     $nn         cpx # $nn                   2   2       c=,z=,s=
+cpx.z   $zz         cpx $zz                     2   3       c=,z=,s=
+cpx*    $nnnn       cpx $nnnn                   3   4       c=,z=,s=
+--------------------------------------------------------------------------------
+cpy     $nn         cpy # $nn                   2   2       c=,z=,s=
+cpy.z   $zz         cpy $zz                     2   3       c=,z=,s=
+cpy*    $nnnn       cpy $nnnn                   3   4       c=,z=,s=
+================================================================================
+:: decrement:                                   #   cycles  flags
+================================================================================
+dec.z   $zz         dec $zz                     2   5       z=,s=
+dec.z.x $zz         dec $zz, c                  2   6       z=,s=
+dec*    $nnnn       dec $nnnn                   3   6       z=,s=
+dec.x*  $nnnn       dec $nnnn, x                3   7       z=,s=
+--------------------------------------------------------------------------------
+dex                 dex                         1   2       z=,s=
+dey                 dey                         1   2       z=,s=
+================================================================================
+:: increment:                                   #   cycles  flags
+================================================================================
+inc.z   $zz         inc $zz                     2   5       z=,s=
+inc.z.x $zz         inc $zz, x                  2   6       z=,s=
+inc*    $nnnn       inc $nnnn                   3   6       z=,s=
+inc.z*  $nnnn       inc $nnnn, x                3   7       z=,s=
+--------------------------------------------------------------------------------
+inx                 inx                         1   2       z=,s=
+iny                 iny                         1   2       z=,s=
+================================================================================
+:: jumps:                                       #   cycles  flags
+================================================================================
+jmp     $nnnn       jmp $nnnn                   3   3       preserved
+jmp*    $nnnn       jmp ($nnnn)                 3   5       preserved
+jsr     $nnnn       jsr $nnnn                   3   6       preserved
+================================================================================
+:: load register:                               #   cycles  flags
+================================================================================
+lda     $nn         lda # $nn                   2   2       z=,s=
+lda.z   $zz         lda $zz                     2   3       z=,s=
+lda.z.x $zz         lda $zz, x                  2   4       z=,s=
+lda*    $nnnn       lda $nnnn                   3   4       z=,s=
+lda.x*  $nnnn       lda $nnnn, x                3   4*      z=,s=
+lda.y*  $nnnn       lda $nnnn, y                3   4*      z=,s=
+lda*z.x $zz         lda ($zz, x)                2   6       z=,s=
+lda.y*z $zz         lda ($zz), y                2   5*      z=,s=
+--------------------------------------------------------------------------------
+ldx     $nn         ldx # $nn                   2   2       z=,s=
+ldx.z   $zz         ldx $zz                     2   3       z=,s=
+ldx.z.y $zz         ldx $zz, y                  2   4       z=,s=
+ldx*    $nnnn       ldx $nnnn                   3   4       z=,s=
+ldx.y*  $nnnn       ldx $nnnn, y                3   4*      z=,s=
+--------------------------------------------------------------------------------
+ldy     $nn         ldy # $nn                   2   2       z=,s=
+ldy.z   $zz         ldy $zz                     2   3       z=,s=
+ldy.z.x $zz         ldy $zz, x                  2   4       z=,s=
+ldy*    $nnnn       ldy $nnnn                   3   4       z=,s=
+ldy.x*  $nnnn       ldy $nnnn, x                3   4*      z=,s=
+================================================================================
+:: logical shift right:                         #   cycles  flags
+================================================================================
+lsr                 lsr                         1   2       c=,z=,s-
+lsr.z   $zz         lsr $zz                     2   5       c=,z=,s-
+lsr.z.x $zz         lsr $zz, x                  2   6       c=,z=,s-
+lsr*    $nnnn       lsr $nnnn                   3   6       c=,z=,s-
+lsr.x*  $nnnn       lsr $nnnn, x                3   7       c=,z=,s-
+================================================================================
+:: no-operation:                                #   cycles  flags
+================================================================================
+nop                 nop                         1   2       preserved
+================================================================================
+:: bitwise OR                                   #   cycles  flags
+================================================================================
+ora     $nn         ora # $nn                   2   2       z=,s=
+ora.z   $zz         ora $zz                     2   3       z=,s=
+ora.z.x $zz         ora $zz, x                  2   4       z=,s=
+ora*    $nnnn       ora $nnnn                   3   4       z=,s=
+ora.x*  $nnnn       ora $nnnn, x                3   4*      z=,s=
+ora.y*  $nnnn       ora $nnnn, y                3   4*      z=,s=
+ora*z.x $zz         ora ($zz, x)                2   6       z=,s=
+ora.y*z $zz         ora ($zz), y                2   5       z=,s=
+================================================================================
+:: push and pull stack:                         #   cycles  flags
+================================================================================
+pha                 pha                         1   3       preserved
+php                 php                         1   3       preserved
+pla                 pla                         1   4       preserved
+plp                 plp                         1   4       c=,z=,s=,v=,i=,d=
+================================================================================
+:: rotate:                                      #   cycles  flags
+================================================================================
+rol                 rol                         1   2       c=,z=,s=
+rol.z   $zz         rol $zz                     2   5       c=,z=,s=
+rol.z.x $zz         rol $zz, x                  2   6       c=,z=,s=
+rol*    $nnnn       rol $nnnn                   3   6       c=,z=,s=
+rol.x*  $nnnn       rol $nnnn, x                3   7       c=,z=,s=
+--------------------------------------------------------------------------------
+ror                 ror                         1   2       c=,z=,s=
+ror.z   $zz         ror $zz                     2   5       c=,z=,s=
+ror.z.x $zz         ror $zz, x                  2   6       c=,z=,s=
+ror*    $nnnn       ror $nnnn                   3   6       c=,z=,s=
+ror.x*  $nnnn       ror $nnnn, x                3   7       c=,z=,s=
+================================================================================
+:: return:                                      #   cycles  flags
+================================================================================
+rti                 rti                         1   6       c=,z=,s=,v=,i=,d=
+rts                 rts                         1   6       preserved
+================================================================================
+:: subtract with carry (borrow)                 #   cycles  flags
+================================================================================
+sbc     $nn         sbc # $nn                   2   2       c=,z=,s=,v=
+sbc.z   $zz         sbc $zz                     2   3       c=,z=,s=,v=
+sbc.z.x $zz         sbc $zz, x                  2   4       c=,z=,s=,v=
+sbc*    $nnnn       sbc $nnnn                   3   4       c=,z=,s=,v=
+sbc.x*  $nnnn       sbc $nnnn, x                3   4*      c=,z=,s=,v=
+sbc.y*  $nnnn       sbc $nnnn, y                3   4*      c=,z=,s=,v=
+sbc*z.x $zz         sbc ($zz, x)                2   6       c=,z=,s=,v=
+sbc.y*z $zz         sbc ($zz), y                2   5       c=,z=,s=,v=
+================================================================================
+:: set flags:                                   #   cycle   flags
+================================================================================
+sec                 sec                         1   2       c+
+sed                 sed                         1   2       d+
+sei                 sei                         1   2       i+
+================================================================================
+:: store register:                              #   cycles  flags
+================================================================================
+sta.z   $zz         sta $zz                     2   3       preserved
+sta.z.x $zz         sta $zz, x                  2   4       preserved
+sta*    $nnnn       sta $nnnn                   3   4       preserved
+sta.x*  $nnnn       sta $nnnn, x                3   5       preserved
+sta.y*  $nnnn       sta $nnnn, y                3   5       preserved
+sta*z.x $zz         sta ($zz, x)                2   6       preserved
+sta.y*z $zz         sta ($zz), y                2   6       preserved
+--------------------------------------------------------------------------------
+stx.z   $zz         stx $zz                     2   3       preserved
+stx.z.y $zz         stx $zz, y                  2   4       preserved
+stx*    $nnnn       stx $nnnn                   3   4       preserved
+--------------------------------------------------------------------------------
+sty.z   $zz         sty $zz                     2   3       preserved
+sty.z.x $zz         sty $zz, x                  2   4       preserved
+sty*    $nnnn       sty $nnnn                   3   4       preserved
+================================================================================
+:: transger registers:                          #   cycles  flags
+================================================================================
+tax                 tax                         1   2       z=,s=
+tay                 tay                         1   2       z=,s=
+tsx                 tsx                         1   2       z=,s=
+txa                 txa                         1   2       z=,s=
+txs                 txs                         1   2       z=,s=
+tya                 tya                         1   2       z=,s=
+================================================================================
+:: bitwise exclusive OR:                        #   cycles  flags
+================================================================================
+xor     $nn         eor # $nn                   2   2       z=,s=
+xor.z   $zz         eor $zz                     2   3       z=,s=
+xor.z.x $zz         eor $zz, x                  2   4       z=,s=
+xor*    $nnnn       eor $nnnn                   3   4*      z=,s=
+xor.x*  $nnnn       eor $nnnn, x                3   4*      z=,s=
+xor.Y*  $nnnn       eor $nnnn, Y                3   4*      z=,s=
+xor*z.x $zz         eor ($zz, x)                2   6       z=,s=
+xor.y*z $zz         eor ($zz), y                2   5*      z=,s=
+================================================================================
+:: footnotes:                                   #   cycles  flags
+--------------------------------------------------------------------------------
+[^1]    bit 7 (sign) & bit 6 (overflow) are copied from the operand

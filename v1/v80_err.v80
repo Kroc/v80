@@ -175,7 +175,9 @@ _unexp_eol      .b "Expected expression" 0
         ld.B    0
         call    :printDecNum
 
-        jp      :osQuit
+        ;-----------------------------------------------------------------------
+        ld.A    1                       ; return non-zero error-number to host
+        jp      :osQuitErr
 
 
 :errIfStackOverflow

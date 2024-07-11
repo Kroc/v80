@@ -106,7 +106,7 @@ $0080   :cpm_dma                        ; deafult sector read address
 ; bootstrap:
 ;===============================================================================
 ; assembly begins with the system file instead of "v80.v80" because the first
-; code to execute is determined by the platform / OS we're running on. CP/Ms
+; code to execute is determined by the platform / OS we're running on. CP/M's
 ; starting address is $0100:
 ;
 $0100   :osBoot
@@ -905,8 +905,18 @@ _ok     ld.DE   :_infile                ; return input name str addr
         ret
 
         ;-----------------------------------------------------------------------
-_v80    .b      ".V80" 0                ; default input file-name extension
-_com    .b      ".COM" 0                ; default output file-name extension
+        ; default input file-name extension
+_v80    ; (this varies by supported ISA)
+?=      #ISA_Z80 - 1
+        .b      ".V80" 0
+?=      #ISA_6502 - 1
+        .b      ".V65" 0
+        ; default output file-name extension
+_com    ; (this varies by supported ISA)
+?=      #ISA_Z80 - 1
+        .b      ".COM" 0
+?=      #ISA_6502 - 1
+        .b      ".BIN" 0
 
         ;=======================================================================
         ; find the first dot in a file-name:
@@ -939,8 +949,13 @@ _help   ld.DE   _str                    ; no parameters!
         call    :osPrintStrZ            ; print the command usage
         jp      :osQuit                 ;  and quit
 
-_str    .b      "    V80 INPUT.V80 [OUTPUT.COM]" #LF 0
-
+_str    ; command-line usage:
+        ; (this varies by supported ISA)
+?=      #ISA_Z80 - 1
+        .b      "    V80 INPUT.V80 [OUTPUT.COM]" #LF 0
+?=      #ISA_6502 - 1
+        ; V80x65 runs on Z80, but assembles 6502 code (".v65")
+        .b      "    V80_6502 INPUT.V65 [OUTPUT.BIN]" #LF 0
 
 :_getParam
 ;===============================================================================

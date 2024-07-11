@@ -5,10 +5,10 @@
 ;
 ; - is z80 code (v80)
 ; - runs on CP/M
-; - assembles z80 instructions
+; - assembles 6502 instructions
 ;
 #SYS_CPM        1                       ; the OS is CP/M (on z80)
-#ISA_Z80        1                       ; embed parser for z80 instructions
-#ISA_6502       0                       ; (not 6502)
+#ISA_6502       1                       ; embed parser for 6502 instructions
+#ISA_Z80        0                       ; (not z80)
 
 .i      "v80_cpm.v80"

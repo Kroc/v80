@@ -7,6 +7,7 @@ SET "BIN_DIR=bin"
 
 REM # the PC assembler and linker is WLA-DX
 SET WLA_Z80="%BIN_DIR%\wla-dx\wla-z80.exe" -x
+SET WLA_6502="%BIN_DIR%\wla-dx\wla-6502.exe" -x
 SET WLA_LINK="%BIN_DIR%\wla-dx\wlalink.exe" -A -S
 SET WLA_DEBUG=-DDEBUG=1
 
@@ -32,45 +33,44 @@ DEL /F /Q "build\*.*"
     -o "build\v80.o" ^
        "v80.wla"
 
-IF ERRORLEVEL 1 EXIT /B 1
+IF ERRORLEVEL 1 GOTO:ERR
 
 %WLA_LINK% -v -b ^
     "v0\link.ini" ^
     "build\v80.com"
 
-IF ERRORLEVEL 1 EXIT /B 1
+IF ERRORLEVEL 1 GOTO:ERR
+ECHO:
 
-REM # build tests:
-REM # ==========================================================================
+REM # build & run tests:
+REM # --------------------------------------------------------------------------
 REM # clear NTVCM cache
-DEL /F /Q "%DIR_NTVCM%\*.v80"
-DEL /F /Q "%DIR_NTVCM%\*.com"
+DEL /F /Q "%DIR_NTVCM%\*.v??"  >NUL
+DEL /F /Q "%DIR_NTVCM%\*.com"  >NUL
+DEL /F /Q "%DIR_NTVCM%\*.sym"  >NUL
 
 REM # copy the COM files into the NTVCM disk directory
 REM # "/N" forces an 8.3 file-name in the destination
-COPY /N /Y "build\*.com" /B "%DIR_NTVCM%" /B
-REM # copy test v80 files
-COPY /N /Y "test\*.v80" /A "%DIR_NTVCM%" /A
+COPY /N /Y "build\*.com" /B "%DIR_NTVCM%" /B  >NUL
+REM # copy test v80/v65 files
+COPY /N /Y "test\*.v??" /A "%DIR_NTVCM%" /A   >NUL
 
 REM # clear RunCPM cache
-IF NOT EXIST "%DIR_RUNCPM%\A\0" MKDIR "%DIR_RUNCPM%\A\0"
-DEL /F /Q "%DIR_RUNCPM%\A\0\*.*"
+IF NOT EXIST "%DIR_RUNCPM%\A\0" MKDIR "%DIR_RUNCPM%\A\0"  >NUL
+DEL /F /Q "%DIR_RUNCPM%\A\0\*.*"  >NUL
 
 REM # copy the COM files into the RunCPM disk directory
 REM # "/N" forces an 8.3 file-name in the destination
-COPY /N /Y "build\*.com" /B "%DIR_RUNCPM%\A\0" /B
-REM # copy test v80 files
-COPY /N /Y "test\*.v80" /A "%DIR_RUNCPM%\A\0" /A
+COPY /N /Y "build\*.com" /B "%DIR_RUNCPM%\A\0" /B  >NUL
+REM # copy test v80/v65 files
+COPY /N /Y "test\*.v??" /A "%DIR_RUNCPM%\A\0" /A  >NUL
 
-REM # run test.v80 without WLA equivalent
-CALL :v80 test
-IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
+REM # run "test.v80" without WLA equivalent
+CALL :v80_z80 test
 
 REM # do binary comparisons
-CALL :RunTest z80
-IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
-CALL :RunTest jr
-IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
+CALL :RunTestZ80 z80
+CALL :RunTestZ80 jr
 
 REM DEL /F /Q "%BIN_DIR%\agon\sdcard\v80\*.*"
 REM COPY /N /Y "release\v80.com" /B "%BIN_DIR%\agon\sdcard\v80\V80.COM" /B
@@ -80,77 +80,153 @@ REM PUSHD "%BIN_DIR%\agon"
 REM "fab-agon-emulator.exe" --scale integer --mode 3
 REM POPD & EXIT
 
-REM # --------------------------------------------------------------------------
 REM # if no errors, use v80 to assemble itself
+REM # ==========================================================================
 
 REM # copy v80 [v1] source into NTVCM directory
-COPY /N /Y "v1\*.v80" /B "%DIR_NTVCM%" /A
+COPY /N /Y "v1\*.v??" /B "%DIR_NTVCM%" /A  >NUL
 REM # and RunCPM
-COPY /N /Y "v1\*.v80" /A "%DIR_RUNCPM%\A\0" /A
+COPY /N /Y "v1\*.v??" /A "%DIR_RUNCPM%\A\0" /A  >NUL
 
 REM # do a 1st-generation build of v80 [v1] using v80 [v0]!
-CALL :v80   cpm_z80 v80.com
-IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
+CALL :v80_z80   cpm_z80 v80.com
 
 REM # do a 2nd-generation build of v80, i.e. v80 [v1] building v80 [v1]
-CALL :v80   cpm_z80 v80_2nd.com
-IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
+CALL :v80_z80   cpm_z80 v80_2nd.com
 
 REM # compare 1st and 2nd generation builds
-FC /B "%DIR_NTVCM%\v80.com" "%DIR_NTVCM%\v80_2nd.com"
-IF ERRORLEVEL 1 START "" %BIN_VBINDIFF% "%DIR_NTVCM%\v80.com" "%DIR_NTVCM%\v80_2nd.com"
+FC /B "%DIR_NTVCM%\v80.com" "%DIR_NTVCM%\v80_2nd.com"  >NUL
+IF ERRORLEVEL 1 START "" %BIN_VBINDIFF% "%DIR_NTVCM%\v80.com" "%DIR_NTVCM%\v80_2nd.com" & GOTO :ERR
 
-REM # --------------------------------------------------------------------------
+REM # 6502:
+REM # ==========================================================================
+REM # use v80 to assemble a version of v80 that assembles 6502 code...
+CALL :v80_z80   cpm_6502.v80 v80x65.com
+
+COPY /N /Y "%DIR_NTVCM%\v80x65.com" /B "%DIR_RUNCPM%\A\0" /B  >NUL
+
+REM # verify 6502 assembling
+CALL :RunTest6502 6502
+
+REM # ==========================================================================
 REM # if no errors, copy v80 binary to release folder
 
-COPY /N /Y "%DIR_NTVCM%\v80.com" /B "release\v80.com" /B
+ECHO * Populate release folder...
+COPY /N /Y "%DIR_NTVCM%\v80.com" /B "release\v80.com" /B  >NUL
 
-ECHO OK.
-EXIT /B 0
+ECHO [OK.]
+GOTO :END
 
-:RunTest
+:RunTestZ80
 REM # ==========================================================================
-ECHO:
+REM # run a comparison between WLA-DX-Z80 & V80-Z80
+REM # --------------------------------------------------------------------------
 
 REM # build "%~1.wla" with WLA-DX & "%~1.v80" with v80
-CALL :wla %~1
-CALL :v80 %~1
+CALL :wla_z80 %~1
+CALL :v80_z80 %~1
 
 REM # compare the two files
-FC /B "build\%~1.com" "%DIR_NTVCM%\%~1.com"
-IF ERRORLEVEL 1 START "" %BIN_VBINDIFF% "build\%~1.com" "%DIR_NTVCM%\%~1.com"
+FC /B "build\%~1.com" "%DIR_NTVCM%\%~1.com"  >NUL
+IF ERRORLEVEL 1 START "" %BIN_VBINDIFF% "build\%~1.com" "%DIR_NTVCM%\%~1.com" & GOTO:ERR
 
 GOTO:EOF
 
-:wla
-REM # assemble with WLA-DX
+:wla_z80
+REM # ==========================================================================
+REM # assemble with WLA-DX-Z80
 REM # --------------------------------------------------------------------------
+ECHO * wla-z80.exe %~1 %~2
+
 REM # assmeble file to test.o, regardless of input name
 %WLA_Z80% ^
     -I "test" ^
     -o "build\test.o" ^
        "test\%~1.wla"
 
-IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
+IF ERRORLEVEL 1 GOTO:ERR
 
 REM # link test.o to input named .com file
 %WLA_LINK% ^
     -b "test\link.ini" ^
        "build\%~1.com"
 
-REM # return with result of the link
-EXIT /B %ERRORLEVEL%
+IF ERRORLEVEL 1 GOTO:ERR
+GOTO:EOF
 
-:v80
-REM # assemble with V80
+:v80_z80
+REM # ==========================================================================
+REM # assemble with v80-Z80
 REM # --------------------------------------------------------------------------
 PUSHD "%DIR_NTVCM%"
 
-%BIN_NTVCM% v80.com %~1 %~2
+ECHO * v80.com %~1 %~2
+%BIN_NTVCM% v80.com %~1 %~2 > %~n1.sym
+IF ERRORLEVEL 1 TYPE %~n1.sym
 
 REM # if NTVCM hits a HALT instruction, launch RunCPM
-IF %ERRORLEVEL% EQU -1 POPD & START "RunCPM" /D "%DIR_RUNCPM%" %BIN_RUNCPM% & EXIT /B 1
+IF %ERRORLEVEL% EQU -1 POPD & START "RunCPM" /D "%DIR_RUNCPM%" %BIN_RUNCPM% & GOTO:ERR
+IF ERRORLEVEL 1 GOTO:ERR
+
+POPD
+GOTO:EOF
+
+:RunTest6502
+REM # ==========================================================================
+REM # run a comparison between WLA-DX-6502 & V80-6502
+REM # --------------------------------------------------------------------------
+
+REM # build "%~1.wla" with WLA-DX-6502 & "%~1.v65" with v80-6502
+CALL :wla_6502 %~1
+CALL :v80_6502 %~1
+
+REM # compare the two files
+FC /B "build\%~1.bin" "%DIR_NTVCM%\%~1.bin"  >NUL
+IF ERRORLEVEL 1 START "" %BIN_VBINDIFF% "build\%~1.bin" "%DIR_NTVCM%\%~1.bin" & GOTO:ERR
+
+GOTO:EOF
+
+:wla_6502
+REM # ==========================================================================
+REM # assemble with WLA-DX-6502
+REM # --------------------------------------------------------------------------
+REM # assmeble file to test.o, regardless of input name
+%WLA_6502% ^
+    -I "test" ^
+    -o "build\test.o" ^
+       "test\%~1.wla"
+
+IF ERRORLEVEL 1 GOTO:ERR
+
+REM # link test.o to input-named .bin file
+%WLA_LINK% ^
+    -b "test\link.ini" ^
+       "build\%~1.bin"
+
+IF ERRORLEVEL 1 GOTO:ERR
+GOTO:EOF
+
+:v80_6502
+REM # ==========================================================================
+REM # assemble with v80-6502
+REM # --------------------------------------------------------------------------
+PUSHD "%DIR_NTVCM%"
+
+ECHO * v80x65.com %~1 %~2
+%BIN_NTVCM% v80x65.com %~1 %~2  > %~n1.sym
+IF ERRORLEVEL 1 TYPE %~n1.sym
+
+REM # if NTVCM hits a HALT instruction, launch RunCPM
+IF %ERRORLEVEL% EQU -1 POPD & START "RunCPM" /D "%DIR_RUNCPM%" %BIN_RUNCPM% & GOTO:ERR
+IF ERRORLEVEL 1 GOTO:ERR
 
 POPD
 ECHO:
 GOTO:EOF
+
+:ERR
+ECHO ! ERROR
+EXIT 1
+
+:END
+EXIT 0

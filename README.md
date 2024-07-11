@@ -2,12 +2,30 @@
 
 >   If a computer can’t compile and deploy its own software then it’s not a general purpose computer, it's an appliance.
 
-_v80_ is a very small (8KB), very simple Z80 assembler written in Z80 that runs on real 8-bit hardware, but also on PC (via [NTVCM] or [RunCPM]). _v80_'s goal is to ensure reproducability of 8-bit software on real 8-bit hardware, both modern and retro, whilst never excluding PC-based development.
+_v80_ is an 8-bit native, multi-platform, multi-CPU cross-assembler that runs on real 8-bit hardware, but also on PC (via [NTVCM] or [RunCPM]). _v80_'s goal is to ensure reproducability of 8-bit software on real 8-bit hardware, both modern and retro, whilst never excluding PC-based development.
 
 [NTVCM]:  https://github.com/davidly/ntvcm
 [RunCPM]: https://github.com/MockbaTheBorg/RunCPM
 
-It currently runs on CP/M with plans to make it self-hosting (can assemble itself) with ports to [Agon Light], [Zeal 8-bit OS] and other Z80-based systems. In the future _v80_ will support other CPUs and cross-assembly (assembling 6502 on Z80 etc).
+_"v80"_ refers to the Z80 port, but versions that target different CPUs
+and/or run on different host CPUs are available, or are planned:
+
+    v80         <- runs on Z80  - assembles Z80 code ".v80"
+    v80x65      <-      "       - assembles 6502 code ".v65"
+    v80x69*     <-      "       - assembles 6809 code ".v69"
+    v80x83*     <-      "       - assembles GameBoy (SM83) code ".v83"
+
+    v65*        <- runs on 6502 - assembles 6502 code ".v65"
+
+    v69*        <- runs on 6809 - assembles 6809 code (.v69)
+    v69x65*     <-      "       - assembles 6502 code (.v65)
+
+    *(coming in a future release)
+
+If you would like to see _v80_ on your favourite CPU / system
+consider raising an issue at https://github.com/kroc/v80
+
+It currently runs on CP/M and can assemble itself with plans to port it to [Agon Light], [Zeal 8-bit OS] and other Z80-based systems. _v80_ can assemble 6502 code via its pluggable ISA support and a native 6502 port is planned.
 
 [Zeal 8-bit OS]: https://github.com/zeal8bit/Zeal-8-bit-OS
 [Agon Light]:    https://www.thebyteattic.com/p/agon.html
@@ -16,7 +34,8 @@ If you feel like you could write a C version of _v80_, [your help](https://githu
 
 ## ~~Features~~
 
-- No linker, we have linker at home → includes
+- No linker, we have linker at home → includes  
+  (the stdout of _v80_ is a symbol file!)
 - No Macros! Copy + Paste is your friend or re-use includes
 - $FFFF/65'535 is the largest number in the universe
 - No floating point numbers. Have you _tried_ coding floats on an 8-bit CPU??
@@ -28,6 +47,8 @@ Features added since v0:
 
 - Local labels! (`_`)
 - Decimal numbers!
+- Character literals (`'x`)
+- Fill keyword (`.f`)
 
 ## Syntax Sample:
 
@@ -132,13 +153,13 @@ The basic principle is that _v80_ can only recognise a word by the first charact
 
 A full guide on the syntax is included in ["release/readme.txt"](/release/readme.txt). If you're using VSCode, there's an extension for _v80_ syntax highlighting in the marketplace under [v80-vscode](https://marketplace.visualstudio.com/items?itemName=KrocCamen.vscode-v80).
 
-## Building v80
+## Building _v80_
 
-If you just want to use _v80_ to write and assemble Z80 software, just download a [release](https://github.com/Kroc/v80/releases). If you want to build v80 from source, everything needed to build _v80_ on Windows is included in the repository. Building on Mac, Linux and UNIX-likes can be done, but will require you to source / compile your own binaries of [WLA-DX] & [NTVCM].
+If you just want to use _v80_ to write and assemble Z80 (or 6502) software, just download a [release](https://github.com/Kroc/v80/releases). If you want to build _v80_ from source, everything needed to build _v80_ on Windows is included in the repository. Building on Mac, Linux and UNIX-likes can be done, but will require you to source / compile your own binaries of [WLA-DX] & [NTVCM].
 
 [WLA-DX]: https://github.com/vhelin/wla-dx
 
-Just run "build.bat" to assemble _v80_ -- the binary is placed in the "releases" folder.
+Just run "build.bat" to assemble _v80_ and related cross-assemblers -- the binary is placed in the "releases" folder.
 
 ### Running on Real 8-bit, CP/M Hardware:
 
@@ -148,6 +169,12 @@ _v80_ is assembled as a generic CP/M binary that should run on any Z80-based, CP
 [cpmtools]: http://www.moria.de/~michael/cpmtools/
 
 ## Change History
+
+### 2024/7/?: v1.0.0
+
+- _v80_ can assemble itself via a _v80_-syntax version of _v80_!
+- _v80_ can now assemble 6502 code!  
+  - _"v80x65"_ is a 6502 cross-assembler version of _v80_, self-assembled by _v80_ using pluggable ISAs. Support for more CPU ISAs will come in the future
 
 ### 2024/7/1: v0.1.3
 

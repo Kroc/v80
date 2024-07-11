@@ -1,6 +1,20 @@
 ; v80, (C) Kroc Camen 2023-2024, MIT License
 ; the parsing / assembling loop
 ;
+; include the selected ISA:
+;===============================================================================
+; remember that this is the instruction set that you want your v80 binary
+; to assemble, not the CPU it's running on! this code is the z80 port (v80),
+; so it's implied that you're running on Z80
+;
+?=      #ISA_Z80 - 1
+        .i      "v80_z80.v80"           ; Z80 ISA support code
+        .i      "isa_z80.v80"           ; Z80 ISA instructions
+?=      #ISA_6502 - 1
+        .i      "v80_6502.v80"          ; 6502 ISA support code
+        .i      "isa_6502.v80"          ; 6502 ISA instructions
+
+
 :assembleFile
 ;===============================================================================
 ; opens a file and assembles it:
@@ -1221,9 +1235,9 @@ _ret    xor.A                           ; return zero-flag set for optimisation
 ;===============================================================================
 ; parse an instruction into opcodes:
 ;
-; the CPU-specific module (e.g. "z80.wla") provides a binary tree, `opcodes`,
-; that this routine walks to match instruction names to opcodes and a CPU-
-; specific set of flags that determines which parameters are required
+; the CPU-specific module (e.g. "v80_z80.wla") provides a binary tree,
+; :opcodes, that this routine walks to match instruction names to opcodes
+; and a CPU-specific set of flags that determines which parameters are required
 ;
 ; in:   A               first character of word to parse
 ;       HL              heap addr
@@ -1342,6 +1356,22 @@ _get    call    :readChar               ; read one more character
 
 _ok     ex.DE.HL                        ; swap heap back to HL
 
-        ; emit the opcode and parse any necessary parameters
-        ; (this routine is in the CPU-specific module, e.g. "z80.wla")
-        jp      :emitOpcode
+        ; the flags byte is a set of flags for CPU-specifics and what, if any,
+        ; kind of parameter is required. regardless of ISA, a "0" (with hi-bit
+        ; removed) always indicates no-parameters
+        ;
+        ld.A.B                          ; opcode flags byte
+        and     %01111111               ; remove the top bit
+
+        ; if flags byte is non-zero, analyse further (this routine is in
+        ; the CPU-specific module, e.g. "v80_z80.v80" or "v80_6502.v80")
+        ;
+        jp?nz   :emitOpcode
+
+        ; single opcode, no params:
+        ;-----------------------------------------------------------------------
+        ld*IY.C [ 0 ]                   ; emit opcode byte
+        inc.IY                          ; move to next byte in code-segment
+        inc.IX                          ; increment virtual program-counter
+
+        ret

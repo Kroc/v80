@@ -1,10 +1,8 @@
 ; v80, (C) Kroc Camen 2023-2024, MIT License
 ; z80 ISA opcode tree
 ;
-; Z80 opcode table:
-;===============================================================================
 ; types of opcodes:
-;
+;===============================================================================
 ;             op                ; implied
 ;    ED       op                ; implied, ED-extended
 ;       CB    op                ; implied, CB-extended
