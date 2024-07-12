@@ -39,10 +39,10 @@ for assembling v80/v65 syntax source code on PCs "ntvcm.exe" is provided to
 emulate CP/M. Therefore, to invoke v80/v80x65 on PC, call it via ntvcm.exe:
 
 |   ntvcm.exe v80.com input.v80 [output.com]
-|   ntvcm.exe v80x65.com input.v65 [output.bin]
+|   ntvcm.exe v80x65.com input.v65 [output.prg]
 
 The output file-name is optional and defaults to the input file-name
-with ".com" (v80) or ".bin" (v65) file-extension.
+with ".com" (v80) or ".prg" (v65) file-extension.
 
 To ensure that source code written in v80 syntax can be assembled on real
 8-bit hardware, v80 enforces CP/M-style file-name restrictions, even on PC!

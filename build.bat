@@ -47,6 +47,7 @@ REM # --------------------------------------------------------------------------
 REM # clear NTVCM cache
 DEL /F /Q "%DIR_NTVCM%\*.v??"  >NUL
 DEL /F /Q "%DIR_NTVCM%\*.com"  >NUL
+DEL /F /Q "%DIR_NTVCM%\*.prg"  >NUL
 DEL /F /Q "%DIR_NTVCM%\*.sym"  >NUL
 
 REM # copy the COM files into the NTVCM disk directory
@@ -181,8 +182,8 @@ CALL :wla_6502 %~1
 CALL :v80_6502 %~1
 
 REM # compare the two files
-FC /B "build\%~1.bin" "%DIR_NTVCM%\%~1.bin"  >NUL
-IF ERRORLEVEL 1 START "" %BIN_VBINDIFF% "build\%~1.bin" "%DIR_NTVCM%\%~1.bin" & GOTO:ERR
+FC /B "build\%~1.prg" "%DIR_NTVCM%\%~1.prg"  >NUL
+IF ERRORLEVEL 1 START "" %BIN_VBINDIFF% "build\%~1.prg" "%DIR_NTVCM%\%~1.prg" & GOTO:ERR
 
 GOTO:EOF
 
@@ -198,10 +199,10 @@ REM # assmeble file to test.o, regardless of input name
 
 IF ERRORLEVEL 1 GOTO:ERR
 
-REM # link test.o to input-named .bin file
+REM # link test.o to input-named .prg file
 %WLA_LINK% ^
     -b "test\link.ini" ^
-       "build\%~1.bin"
+       "build\%~1.prg"
 
 IF ERRORLEVEL 1 GOTO:ERR
 GOTO:EOF

@@ -6,7 +6,7 @@ __*
 # ignore build files
 *.o
 *.com
-*.bin
+*.prg
 *.sym
 *.lst
 *.zip

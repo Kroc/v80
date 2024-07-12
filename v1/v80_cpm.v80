@@ -786,17 +786,16 @@ _spc    .f      #SPC    32              ; a pool of spaces
         ld.SP.HL                        ; set stack pointer
 
         ; always print the banner first,
-        ; it differs for each OS/platform
+        ; it differs for each OS/platform:
         ;
-        ld.DE   _banner                 ; print the program banner
+        ; NOTE: the banner string is defined in the top-level build file,
+        ;       such as "cpm_z80.v80" that selects the OS and ISA pair
+        ;
+        ld.DE   :banner
         call    :osPrintLn
 
         ; run the program:
         jp      :main                   ; we will not return from here!
-
-        ;-----------------------------------------------------------------------
-_banner .b      "; v80 CP/M v1.0-dev - github.com/kroc/v80" #LF
-        .b      "; (C) Kroc Camen 2023-2024, MIT License" 0
 
         ;=======================================================================
         ; CP/M version less than 2.2 -- call BDOS manually for safety
@@ -862,7 +861,7 @@ _str    .b      "! ERROR: CP/M 2.2 or higher required!$"
         ld.A    4                       ; must be at least 4 chars free
         cp.C                            ; is that the case?
         jr?nc   _out                    ; if not, skip appending file-extension
-        ld.HL   _com                    ; ".COM", NULL string
+        ld.HL   :outext                 ; (default output file-name extension)
         ld.C    5                       ; number of bytes
         ldir                            ; = copy BC bytes from HL to DE
 
@@ -897,26 +896,12 @@ _clear  ld*HL.A                         ; clear one byte
         ld.A    4                       ; must be at least 4 chars free
         cp.C                            ; is that the case?
         jr?nc   _ok                     ; if not, skip appending file-extension
-        ld.HL   _v80                    ; ".V80", NULL string
+        ld.HL   :inext                  ; (default input file-name extension)
         ld.C    5                       ; number of bytes
         ldir                            ; = copy BC bytes from HL to DE
 
 _ok     ld.DE   :_infile                ; return input name str addr
         ret
-
-        ;-----------------------------------------------------------------------
-        ; default input file-name extension
-_v80    ; (this varies by supported ISA)
-?=      #ISA_Z80 - 1
-        .b      ".V80" 0
-?=      #ISA_6502 - 1
-        .b      ".V65" 0
-        ; default output file-name extension
-_com    ; (this varies by supported ISA)
-?=      #ISA_Z80 - 1
-        .b      ".COM" 0
-?=      #ISA_6502 - 1
-        .b      ".BIN" 0
 
         ;=======================================================================
         ; find the first dot in a file-name:
@@ -945,17 +930,14 @@ _in     ld.A*DE                         ; get current char
         ret
 
         ;=======================================================================
-_help   ld.DE   _str                    ; no parameters!
+        ; display the usage string when no parameters are present:
+        ;
+        ; NOTE: the usage string is defined in the top-level build file,
+        ;       such as "cpm_z80.v80" that selects the OS and ISA pair
+        ;
+_help   ld.DE   :usage                  ; no parameters!
         call    :osPrintStrZ            ; print the command usage
         jp      :osQuit                 ;  and quit
-
-_str    ; command-line usage:
-        ; (this varies by supported ISA)
-?=      #ISA_Z80 - 1
-        .b      "    V80 INPUT.V80 [OUTPUT.COM]" #LF 0
-?=      #ISA_6502 - 1
-        ; V80x65 runs on Z80, but assembles 6502 code (".v65")
-        .b      "    V80_6502 INPUT.V65 [OUTPUT.BIN]" #LF 0
 
 :_getParam
 ;===============================================================================

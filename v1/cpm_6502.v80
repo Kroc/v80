@@ -12,3 +12,21 @@
 #ISA_Z80        0                       ; (not z80)
 
 .i      "v80_cpm.v80"
+
+; the banner will vary for each OS/ISA pair, so is defined here.
+; this text will be in the code-segment and will be overwritten by assembly
+;
+:banner .b      "; v80x65 | OS: CP/M [Z80] | ISA: 6502" #LF
+        .b      "; (C) Kroc Camen 2023-2024, MIT License" #LF
+        .b      "; v1.0-dev <github.com/kroc/v80>" #LF
+        .b      ";" 0
+
+; for CP/M specifically, this is the usage message displayed
+; when no parameters are given on the command line:
+;
+:usage  .b      "    V80x65 INPUT.V65 [OUTPUT.PRG]" #LF 0
+
+; the default file-extensions to use for input & output file-names:
+;
+:inext  .b      ".V65" 0
+:outext .b      ".PRG" 0
