@@ -484,7 +484,8 @@ $ ( :buffers + 128 )            :str    ; e.g. $2180...$21FF (128 bytes)
 $ ( :buffers + 256 )            :code   ; e.g. $2200
 
 ;///////////////////////////////////////////////////////////////////////////////
-; after defining the buffer addresses, return the program-counter
-; to what it was to allow for any further once-off code
+; after defining the buffer addresses, return the program-counter to what it
+; was. note that changing the virtual program-counter *does not* emit padding
+; bytes, allowing you to define arbitrary label addresses
 ;
 $       :end_of_v80

@@ -170,7 +170,7 @@ _v80_ is assembled as a generic CP/M binary that should run on any Z80-based, CP
 
 ## Change History
 
-### 2024/7/?: v1.0.0
+### 2024/7/?: v1.0.0-dev
 
 - _v80_ can assemble itself via a _v80_-syntax version of _v80_!
 - _v80_ can now assemble 6502 code!  
@@ -180,13 +180,13 @@ _v80_ is assembled as a generic CP/M binary that should run on any Z80-based, CP
 
 In a spectacular case of not seeing the woods for the trees, the expression parser wasn't evaluating anything more than a single operator and ignoring the rest of the expression. Unary operators were also not working due to expected registers changing at some point.
 
-v80 now assembles itself byte-for-byte compared to the WLA-DX version meaning there should be no more surprise bug-fix releases, and a v80 version of v80 will be coming with v1.0!
+_v80_ now assembles itself byte-for-byte compared to the WLA-DX version meaning there should be no more surprise bug-fix releases, and a _v80_ version of _v80_ will be coming with v1.0!
 
 ### 2024/7/1: v0.1.2
 
 - Square brackets allowed as alternatives to parenthesis
 
-Many fixes realised whilst working on v80 assembling itself:
+Many fixes realised whilst working on _v80_ assembling itself:
 
 - Expression parsing was sometimes returning carry-set if not deferred
 - Multiplication was straight-up broken!

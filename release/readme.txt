@@ -67,8 +67,8 @@ the current directory to that of v80.com before invoking it.
 This could be avoided with a native C version of v80, so if this is something
 you think you could write, please see https://github.com/Kroc/v80/issues/4
 
-This release bundle include an ntvcm executable for Windows;
-for Mac, Linux & all UNIX-likes, you'll have to compile ntvcm
+This release bundle includes an NTVCM executable for Windows;
+for Mac, Linux & all UNIX-likes, you'll have to compile NTVCM
 from source: https://github.com/davidly/ntvcm
 
 
@@ -416,12 +416,12 @@ v80 does not use standard instruction syntax, i.e. Intel (8080) / Zilog (Z80),
 or MOS (6502). v80's syntax was chosen to be as easy and as fast as possible
 to parse, but you should also find them easy to type!
 
-See "z80.txt" for a complete list of Z80 mnemonics with side-by-side Zilog
+See "isa_z80.txt" for a complete list of Z80 mnemonics with side-by-side Zilog
 equivalents as well as cycle-counts and flag-states for the original Z80/Z80A.
 
 - use ".v80" file-extension for Z80 source code
 
-See "6502.txt" for a complete list of 6502 mnemonics with side-by-side MOS
+See "isa_6502.txt" for a complete list of 6502 mnemonics with side-by-side MOS
 equivalents as well as cycle-counts and flag-states for the original 6502/6510
 etc.
 
