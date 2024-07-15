@@ -8,30 +8,14 @@ emitOpcode:
 ; write CPU opcode bytes, parsing any required parameters:
 ;
 ; in:   B               opcode flags byte from the opcode table
+;       A               same as above but with bit 7 ANDed off
 ;       C               opcode byte
 ;       HL              heap address for any deferred expressions
 ;
 ; out:  HL              parsing of instruction parameters may push to heap
 ;       A, BC, DE       (clobbered)
 ;===============================================================================
-        ; the flags byte is a set of flags for Z80-specifics
-        ; and what, if any, kind of parameter is required
-        ;-----------------------------------------------------------------------
-        ld      A,      B               ; opcode flags byte
-        and     %01111111               ; remove the top bit
-        jr      nz,     +               ; if 0, no extension or params
-
-        ; single opcode, no params:
-        ;-----------------------------------------------------------------------
-        ld      [IY+0], C               ; emit opcode byte
-        inc     IY                      ; move to next byte in code-segment
-        inc     IX                      ; increment virtual program-counter
-
-        ret
-
-        ; opcode with extensions or parameters:
-        ;=======================================================================
-+       bit     6,      B               ; bit 6 indicates IX or IY
+        bit     6,      B               ; bit 6 indicates IX or IY
         jr      nz,     @ixy            ; go handle IX|IY madness...
 
         ; is it a $CB or $ED extended opcode?

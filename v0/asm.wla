@@ -1335,8 +1335,24 @@ parseInstruction:
 
 +       ex      DE,     HL              ; swap heap back to HL
 
-        ; emit the opcode and parse any necessary parameters
-        ; (this routine is in the CPU-specific module, e.g. "z80.wla")
-        jp      emitOpcode
+        ; the flags byte is a set of flags for CPU-specifics and what, if any,
+        ; kind of parameter is required. regardless of ISA, a "0" (with hi-bit
+        ; removed) always indicates no-parameters
+        ;
+        ld      A,      B               ; opcode flags byte
+        and     %01111111               ; remove the top bit
+
+        ; if flags byte is non-zero, analyse further (this routine is in
+        ; the CPU-specific module, e.g. "v80_z80.v80" or "v80_6502.v80")
+        ;
+        jp      nz,     emitOpcode
+
+        ; single opcode, no params:
+        ;-----------------------------------------------------------------------
+        ld      [IY+0], C               ; emit opcode byte
+        inc     IY                      ; move to next byte in code-segment
+        inc     IX                      ; increment virtual program-counter
+
+        ret
 
 .ENDB
