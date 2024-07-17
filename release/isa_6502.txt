@@ -121,7 +121,7 @@ dey                 dey                         1   2       z=,s=
 inc.z   $zz         inc $zz                     2   5       z=,s=
 inc.z.x $zz         inc $zz, x                  2   6       z=,s=
 inc*    $nnnn       inc $nnnn                   3   6       z=,s=
-inc.z*  $nnnn       inc $nnnn, x                3   7       z=,s=
+inc.x*  $nnnn       inc $nnnn, x                3   7       z=,s=
 --------------------------------------------------------------------------------
 inx                 inx                         1   2       z=,s=
 iny                 iny                         1   2       z=,s=
@@ -255,7 +255,7 @@ xor.z   $zz         eor $zz                     2   3       z=,s=
 xor.z.x $zz         eor $zz, x                  2   4       z=,s=
 xor*    $nnnn       eor $nnnn                   3   4*      z=,s=
 xor.x*  $nnnn       eor $nnnn, x                3   4*      z=,s=
-xor.Y*  $nnnn       eor $nnnn, Y                3   4*      z=,s=
+xor.y*  $nnnn       eor $nnnn, y                3   4*      z=,s=
 xor*z.x $zz         eor ($zz, x)                2   6       z=,s=
 xor.y*z $zz         eor ($zz), y                2   5*      z=,s=
 ================================================================================

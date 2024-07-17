@@ -10,6 +10,7 @@
 #SYS_CPM        1                       ; the OS is CP/M (on z80)
 #ISA_Z80        1                       ; embed parser for z80 instructions
 #ISA_6502       0                       ; (not 6502)
+#PARSER_VER     1
 
 .i      "v80_cpm.v80"
 
@@ -17,7 +18,7 @@
 ; this text will be in the code-segment and will be overwritten by assembly
 ;
 :banner .b      "; v80 | OS: CP/M [Z80] | ISA: Z80" #LF
-        .b      "; (C) Kroc Camen 2023-2024, MIT License" #LF
+        .b      "; (C) Kroc Camen 2023-24, MIT License" #LF
         .b      "; v1.0-dev <github.com/kroc/v80>" #LF
         .b      ";" 0
 

@@ -9,11 +9,17 @@
 ;
 ?=      #ISA_Z80 - 1
         .i      "v80_z80.v80"           ; Z80 ISA support code
-        .i      "isa_z80.v80"           ; Z80 ISA instructions
+        ?=      #PARSER_VER - 1
+                .i      "isa_z80.v80"   ; Z80 ISA instructions
+        ?=      #PARSER_VER - 2
+                .i      "is2_z80.v80"   ; Z80 ISA instructions
+
 ?=      #ISA_6502 - 1
         .i      "v80_6502.v80"          ; 6502 ISA support code
-        .i      "isa_6502.v80"          ; 6502 ISA instructions
-
+        ?=      #PARSER_VER - 1
+                .i      "isa_6502.v80"  ; 6502 ISA instructions
+        ?=      #PARSER_VER - 2
+                .i      "is2_6502.v80"  ; 6502 ISA instructions
 
 :assembleFile
 ;===============================================================================
@@ -312,7 +318,11 @@ _cond   cp      #CHAR_COND              ; is condition marker?
 _body   cp      #CHAR_KEYWORD           ; is this a keyword?
         jr?z    :_key
 
-        call    :parseMnemonic          ; if not, must be an instruction
+        ; if not, must be an instruction...
+        ?=      #PARSER_VER -1
+                call    :parseISA
+        ?=      #PARSER_VER -2
+                call    :parseISA2
 
         jr      :_next
 
@@ -1206,7 +1216,7 @@ _z      ld.A.B                          ; is the value BC = 0?
 _skip   ld.E    $ff                     ; retain condition marker col in E
         ;-----------------------------------------------------------------------
 _line   call    :nextWord               ; skip as much whitespace as possible
-        jr?nz   _col                    ; distinguish EOL from EOF --
+        jr?nz   _col                    ; check col of first non-whitespace
         cp      #LF                     ; check EOL because EOF might not be 0!
         ret?nz                          ; stop skipping when we hit end-of-file
         jr      _line                   ; keep going if leading space
@@ -1231,7 +1241,7 @@ _ret    xor.A                           ; return zero-flag set for optimisation
         ret                             ; also return regardless on end-of-file
 
 
-:parseMnemonic
+:parseISA
 ;===============================================================================
 ; parse an instruction into opcodes:
 ;
@@ -1375,3 +1385,222 @@ _ok     ex.DE.HL                        ; swap heap back to HL
         inc.IX                          ; increment virtual program-counter
 
         ret
+
+#size_of_parseISA       $ - :parseISA
+
+
+:parseISA2
+;===============================================================================
+; parse an instruction into opcodes:
+;
+; the CPU-specific module (e.g. "v80_z80.wla") provides a list of instructions,
+; :opcodes, that this routine walks to match instruction names to opcodes and
+; a CPU-specific set of flags that determines which parameters are required
+;
+; in:   A               first character of word to parse
+;       HL              heap addr
+; out:  HL              heap addr is advanced for any expressions deferred
+;       IY              binary code is appended to the code-segment,
+;       IX              and the virtual program-counter is advanced
+;       A, BC, DE       (clobbered)
+;-------------------------------------------------------------------------------
+        push.HL                         ; backup heap addr
+
+        ; begin iterating the list of instructions:
+        ;-----------------------------------------------------------------------
+        ; the first character of the word is used to skip to the alphabetic
+        ; start point in the instruction list
+        ;
+        or      %00100000               ; set bit 5 to force lower-case
+        ld.D.A                          ; backup first char for after this
+        sub     'a                      ; rebase to a = 0 etc.
+        add.A                           ; double char for 16-bits per entry
+        ld.B    0                       ; put offset into BC
+        ld.C.A                          ;  to add to table addr
+        ld.HL   :opcodes                ; start of alphabetic skip table
+        add.HL.BC                       ; offset HL into the table
+        ld.A*HL                         ; read lo-byte of instruction list addr
+        inc.HL                          ; ...
+        ld.H*HL                         ; read hi-byte of instruction list addr
+        ld.L.A                          ; combine lo & hi-bytes
+        or.H                            ; if the value is zero, then no
+        jr?z    _err                    ;  instruction begins with that letter
+
+        ;///////////////////////////////////////////////////////////////////////
+        ;ld.A.D
+        ;call    :osPrintChar
+        ;///////////////////////////////////////////////////////////////////////
+
+        ; the first character is already matched, so we have to get the 2nd
+        ; before entering the loop. this implies that there are no one-letter
+        ; instructions, so error if unexpected whitespace
+        call    :readChar
+        cp      #SPC + 1                ; ASCII code <= 32 (space)?
+        jr?c    _err                    ; error if 1-letter word
+
+        ; E will hold the number of characters matched;
+        ; start at 1 since we've already matched the first-character
+        ;
+        ld.D.A                          ; D = current character
+        ld.E    1                       ; E = no. of matched chars
+        ;///////////////////////////////////////////////////////////////////////
+        ;ld.A.D
+        ;call    :osPrintChar
+        ;///////////////////////////////////////////////////////////////////////
+        jr      _loop                   ; jump into loop
+
+        ;=======================================================================
+        ; length mis-match, skip to next line:
+        ;
+_skip   inc.C                           ; add number of chars this line
+        inc.C                           ;  plus 2 bytes for the opcode
+        add.HL.BC                       ;  and opcode-flags that follows
+
+        ; check line:
+        ;-----------------------------------------------------------------------
+        ; the first byte of each instruction line consists of two nybbles:
+        ;
+        ; - lo-nybble = number of chars re-used from the previous entry
+        ; - hi-nybble = number of chars being added to previous entry
+        ;
+_loop   ld.C*HL                         ; get instruction length byte
+        inc.HL                          ; (we won't be returning to it!)
+        ld.A.C                          ; lo-nybble will be handled in A
+        and     %00001111               ; mask off hi-nybble
+        jr?z    _err                    ; if zero, hit an alphabet boundary
+
+        ; the hi-nybble holds the number of additional characters this line
+        ; introduces. this is the number of chars we need to match against
+        ; and to skip upon mismatch
+        ;
+        ; first, rotate the hi-nybble into the low half. SRA alone would
+        ; sign-extend the 7th bit, so do a rotate-with-carry first to ensure
+        ; bit7 = 0, noting carry is cleared due to the AND above
+        ;
+        rr.C                            ; (carry must be clear)
+        sra.C                           ; putting a zero into bit 7 first
+        sra.C                           ;  means we don't have to mask off
+        sra.C                           ;  the upper 4-bits later
+
+        ; if the number of re-used characters is less than the number we've
+        ; matched so far then we've passed any possibility of a match, e.g.
+        ;
+        ;       adc     <- matched to here, 3 chars
+        ;       and     only 1 char re-used, no match possible
+        ;
+        ; we _could_ test for this and error early but it's slightly faster to
+        ; just ignore this case -- each alphabetical block ends with a null to
+        ; catch the error since the 1st char is always assumed matched
+        ;
+        ; it is normal for the number of re-used chars to be more than our
+        ; matched count as it means we could be looking at an instruction
+        ; branch that doesn't apply to us (e.g. first "." instead of "*")
+        ; we also skip in this case
+        ;
+        cp.E                            ; compare re-used with matched count
+        jr?nz   _skip                   ; skip unmatchable line
+
+        ; match chars with current line:
+        ;-----------------------------------------------------------------------
+_char   ld.A.D                          ; retrieve our current char
+        cp*HL                           ; compare with instruction list
+        jr?nz   _skip                   ; no match? skip to next line
+
+        ; one additional char matched!
+        ;
+        inc.E                           ; increment matched counter
+        inc.HL                          ; step to next char in list
+
+        ; get next char from input:
+        ; 
+        ; to allow for case-insensitivty, we force lowercase without also
+        ; affecting numbers by setting bit 5. this essentially forces ASCII
+        ; codes 64-95 (@A-Z[\]^_) to codes 96-127 (`a-z{|}~) which makes A-Z
+        ; lowercase with the caveat that punctuation cannot be differentiated
+        ; "@"<->"`", "[]"<->"{}", "\"<->"|" and "^"<->"~" but we aren't using
+        ; any of those in the instruction names anyway
+        ; 
+        ; it also means that ASCII codes 0-31 (non-visible) are promoted
+        ; to 32-64 (visible) so we must eliminate white-space first
+        ;
+        call    :readChar               ; read next char from our word
+        ;///////////////////////////////////////////////////////////////////////
+        ;push.AF
+        ;call    :osPrintChar
+        ;pop.AF
+        ;///////////////////////////////////////////////////////////////////////
+        cp      #SPC + 1                ; is it SPC/EOL/EOF?
+        jr?c    _eow                    ; handle end-of-word...
+        or      %00100000               ; force partial lowercase
+        ld.D.A                          ; use this char for next comparison
+        dec.C                           ; one less char to check/skip
+        jr?nz   _char                   ; do all additional chars for this line
+
+        ; if the chars in the line match, but the input word is longer,
+        ; we need to move to the next line, e.g.
+        ;
+        ;       adc                     ; matched, but more chars remain
+        ;       adc.z                   ; complete match
+        ;
+        ; Z80: a trailing apostrophe is always allowed to support shadow
+        ; registers without adding hundreds of lines to the list
+        ;
+        cp      ''                      ; is apostrophe?
+        jr?nz   _skip                   ; if not, skip line
+
+        ; upon trailing apostrophe, next char
+        ; must be whitespace to be a valid match
+        ;
+        call    :readChar               ; read one more character
+        cp      #SPC + 1                ; is it whitespace (or eof)?
+        jr?nc   _err                    ; too many trailing chars!
+
+        inc.C                           ; (a hack to allow fall through)
+
+        ;-----------------------------------------------------------------------
+        ; when the input word ends, we have two possible end-cases:
+        ;
+        ; 1. the line and word ended at the same time -- instruction match!
+        ; 2. the word ended before the line, no instruction matched!
+        ;
+_eow    dec.C                           ; (last char did match)
+        jr?nz   _err                    ; if chars remain, mismatch
+
+        ;///////////////////////////////////////////////////////////////////////
+        ;call    :osPrintNewline
+        ;///////////////////////////////////////////////////////////////////////
+
+        ; instruction match! read the opcode and flags byte
+        ; and handle parameters (if any)
+        ;
+_ok     ld.C*HL                         ; upon match, next byte is opcode
+        inc.HL                          ;  followed by the opcode-flags
+        ld.B*HL                         ;  byte for parameters
+        pop.HL                          ; (restore heap address)
+
+        ; the flags byte is a set of flags for CPU-specifics and what,
+        ; if any, kind of parameter is required. regardless of ISA,
+        ; a zero always indicates no-parameters
+        ;
+        ld.A.B                          ; opcode flags byte
+        and     %01111111               ; remove the top bit
+
+        ; if flags byte is non-zero, analyse further (this routine is in
+        ; the CPU-specific module, e.g. "v80_z80.v80" or "v80_6502.v80")
+        ;
+        jp?nz   :emitOpcode
+
+        ; single opcode, no params:
+        ;-----------------------------------------------------------------------
+        ld*IY.C [ 0 ]                   ; emit opcode byte
+        inc.IY                          ; move to next byte in code-segment
+        inc.IX                          ; increment virtual program-counter
+
+        ret
+
+        ; (a relative jump to here is used to save 1 byte and 3 cycles
+        ;  over using conditional absolute jumps in each instance)
+        ;
+_err    jp      :errInvalIns
+
+#size_of_parseISA2      $ - :parseISA2
