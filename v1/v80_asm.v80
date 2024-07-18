@@ -1427,8 +1427,8 @@ _ok     ex.DE.HL                        ; swap heap back to HL
         jr?z    _err                    ;  instruction begins with that letter
 
         ;///////////////////////////////////////////////////////////////////////
-        ;ld.A.D
-        ;call    :osPrintChar
+        ld.A.D
+        call    :osPrintChar
         ;///////////////////////////////////////////////////////////////////////
 
         ; the first character is already matched, so we have to get the 2nd
@@ -1444,8 +1444,8 @@ _ok     ex.DE.HL                        ; swap heap back to HL
         ld.D.A                          ; D = current character
         ld.E    1                       ; E = no. of matched chars
         ;///////////////////////////////////////////////////////////////////////
-        ;ld.A.D
-        ;call    :osPrintChar
+        ld.A.D
+        call    :osPrintChar
         ;///////////////////////////////////////////////////////////////////////
         jr      _loop                   ; jump into loop
 
@@ -1525,9 +1525,9 @@ _char   ld.A.D                          ; retrieve our current char
         ;
         call    :readChar               ; read next char from our word
         ;///////////////////////////////////////////////////////////////////////
-        ;push.AF
-        ;call    :osPrintChar
-        ;pop.AF
+        push.AF
+        call    :osPrintChar
+        pop.AF
         ;///////////////////////////////////////////////////////////////////////
         cp      #SPC + 1                ; is it SPC/EOL/EOF?
         jr?c    _eow                    ; handle end-of-word...
@@ -1567,7 +1567,7 @@ _eow    dec.C                           ; (last char did match)
         jr?nz   _err                    ; if chars remain, mismatch
 
         ;///////////////////////////////////////////////////////////////////////
-        ;call    :osPrintNewline
+        call    :osPrintNewline
         ;///////////////////////////////////////////////////////////////////////
 
         ; instruction match! read the opcode and flags byte

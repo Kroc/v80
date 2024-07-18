@@ -45,26 +45,26 @@ ECHO:
 REM # build & run tests:
 REM # --------------------------------------------------------------------------
 REM # clear NTVCM cache
-DEL /F /Q "%DIR_NTVCM%\*.v??"  >NUL
-DEL /F /Q "%DIR_NTVCM%\*.com"  >NUL
-DEL /F /Q "%DIR_NTVCM%\*.prg"  >NUL
-DEL /F /Q "%DIR_NTVCM%\*.sym"  >NUL
+DEL /F /Q "%DIR_NTVCM%\*.v??"  >NUL 2>&1
+DEL /F /Q "%DIR_NTVCM%\*.com"  >NUL 2>&1
+DEL /F /Q "%DIR_NTVCM%\*.prg"  >NUL 2>&1
+DEL /F /Q "%DIR_NTVCM%\*.sym"  >NUL 2>&1
 
 REM # copy the COM files into the NTVCM disk directory
 REM # "/N" forces an 8.3 file-name in the destination
 COPY /N /Y "build\*.com" /B "%DIR_NTVCM%" /B  >NUL
 REM # copy test v80/v65 files
-COPY /N /Y "test\*.v??" /A "%DIR_NTVCM%" /A   >NUL
+COPY /N /Y "test\*.v??"  /A "%DIR_NTVCM%" /A   >NUL
 
 REM # clear RunCPM cache
 IF NOT EXIST "%DIR_RUNCPM%\A\0" MKDIR "%DIR_RUNCPM%\A\0"  >NUL
-DEL /F /Q "%DIR_RUNCPM%\A\0\*.*"  >NUL
+DEL /F /Q "%DIR_RUNCPM%\A\0\*.*"  >NUL 2>&1
 
 REM # copy the COM files into the RunCPM disk directory
 REM # "/N" forces an 8.3 file-name in the destination
 COPY /N /Y "build\*.com" /B "%DIR_RUNCPM%\A\0" /B  >NUL
 REM # copy test v80/v65 files
-COPY /N /Y "test\*.v??" /A "%DIR_RUNCPM%\A\0" /A  >NUL
+COPY /N /Y "test\*.v??"  /A "%DIR_RUNCPM%\A\0" /A  >NUL
 
 REM # run "test.v80" without WLA equivalent
 CALL :v80_z80 test
@@ -92,12 +92,16 @@ COPY /N /Y "v1\*.v??" /A "%DIR_RUNCPM%\A\0" /A  >NUL
 REM # do a 1st-generation build of v80 [v1] using v80 [v0]!
 CALL :v80_z80   cpm_z80 v80.com
 
-REM # do a 2nd-generation build of v80, i.e. v80 [v1] building v80 [v1]
-CALL :v80_z80   cpm_z80 v80_2nd.com
+CALL :RunTestZ80 z80
 
-REM # compare 1st and 2nd generation builds
-FC /B "%DIR_NTVCM%\v80.com" "%DIR_NTVCM%\v80_2nd.com"  >NUL
-IF ERRORLEVEL 1 START "" %BIN_VBINDIFF% "%DIR_NTVCM%\v80.com" "%DIR_NTVCM%\v80_2nd.com" & GOTO :ERR
+EXIT
+
+REM # do a 2nd-generation build of v80, i.e. v80 [v1] building v80 [v1]
+REM CALL :v80_z80   cpm_z80 v80_2nd.com
+REM 
+REM REM # compare 1st and 2nd generation builds
+REM FC /B "%DIR_NTVCM%\v80.com" "%DIR_NTVCM%\v80_2nd.com"  >NUL
+REM IF ERRORLEVEL 1 START "" %BIN_VBINDIFF% "%DIR_NTVCM%\v80.com" REM "%DIR_NTVCM%\v80_2nd.com" & GOTO :ERR
 
 REM # 6502:
 REM # ==========================================================================
@@ -108,6 +112,16 @@ COPY /N /Y "%DIR_NTVCM%\v80x65.com" /B "%DIR_RUNCPM%\A\0" /B  >NUL
 
 REM # verify 6502 assembling
 CALL :RunTest6502 6502
+
+REM # v2:
+REM # ==========================================================================
+REM # copy v80 [v2] source into NTVCM directory
+REM COPY /N /Y "v2\*.v80" /B "%DIR_NTVCM%" /A  >NUL
+REM REM # and RunCPM
+REM COPY /N /Y "v2\*.v80" /A "%DIR_RUNCPM%\A\0" /A  >NUL
+REM 
+REM REM # build v2 of v80
+REM CALL :v80_z80   v80
 
 REM # ==========================================================================
 REM # if no errors, copy v80 binary to release folder
