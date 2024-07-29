@@ -180,11 +180,18 @@ ECHO * v80.com %~1 %~2
 IF ERRORLEVEL 1 TYPE %~n1.sym
 
 REM # if NTVCM hits a HALT instruction, launch RunCPM
-IF %ERRORLEVEL% EQU -1 POPD & START "RunCPM" /D "%DIR_RUNCPM%" %BIN_RUNCPM% & GOTO:ERR
+IF %ERRORLEVEL% EQU -1 GOTO :runCPM
 IF ERRORLEVEL 1 GOTO:ERR
 
 POPD
 GOTO:EOF
+
+:runCPM
+REM # --------------------------------------------------------------------------
+POPD
+COPY /N /Y "%DIR_NTVCM%\v80.com" /B "%DIR_RUNCPM%\A\0\v80.com" /B  >NUL
+START "RunCPM" /D "%DIR_RUNCPM%" %BIN_RUNCPM% & GOTO:ERR
+GOTO:ERR
 
 :RunTest6502
 REM # ==========================================================================

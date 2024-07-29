@@ -1473,14 +1473,10 @@ _loop   ld.C*HL                         ; get instruction length byte
         ; introduces. this is the number of chars we need to match against
         ; and to skip upon mismatch
         ;
-        ; first, rotate the hi-nybble into the low half. SRA alone would
-        ; sign-extend the 7th bit, so do a rotate-with-carry first to ensure
-        ; bit7 = 0, noting carry is cleared due to the AND above
-        ;
-        rr.C                            ; (carry must be clear)
-        sra.C                           ; putting a zero into bit 7 first
-        sra.C                           ;  means we don't have to mask off
-        sra.C                           ;  the upper 4-bits later
+        srl.C                           ; rotate the hi-nybble
+        srl.C                           ;  into the low half
+        srl.C
+        srl.C
 
         ; if the number of re-used characters is less than the number we've
         ; matched so far then we've passed any possibility of a match, e.g.
@@ -1523,7 +1519,7 @@ _char   ld.A.D                          ; retrieve our current char
         ; it also means that ASCII codes 0-31 (non-visible) are promoted
         ; to 32-64 (visible) so we must eliminate white-space first
         ;
-        call    :readChar               ; read next char from our word
+_get    call    :readChar               ; read next char from our word
         ;///////////////////////////////////////////////////////////////////////
         push.AF
         call    :osPrintChar
@@ -1531,7 +1527,24 @@ _char   ld.A.D                          ; retrieve our current char
         ;///////////////////////////////////////////////////////////////////////
         cp      #SPC + 1                ; is it SPC/EOL/EOF?
         jr?c    _eow                    ; handle end-of-word...
-        or      %00100000               ; force partial lowercase
+
+        ; Z80: shadow registers are marked with an apostrophe -- encoding this
+        ; in the list would add hundreds of additional lines so we cheat by
+        ; just 'ignoring' apostrophes. there is one exception, an apostrophe
+        ; can replace a dot, for example in `ld.a.b` -> `ld.a'b`
+        ;
+        ;cp      ''                      ; is this an apostrophe?
+        ;jr?nz   _1                      ; if not skip over apostrophe fixing
+
+        ; if the character we're matching against is a dot then replace
+        ; the apostrophe with dot to allow for a match. if not, skip the
+        ; apostrophe entirely and get another character
+        ;
+        ;ld.A    '.                      ; change input char to a dot
+        ;cp*HL                           ; is the line char also a dot?
+        ;jr?nz   _get                    ; if not -- skip the apostrophe
+
+_1      or      %00100000               ; force partial lowercase
         ld.D.A                          ; use this char for next comparison
         dec.C                           ; one less char to check/skip
         jr?nz   _char                   ; do all additional chars for this line
@@ -1542,20 +1555,7 @@ _char   ld.A.D                          ; retrieve our current char
         ;       adc                     ; matched, but more chars remain
         ;       adc.z                   ; complete match
         ;
-        ; Z80: a trailing apostrophe is always allowed to support shadow
-        ; registers without adding hundreds of lines to the list
-        ;
-        cp      ''                      ; is apostrophe?
-        jr?nz   _skip                   ; if not, skip line
-
-        ; upon trailing apostrophe, next char
-        ; must be whitespace to be a valid match
-        ;
-        call    :readChar               ; read one more character
-        cp      #SPC + 1                ; is it whitespace (or eof)?
-        jr?nc   _err                    ; too many trailing chars!
-
-        inc.C                           ; (a hack to allow fall through)
+        jr      _skip
 
         ;-----------------------------------------------------------------------
         ; when the input word ends, we have two possible end-cases:

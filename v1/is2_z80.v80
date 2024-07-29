@@ -74,23 +74,31 @@
 ;===============================================================================
 .b      2 *16 | 1  "dc"         $ce #OP_B       ;    CE nn    | adc       $nn
 .b      3 *16 | 3    "*hl"      $8e #OP         ;    8E       | adc*hl
+.b      1 *16 | 6       "'"     $8e #OP         ;    8E       | adc*hl'
 .b      2 *16 | 4     "ix"      $8e #OP_IXO     ; DD 8E nn    | adc*ix    $nn
 .b      1 *16 | 5      "y"      $8e #OP_IYO     ; FD 8E nn    | adc*iy    $nn
 .b      2 *16 | 3    ".a"       $8f #OP         ;    8F       | adc.a
+.b      1 *16 | 5      "'"      $8f #OP         ;    8F       | adc.a'
 .b      1 *16 | 4     "b"       $88 #OP         ;    88       | adc.b
+.b      1 *16 | 5      "'"      $88 #OP         ;    88       | adc.b'
 .b      1 *16 | 4     "c"       $89 #OP         ;    89       | adc.c
+.b      1 *16 | 5      "'"      $89 #OP         ;    89       | adc.c'
 .b      1 *16 | 4     "d"       $8a #OP         ;    8A       | adc.d
+.b      1 *16 | 5      "'"      $8a #OP         ;    8A       | adc.d'
 .b      1 *16 | 4     "e"       $8b #OP         ;    8B       | adc.e
+.b      1 *16 | 5      "'"      $8b #OP         ;    8B       | adc.e'
 .b      1 *16 | 4     "h"       $8c #OP         ;    8C       | adc.h
+.b      1 *16 | 5      "'"      $8c #OP         ;    8C       | adc.h'
 .b      4 *16 | 5      "l.bc"   $4a #OP_ED      ; ED 4A       | adc.hl.bc
 .b      2 *16 | 7        "de"   $5a #OP_ED      ; ED 5A       | adc.hl.de
 .b      2 *16 | 7        "hl"   $6a #OP_ED      ; ED 6A       | adc.hl.hl
 .b      2 *16 | 7        "sp"   $7a #OP_ED      ; ED 7A       | adc.hl.sp
-.b      3 *16 | 6       "'bc"   $4a #OP_ED      ; ED 4A       | adc.hl'bc'
-.b      2 *16 | 7        "de"   $5a #OP_ED      ; ED 5A       | adc.hl'de'
-.b      2 *16 | 7        "hl"   $6a #OP_ED      ; ED 6A       | adc.hl'hl'
+.b      4 *16 | 6       "'bc'"  $4a #OP_ED      ; ED 4A       | adc.hl'bc'
+.b      3 *16 | 7        "de'"  $5a #OP_ED      ; ED 5A       | adc.hl'de'
+.b      3 *16 | 7        "hl'"  $6a #OP_ED      ; ED 6A       | adc.hl'hl'
 .b      2 *16 | 7        "sp"   $7a #OP_ED      ; ED 7A       | adc.hl'sp
 .b      1 *16 | 4     "l"       $8d #OP         ;    8D       | adc.l
+.b      1 *16 | 5      "'"      $8d #OP         ;    8D       | adc.l'
 .b      3 *16 | 4     "ixh"     $8c #OP_IX      ; DD 8C       | adc.ixh
 .b      1 *16 | 6       "l"     $8d #OP_IX      ; DD 8D       | adc.ixl
 .b      2 *16 | 5      "yh"     $8c #OP_IY      ; FD 8C       | adc.iyh
@@ -98,31 +106,43 @@
 ;-------------------------------------------------------------------------------
 .b      1 *16 | 2   "d"         $c6 #OP_B       ;    C6 nn    | add       $nn
 .b      3 *16 | 3    "*hl"      $86 #OP         ;    86       | add*hl
+.b      1 *16 | 6       "'"     $86 #OP         ;    86       | add*hl'
 .b      2 *16 | 4     "ix"      $86 #OP_IXO     ; DD 86 nn    | add*ix    $nn
 .b      1 *16 | 5      "y"      $86 #OP_IYO     ; FD 86 nn    | add*iy    $nn
 .b      2 *16 | 3    ".a"       $87 #OP         ;    87       | add.a
+.b      1 *16 | 5      "'"      $87 #OP         ;    87       | add.a'
 .b      1 *16 | 4     "b"       $80 #OP         ;    80       | add.b
+.b      1 *16 | 5      "'"      $80 #OP         ;    80       | add.b'
 .b      1 *16 | 4     "c"       $81 #OP         ;    81       | add.c
+.b      1 *16 | 5      "'"      $81 #OP         ;    81       | add.c'
 .b      1 *16 | 4     "d"       $82 #OP         ;    82       | add.d
+.b      1 *16 | 5      "'"      $82 #OP         ;    82       | add.d'
 .b      1 *16 | 4     "e"       $83 #OP         ;    83       | add.e
+.b      1 *16 | 5      "'"      $83 #OP         ;    83       | add.e'
 .b      1 *16 | 4     "h"       $84 #OP         ;    84       | add.h
+.b      1 *16 | 5      "'"      $84 #OP         ;    84       | add.h'
 .b      4 *16 | 5      "l.bc"   $4a #OP         ;    09       | add.hl.bc
 .b      2 *16 | 7        "de"   $5a #OP         ;    19       | add.hl.de
 .b      2 *16 | 7        "hl"   $6a #OP         ;    29       | add.hl.hl
 .b      2 *16 | 7        "sp"   $7a #OP         ;    39       | add.hl.sp
-.b      3 *16 | 6       "'bc"   $4a #OP         ;    09       | add.hl'bc'
-.b      2 *16 | 7        "de"   $5a #OP         ;    19       | add.hl'de'
-.b      2 *16 | 7        "hl"   $6a #OP         ;    29       | add.hl'hl'
+.b      4 *16 | 6       "'bc'"  $4a #OP         ;    09       | add.hl'bc'
+.b      3 *16 | 7        "de'"  $5a #OP         ;    19       | add.hl'de'
+.b      3 *16 | 7        "hl'"  $6a #OP         ;    29       | add.hl'hl'
 .b      2 *16 | 7        "sp"   $7a #OP         ;    39       | add.hl'sp
 .b      1 *16 | 4     "l"       $85 #OP         ;    85       | add.l
+.b      1 *16 | 5      "'"      $85 #OP         ;    85       | add.l'
 .b      5 *16 | 4     "ix.bc"   $09 #OP_IX      ; DD 09       | add.ix.bc
+.b      1 *16 | 9          "'"  $09 #OP_IX      ; DD 09       | add.ix.bc'
 .b      2 *16 | 7        "de"   $19 #OP_IX      ; DD 19       | add.ix.de
+.b      1 *16 | 9          "'"  $19 #OP_IX      ; DD 19       | add.ix.de'
 .b      2 *16 | 7        "ix"   $29 #OP_IX      ; DD 29       | add.ix.ix
 .b      2 *16 | 7        "sp"   $39 #OP_IX      ; DD 39       | add.ix.sp
 .b      1 *16 | 6       "h"     $84 #OP_IX      ; DD 84       | add.ixh
 .b      1 *16 | 6       "l"     $85 #OP_IX      ; DD 85       | add.ixl
 .b      4 *16 | 5      "y.bc"   $09 #OP_IY      ; FD 09       | add.iy.bc
+.b      1 *16 | 9          "'"  $09 #OP_IY      ; FD 09       | add.iy.bc'
 .b      2 *16 | 7        "de"   $19 #OP_IY      ; FD 19       | add.iy.de
+.b      1 *16 | 9          "'"  $19 #OP_IY      ; FD 19       | add.iy.de'
 .b      2 *16 | 7        "iy"   $29 #OP_IY      ; FD 29       | add.iy.iy
 .b      2 *16 | 7        "sp"   $39 #OP_IY      ; FD 39       | add.iy.sp
 .b      1 *16 | 6       "h"     $84 #OP_IY      ; FD 84       | add.iyh
@@ -130,15 +150,23 @@
 ;-------------------------------------------------------------------------------
 .b      2 *16 | 1  "nd"         $e6 #OP_B       ;    E6 nn    | and       $nn
 .b      3 *16 | 3    "*hl"      $a6 #OP         ;    A6       | and*hl
+.b      1 *16 | 6       "'"     $a6 #OP         ;    A6       | and*hl'
 .b      2 *16 | 4     "ix"      $a6 #OP_IXO     ; DD A6 nn    | and*ix    $nn
 .b      1 *16 | 5      "y"      $a6 #OP_IYO     ; FD A6 nn    | and*iy    $nn
 .b      2 *16 | 3    ".a"       $a7 #OP         ;    A7       | and.a
+.b      1 *16 | 5      "'"      $a7 #OP         ;    A7       | and.a'
 .b      1 *16 | 4     "b"       $a0 #OP         ;    A0       | and.b
+.b      1 *16 | 5      "'"      $a0 #OP         ;    A0       | and.b'
 .b      1 *16 | 4     "c"       $a1 #OP         ;    A1       | and.c
+.b      1 *16 | 5      "'"      $a1 #OP         ;    A1       | and.c'
 .b      1 *16 | 4     "d"       $a2 #OP         ;    A2       | and.d
+.b      1 *16 | 5      "'"      $a2 #OP         ;    A2       | and.d'
 .b      1 *16 | 4     "e"       $a3 #OP         ;    A3       | and.e
+.b      1 *16 | 5      "'"      $a3 #OP         ;    A3       | and.e'
 .b      1 *16 | 4     "h"       $a4 #OP         ;    A4       | and.h
+.b      1 *16 | 5      "'"      $a4 #OP         ;    A4       | and.h'
 .b      1 *16 | 4     "l"       $a5 #OP         ;    A5       | and.l
+.b      1 *16 | 5      "'"      $a5 #OP         ;    A5       | and.l'
 .b      3 *16 | 4     "ixh"     $a4 #OP_IX      ; DD A4       | and.ixh
 .b      1 *16 | 6       "l"     $a5 #OP_IX      ; DD A5       | and.ixl
 .b      2 *16 | 5      "yh"     $a4 #OP_IY      ; DD A4       | and.iyh
@@ -149,90 +177,154 @@
 :b
 ;===============================================================================
 .b      5 *16 | 1  "it0.a"      $47 #OP_CB      ;    CB 47    | bit0.a
+.b      1 *16 | 6       "'"     $47 #OP_CB      ;    CB 47    | bit0.a'
 .b      1 *16 | 5      "b"      $40 #OP_CB      ;    CB 40    | bit0.b
+.b      1 *16 | 6       "'"     $40 #OP_CB      ;    CB 40    | bit0.b'
 .b      1 *16 | 5      "c"      $41 #OP_CB      ;    CB 41    | bit0.c
+.b      1 *16 | 6       "'"     $41 #OP_CB      ;    CB 41    | bit0.c'
 .b      1 *16 | 5      "d"      $42 #OP_CB      ;    CB 42    | bit0.d
+.b      1 *16 | 6       "'"     $42 #OP_CB      ;    CB 42    | bit0.d'
 .b      1 *16 | 5      "e"      $43 #OP_CB      ;    CB 43    | bit0.e
+.b      1 *16 | 6       "'"     $43 #OP_CB      ;    CB 43    | bit0.e'
 .b      1 *16 | 5      "h"      $44 #OP_CB      ;    CB 44    | bit0.h
+.b      1 *16 | 6       "'"     $44 #OP_CB      ;    CB 44    | bit0.h'
 .b      1 *16 | 5      "l"      $45 #OP_CB      ;    CB 45    | bit0.l
+.b      1 *16 | 6       "'"     $45 #OP_CB      ;    CB 45    | bit0.l'
 .b      3 *16 | 4     "*hl"     $46 #OP_CB      ;    CB 46    | bit0*hl
+.b      1 *16 | 7        "'"    $46 #OP_CB      ;    CB 46    | bit0*hl'
 .b      2 *16 | 5      "ix"     $46 #OP_CBXO    ; DD CB nn 46 | bit0*ix   $nn
 .b      1 *16 | 6       "y"     $46 #OP_CBYO    ; FD CB nn 46 | bit0*iy   $nn
 ;-------------------------------------------------------------------------------
 .b      3 *16 | 3    "1.a"      $4f #OP_CB      ;    CB 4F    | bit1.a
+.b      1 *16 | 6       "'"     $4f #OP_CB      ;    CB 4F    | bit1.a'
 .b      1 *16 | 5      "b"      $48 #OP_CB      ;    CB 48    | bit1.b
+.b      1 *16 | 6       "'"     $48 #OP_CB      ;    CB 48    | bit1.b'
 .b      1 *16 | 5      "c"      $49 #OP_CB      ;    CB 49    | bit1.c
+.b      1 *16 | 6       "'"     $49 #OP_CB      ;    CB 49    | bit1.c'
 .b      1 *16 | 5      "d"      $4a #OP_CB      ;    CB 4A    | bit1.d
+.b      1 *16 | 6       "'"     $4a #OP_CB      ;    CB 4A    | bit1.d'
 .b      1 *16 | 5      "e"      $4b #OP_CB      ;    CB 4B    | bit1.e
+.b      1 *16 | 6       "'"     $4b #OP_CB      ;    CB 4B    | bit1.e'
 .b      1 *16 | 5      "h"      $4c #OP_CB      ;    CB 4C    | bit1.h
+.b      1 *16 | 6       "'"     $4c #OP_CB      ;    CB 4C    | bit1.h'
 .b      1 *16 | 5      "l"      $4d #OP_CB      ;    CB 4D    | bit1.l
+.b      1 *16 | 6       "'"     $4d #OP_CB      ;    CB 4D    | bit1.l'
 .b      3 *16 | 4     "*hl"     $4e #OP_CB      ;    CB 4E    | bit1*hl
+.b      1 *16 | 7        "'"    $4e #OP_CB      ;    CB 4E    | bit1*hl'
 .b      2 *16 | 5      "ix"     $4e #OP_CBXO    ; DD CB nn 4E | bit1*ix   $nn
 .b      1 *16 | 6       "y"     $4e #OP_CBYO    ; FD CB nn 4E | bit1*iy   $nn
 ;-------------------------------------------------------------------------------
 .b      3 *16 | 3    "2.a"      $57 #OP_CB      ;    CB 57    | bit2.a
+.b      1 *16 | 6       "'"     $57 #OP_CB      ;    CB 57    | bit2.a'
 .b      1 *16 | 5      "b"      $50 #OP_CB      ;    CB 50    | bit2.b
+.b      1 *16 | 6       "'"     $50 #OP_CB      ;    CB 50    | bit2.b'
 .b      1 *16 | 5      "c"      $51 #OP_CB      ;    CB 51    | bit2.c
+.b      1 *16 | 6       "'"     $51 #OP_CB      ;    CB 51    | bit2.c'
 .b      1 *16 | 5      "d"      $52 #OP_CB      ;    CB 52    | bit2.d
+.b      1 *16 | 6       "'"     $52 #OP_CB      ;    CB 52    | bit2.d'
 .b      1 *16 | 5      "e"      $53 #OP_CB      ;    CB 53    | bit2.e
+.b      1 *16 | 6       "'"     $53 #OP_CB      ;    CB 53    | bit2.e'
 .b      1 *16 | 5      "h"      $54 #OP_CB      ;    CB 54    | bit2.h
+.b      1 *16 | 6       "'"     $54 #OP_CB      ;    CB 54    | bit2.h'
 .b      1 *16 | 5      "l"      $55 #OP_CB      ;    CB 55    | bit2.l
+.b      1 *16 | 6       "'"     $55 #OP_CB      ;    CB 55    | bit2.l'
 .b      3 *16 | 4     "*hl"     $56 #OP_CB      ;    CB 56    | bit2*hl
+.b      1 *16 | 7        "'"    $56 #OP_CB      ;    CB 56    | bit2*hl'
 .b      2 *16 | 5      "ix"     $56 #OP_CBXO    ; DD CB nn 56 | bit2*ix   $nn
 .b      1 *16 | 6       "y"     $56 #OP_CBYO    ; FD CB nn 56 | bit2*iy   $nn
 ;-------------------------------------------------------------------------------
 .b      3 *16 | 3    "3.a"      $5f #OP_CB      ;    CB 5F    | bit3.a
+.b      1 *16 | 6       "'"     $5f #OP_CB      ;    CB 5F    | bit3.a'
 .b      1 *16 | 5      "b"      $58 #OP_CB      ;    CB 58    | bit3.b
+.b      1 *16 | 6       "'"     $58 #OP_CB      ;    CB 58    | bit3.b'
 .b      1 *16 | 5      "c"      $59 #OP_CB      ;    CB 59    | bit3.c
+.b      1 *16 | 6       "'"     $59 #OP_CB      ;    CB 59    | bit3.c'
 .b      1 *16 | 5      "d"      $5a #OP_CB      ;    CB 5A    | bit3.d
+.b      1 *16 | 6       "'"     $5a #OP_CB      ;    CB 5A    | bit3.d'
 .b      1 *16 | 5      "e"      $5b #OP_CB      ;    CB 5B    | bit3.e
+.b      1 *16 | 6       "'"     $5b #OP_CB      ;    CB 5B    | bit3.e'
 .b      1 *16 | 5      "h"      $5c #OP_CB      ;    CB 5C    | bit3.h
+.b      1 *16 | 6       "'"     $5c #OP_CB      ;    CB 5C    | bit3.h'
 .b      1 *16 | 5      "l"      $5d #OP_CB      ;    CB 5D    | bit3.l
+.b      1 *16 | 6       "'"     $5d #OP_CB      ;    CB 5D    | bit3.l'
 .b      3 *16 | 4     "*hl"     $5e #OP_CB      ;    CB 5E    | bit3*hl
+.b      1 *16 | 7        "'"    $5e #OP_CB      ;    CB 5E    | bit3*hl'
 .b      2 *16 | 5      "ix"     $5e #OP_CBXO    ; DD CB nn 5E | bit3*ix   $nn
 .b      1 *16 | 6       "y"     $5e #OP_CBYO    ; FD CB nn 5E | bit3*iy   $nn
 ;-------------------------------------------------------------------------------
 .b      3 *16 | 3    "4.a"      $67 #OP_CB      ;    CB 67    | bit4.a
+.b      1 *16 | 6       "'"     $67 #OP_CB      ;    CB 67    | bit4.a'
 .b      1 *16 | 5      "b"      $60 #OP_CB      ;    CB 60    | bit4.b
+.b      1 *16 | 6       "'"     $60 #OP_CB      ;    CB 60    | bit4.b'
 .b      1 *16 | 5      "c"      $61 #OP_CB      ;    CB 61    | bit4.c
+.b      1 *16 | 6       "'"     $61 #OP_CB      ;    CB 61    | bit4.c'
 .b      1 *16 | 5      "d"      $62 #OP_CB      ;    CB 62    | bit4.d
+.b      1 *16 | 6       "'"     $62 #OP_CB      ;    CB 62    | bit4.d'
 .b      1 *16 | 5      "e"      $63 #OP_CB      ;    CB 63    | bit4.e
+.b      1 *16 | 6       "'"     $63 #OP_CB      ;    CB 63    | bit4.e'
 .b      1 *16 | 5      "h"      $64 #OP_CB      ;    CB 64    | bit4.h
+.b      1 *16 | 6       "'"     $64 #OP_CB      ;    CB 64    | bit4.h'
 .b      1 *16 | 5      "l"      $65 #OP_CB      ;    CB 65    | bit4.l
+.b      1 *16 | 6       "'"     $65 #OP_CB      ;    CB 65    | bit4.l'
 .b      3 *16 | 4     "*hl"     $66 #OP_CB      ;    CB 66    | bit4*hl
+.b      1 *16 | 7        "'"    $66 #OP_CB      ;    CB 66    | bit4*hl'
 .b      2 *16 | 5      "ix"     $66 #OP_CBXO    ; DD CB nn 66 | bit4*ix   $nn
 .b      1 *16 | 6       "y"     $66 #OP_CBYO    ; FD CB nn 66 | bit4*iy   $nn
 ;-------------------------------------------------------------------------------
 .b      3 *16 | 3    "5.a"      $6f #OP_CB      ;    CB 6F    | bit5.a
+.b      1 *16 | 6       "'"     $6f #OP_CB      ;    CB 6F    | bit5.a'
 .b      1 *16 | 5      "b"      $68 #OP_CB      ;    CB 68    | bit5.b
+.b      1 *16 | 6       "'"     $68 #OP_CB      ;    CB 68    | bit5.b'
 .b      1 *16 | 5      "c"      $69 #OP_CB      ;    CB 69    | bit5.c
+.b      1 *16 | 6       "'"     $69 #OP_CB      ;    CB 69    | bit5.c'
 .b      1 *16 | 5      "d"      $6a #OP_CB      ;    CB 6A    | bit5.d
+.b      1 *16 | 6       "'"     $6a #OP_CB      ;    CB 6A    | bit5.d'
 .b      1 *16 | 5      "e"      $6b #OP_CB      ;    CB 6B    | bit5.e
+.b      1 *16 | 6       "'"     $6b #OP_CB      ;    CB 6B    | bit5.e'
 .b      1 *16 | 5      "h"      $6c #OP_CB      ;    CB 6C    | bit5.h
+.b      1 *16 | 6       "'"     $6c #OP_CB      ;    CB 6C    | bit5.h'
 .b      1 *16 | 5      "l"      $6d #OP_CB      ;    CB 6D    | bit5.l
+.b      1 *16 | 6       "'"     $6d #OP_CB      ;    CB 6D    | bit5.l'
 .b      3 *16 | 4     "*hl"     $6e #OP_CB      ;    CB 6E    | bit5*hl
+.b      1 *16 | 7        "'"    $6e #OP_CB      ;    CB 6E    | bit5*hl'
 .b      2 *16 | 5      "ix"     $6e #OP_CBXO    ; DD CB nn 6E | bit5*ix   $nn
 .b      1 *16 | 6       "y"     $6e #OP_CBYO    ; FD CB nn 6E | bit5*iy   $nn
 ;-------------------------------------------------------------------------------
 .b      3 *16 | 3    "6.a"      $77 #OP_CB      ;    CB 77    | bit6.a
+.b      1 *16 | 6       "'"     $77 #OP_CB      ;    CB 77    | bit6.a'
 .b      1 *16 | 5      "b"      $70 #OP_CB      ;    CB 70    | bit6.b
+.b      1 *16 | 6       "'"     $70 #OP_CB      ;    CB 70    | bit6.b'
 .b      1 *16 | 5      "c"      $71 #OP_CB      ;    CB 71    | bit6.c
+.b      1 *16 | 6       "'"     $71 #OP_CB      ;    CB 71    | bit6.c'
 .b      1 *16 | 5      "d"      $72 #OP_CB      ;    CB 72    | bit6.d
+.b      1 *16 | 6       "'"     $72 #OP_CB      ;    CB 72    | bit6.d'
 .b      1 *16 | 5      "e"      $73 #OP_CB      ;    CB 73    | bit6.e
+.b      1 *16 | 6       "'"     $73 #OP_CB      ;    CB 73    | bit6.e'
 .b      1 *16 | 5      "h"      $74 #OP_CB      ;    CB 74    | bit6.h
+.b      1 *16 | 6       "'"     $74 #OP_CB      ;    CB 74    | bit6.h'
 .b      1 *16 | 5      "l"      $75 #OP_CB      ;    CB 75    | bit6.l
+.b      1 *16 | 6       "'"     $75 #OP_CB      ;    CB 75    | bit6.l'
 .b      3 *16 | 4     "*hl"     $76 #OP_CB      ;    CB 76    | bit6*hl
+.b      1 *16 | 7        "'"    $76 #OP_CB      ;    CB 76    | bit6*hl'
 .b      2 *16 | 5      "ix"     $76 #OP_CBXO    ; DD CB nn 76 | bit6*ix   $nn
 .b      1 *16 | 6       "y"     $76 #OP_CBYO    ; FD CB nn 76 | bit6*iy   $nn
 ;-------------------------------------------------------------------------------
 .b      3 *16 | 3    "7.a"      $7f #OP_CB      ;    CB 7F    | bit7.a
+.b      1 *16 | 6       "'"     $7f #OP_CB      ;    CB 7F    | bit7.a'
 .b      1 *16 | 5      "b"      $78 #OP_CB      ;    CB 78    | bit7.b
+.b      1 *16 | 6       "'"     $78 #OP_CB      ;    CB 78    | bit7.b'
 .b      1 *16 | 5      "c"      $79 #OP_CB      ;    CB 79    | bit7.c
+.b      1 *16 | 6       "'"     $79 #OP_CB      ;    CB 79    | bit7.c'
 .b      1 *16 | 5      "d"      $7a #OP_CB      ;    CB 7A    | bit7.d
+.b      1 *16 | 6       "'"     $7a #OP_CB      ;    CB 7A    | bit7.d'
 .b      1 *16 | 5      "e"      $7b #OP_CB      ;    CB 7B    | bit7.e
+.b      1 *16 | 6       "'"     $7b #OP_CB      ;    CB 7B    | bit7.e'
 .b      1 *16 | 5      "h"      $7c #OP_CB      ;    CB 7C    | bit7.h
+.b      1 *16 | 6       "'"     $7c #OP_CB      ;    CB 7C    | bit7.h'
 .b      1 *16 | 5      "l"      $7d #OP_CB      ;    CB 7D    | bit7.l
+.b      1 *16 | 6       "'"     $7d #OP_CB      ;    CB 7D    | bit7.l'
 .b      3 *16 | 4     "*hl"     $7e #OP_CB      ;    CB 7E    | bit7*hl
+.b      1 *16 | 7       "'"     $7e #OP_CB      ;    CB 7E    | bit7*hl'
 .b      2 *16 | 5      "ix"     $7e #OP_CBXO    ; DD CB nn 7E | bit7*ix   $nn
 .b      1 *16 | 6       "y"     $7e #OP_CBYO    ; FD CB nn 7E | bit7*iy   $nn
 ;-------------------------------------------------------------------------------
@@ -254,17 +346,25 @@
 ;-------------------------------------------------------------------------------
 .b      1 *16 | 1  "p"          $fe #OP_B       ;    FE nn    | cp        $nn
 .b      2 *16 | 2   ".a"        $bf #OP         ;    BF       | cp.a
+.b      1 *16 | 4     "'"       $bf #OP         ;    BF       | cp.a'
 .b      1 *16 | 3    "b"        $b8 #OP         ;    B8       | cp.b
+.b      1 *16 | 4     "'"       $b8 #OP         ;    B8       | cp.b'
 .b      1 *16 | 3    "c"        $b9 #OP         ;    B9       | cp.c
+.b      1 *16 | 4     "'"       $b9 #OP         ;    B9       | cp.c'
 .b      1 *16 | 3    "d"        $ba #OP         ;    BA       | cp.d
+.b      1 *16 | 4     "'"       $ba #OP         ;    BA       | cp.d'
 .b      1 *16 | 3    "e"        $bb #OP         ;    BB       | cp.e
+.b      1 *16 | 4     "'"       $bb #OP         ;    BB       | cp.e'
 .b      1 *16 | 3    "h"        $bc #OP         ;    BC       | cp.h
+.b      1 *16 | 4     "'"       $bc #OP         ;    BC       | cp.h'
 .b      1 *16 | 3    "l"        $bd #OP         ;    BD       | cp.l
+.b      1 *16 | 4     "'"       $bd #OP         ;    BD       | cp.l'
 .b      3 *16 | 3    "ixh"      $bc #OP_IX      ; DD BC       | cp.ixh
 .b      1 *16 | 5      "l"      $bd #OP_IX      ; DD BD       | cp.ixl
 .b      2 *16 | 4     "yh"      $bc #OP_IY      ; FD BC       | cp.iyh
 .b      1 *16 | 5      "l"      $bd #OP_IY      ; FD BD       | cp.iyl
 .b      3 *16 | 2   "*hl"       $be #OP         ;    BE       | cp*hl
+.b      1 *16 | 5      "'"      $be #OP         ;    BE       | cp*hl'
 .b      2 *16 | 3    "ix"       $be #OP_IXO     ; DD BE nn    | cp*ix     $nn
 .b      1 *16 | 4     "y"       $be #OP_IYO     ; FD BE nn    | cp*iy     $nn
 ;-------------------------------------------------------------------------------
@@ -283,15 +383,26 @@
 .b      3 *16 | 1  "jnz"        $10 #OP_R       ;    10 nn    | djnz      $nnnn
 ;-------------------------------------------------------------------------------
 .b      4 *16 | 1  "ec.a"       $3d #OP         ;    3D       | dec.a
+; FIXME: why is this line not required!??
+;.b      1 *16 | 5      "'"      $3d #OP         ;    3D       | dec.a'
 .b      1 *16 | 4     "b"       $05 #OP         ;    05       | dec.b
+.b      1 *16 | 5      "'"      $05 #OP         ;    05       | dec.b'
 .b      1 *16 | 5      "c"      $0b #OP         ;    0B       | dec.bc
+.b      1 *16 | 6       "'"     $0b #OP         ;    0B       | dec.bc'
 .b      1 *16 | 4     "c"       $0d #OP         ;    0D       | dec.c
+.b      1 *16 | 5      "'"      $0d #OP         ;    0D       | dec.c'
 .b      1 *16 | 4     "d"       $15 #OP         ;    15       | dec.d
+.b      1 *16 | 5      "'"      $15 #OP         ;    15       | dec.d'
 .b      1 *16 | 5      "e"      $1b #OP         ;    1B       | dec.de
+.b      1 *16 | 6       "'"     $1b #OP         ;    1B       | dec.de'
 .b      1 *16 | 4     "e"       $1d #OP         ;    1D       | dec.e
+.b      1 *16 | 5      "'"      $1d #OP         ;    1D       | dec.e'
 .b      1 *16 | 4     "h"       $25 #OP         ;    25       | dec.h
+.b      1 *16 | 5      "'"      $25 #OP         ;    25       | dec.h'
 .b      1 *16 | 5      "l"      $2b #OP         ;    2B       | dec.hl
+.b      1 *16 | 6       "'"     $2b #OP         ;    2B       | dec.hl'
 .b      1 *16 | 4     "l"       $2d #OP         ;    2D       | dec.l
+.b      1 *16 | 5      "'"      $2d #OP         ;    2D       | dec.l'
 .b      2 *16 | 4     "ix"      $2b #OP_IX      ; DD 2B       | dec.ix
 .b      1 *16 | 6       "h"     $25 #OP_IX      ; DD 25       | dec.ixh
 .b      1 *16 | 6       "l"     $2d #OP_IX      ; DD 2D       | dec.ixl
@@ -300,6 +411,7 @@
 .b      1 *16 | 6       "l"     $2d #OP_IY      ; FD 2D       | dec.iyl
 .b      2 *16 | 4     "sp"      $3b #OP         ;    3B       | dec.sp
 .b      3 *16 | 3    "*hl"      $35 #OP         ;    35       | dec*hl
+.b      1 *16 | 6       "'"     $35 #OP         ;    35       | dec*hl'
 .b      2 *16 | 4     "ix"      $35 #OP_IXO     ; DD 35 nn    | dec*ix    $nn
 .b      1 *16 | 5      "y"      $35 #OP_IYO     ; FD 35 nn    | dec*iy    $nn
 ;-------------------------------------------------------------------------------
@@ -313,13 +425,15 @@
 ;===============================================================================
 .b      2 *16 | 1  "xx"         $d9 #OP         ;    D9       | exx
 ;-------------------------------------------------------------------------------
-.b      6 *16 | 2   ".af.af"    $08 #OP         ;    08       | ex.af.af'
+.b      6 *16 | 2   ".af.af"    $08 #OP         ;    08       | ex.af.af
+.b      1 *16 | 8         "'"   $08 #OP         ;    08       | ex.af.af'
 .b      3 *16 | 5      "'af"    $08 #OP         ;    08       | ex.af'af
 .b      5 *16 | 3    "de.hl"    $eb #OP         ;    EB       | ex.de.hl
-.b      3 *16 | 5      "'hl"    $eb #OP         ;    EB       | ex.de'hl'
+.b      4 *16 | 5      "'hl'"   $eb #OP         ;    EB       | ex.de'hl'
 .b      5 *16 | 3    "hl.de"    $eb #OP         ;    EB       | ex.hl.de
-.b      3 *16 | 5      "'de"    $eb #OP         ;    EB       | ex.hl'de'
+.b      4 *16 | 5      "'de'"   $eb #OP         ;    EB       | ex.hl'de'
 .b      6 *16 | 2   "*sp.hl"    $e3 #OP         ;    E3       | ex*sp.hl
+.b      1 *16 | 8         "'"   $e3 #OP         ;    E3       | ex*sp.hl'
 .b      2 *16 | 6       "ix"    $e3 #OP_IX      ; DD E3       | ex*sp.ix
 .b      1 *16 | 7        "y"    $e3 #OP_IY      ; FD E3       | ex*sp.iy
 ;-------------------------------------------------------------------------------
@@ -338,15 +452,24 @@
 :i
 ;===============================================================================
 .b      4 *16 | 1  "nc.a"       $3c #OP         ;    3C       | inc.a
+.b      1 *16 | 5      "'"      $3c #OP         ;    3C       | inc.a'
 .b      1 *16 | 4     "b"       $04 #OP         ;    04       | inc.b
+.b      1 *16 | 5      "'"      $04 #OP         ;    04       | inc.b'
 .b      1 *16 | 5      "c"      $03 #OP         ;    03       | inc.bc
+.b      1 *16 | 6       "'"     $03 #OP         ;    03       | inc.bc'
 .b      1 *16 | 4     "c"       $0c #OP         ;    0C       | inc.c
 .b      1 *16 | 4     "d"       $14 #OP         ;    14       | inc.d
+.b      1 *16 | 5      "'"      $14 #OP         ;    14       | inc.d'
 .b      1 *16 | 5      "e"      $13 #OP         ;    13       | inc.de
+.b      1 *16 | 6       "'"     $13 #OP         ;    13       | inc.de'
 .b      1 *16 | 4     "e"       $1c #OP         ;    1C       | inc.e
+.b      1 *16 | 5      "'"      $1c #OP         ;    1C       | inc.e'
 .b      1 *16 | 4     "h"       $24 #OP         ;    24       | inc.h
+.b      1 *16 | 5      "'"      $24 #OP         ;    24       | inc.h'
 .b      1 *16 | 5      "l"      $23 #OP         ;    23       | inc.hl
+.b      1 *16 | 6       "'"     $23 #OP         ;    23       | inc.hl'
 .b      1 *16 | 4     "l"       $2c #OP         ;    2C       | inc.l
+.b      1 *16 | 5      "'"      $2c #OP         ;    2C       | inc.l'
 .b      2 *16 | 4     "ix"      $23 #OP_IX      ; DD 23       | inc.ix
 .b      1 *16 | 6       "h"     $24 #OP_IX      ; DD 24       | inc.ixh
 .b      1 *16 | 6       "l"     $2c #OP_IX      ; DD 2C       | inc.ixl
@@ -360,20 +483,22 @@
 ;-------------------------------------------------------------------------------
 .b      3 *16 | 2   ".a*"       $db #OP_B       ;    DB nn    | in.a*     $nn
 .b      1 *16 | 5      "c"      $78 #OP_ED      ; ED 78       | in.a*c
+.b      1 *16 | 6       "'"     $78 #OP_ED      ; ED 78       | in.a*c'
 .b      2 *16 | 4     "'*"      $db #OP_B       ;    DB nn    | in.a'*    $nn
 .b      1 *16 | 6       "c"     $78 #OP_ED      ; ED 78       | in.a'*c
+.b      1 *16 | 7        "'"    $78 #OP_ED      ; ED 78       | in.a'*c'
 .b      3 *16 | 3    "b*c"      $40 #OP_ED      ; ED 40       | in.b*c
-.b      3 *16 | 4     "'*c"     $40 #OP_ED      ; ED 40       | in.b'*c'
+.b      4 *16 | 4     "'*c'"    $40 #OP_ED      ; ED 40       | in.b'*c'
 .b      3 *16 | 3    "c*c"      $48 #OP_ED      ; ED 48       | in.c*c
-.b      3 *16 | 4     "'*c"     $48 #OP_ED      ; ED 48       | in.c'*c'
+.b      4 *16 | 4     "'*c'"    $48 #OP_ED      ; ED 48       | in.c'*c'
 .b      3 *16 | 3    "d*c"      $50 #OP_ED      ; ED 50       | in.d*c
-.b      3 *16 | 4     "'*c"     $50 #OP_ED      ; ED 50       | in.d'*c'
+.b      4 *16 | 4     "'*c'"    $50 #OP_ED      ; ED 50       | in.d'*c'
 .b      3 *16 | 3    "e*c"      $58 #OP_ED      ; ED 58       | in.e*c
-.b      3 *16 | 4     "'*c"     $58 #OP_ED      ; ED 58       | in.e'*c'
+.b      4 *16 | 4     "'*c'"    $58 #OP_ED      ; ED 58       | in.e'*c'
 .b      3 *16 | 3    "h*c"      $60 #OP_ED      ; ED 60       | in.h*c
-.b      3 *16 | 4     "'*c"     $60 #OP_ED      ; ED 60       | in.h'*c'
+.b      4 *16 | 4     "'*c'"    $60 #OP_ED      ; ED 60       | in.h'*c'
 .b      3 *16 | 3    "l*c"      $68 #OP_ED      ; ED 68       | in.l*c
-.b      3 *16 | 4     "'*c"     $68 #OP_ED      ; ED 68       | in.l'*c'
+.b      4 *16 | 4     "'*c'"    $68 #OP_ED      ; ED 68       | in.l'*c'
 ;-------------------------------------------------------------------------------
 .b      1 *16 | 2   "d"         $aa #OP_ED      ; ED AA       | ind
 .b      1 *16 | 3    "r"        $ba #OP_ED      ; ED BA       | indr
@@ -401,6 +526,7 @@
 .b      1 *16 | 4     "e"       $ea #OP_W       ;    EA nn nn | jp?pe     $nnnn
 .b      1 *16 | 4     "o"       $e2 #OP_W       ;    E2 nn nn | jp?po     $nnnn
 .b      3 *16 | 2   "*hl"       $e9 #OP         ;    E9       | jp*hl
+.b      1 *16 | 5      "'"      $e9 #OP         ;    E9       | jp*hl'
 .b      2 *16 | 3    "ix"       $e9 #OP_IX      ; DD E9       | jp*ix
 .b      1 *16 | 4     "y"       $e9 #OP_IY      ; FD E9       | jp*iy
 ;-------------------------------------------------------------------------------
@@ -415,54 +541,115 @@
 :l
 ;===============================================================================
 .b      5 *16 | 1  "d*$.a"      $32 #OP_W       ;    32 nn nn | ld*$.a    $nnnn
+.b      1 *16 | 6       "'"     $32 #OP_W       ;    32 nn nn | ld*$.a'   $nnnn
 .b      2 *16 | 5      "bc"     $43 #OP_EDW     ; ED 43 nn nn | ld*$.bc   $nnnn
+.b      1 *16 | 7        "'"    $43 #OP_EDW     ; ED 43 nn nn | ld*$.bc'  $nnnn
 .b      2 *16 | 5      "de"     $53 #OP_EDW     ; ED 53 nn nn | ld*$.de   $nnnn
+.b      1 *16 | 7        "'"    $53 #OP_EDW     ; ED 53 nn nn | ld*$.de'  $nnnn
 .b      2 *16 | 5      "hl"     $22 #OP_W       ;    22 nn nn | ld*$.hl   $nnnn
+.b      1 *16 | 7        "'"    $22 #OP_W       ;    22 nn nn | ld*$.hl'  $nnnn
 .b      2 *16 | 5      "ix"     $22 #OP_IXW     ; DD 22 nn nn | ld*$.ix   $nnnn
 .b      1 *16 | 6       "y"     $22 #OP_IYW     ; FD 22 nn nn | ld*$.iy   $nnnn
 .b      2 *16 | 5      "sp"     $73 #OP_EDW     ; ED 73 nn nn | ld*$.sp   $nnnn
 ;-------------------------------------------------------------------------------
 .b      4 *16 | 3    "bc.a"     $02 #OP         ;    02       | ld*bc.a
+.b      1 *16 | 7        "'"    $02 #OP         ;    02       | ld*bc.a'
 .b      2 *16 | 5      "'a"     $02 #OP         ;    02       | ld*bc'a
+.b      1 *16 | 7        "'"    $02 #OP         ;    02       | ld*bc'a'
 .b      4 *16 | 3    "de.a"     $12 #OP         ;    12       | ld*de.a
+.b      1 *16 | 7        "'"    $12 #OP         ;    12       | ld*de.a'
 .b      2 *16 | 5      "'a"     $12 #OP         ;    02       | ld*de'a
+.b      1 *16 | 7        "'"    $12 #OP         ;    02       | ld*de'a'
 .b      2 *16 | 3    "hl"       $36 #OP_B       ;    36 nn    | ld*hl     $nn
 .b      2 *16 | 5      ".a"     $77 #OP         ;    77       | ld*hl.a
+.b      1 *16 | 7        "'"    $77 #OP         ;    77       | ld*hl.a'
 .b      1 *16 | 6       "b"     $70 #OP         ;    70       | ld*hl.b
+.b      1 *16 | 7        "'"    $70 #OP         ;    70       | ld*hl.b'
 .b      1 *16 | 6       "c"     $71 #OP         ;    71       | ld*hl.c
+.b      1 *16 | 7        "'"    $71 #OP         ;    71       | ld*hl.c'
 .b      1 *16 | 6       "d"     $72 #OP         ;    72       | ld*hl.d
+.b      1 *16 | 7        "'"    $72 #OP         ;    72       | ld*hl.d'
 .b      1 *16 | 6       "e"     $73 #OP         ;    73       | ld*hl.e
+.b      1 *16 | 7        "'"    $73 #OP         ;    73       | ld*hl.e'
 .b      1 *16 | 6       "h"     $74 #OP         ;    74       | ld*hl.h
+.b      1 *16 | 7        "'"    $74 #OP         ;    74       | ld*hl.h'
 .b      1 *16 | 6       "l"     $75 #OP         ;    75       | ld*hl.l
-.b      2 *16 | 5      "'a"     $77 #OP         ;    77       | ld*hl'a
-.b      1 *16 | 6       "b"     $70 #OP         ;    70       | ld*hl'b'
-.b      1 *16 | 6       "c"     $71 #OP         ;    71       | ld*hl'c'
-.b      1 *16 | 6       "d"     $72 #OP         ;    72       | ld*hl'd'
-.b      1 *16 | 6       "e"     $73 #OP         ;    73       | ld*hl'e'
-.b      1 *16 | 6       "h"     $74 #OP         ;    74       | ld*hl'h'
-.b      1 *16 | 6       "l"     $75 #OP         ;    75       | ld*hl'l'
-;-------------------------------------------------------------------------------
+.b      1 *16 | 7        "'"    $75 #OP         ;    75       | ld*hl.l'
+.b      1 *16 | 5      "'"      $36 #OP_B       ;    36       | ld*hl'
+.b      1 *16 | 6       "a"     $77 #OP         ;    77       | ld*hl'a
+.b      1 *16 | 7        "'"    $77 #OP         ;    77       | ld*hl'a'
+.b      2 *16 | 6       "b'"    $70 #OP         ;    70       | ld*hl'b'
+.b      2 *16 | 6       "c'"    $71 #OP         ;    71       | ld*hl'c'
+.b      2 *16 | 6       "d'"    $72 #OP         ;    72       | ld*hl'd'
+.b      2 *16 | 6       "e'"    $73 #OP         ;    73       | ld*hl'e'
+.b      2 *16 | 6       "h'"    $74 #OP         ;    74       | ld*hl'h'
+.b      2 *16 | 6       "l'"    $75 #OP         ;    75       | ld*hl'l'
+.b      2 *16 | 3    "ix"       $36 #OP_IXOB    ; DD 36 nn nn | ld*ix $nn $nn
+.b      2 *16 | 5      ".a"     $77 #OP_IXO     ; DD 77 nn    | ld*ix.a   $nn
+.b      1 *16 | 7        "'"    $77 #OP_IXO     ; DD 77 nn    | ld*ix.a'  $nn
+.b      1 *16 | 6       "b"     $70 #OP_IXO     ; DD 70 nn    | ld*ix.b   $nn
+.b      1 *16 | 7        "'"    $70 #OP_IXO     ; DD 70 nn    | ld*ix.b'  $nn
+.b      1 *16 | 6       "c"     $71 #OP_IXO     ; DD 71 nn    | ld*ix.c   $nn
+.b      1 *16 | 7        "'"    $71 #OP_IXO     ; DD 71 nn    | ld*ix.c'  $nn
+.b      1 *16 | 6       "d"     $72 #OP_IXO     ; DD 72 nn    | ld*ix.d   $nn
+.b      1 *16 | 7        "'"    $72 #OP_IXO     ; DD 72 nn    | ld*ix.d'  $nn
+.b      1 *16 | 6       "e"     $73 #OP_IXO     ; DD 73 nn    | ld*ix.e   $nn
+.b      1 *16 | 7        "'"    $73 #OP_IXO     ; DD 73 nn    | ld*ix.e'  $nn
+.b      1 *16 | 6       "h"     $74 #OP_IXO     ; DD 74 nn    | ld*ix.h   $nn
+.b      1 *16 | 7        "'"    $74 #OP_IXO     ; DD 74 nn    | ld*ix.h'  $nn
+.b      1 *16 | 6       "l"     $75 #OP_IXO     ; DD 75 nn    | ld*ix.l   $nn
+.b      1 *16 | 7        "'"    $75 #OP_IXO     ; DD 75 nn    | ld*ix.l'  $nn
+.b      1 *16 | 4     "y"       $36 #OP_IYOB    ; FD 36 nn nn | ld*iy $nn $nn
+.b      2 *16 | 5      ".a"     $77 #OP_IYO     ; FD 77 nn    | ld*iy.a   $nn
+.b      1 *16 | 7        "'"    $77 #OP_IYO     ; FD 77 nn    | ld*iy.a'  $nn
+.b      1 *16 | 6       "b"     $70 #OP_IYO     ; FD 70 nn    | ld*iy.b   $nn
+.b      1 *16 | 7        "'"    $70 #OP_IYO     ; FD 70 nn    | ld*iy.b'  $nn
+.b      1 *16 | 6       "c"     $71 #OP_IYO     ; FD 71 nn    | ld*iy.c   $nn
+.b      1 *16 | 7        "'"    $71 #OP_IYO     ; FD 71 nn    | ld*iy.c'  $nn
+.b      1 *16 | 6       "d"     $72 #OP_IYO     ; FD 72 nn    | ld*iy.d   $nn
+.b      1 *16 | 7        "'"    $72 #OP_IYO     ; FD 72 nn    | ld*iy.d'  $nn
+.b      1 *16 | 6       "e"     $73 #OP_IYO     ; FD 73 nn    | ld*iy.e   $nn
+.b      1 *16 | 7        "'"    $73 #OP_IYO     ; FD 73 nn    | ld*iy.e'  $nn
+.b      1 *16 | 6       "h"     $74 #OP_IYO     ; FD 74 nn    | ld*iy.h   $nn
+.b      1 *16 | 7        "'"    $74 #OP_IYO     ; FD 74 nn    | ld*iy.h'  $nn
+.b      1 *16 | 6       "l"     $75 #OP_IYO     ; FD 75 nn    | ld*iy.l   $nn
+.b      1 *16 | 7        "'"    $75 #OP_IYO     ; FD 75 nn    | ld*iy.l'  $nn
+;===============================================================================
 .b      2 *16 | 2   ".a"        $3e #OP_B       ;    3E nn    | ld.a      $nn
 .b      2 *16 | 4     ".a"      $7f #OP         ;    7F       | ld.a.a
 .b      1 *16 | 5      "b"      $78 #OP         ;    78       | ld.a.b
+.b      1 *16 | 6       "'"     $78 #OP         ;    78       | ld.a.b'
 .b      1 *16 | 5      "c"      $79 #OP         ;    79       | ld.a.c
+.b      1 *16 | 6       "'"     $79 #OP         ;    79       | ld.a.c'
 .b      1 *16 | 5      "d"      $7a #OP         ;    7A       | ld.a.d
+.b      1 *16 | 6       "'"     $7a #OP         ;    7A       | ld.a.d'
 .b      1 *16 | 5      "e"      $7b #OP         ;    7B       | ld.a.e
+.b      1 *16 | 6       "'"     $7b #OP         ;    7B       | ld.a.e'
 .b      1 *16 | 5      "h"      $7c #OP         ;    7C       | ld.a.h
+.b      1 *16 | 6       "'"     $7c #OP         ;    7C       | ld.a.h'
 .b      1 *16 | 5      "l"      $7d #OP         ;    7D       | ld.a.l
+.b      1 *16 | 6       "'"     $7d #OP         ;    7D       | ld.a.l'
 .b      1 *16 | 5      "i"      $57 #OP_ED      ; ED 57       | ld.a.i
 .b      2 *16 | 6       "xh"    $7c #OP_IX      ; DD 7C       | ld.a.ixh
 .b      1 *16 | 7        "l"    $7d #OP_IX      ; DD 7D       | ld.a.ixl
 .b      2 *16 | 6       "yh"    $7c #OP_IY      ; FD 7C       | ld.a.iyh
 .b      1 *16 | 7        "l"    $7d #OP_IY      ; FD 7D       | ld.a.iyl
 .b      1 *16 | 5      "r"      $5f #OP_ED      ; ED 5F       | ld.a.r
-.b      2 *16 | 4     "'a"      $7f #OP         ;    7F       | ld.a'a'
+;-------------------------------------------------------------------------------
+.b      1 *16 | 4     "'"       $3e #OP_B       ;    3E nn    | ld.a'     $nn
+.b      2 *16 | 5      "a'"     $7f #OP         ;    7F       | ld.a'a'
 .b      1 *16 | 5      "b"      $78 #OP         ;    78       | ld.a'b
+.b      1 *16 | 6       "'"     $78 #OP         ;    78       | ld.a'b'
 .b      1 *16 | 5      "c"      $79 #OP         ;    79       | ld.a'c
+.b      1 *16 | 6       "'"     $79 #OP         ;    79       | ld.a'c'
 .b      1 *16 | 5      "d"      $7a #OP         ;    7A       | ld.a'd
+.b      1 *16 | 6       "'"     $7a #OP         ;    7A       | ld.a'd'
 .b      1 *16 | 5      "e"      $7b #OP         ;    7B       | ld.a'e
+.b      1 *16 | 6       "'"     $7b #OP         ;    7B       | ld.a'e'
 .b      1 *16 | 5      "h"      $7c #OP         ;    7C       | ld.a'h
+.b      1 *16 | 6       "'"     $7c #OP         ;    7C       | ld.a'h'
 .b      1 *16 | 5      "l"      $7d #OP         ;    7D       | ld.a'l
+.b      1 *16 | 6       "'"     $7d #OP         ;    7D       | ld.a'l'
 .b      1 *16 | 5      "i"      $57 #OP_ED      ; ED 57       | ld.a'i
 .b      2 *16 | 6       "xh"    $7c #OP_IX      ; DD 7C       | ld.a'ixh
 .b      1 *16 | 7        "l"    $7d #OP_IX      ; DD 7D       | ld.a'ixl
@@ -470,119 +657,67 @@
 .b      1 *16 | 7        "l"    $7d #OP_IY      ; FD 7D       | ld.a'iyl
 .b      1 *16 | 5      "r"      $5f #OP_ED      ; ED 5F       | ld.a'r
 ;-------------------------------------------------------------------------------
-
-        ; ld*hl   $00             ;    36 00
-        ; ld*hl.a                 ;    77
-        ; ld*hl.b                 ;    70
-        ; ld*hl.c                 ;    71
-        ; ld*hl.d                 ;    72
-        ; ld*hl.e                 ;    73
-        ; ld*hl.h                 ;    74
-        ; ld*hl.l                 ;    75
-        ; ld*hl'a                 ;    77
-        ; ld*hl'b'                ;    70
-        ; ld*hl'c'                ;    71
-        ; ld*hl'd'                ;    72
-        ; ld*hl'e'                ;    73
-        ; ld*hl'h'                ;    74
-        ; ld*hl'l'                ;    75
-        ; ld*ix    $00    $FF     ; DD 36 00 FF
-        ; ld*ix.a  $00            ; DD 77 00
-        ; ld*ix.b  $00            ; DD 70 00
-        ; ld*ix.c  $00            ; DD 71 00
-        ; ld*ix.d  $00            ; DD 72 00
-        ; ld*ix.e  $00            ; DD 73 00
-        ; ld*ix.h  $00            ; DD 74 00
-        ; ld*ix.l  $00            ; DD 75 00
-        ; ld*iy    $00    $FF     ; FD 36 00 FF
-        ; ld*iy.a  $00            ; FD 77 00
-        ; ld*iy.b  $00            ; FD 70 00
-        ; ld*iy.c  $00            ; FD 71 00
-        ; ld*iy.d  $00            ; FD 72 00
-        ; ld*iy.e  $00            ; FD 73 00
-        ; ld*iy.h  $00            ; FD 74 00
-        ; ld*iy.l  $00            ; FD 75 00
-
-        ; ld.a     $00            ;    3E 00
-        ; ld.a.a                  ;    7F
-        ; ld.a.b                  ;    78
-        ; ld.a.c                  ;    79
-        ; ld.a.d                  ;    7A
-        ; ld.a.e                  ;    7B
-        ; ld.a.h                  ;    7C
-        ; ld.a.l                  ;    7D
-        ; ld.a.i                  ; ED 57
-        ; ld.a.ixh                ; DD 7C
-        ; ld.a.ixl                ; DD 7D
-        ; ld.a.iyh                ; FD 7C
-        ; ld.a.iyl                ; FD 7D
-        ; ld.a.r                  ; ED 5F
-
-        ; ld.a*    $FF00          ;    3A 00 FF
-        ; ld.a*bc                 ;    0A
-        ; ld.a*de                 ;    1A
-        ; ld.a*hl                 ;    7E
-        ; ld.a*ix  $00            ; DD 7E 00
-        ; ld.a*iy  $00            ; FD 7E 00
-
-        ; ld.a'a'                 ;    7F
-        ; ld.a'b                  ;    78
-        ; ld.a'c                  ;    79
-        ; ld.a'd                  ;    7A
-        ; ld.a'e                  ;    7B
-        ; ld.a'h                  ;    7C
-        ; ld.a'l                  ;    7D
-        ; ld.a'i                  ; ED 57
-        ; ld.a'ixh                ; DD 7C
-        ; ld.a'ixl                ; DD 7D
-        ; ld.a'iyh                ; FD 7C
-        ; ld.a'iyl                ; FD 7D
-        ; ld.a'r                  ; ED 5F
-
-        ; ld.a'*   $FF00          ;    3A 00 FF
-        ; ld.a'*bc                ;    0A
-        ; ld.a'*de                ;    1A
-        ; ld.a'*hl                ;    7E
-        ; ld.a'*ix $00            ; DD 7E 00
-        ; ld.a'*iy $00            ; FD 7E 00
-
-        ; ld.b     $00            ;    06 00
-        ; ld.b.a                  ;    47
-        ; ld.b.b                  ;    40
-        ; ld.b.c                  ;    41
-        ; ld.b.d                  ;    42
-        ; ld.b.e                  ;    43
-        ; ld.b.h                  ;    44
-        ; ld.b.l                  ;    45
-        ; ld.b.ixh                ; DD 44
-        ; ld.b.ixl                ; DD 45
-        ; ld.b.iyh                ; FD 44
-        ; ld.b.iyl                ; FD 45
-
-        ; ld.bc   $FF00           ;    01 00 FF
-        ; ld.bc*  $FF00           ; ED 4B 00 FF
-        ; ld.bc'* $FF00           ; ED 4B 00 FF
-
-        ; ld.b*hl                 ;    46
-        ; ld.b*ix  $00            ; DD 46 00
-        ; ld.b*iy  $00            ; FD 46 00
-
-        ; ld.b'a                  ;    47
-        ; ld.b'a'                 ;    47
-        ; ld.b'b'                 ;    40
-        ; ld.b'c'                 ;    41
-        ; ld.b'd'                 ;    42
-        ; ld.b'e'                 ;    43
-        ; ld.b'h'                 ;    44
-        ; ld.b'l'                 ;    45
-        ; ld.b'ixh                ; DD 44
-        ; ld.b'ixl                ; DD 45
-        ; ld.b'iyh                ; FD 44
-        ; ld.b'iyl                ; FD 45
-
-        ; ld.b'*hl'               ;    46
-        ; ld.b'*ix $00            ; DD 46 00
-        ; ld.b'*iy $00            ; FD 46 00
+.b      1 *16 | 5      "*"      $3a #OP_W       ;    3A nn nn | ld.a'*    $nnnn
+.b      2 *16 | 6       "bc"    $0a #OP         ;    0A       | ld.a'*bc
+.b      1 *16 | 8         "'"   $0a #OP         ;    0A       | ld.a'*bc'
+.b      2 *16 | 6       "de"    $1a #OP         ;    1A       | ld.a'*de
+.b      1 *16 | 8         "'"   $1a #OP         ;    1A       | ld.a'*de'
+.b      2 *16 | 6       "hl"    $7e #OP         ;    7E       | ld.a'*hl
+.b      1 *16 | 8         "'"   $7e #OP         ;    7E       | ld.a'*hl'
+.b      2 *16 | 6      "ix"     $7e #OP_IXO     ; DD 7E nn    | ld.a'*ix  $nn
+.b      1 *16 | 7       "y"     $7e #OP_IYO     ; FD 7E nn    | ld.a'*iy  $nn
+;-------------------------------------------------------------------------------
+.b      1 *16 | 4     "*"       $3a #OP_W       ;    3A nn nn | ld.a*     $nnnn
+.b      2 *16 | 5      "bc"     $0a #OP         ;    0A       | ld.a*bc
+.b      1 *16 | 7        "'"    $0a #OP         ;    0A       | ld.a*bc'
+.b      2 *16 | 5      "de"     $1a #OP         ;    1A       | ld.a*de
+.b      1 *16 | 7        "'"    $1a #OP         ;    1A       | ld.a*de'
+.b      2 *16 | 5      "hl"     $7e #OP         ;    7E       | ld.a*hl
+.b      1 *16 | 7        "'"    $7e #OP         ;    7E       | ld.a*hl'
+.b      2 *16 | 5      "ix"     $7e #OP_IXO     ; DD 7E nn    | ld.a*ix   $nn
+.b      1 *16 | 6       "y"     $7e #OP_IYO     ; FD 7E nn    | ld.a*iy   $nn
+;===============================================================================
+.b      1 *16 | 3    "b"        $06 #OP_B       ;    06 nn    | ld.b      $nn
+.b      1 *16 | 4     "'"       $06 #OP_B       ;    06 nn    | ld.b'     $nn
+.b      1 *16 | 5      "a"      $47 #OP         ;    47       | ld.b'a
+.b      1 *16 | 6       "'"     $47 #OP         ;    47       | ld.b'a'
+.b      2 *16 | 5      "b'"     $40 #OP         ;    40       | ld.b'b'
+.b      2 *16 | 5      "c'"     $41 #OP         ;    41       | ld.b'c'
+.b      2 *16 | 5      "d'"     $42 #OP         ;    42       | ld.b'd'
+.b      2 *16 | 5      "e'"     $43 #OP         ;    43       | ld.b'e'
+.b      2 *16 | 5      "h'"     $44 #OP         ;    44       | ld.b'h'
+.b      2 *16 | 5      "l'"     $45 #OP         ;    45       | ld.b'l'
+.b      3 *16 | 5      "ixh"    $44 #OP_IX      ; DD 44       | ld.b'ixh
+.b      1 *16 | 7        "l"    $45 #OP_IX      ; DD 45       | ld.b'ixl
+.b      2 *16 | 6       "yh"    $44 #OP_IY      ; FD 44       | ld.b'iyh
+.b      1 *16 | 7        "l"    $45 #OP_IY      ; FD 45       | ld.b'iyl
+;-------------------------------------------------------------------------------
+.b      4 *16 | 5      "*hl'"   $46 #OP         ;    46       | ld.b'*hl'
+.b      2 *16 | 6       "ix"    $46 #OP_IXO     ; DD 46 nn    | ld.b'*ix  $nn
+.b      1 *16 | 7        "y"    $46 #OP_IYO     ; FD 46 nn    | ld.b'*iy  $nn
+;-------------------------------------------------------------------------------
+.b      1 *16 | 4     "c"       $01 #OP_W       ;    01 nn nn | ld.bc     $nnnn
+.b      1 *16 | 5      "*"      $4b #OP_EDW     ; ED 4B nn nn | ld.bc*    $nnnn
+.b      1 *16 | 5      "'"      $01 #OP_W       ;    01 nn nn | ld.bc'    $nnnn
+.b      1 *16 | 6       "*"     $4b #OP_EDW     ; ED 4B nn nn | ld.bc'*   $nnnn
+;-------------------------------------------------------------------------------
+.b      3 *16 | 4     "*hl"     $46 #OP         ;    46       | ld.b*hl
+.b      2 *16 | 5      "ix"     $46 #OP_IXO     ; DD 46 nn    | ld.b*ix   $nn
+.b      1 *16 | 6       "y"     $46 #OP_IYO     ; FD 46 nn    | ld.b*iy   $nn
+;-------------------------------------------------------------------------------
+.b      2 *16 | 4     ".a"      $47 #OP         ;    47       | ld.b.a
+.b      1 *16 | 6       "'"     $47 #OP         ;    47       | ld.b.a'
+.b      1 *16 | 5      "b"      $40 #OP         ;    40       | ld.b.b
+.b      1 *16 | 5      "c"      $41 #OP         ;    41       | ld.b.c
+.b      1 *16 | 5      "d"      $42 #OP         ;    42       | ld.b.d
+.b      1 *16 | 5      "e"      $43 #OP         ;    43       | ld.b.e
+.b      1 *16 | 5      "h"      $44 #OP         ;    44       | ld.b.h
+.b      1 *16 | 5      "l"      $45 #OP         ;    45       | ld.b.l
+.b      3 *16 | 5      "ixh"    $44 #OP_IX      ; DD 44       | ld.b.ixh
+.b      1 *16 | 7        "l"    $45 #OP_IX      ; DD 45       | ld.b.ixl
+.b      2 *16 | 6       "yh"    $44 #OP_IY      ; FD 44       | ld.b.iyh
+.b      1 *16 | 7        "l"    $45 #OP_IY      ; FD 45       | ld.b.iyl
+;===============================================================================
 
         ; ld.c     $00            ;    0E 00
         ; ld.c.a                  ;    4F
@@ -617,7 +752,14 @@
         ; ld.c'*ix $00            ; DD 4E 00
         ; ld.c'*iy $00            ; FD 4E 00
 
-        ; ld.d     $00            ;    16 00
+;-------------------------------------------------------------------------------
+.b      1 *16 | 3    "d"        $16 #OP_B       ;    16 nn    | ld.d      $nn
+.b      1 *16 | 4     "'"       $16 #OP_B       ;    16 nn    | ld.d'     $nn
+.b      1 *16 | 4     "e"       $11 #OP_W       ;    11 nn nn | ld.de     $nnnn
+.b      1 *16 | 5      "*"      $5b #OP_EDW     ; ED 4B nn nn | ld.de*    $nnnn
+.b      1 *16 | 5      "'"      $11 #OP_W       ;    11 nn nn | ld.de'    $nnnn
+.b      1 *16 | 6       "*"     $5b #OP_EDW     ; ED 5B nn nn | ld.de'*   $nnnn
+
         ; ld.d.a                  ;    57
         ; ld.d.b                  ;    50
         ; ld.d.c                  ;    51
@@ -629,10 +771,6 @@
         ; ld.d.ixl                ; DD 55
         ; ld.d.iyh                ; FD 54
         ; ld.d.iyl                ; FD 55
-
-        ; ld.de   $FF00           ;    11 00 FF
-        ; ld.de*  $FF00           ; ED 5B 00 FF
-        ; ld.de'* $FF00           ; ED 5B 00 FF
 
         ; ld.d*hl                 ;    56
         ; ld.d*ix  $00            ; DD 56 00
@@ -688,6 +826,14 @@
         ; ld.e'*ix $00            ; DD 5E 00
         ; ld.e'*iy $00            ; FD 5E 00
 
+;-------------------------------------------------------------------------------
+.b      1 *16 | 3    "h"        $26 #OP_B       ;    26 nn    | ld.h      $nn
+.b      1 *16 | 4     "'"       $26 #OP_B       ;    26 nn    | ld.h'     $nn
+.b      1 *16 | 4     "l"       $21 #OP_W       ;    21 nn nn | ld.hl     $nnnn
+.b      1 *16 | 5      "*"      $2a #OP_W       ;    2A nn nn | ld.hl*    $nnnn
+.b      1 *16 | 5      "'"      $21 #OP_W       ;    21 nn nn | ld.hl'    $nnnn
+.b      1 *16 | 6       "*"     $2a #OP_W       ;    2A nn nn | ld.hl'*   $nnnn
+
         ; ld.h     $00            ;    26 00
         ; ld.h.a                  ;    67
         ; ld.h.b                  ;    60
@@ -696,10 +842,6 @@
         ; ld.h.e                  ;    63
         ; ld.h.h                  ;    64
         ; ld.h.l                  ;    65
-
-        ; ld.hl   $FF00           ;    21 00 FF
-        ; ld.hl*  $FF00           ;    2A 00 FF
-        ; ld.hl'* $FF00           ;    2A 00 FF
 
         ; ld.h*hl                 ;    66
         ; ld.h*ix  $00            ; DD 66 00
@@ -742,10 +884,12 @@
         ; ld.l'*ix $00            ; DD 6E 00
         ; ld.l'*iy $00            ; FD 6E 00
 
-        ; ld.i.a                  ; ED 47
+;-------------------------------------------------------------------------------
+.b      3 *16 | 3    "i.a"      $47 #OP_ED      ; ED 47       | ld.i.a
+;-------------------------------------------------------------------------------
+.b      1 *16 | 4     "x"       $21 #OP_IXW     ; DD 21 nn nn | ld.ix     $nnnn
+.b      1 *16 | 5      "*"      $2a #OP_IXW     ; DD 2A nn nn | ld.ix*    $nnnn
 
-        ; ld.ix   $FF00           ; DD 21 00 FF
-        ; ld.ix*  $FF00           ; DD 2A 00 FF
         ; ld.ixh  $00             ; DD 26 00
         ; ld.ixh.a                ; DD 67
         ; ld.ixh.b                ; DD 60
@@ -763,8 +907,9 @@
         ; ld.ixl.ixh              ; DD 6C
         ; ld.ixl.ixl              ; DD 6D
 
-        ; ld.iy   $FF00           ; FD 21 00 FF
-        ; ld.iy*  $FF00           ; FD 2A 00 FF
+.b      1 *16 | 4     "y"       $21 #OP_IYW     ; FD 21 nn nn | ld.iy     $nnnn
+.b      1 *16 | 5      "*"      $2a #OP_IYW     ; FD 2A nn nn | ld.iy*    $nnnn
+
         ; ld.iyh  $00             ; FD 26 00
         ; ld.iyh.a                ; FD 67
         ; ld.iyh.b                ; FD 60
@@ -782,11 +927,14 @@
         ; ld.iyl.iyh              ; FD 6C
         ; ld.iyl.iyl              ; FD 6D
 
-        ; ld.sp   $FF00           ;    31 00 FF
-        ; ld.sp*  $FF00           ; ED 7B 00 FF
-        ; ld.sp.hl                ;    F9
-        ; ld.sp.ix                ; DD F9
-        ; ld.sp.iy                ; FD F9
+;-------------------------------------------------------------------------------
+.b      2 *16 | 3    "sp"       $31 #OP_W       ;    21 nn nn | ld.sp     $nnnn
+.b      1 *16 | 5      "*"      $7b #OP_EDW     ; ED 7B nn nn | ld.sp*    $nnnn
+.b      3 *16 | 5      ".hl"    $f9 #OP         ;    F9       | ld.sp.hl
+.b      1 *16 | 8         "'"   $f9 #OP         ;    F9       | ld.sp.hl'
+.b      2 *16 | 6       "ix"    $f9 #OP_IX      ; DD F9       | ld.sp.ix
+.b      1 *16 | 7        "y"    $f9 #OP_IY      ; FD F9       | ld.sp.iy
+
 
         ; ld.r.a                  ; ED 4F
 
