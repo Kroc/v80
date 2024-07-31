@@ -838,6 +838,7 @@ neg:	neg				; neg			; ED 44
 nop:	nop				; nop			;    00
 	;-----------------------------------------------------------------------
 or:	or	A,	[HL]		; or*hl			;    B6
+	or	A,	[HL']		; or*hl'		;    B6
 	or	A,	[IX+$00]	; or*ix		$00	; DD B6 00
 	or	A,	[IY+$00]	; or*iy		$00	; FD B6 00
 	or	A,	$00		; or		$00	;    F6 00
