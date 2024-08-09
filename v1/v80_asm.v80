@@ -1406,13 +1406,41 @@ _ok     ex.DE.HL                        ; swap heap back to HL
 ;-------------------------------------------------------------------------------
         push.HL                         ; backup heap addr
 
-        ; begin iterating the list of instructions:
+        ; read the full word ahead of time as we will need to know its length.
+        ; we read into the bottom of the buffer which is always page-aligned
+        ; so that the lo-byte == string-length
+        ;
+        ld.DE   :buffers
         ;-----------------------------------------------------------------------
+        ; to allow for case-insensitivty, we force lowercase without also
+        ; affecting numbers by setting bit 5. this essentially forces ASCII
+        ; codes 64-95 (@A-Z[\]^_) to codes 96-127 (`a-z{|}~) which makes A-Z
+        ; lowercase with the caveat that punctuation cannot be differentiated
+        ; "@"<->"`", "[]"<->"{}", "\"<->"|" and "^"<->"~" but we aren't using
+        ; any of those in the instruction names anyway
+        ; 
+        ; it also means that ASCII codes 0-31 (non-visible) are promoted
+        ; to 32-64 (visible) so we must eliminate white-space first
+        ;
+_word   or      %00100000               ; force partial lowercase
+        ld*DE.A                         ; write character
+        inc.E                           ; next char in captured word
+        call    :readChar               ; get an input char
+        cp      #SPC + 1                ; ASCII <= SPC is end-of-word
+        jr?nc   _word                   ; keep reading chars
+        ;-----------------------------------------------------------------------
+        xor.A                           ; must write null-terminator
+        ld*DE.A                         ; to end of word
+        ld.E.A                          ; rewind to beginning of word
+        ld.A*DE                         ; restore first character
+        ;///////////////////////////////////////////////////////////////////////
+        call    :osPrintChar            ; print first matching character
+        ld.A*DE                         ; (A not preserved)
+        ;///////////////////////////////////////////////////////////////////////
+
         ; the first character of the word is used to skip to the alphabetic
         ; start point in the instruction list
         ;
-        or      %00100000               ; set bit 5 to force lower-case
-        ld.D.A                          ; backup first char for after this
         sub     'a                      ; rebase to a = 0 etc.
         add.A                           ; double char for 16-bits per entry
         ld.B    0                       ; put offset into BC
@@ -1426,27 +1454,19 @@ _ok     ex.DE.HL                        ; swap heap back to HL
         or.H                            ; if the value is zero, then no
         jr?z    _err                    ;  instruction begins with that letter
 
-        ;///////////////////////////////////////////////////////////////////////
-        ld.A.D
-        call    :osPrintChar
-        ;///////////////////////////////////////////////////////////////////////
-
         ; the first character is already matched, so we have to get the 2nd
         ; before entering the loop. this implies that there are no one-letter
         ; instructions, so error if unexpected whitespace
-        call    :readChar
+        ; 
+        inc.E                           ; E doubles as matched char count!
+        ld.A*DE                         ; read 2nd input char
+        ;///////////////////////////////////////////////////////////////////////
+        call    :osPrintChar            ; print first matching character
+        ld.A*DE                         ; (A not preserved)
+        ;///////////////////////////////////////////////////////////////////////
         cp      #SPC + 1                ; ASCII code <= 32 (space)?
         jr?c    _err                    ; error if 1-letter word
 
-        ; E will hold the number of characters matched;
-        ; start at 1 since we've already matched the first-character
-        ;
-        ld.D.A                          ; D = current character
-        ld.E    1                       ; E = no. of matched chars
-        ;///////////////////////////////////////////////////////////////////////
-        ld.A.D
-        call    :osPrintChar
-        ;///////////////////////////////////////////////////////////////////////
         jr      _loop                   ; jump into loop
 
         ;=======================================================================
@@ -1491,14 +1511,14 @@ _loop   ld.C*HL                         ; get instruction length byte
         ; it is normal for the number of re-used chars to be more than our
         ; matched count as it means we could be looking at an instruction
         ; branch that doesn't apply to us (e.g. first "." instead of "*")
-        ; we also skip in this case
         ;
+        dec.A                           ; fix A for greater-than check
         cp.E                            ; compare re-used with matched count
-        jr?nz   _skip                   ; skip unmatchable line
+        jr?nc   _skip                   ; skip unmatchable line
 
         ; match chars with current line:
         ;-----------------------------------------------------------------------
-_char   ld.A.D                          ; retrieve our current char
+_char   ld.A*DE                         ; retrieve our current char
         cp*HL                           ; compare with instruction list
         jr?nz   _skip                   ; no match? skip to next line
 
@@ -1506,24 +1526,10 @@ _char   ld.A.D                          ; retrieve our current char
         ;
         inc.E                           ; increment matched counter
         inc.HL                          ; step to next char in list
-
-        ; get next char from input:
-        ; 
-        ; to allow for case-insensitivty, we force lowercase without also
-        ; affecting numbers by setting bit 5. this essentially forces ASCII
-        ; codes 64-95 (@A-Z[\]^_) to codes 96-127 (`a-z{|}~) which makes A-Z
-        ; lowercase with the caveat that punctuation cannot be differentiated
-        ; "@"<->"`", "[]"<->"{}", "\"<->"|" and "^"<->"~" but we aren't using
-        ; any of those in the instruction names anyway
-        ; 
-        ; it also means that ASCII codes 0-31 (non-visible) are promoted
-        ; to 32-64 (visible) so we must eliminate white-space first
-        ;
-_get    call    :readChar               ; read next char from our word
+_get    ld.A*DE                         ; read next char from our input word
         ;///////////////////////////////////////////////////////////////////////
-        push.AF
         call    :osPrintChar
-        pop.AF
+        ld.A*DE
         ;///////////////////////////////////////////////////////////////////////
         cp      #SPC + 1                ; is it SPC/EOL/EOF?
         jr?c    _eow                    ; handle end-of-word...
@@ -1544,9 +1550,7 @@ _get    call    :readChar               ; read next char from our word
         ;cp*HL                           ; is the line char also a dot?
         ;jr?nz   _get                    ; if not -- skip the apostrophe
 
-_1      or      %00100000               ; force partial lowercase
-        ld.D.A                          ; use this char for next comparison
-        dec.C                           ; one less char to check/skip
+_1      dec.C                           ; one less char to check/skip
         jr?nz   _char                   ; do all additional chars for this line
 
         ; if the chars in the line match, but the input word is longer,
