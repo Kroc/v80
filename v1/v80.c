@@ -1,9 +1,9 @@
 /* v80.c (C) Gary V. Vaughan 2024, MIT License
 
-   On Linux, compile with:
-   $ cc -o bin/v80 -DNDEBUG -DNO_SYS_PARAM_H -DNO_SYS_STAT_H v1/v80.c
+   On Linux and macOS, compile with:
+   $ cc -std=c89 -pedantic -O2 -D_POSIX_C_SOURCE=1 -DNDEBUG -DNO_SYS_PARAM_H -DNO_SYS_STAT_H -o bin/v80 v1/v80.c
 
-   Other architectures pending - from memory so far, this should all be C89 compatible.
+   Other architectures pending - code is C89 compliant!
 */
 #ifndef NDEBUG
 #   include <assert.h>
@@ -17,6 +17,10 @@
 #endif
 #ifndef NO_SYS_STAT_H
 #  include <sys/stat.h>
+#endif
+
+#if _POSIX_C_SOURCE < 200112L
+#  define inline
 #endif
 
 #ifndef EXIT_SUCCESS
@@ -63,7 +67,7 @@ typedef struct stack {
 typedef struct symbolchain {
     struct symbolchain *next;
     const char *zname;
-    uint16_t value;
+    unsigned value;
 } Symbol;
 
 typedef struct includestack {
@@ -110,6 +114,7 @@ enum Errmsg {
 #define X(_s, _l, _c, _m) _c,
     ERRORHANDLING
 #undef X
+    ERR_NUMBEROFENTRIES
 };
 
 __attribute__((noreturn)) void
@@ -120,6 +125,8 @@ fatal(enum Errmsg code)
 #define X(_s, _l, _c, _m) case _c: fprintf(stderr, (_m), token.len - (_l), token.start + (_s)); break;
         ERRORHANDLING
 #undef X
+        case ERR_NUMBEROFENTRIES:
+            fprintf(stderr, "internal error"); break;
     }
     putc('\n', stderr);
     exit(EXIT_FAILURE);
