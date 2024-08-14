@@ -30,6 +30,9 @@
 #ifndef MAXPATHLEN
 #  define MAXPATHLEN 1024
 #endif
+#ifndef UINT_MAX
+#  define UINT_MAX ~0
+#endif
 
 #define STRINGIFY(_x)       #_x
 #define XSTRINGIFY(_x)      STRINGIFY(_x)
@@ -75,7 +78,7 @@ typedef struct symbolchain {
 typedef struct includestack {
     struct includestack *next;
     const char *zfname, *zline;
-    unsigned bufsiz, lineno;
+    unsigned bufsiz, lineno, indent;
     FILE *stream;
 } File;
 
@@ -130,11 +133,12 @@ typedef struct token {
 /* GLOBALS */
 
 
-Symbol     *pc      = NULL; /* fast access to the '$' symbol */
-File       *files   = NULL; /* current file on top of include stack */
-File       *out     = NULL; /* where to write assembled code */
-const char *zlabel  = NULL; /* current non-local label name */
-Symbol     *symbols = NULL; /* searchable linked list of symbols */
+File       *files   = NULL;     /* current file on top of include stack */
+File       *out     = NULL;     /* where to write assembled code */
+Symbol     *pc      = NULL;     /* fast access to the '$' symbol */
+unsigned    skipcol = UINT_MAX; /* skip all lines indented more than this */
+Symbol     *symbols = NULL;     /* searchable linked list of symbols */
+const char *zlabel  = NULL;     /* current non-local label name */
 
 char        codesegment[0x10000];
 
@@ -203,6 +207,7 @@ c_isspace(int c)
     X(ERR_NUMBERTOOBIG,     "Expression overflow")                              \
     X(ERR_NOMEM,            "Out of memory")                                    \
     X(ERR_NOPAREN,          "Invalid expression, missing ')'")                  \
+    X(ERR_NOSTRINGWORD,     "Invalid string argument to keyword")               \
     X(ERR_UNDEFCONSTANT,    "Undefined constant reference")                     \
     X(ERR_UNDEFLABEL,       "Undefined label reference")                        \
     X(ERR_LINETOOLONG,      "Line exceeds " XSTRINGIFY(LINE_MAXLEN) " columns") \
@@ -722,6 +727,17 @@ token_append_type(Token **ptokens, const char *begin, enum type type, unsigned l
     *ptokens = stack_append(*ptokens, token_new(type, begin, len, begin));
 }
 
+char *
+elide_longline(char *zline)
+{
+    int i = 0;
+    zline += LINE_MAXLEN - LINETOOLONG_ERRSIZE;
+    while(i < 3)
+        zline[i++] = '.';
+    zline[LINETOOLONG_ERRSIZE] = '\0';
+    return zline;
+}
+
 Token *
 tokenize_line(const char *zline)
 {
@@ -767,7 +783,7 @@ tokenize_line(const char *zline)
                 pos = token_append_decimal(&r, begin);
                 break;
             case ':': pos = token_append_str(&r, begin, T_LABEL); break;
-            case ';': for(; !c_iseol(*pos); ++pos); break;
+            case ';': return r;
             case '<': token_append_type(&r, begin, T_OP_LOBYTE, 1); break;
             case '>': token_append_type(&r, begin, T_OP_HIBYTE, 1); break;
             case '?':
@@ -787,6 +803,10 @@ tokenize_line(const char *zline)
         }
         while(c_isspace(*pos))
             ++pos;
+        if(pos > files->zline + LINE_MAXLEN) {
+            elide_longline((char *)files->zline);
+            err_fatal(ERR_LINETOOLONG, files->zline, 0, 0);
+        }
     }
     return r;
 }
@@ -1023,13 +1043,14 @@ parse_expression(Token *token, unsigned *pvalue)
 }
 
 Token *
-expect_expression_next(Token *token, unsigned *pvalue)
+expect_word_expression_next(Token *token, unsigned *pvalue)
 {
     assert(token && pvalue);
     Token *expression = token->next;
     if(!expression) /* missing next token entirely */
         err_fatal_token_value(ERR_EXPECTEXPRESSION, token);
-    //TODO diagnose T_STRING
+    if(expression->type == T_STRING)
+        err_fatal_token_str(ERR_NOSTRINGWORD, expression);
     token = parse_expression(expression, pvalue);
     if(token == expression) /* not an expression */
         err_fatal_token_value(ERR_EXPECTEXPRESSION, token);
@@ -1042,7 +1063,7 @@ parse_keyword_align(Token *keyword)
     Token *token = NULL;
     unsigned align;
     assert(keyword);
-    token = expect_expression_next(keyword, &align);
+    token = expect_word_expression_next(keyword, &align);
     while(pc->value % align)
         emit_byte(0);
     assert(token);
@@ -1090,9 +1111,9 @@ parse_keyword_fill(Token *keyword)
     Token *token = NULL;
     unsigned value, count;
     assert(keyword);
-    token = expect_expression_next(keyword, &value);
+    token = expect_word_expression_next(keyword, &value);
     require_byte_token(value, keyword->next);
-    token = expect_expression_next(token, &count);
+    token = expect_word_expression_next(token, &count);
     while(count-- > 0)
         emit_byte(value);
     return token;
@@ -1115,7 +1136,7 @@ Token *
 parse_keyword_words(Token *token)
 {
     unsigned value = 0;
-    token = expect_expression_next(token, &value);
+    token = expect_word_expression_next(token, &value);
     emit_byte(value & 0xff);
     emit_byte((value >> 8) & 0xff);
 
@@ -1142,6 +1163,35 @@ parse_keyword(Token *token)
 
         default: return token;
     }
+}
+
+Token *
+parse_set_constant(Token *constant)
+{
+    Token *token = NULL;
+    unsigned value = 0;
+    assert(constant);
+    token = expect_word_expression_next(constant, &value);
+    symbols = symbol_set(symbols, constant->str, constant->num, value);
+    return token;
+}
+
+Token *
+parse_condition(Token *condition)
+{
+    Token *token = NULL;
+    unsigned value = 0;
+    assert(condition);
+    token = expect_word_expression_next(condition, &value);
+    switch(condition->type) {
+        case T_COND_EQ:       skipcol = (value == 0)      ? files->indent : UINT_MAX; break;
+        case T_COND_NEGATIVE: skipcol = (value > 0x7fff)  ? files->indent : UINT_MAX; break;
+        case T_COND_NOTEQ:    skipcol = (value != 0)      ? files->indent : UINT_MAX; break;
+        case T_COND_POSITIVE: skipcol = (value <= 0x7fff) ? files->indent : UINT_MAX; break;
+        default:
+            err_fatal(ERR_NUMBEROFENTRIES, __FILE__ ":" XSTRINGIFY(__LINE__), 0, token->col);
+    }
+    return token;
 }
 
 Token *
@@ -1172,42 +1222,23 @@ parse_statement(Token *token)
     return parse_statement(token->next);
 }
 
-Token *
-parse_set_constant(Token *constant, Token *expression)
-{
-    Token *r = NULL;
-    unsigned value = 0;
-    assert(constant);
-    if(expression == NULL)
-        err_fatal_token_str(ERR_EXPECTEXPRESSION, constant);
-    r = parse_expression(expression, &value);
-    symbols = symbol_set(symbols, constant->str, constant->num, value);
-    return r;
-}
-
 void
-parse_line(Token *tokens)
+parse_line(Token *token)
 {
-    Token *token = tokens;
-
-    if(token->type == T_CONSTANT)
-        token = parse_set_constant(token, token->next);
-    else
-        token = parse_statement(token);
+    switch(token->type) {
+        case T_CONSTANT:
+            token = parse_set_constant(token);
+            break;
+        case T_COND_EQ: case T_COND_NEGATIVE: case T_COND_NOTEQ: case T_COND_POSITIVE:
+            token = parse_condition(token);
+            break;
+        default:
+            token = parse_statement(token);
+            break;
+    }
 
     if(token != NULL)
         err_fatal_token_value(ERR_BADINSTRUCTION, token);
-}
-
-char *
-elide_longline(char *zline)
-{
-    int i = 0;
-    zline += LINE_MAXLEN - LINETOOLONG_ERRSIZE;
-    while(i < 3)
-        zline[i++] = '.';
-    zline[LINETOOLONG_ERRSIZE] = '\0';
-    return zline;
 }
 
 void
@@ -1215,16 +1246,17 @@ parse_file(File *file)
 {
     unsigned nbytes;
     files = stack_push(files, file);
-    /* xgetline xreallocs existing memory at token.zline on every call */
+    /* xgetline xreallocs existing memory at files->zline on every call */
     while ((nbytes = xgetline((char **)&files->zline, &files->bufsiz, file->stream)) > 0) {
         Token *tokens;
-        if(nbytes > LINE_MAXLEN) {
-            elide_longline((char *)files->zline);
-            err_fatal(ERR_LINETOOLONG, files->zline, 0, 0);
+        if((tokens = tokenize_line(files->zline))) {
+            files->indent = tokens->col;
+            if(files->indent <= skipcol) {
+                skipcol = UINT_MAX;
+                parse_line(tokens);
+            }
+            tokens = token_free(tokens);
         }
-        tokens = tokenize_line(files->zline);
-        parse_line(tokens);
-        tokens = token_free(tokens);
         ++files->lineno;
     }
     files = file_del(files);
