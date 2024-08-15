@@ -24,14 +24,15 @@
 #endif
 
 #ifndef EXIT_SUCCESS
-#  define EXIT_SUCCESS 0
-#  define EXIT_FAILURE 1
+#  define EXIT_SUCCESS  0
+#  define EXIT_FAILURE  1
 #endif
+#define EXIT_USAGE      2
 #ifndef MAXPATHLEN
-#  define MAXPATHLEN 1024
+#  define MAXPATHLEN    1024
 #endif
 #ifndef UINT_MAX
-#  define UINT_MAX ~0
+#  define UINT_MAX      ~0
 #endif
 
 #define STRINGIFY(_x)       #_x
@@ -134,7 +135,6 @@ typedef struct token {
 
 
 File       *files   = NULL;     /* current file on top of include stack */
-File       *out     = NULL;     /* where to write assembled code */
 Symbol     *pc      = NULL;     /* fast access to the '$' symbol */
 unsigned    skipcol = UINT_MAX; /* skip all lines indented more than this */
 Symbol     *symbols = NULL;     /* searchable linked list of symbols */
@@ -285,6 +285,13 @@ err_fatal_null(enum ErrCode code)
     err_fatal(code, NULL, 0, 0);
 }
 
+void
+err_usage(const char *progname)
+{
+    fprintf(stderr, "Usage: %s INPUTPATH [OUTPUTPATH]\n", progname);
+    exit(EXIT_USAGE);
+}
+
 
 
 /* MEMORY */
@@ -388,6 +395,15 @@ xstrtou(const char *zbuf, const char **pafter, int base)
 /* Use our own string functions in case the host library is missing any.
    We use `z` prefix for namespacing, and to remind us to pass around
    `\0` terminated strings! */
+
+const char *
+zstrchr(const char *haystack, int needle)
+{
+    while(*haystack && *haystack != needle)
+        haystack++;
+    return *haystack ? haystack : NULL;
+}
+
 unsigned
 zstrlen(const char *zsrc)
 {
@@ -503,10 +519,20 @@ stack_zstrneq(void *stack, const char *key, unsigned keylen)
 /* FILES */
 
 FILE *
+xfopen(const char *zpath, const char *zmode)
+{
+    FILE *r = fopen(zpath, zmode);
+    if(r != NULL)
+        return r;
+    fprintf(stderr, "v80: %s: unable to open file\n", zpath);
+    exit(EXIT_USAGE);
+}
+
+FILE *
 file_reader(Token *fname)
 {
     char *zfname = zstrndup(fname->str, fname->num);
-    FILE *r = fopen(zfname, "r");
+    FILE *r = xfopen(zfname, "r");
     if(!r)
         err_fatal_token_str(ERR_BADFILE, fname);
 #ifndef NO_SYS_STAT_H
@@ -524,13 +550,13 @@ file_reader(Token *fname)
 }
 
 File *
-file_new(const char *zfname, FILE *stream)
+file_push(const char *zfname, FILE *stream)
 {
     File *r   = xmalloc(sizeof *r);
     r->zfname = zfname;
     r->stream = stream;
     r->lineno = 1;
-    r->next   = NULL;
+    r->next   = files;
     return r;
 }
 
@@ -629,12 +655,12 @@ token_value(Token *token)
     static char buf[LINE_MAXLEN + 1];
     switch(token->type) {
         case T_NUMBER:
-            snprintf(buf, LINE_MAXLEN + 1, "$%x", token->num);
+            sprintf(buf, "$%x", token->num);
             break;
         case T_NUMBEROFENTRIES:
             err_fatal(ERR_NUMBEROFENTRIES, __FILE__ ":" XSTRINGIFY(__LINE__), 0, token->col);
         default:
-            snprintf(buf, LINE_MAXLEN + 1, "%.*s", token->num, token->str);
+            sprintf(buf, "%.*s", LINE_MAXLEN > token->num ? token->num : LINE_MAXLEN, token->str);
             break;
     }
     return buf;
@@ -845,26 +871,26 @@ filename_dup(Token *token)
 
    program = {line /(;[^\n]*)?/ "\n"} ;
 
-X  line
+   line
       | constant expression
-X     | condition
+      | condition
       | statement
       ;
 
    filename =  /"[^\s\."]{1,8}(\.[^\s\."]{1,3})?"/ ;
 
-X  condition
-X     = "?=" expression
-X     | "?!" expression
-X     | "?+" expression
-X     | "?-" expression
+   condition
+      = "?=" expression
+      | "?!" expression
+      | "?+" expression
+      | "?-" expression
       ;
 
    statement
-      | number statement
+      = number statement
       | label statement
       | local statement
-      | keyword
+      | keyword {keyword}
       ;
 
    keyword
@@ -1045,8 +1071,8 @@ parse_expression(Token *token, unsigned *pvalue)
 Token *
 expect_word_expression_next(Token *token, unsigned *pvalue)
 {
-    assert(token && pvalue);
     Token *expression = token->next;
+    assert(token && pvalue);
     if(!expression) /* missing next token entirely */
         err_fatal_token_value(ERR_EXPECTEXPRESSION, token);
     if(expression->type == T_STRING)
@@ -1128,7 +1154,7 @@ parse_keyword_include(Token *token)
         err_fatal_token_value(ERR_EXPECTFILENAME, token);
     if(file->type != T_STRING)
         err_fatal_token_value(ERR_EXPECTFILENAME, token);
-    parse_file(file_new(filename_dup(file), file_reader(file)));
+    parse_file(file_push(filename_dup(file), file_reader(file)));
     return file->next;
 }
 
@@ -1152,17 +1178,17 @@ parse_keyword_words(Token *token)
 }
 
 Token *
-parse_keyword(Token *token)
+parse_keywords(Token *token)
 {
     switch(token->type) {
-        case T_KW_ALIGN: return parse_keyword_align(token);
-        case T_KW_BYTES: return parse_keyword_bytes(token);
-        case T_KW_FILL: return parse_keyword_fill(token);
-        case T_KW_INCLUDE: return parse_keyword_include(token);
-        case T_KW_WORDS: return parse_keyword_words(token);
-
-        default: return token;
+        case T_KW_ALIGN:   token = parse_keyword_align(token);
+        case T_KW_BYTES:   token = parse_keyword_bytes(token);
+        case T_KW_FILL:    token = parse_keyword_fill(token);
+        case T_KW_INCLUDE: token = parse_keyword_include(token);
+        case T_KW_WORDS:   token = parse_keyword_words(token);
+        default: break;
     }
+    return token ? parse_keywords(token) : NULL;
 }
 
 Token *
@@ -1215,11 +1241,9 @@ parse_statement(Token *token)
             break;
         }
         default:
-            return parse_keyword(token);
+            return parse_keywords(token);
     }
-    if(!token->next)
-        return NULL;
-    return parse_statement(token->next);
+    return token->next ? parse_statement(token->next) : NULL;
 }
 
 void
@@ -1262,14 +1286,60 @@ parse_file(File *file)
     files = file_del(files);
 }
 
+struct extmap {
+    const char *extin, *extout;
+};
+
+static struct extmap extmap[] = {
+    {".v65", ".prg"},
+    {".v80", ".com"},
+    {NULL,   "v.out"}
+};
+
+const char *
+extreplace(const char *zpathin)
+{
+    const char *dotin = zstrchr(zpathin, '.');
+    struct extmap *p = &extmap[0];
+
+    if(!dotin) /* no extension in zpathin */
+        return zstrdup("v.out");
+
+    for(; p->extin; ++p)
+        /* if zpathin extension is in extmap, use extout for zpathout */
+        if(zstreq(p->extin, dotin)) {
+            unsigned bufsiz = zstrlen(zpathin) + 1 + zstrlen(p->extout) - zstrlen(p->extin);
+            const char *zpathout = zstrndup(zpathin, bufsiz);
+            unsigned dotidx = dotin - zpathin;
+            zstrncpy((char *)zpathout + dotidx, p->extout, bufsiz - dotidx);
+            return zpathout;
+        }
+
+    /* use default from extmap if nothing else matched above */
+    return zstrdup(p->extout);
+}
+
 int
 main(int argc, const char *argv[])
 {
     unsigned i = 0;
-    pc = symbols = symbol_set(symbols, "$", 1, 0x0000);
-    out = file_new(zstrdup("<STDOUT>"), stdout);
+    const char *zpathin = argv[1], *zpathout = argc > 2 ? argv[2] : NULL;
+    File *out = NULL;
+    FILE *streamin = stdin;
 
-    parse_file(file_new(zstrdup("<STDIN>"), stdin));
+    if(argc < 2 || argc > 3)
+        err_usage(*argv);
+    if(!zstreq("-", zpathin))
+        streamin = xfopen(zpathin, "r");
+    if(zpathout)
+        zpathout = zstrdup(zpathout); /* don't try to xfree argv[2]!! */
+    else
+        zpathout = extreplace(zpathin);
+
+    pc = symbols = symbol_set(symbols, "$", 1, 0x0000);
+    out = file_push(zpathout, xfopen(zpathout, "wb"));
+
+    parse_file(file_push(zpathin, streamin));
 
 #ifndef NDEBUG
     for(i = 0; i < pc->value; ++i) {
@@ -1284,8 +1354,12 @@ main(int argc, const char *argv[])
     symtab_dump(symbols, "SYMBOLS");
 #endif
 
+    /* Copy codesegment bytes to disk. */
     for(i = 0; i < pc->value; ++i)
         fputc(codesegment[i], out->stream);
-    file_del(out);
+
+    /* Show a warning for any files that wouldn't close before exiting. */
+    while(files)
+        files = file_del(files);
     return EXIT_SUCCESS;
 }
