@@ -19,7 +19,13 @@
 #  include <sys/stat.h>
 #endif
 
+#ifndef __GNUC__
+    /* We're not using GNU C, elide __attribute__ */
+#  define  __attribute__(x)  /*NOTHING*/
+#endif
+
 #if _POSIX_C_SOURCE < 200112L
+    /* We're not using C99, elide inline */
 #  define inline
 #endif
 
@@ -141,6 +147,8 @@ Symbol     *symbols = NULL;     /* searchable linked list of symbols */
 const char *zlabel  = NULL;     /* current non-local label name */
 
 char        codesegment[0x10000];
+
+enum pass { PASS_LABELADDRS, PASS_GENERATECODE } pass = PASS_LABELADDRS;
 
 
 
@@ -557,11 +565,11 @@ file_push(const char *zfname, FILE *stream)
     r->stream = stream;
     r->lineno = 1;
     r->next   = files;
-    return r;
+    return ((files = r));
 }
 
 File *
-file_del(File *stale)
+file_pop(File *stale)
 {
     File *r = stale->next;
     if(fclose(stale->stream) != 0)
@@ -575,7 +583,9 @@ file_del(File *stale)
 void
 emit_byte(int c)
 {
-    codesegment[pc->value++] = (char)c;
+    if(pass == PASS_GENERATECODE)
+        codesegment[pc->value] = (char)c;
+    ++pc->value;
 }
 
 int
@@ -592,6 +602,21 @@ require_byte_token(unsigned value, Token *token)
     return ((int)(value)) & 0xff;
 }
 
+#ifndef NDEBUG
+void
+files_dump(File *head, const char *title)
+{
+    if(title) {
+        fprintf(stderr, "%s\n", title);
+        if(!files)
+            fprintf(stderr, "\tNULL\n");
+    }
+    if(head) {
+        fprintf(stderr, "\t%s=%d\n", head->zfname, head->lineno);
+        files_dump(head->next, NULL);
+    }
+}
+#endif
 
 
 /* SYMBOL TABLE */
@@ -978,17 +1003,21 @@ parse_value(Token *token, unsigned *pvalue)
             break;
         case T_LABEL:
             code = ERR_UNDEFLABEL;
-            if ((match = stack_zstrneq(symbols, token->str, token->num)))
+            if(pass == PASS_LABELADDRS)
+                *pvalue = UINT_MAX;
+            else if((match = stack_zstrneq(symbols, token->str, token->num)))
                 *pvalue = match->value;
             break;
         case T_LABEL_LOCAL:
             code = ERR_UNDEFLABEL;
             zlocal = label_local(token);
-            if ((match = stack_zstrneq(symbols, zlocal, zstrlen(zlocal))))
+            if(pass == PASS_LABELADDRS)
+                *pvalue = UINT_MAX;
+            else if ((match = stack_zstrneq(symbols, zlocal, zstrlen(zlocal))))
                 *pvalue = match->value;
             break;
         default:
-            err_fatal_token_value(ERR_BADVALUE, token);
+            return token;
     }
     if(!match)
         err_fatal_token_str(code, token);
@@ -1100,17 +1129,18 @@ Token *
 parse_bytes(Token *bytes)
 {
     Token *next = NULL;
-    unsigned value = 0;
 
     if(bytes->type == T_STRING) {
         unsigned i = 0;
         while(i < bytes->num)
             emit_byte(bytes->str[i]);
-        return bytes->next;
+        next = bytes->next;
+    } else {
+        unsigned value = 0;
+        next = parse_expression(bytes, &value);
+        if(next != bytes)
+            emit_byte(require_byte_token(value, bytes));
     }
-    next = parse_expression(bytes, &value);
-    if(next != bytes)
-        emit_byte(require_byte_token(value, bytes));
     return next;
 }
 
@@ -1126,8 +1156,12 @@ parse_keyword_bytes(Token *keyword)
     if(next == token)
         err_fatal_token_value(ERR_EXPECTEXPRESSION, token);
 
-    for(; next != token; token = next)
+    for(token = next; token; token = next) {
         next = parse_bytes(token);
+        if(next == token)
+            break;
+        token = next;
+    }
     return token;
 }
 
@@ -1181,11 +1215,11 @@ Token *
 parse_keywords(Token *token)
 {
     switch(token->type) {
-        case T_KW_ALIGN:   token = parse_keyword_align(token);
-        case T_KW_BYTES:   token = parse_keyword_bytes(token);
-        case T_KW_FILL:    token = parse_keyword_fill(token);
-        case T_KW_INCLUDE: token = parse_keyword_include(token);
-        case T_KW_WORDS:   token = parse_keyword_words(token);
+        case T_KW_ALIGN:   token = parse_keyword_align(token);   break;
+        case T_KW_BYTES:   token = parse_keyword_bytes(token);   break;
+        case T_KW_FILL:    token = parse_keyword_fill(token);    break;
+        case T_KW_INCLUDE: token = parse_keyword_include(token); break;
+        case T_KW_WORDS:   token = parse_keyword_words(token);   break;
         default: break;
     }
     return token ? parse_keywords(token) : NULL;
@@ -1224,22 +1258,25 @@ Token *
 parse_statement(Token *token)
 {
     switch(token->type) {
+        case T_LABEL:
+            zlabel = zstrndup(token->str, token->num);
+            if(pass == PASS_LABELADDRS) {
+                if(stack_zstrneq(symbols, token->str, token->num))
+                    err_fatal_token_str(ERR_DUPLABEL, token);
+                symbols = stack_push(symbols, symbol_new(zlabel, pc->value));
+            }
+            break;
+        case T_LABEL_LOCAL:
+            if(pass == PASS_LABELADDRS) {
+                const char *zlocal = label_local(token);
+                if(stack_zstrneq(symbols, zlocal, zstrlen(zlocal)))
+                    err_fatal_token_str(ERR_DUPLABEL, token);
+                symbols = stack_push(symbols, symbol_new(zstrdup(zlocal), pc->value));
+            }
+            break;
         case T_NUMBER:
             pc->value = token->num;
             break;
-        case T_LABEL:
-            if(stack_zstrneq(symbols, token->str, token->num))
-                err_fatal_token_str(ERR_DUPLABEL, token);
-            zlabel = zstrndup(token->str, token->num);
-            symbols = stack_push(symbols, symbol_new(zlabel, pc->value));
-            break;
-        case T_LABEL_LOCAL: {
-            const char *zlocal = label_local(token);
-            if(stack_zstrneq(symbols, zlocal, zstrlen(zlocal)))
-                err_fatal_token_str(ERR_DUPLABEL, token);
-            symbols = stack_push(symbols, symbol_new(zstrdup(zlocal), pc->value));
-            break;
-        }
         default:
             return parse_keywords(token);
     }
@@ -1269,7 +1306,6 @@ void
 parse_file(File *file)
 {
     unsigned nbytes;
-    files = stack_push(files, file);
     /* xgetline xreallocs existing memory at files->zline on every call */
     while ((nbytes = xgetline((char **)&files->zline, &files->bufsiz, file->stream)) > 0) {
         Token *tokens;
@@ -1283,7 +1319,7 @@ parse_file(File *file)
         }
         ++files->lineno;
     }
-    files = file_del(files);
+    files = file_pop(files);
 }
 
 struct extmap {
@@ -1302,10 +1338,7 @@ extreplace(const char *zpathin)
     const char *dotin = zstrchr(zpathin, '.');
     struct extmap *p = &extmap[0];
 
-    if(!dotin) /* no extension in zpathin */
-        return zstrdup("v.out");
-
-    for(; p->extin; ++p)
+    for(; dotin && p->extin; ++p)
         /* if zpathin extension is in extmap, use extout for zpathout */
         if(zstreq(p->extin, dotin)) {
             unsigned bufsiz = zstrlen(zpathin) + 1 + zstrlen(p->extout) - zstrlen(p->extin);
@@ -1331,28 +1364,25 @@ main(int argc, const char *argv[])
         err_usage(*argv);
     if(!zstreq("-", zpathin))
         streamin = xfopen(zpathin, "r");
+
+    /* Pass 1: to populate label addresses */
+    pass = PASS_LABELADDRS;
+    pc = symbols = symbol_set(symbols, "$", 1, 0x0000);
+    parse_file(file_push(zstrdup(zpathin), streamin));
+    while(files)
+        files = file_pop(files);
+
+    /* Pass 2: to generate the code */
+    pass = PASS_GENERATECODE;
+    pc->value = 0;
+    if(!zstreq("-", zpathin))
+        streamin = xfopen(zpathin, "r");
     if(zpathout)
         zpathout = zstrdup(zpathout); /* don't try to xfree argv[2]!! */
     else
         zpathout = extreplace(zpathin);
-
-    pc = symbols = symbol_set(symbols, "$", 1, 0x0000);
     out = file_push(zpathout, xfopen(zpathout, "wb"));
-
-    parse_file(file_push(zpathin, streamin));
-
-#ifndef NDEBUG
-    for(i = 0; i < pc->value; ++i) {
-        if(i % 32 == 0)
-            fprintf(stderr, "\n%04x:", i);
-        if(i % 2 == 0)
-            fputc(' ', stderr);
-        fprintf(stderr, "%02x", codesegment[i]);
-    }
-    fputc('\n', stderr);
-
-    symtab_dump(symbols, "SYMBOLS");
-#endif
+    parse_file(file_push(zstrdup(zpathin), streamin));
 
     /* Copy codesegment bytes to disk. */
     for(i = 0; i < pc->value; ++i)
@@ -1360,6 +1390,11 @@ main(int argc, const char *argv[])
 
     /* Show a warning for any files that wouldn't close before exiting. */
     while(files)
-        files = file_del(files);
+        files = file_pop(files);
+
+#ifndef NDEBUG
+    symtab_dump(symbols, "SYMBOLS");
+    files_dump(files, "FILES");
+#endif
     return EXIT_SUCCESS;
 }
