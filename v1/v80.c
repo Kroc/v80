@@ -90,10 +90,7 @@ typedef struct includestack {
 } File;
 
 #define TOKEN_TYPES     \
-    X(T_COND_EQ)        \
-    X(T_COND_NEGATIVE)  \
-    X(T_COND_NOTEQ)     \
-    X(T_COND_POSITIVE)  \
+    X(T_COND)           \
     X(T_CONSTANT)       \
     X(T_DOLLAR)         \
     X(T_FILENAME)       \
@@ -131,7 +128,7 @@ enum type {
 typedef struct token {
     struct token * next;
     const char *str;
-    unsigned num, col;
+    unsigned len, num, col;
     enum type type;
 } Token;
 
@@ -274,17 +271,9 @@ err_fatal(enum ErrCode code, const char *msg, unsigned len, unsigned col)
 }
 
 void
-err_fatal_token_str(enum ErrCode code, Token *token)
+err_fatal_token(enum ErrCode code, Token *token)
 {
-    err_fatal(code, token->str, token->num, token->col);
-}
-
-const char *token_value(Token *token);
-
-void
-err_fatal_token_value(enum ErrCode code, Token *token)
-{
-    err_fatal(code, token_value(token), 0, token->col);
+    err_fatal(code, token->str, token->len, token->col);
 }
 
 void
@@ -342,14 +331,14 @@ xrealloc(void *mem, unsigned nbytes)
 }
 
 unsigned
-xgetdelim(char **pzline, unsigned *pbufsiz, int delim, FILE *stream)
+xgetdelim(char **pzline, unsigned *pbufsiz, int delim, FILE *instream)
 {
     unsigned i = 0, last = 0;
     int c;
 
-    assert(pzline && pbufsiz && stream);
+    assert(pzline && pbufsiz && instream);
 
-    while((c = fgetc(stream)) != EOF) {
+    while((c = fgetc(instream)) != EOF) {
         if(i == last) {
             last += LINE_MAXLEN;
             *pzline = xrealloc(*pzline, *pbufsiz = last + 1);
@@ -364,9 +353,9 @@ xgetdelim(char **pzline, unsigned *pbufsiz, int delim, FILE *stream)
 }
 
 static inline unsigned
-xgetline(char **pzline, unsigned *pbufsiz, FILE *stream)
+xgetline(char **pzline, unsigned *pbufsiz, FILE *instream)
 {
-    return xgetdelim(pzline, pbufsiz, '\n', stream);
+    return xgetdelim(pzline, pbufsiz, '\n', instream);
 }
 
 /* Return the numeric value of the ASCII number in `zbuf` in the given
@@ -403,6 +392,7 @@ xstrtou(const char *zbuf, const char **pafter, int base)
 /* Use our own string functions in case the host library is missing any.
    We use `z` prefix for namespacing, and to remind us to pass around
    `\0` terminated strings! */
+
 
 const char *
 zstrchr(const char *haystack, int needle)
@@ -503,16 +493,6 @@ stack_append(void *stack, void *node)
 }
 
 void *
-stack_zstreq(void *stack, const char *zkey)
-{
-    Stack *node;
-    for(node = stack; node; node = node->next)
-        if(zstreq(zkey, node->zkey))
-            return node;
-    return NULL;
-}
-
-void *
 stack_zstrneq(void *stack, const char *key, unsigned keylen)
 {
     Stack *node;
@@ -539,10 +519,10 @@ xfopen(const char *zpath, const char *zmode)
 FILE *
 file_reader(Token *fname)
 {
-    char *zfname = zstrndup(fname->str, fname->num);
+    char *zfname = zstrndup(fname->str, fname->len);
     FILE *r = xfopen(zfname, "r");
     if(!r)
-        err_fatal_token_str(ERR_BADFILE, fname);
+        err_fatal_token(ERR_BADFILE, fname);
 #ifndef NO_SYS_STAT_H
     {
         /* If we have stat(2), diagnose attempt to read from anything but
@@ -550,7 +530,7 @@ file_reader(Token *fname)
         struct stat statbuf;
         if (stat(zfname, &statbuf) == 0)
             if(!S_ISREG(statbuf.st_mode))
-                err_fatal_token_str(ERR_BADFILE, fname);
+                err_fatal_token(ERR_BADFILE, fname);
     }
 #endif
     xfree(zfname);
@@ -594,9 +574,9 @@ require_byte_token(unsigned value, Token *token)
     if(value != (value & 0xff)) {
         switch(token->type) {
             case T_CONSTANT: case T_DOLLAR: case T_LABEL: case T_LABEL_LOCAL: case T_NUMBER:
-                err_fatal_token_str(ERR_BADBYTE, token);
+                err_fatal_token(ERR_BADBYTE, token);
             default:
-                err_fatal_token_value(ERR_BADBYTEEXPRESSION, token);
+                err_fatal_token(ERR_BADBYTEEXPRESSION, token);
         }
     }
     return ((int)(value)) & 0xff;
@@ -662,41 +642,14 @@ symtab_dump(Symbol *head, const char *title)
 
 /* TOKENIZER */
 
-const char *
-token_type(Token *token)
-{
-    switch(token->type) {
-#define X(_t)   case _t: return STRINGIFY(_t);
-        TOKEN_TYPES
-#undef X
-        case T_NUMBEROFENTRIES:
-            err_fatal(ERR_NUMBEROFENTRIES, __FILE__ ":" XSTRINGIFY(__LINE__), 0, token->col);
-    }
-}
-
-const char *
-token_value(Token *token)
-{
-    static char buf[LINE_MAXLEN + 1];
-    switch(token->type) {
-        case T_NUMBER:
-            sprintf(buf, "$%x", token->num);
-            break;
-        case T_NUMBEROFENTRIES:
-            err_fatal(ERR_NUMBEROFENTRIES, __FILE__ ":" XSTRINGIFY(__LINE__), 0, token->col);
-        default:
-            sprintf(buf, "%.*s", LINE_MAXLEN > token->num ? token->num : LINE_MAXLEN, token->str);
-            break;
-    }
-    return buf;
-}
 
 Token *
-token_new(enum type type, const char *str, unsigned number, const char *begin)
+token_new(enum type type, const char *begin, const char *str, unsigned len, unsigned number)
 {
     Token *r = xmalloc(sizeof *r);
     r->next = NULL;
     r->str = str;
+    r->len = len;
     r->num = number;
     r->col = begin - files->zline + 1;
     r->type = type;
@@ -706,16 +659,32 @@ token_new(enum type type, const char *str, unsigned number, const char *begin)
 Token *
 token_free(Token *stale)
 {
+#ifndef NDEBUG
+    fprintf(stderr, "%s:%d.%d\t$%02x %.*s\n", files->zfname, files->lineno, stale->col, stale->num, stale->len, stale->str);
+#endif
     if(stale->next)
         stale->next = token_free(stale->next);
     return xfree(stale);
+}
+
+static inline Token *
+token_new_number(const char *begin, const char *after, unsigned number)
+{
+    return token_new(T_NUMBER, begin, begin, after - begin, number);
+}
+
+static inline Token *
+token_new_string(enum type type, const char *begin, const char *str, unsigned len)
+{
+    return token_new(type, begin, str, len, 0);
 }
 
 const char *
 token_append_binary(Token **ptokens, const char *begin)
 {
     const char *after = NULL;
-    *ptokens = stack_append(*ptokens, token_new(T_NUMBER, NULL, xstrtou(begin + 1, &after, 2), begin));
+    unsigned number = xstrtou(begin + 1, &after, 2);
+    *ptokens = stack_append(*ptokens, token_new_number(begin, after, number));
     return after;
 }
 
@@ -724,15 +693,22 @@ token_append_charliteral(Token **ptokens, const char *begin)
 {
     if(!c_isprint(begin[1]) || c_isspace(begin[1]))
         err_fatal(ERR_BADCHAR, begin, 2, begin - files->zline);
-    *ptokens = stack_append(*ptokens, token_new(T_NUMBER, NULL, begin[1], begin));
+    *ptokens = stack_append(*ptokens, token_new_number(begin, begin + 2, begin[1]));
     return begin + 2;
+}
+
+static inline void
+token_append_cond(Token **ptokens, const char *begin, unsigned len, int cond)
+{
+    *ptokens = stack_append(*ptokens, token_new(T_COND, begin, begin, len, (unsigned)cond));
 }
 
 const char *
 token_append_decimal(Token **ptokens, const char *begin)
 {
     const char *after = NULL;
-    *ptokens = stack_append(*ptokens, token_new(T_NUMBER, NULL, xstrtou(begin, &after, 10), begin));
+    unsigned number = xstrtou(begin, &after, 10);
+    *ptokens = stack_append(*ptokens, token_new_number(begin, after, number));
     return after;
 }
 
@@ -740,24 +716,25 @@ const char *
 token_append_hexadecimal(Token **ptokens, const char *begin)
 {
     const char *after = NULL;
-    *ptokens = stack_append(*ptokens, token_new(T_NUMBER, NULL, xstrtou(begin + 1, &after, 16), begin));
+    unsigned number = xstrtou(begin + 1, &after, 16);
+    *ptokens = stack_append(*ptokens, token_new_number(begin, after, number));
     return after;
 }
 
 const char *
-token_append_str(Token **ptokens, const char *begin, enum type type)
+token_append_str(Token **ptokens, enum type type, const char *begin)
 {
     const char *after = begin;
     while(!c_isspace(*after) && !c_iseol(*after))
         ++after;
     if(after - begin > TOKEN_MAXLEN)
         err_fatal(ERR_BADSYMBOL, begin, after - begin, begin - files->zline);
-    *ptokens = stack_append(*ptokens, token_new(type, begin, (unsigned)(after - begin), begin));
+    *ptokens = stack_append(*ptokens, token_new_string(type, begin, begin, after - begin));
     return after;
 }
 
 const char *
-token_append_strliteral(Token **ptokens, const char *begin, enum type type)
+token_append_strliteral(Token **ptokens, const char *begin)
 {
     const char *end = begin + 1;
     while(*end != '"' && !c_iseol(*end)) {
@@ -768,14 +745,14 @@ token_append_strliteral(Token **ptokens, const char *begin, enum type type)
     }
     if(*end != '"')
         err_fatal(ERR_BADSTRING, begin, end - begin, begin - files->zline);
-    *ptokens = stack_append(*ptokens, token_new(type, begin + 1, (unsigned)(end - begin - 1), begin));
+    *ptokens = stack_append(*ptokens, token_new_string(T_STRING, begin, begin + 1, end - begin - 1));
     return ++end;
 }
 
 static inline void
-token_append_type(Token **ptokens, const char *begin, enum type type, unsigned len)
+token_append_type(Token **ptokens, enum type type, const char *begin, unsigned len)
 {
-    *ptokens = stack_append(*ptokens, token_new(type, begin, len, begin));
+    *ptokens = stack_append(*ptokens, token_new_string(type, begin, begin, len));
 }
 
 char *
@@ -801,56 +778,56 @@ tokenize_line(const char *zline)
         switch(*pos++) {
             case '\n': case '\0':
                 break;
-            case '!': token_append_type(&r, begin, T_OP_INVERT, 1); break;
-            case '"': pos = token_append_strliteral(&r, begin, T_STRING); break;
-            case '#': pos = token_append_str(&r, begin, T_CONSTANT); break;
+            case '!': token_append_type(&r, T_OP_INVERT, begin, 1); break;
+            case '"': pos = token_append_strliteral(&r, begin); break;
+            case '#': pos = token_append_str(&r, T_CONSTANT, begin); break;
             case '$':
                 if(c_isspace(*pos) || c_iseol(*pos))
-                    token_append_type(&r, begin, T_DOLLAR, 1);
+                    token_append_type(&r, T_DOLLAR, begin, 1);
                 else
                     pos = token_append_hexadecimal(&r, begin);
                 break;
             case '%': pos = token_append_binary(&r, begin); break;
-            case '&': token_append_type(&r, begin, T_OP_AND, 1); break;
-            case '\'': pos = token_append_charliteral(&r, begin); break;
-            case '(': token_append_type(&r, begin, T_LPAREN, 1); break;
-            case ')': token_append_type(&r, begin, T_RPAREN, 1); break;
-            case '*': token_append_type(&r, begin, T_OP_STAR, 1); break;
-            case '+': token_append_type(&r, begin, T_OP_PLUS, 1); break;
-            case '-': token_append_type(&r, begin, T_OP_MINUS, 1); break;
+            case '&': token_append_type(&r, T_OP_AND,     begin, 1); break;
+            case '\'': pos = token_append_charliteral(&r, begin);   break;
+            case '(': token_append_type(&r, T_LPAREN,     begin, 1); break;
+            case ')': token_append_type(&r, T_RPAREN,     begin, 1); break;
+            case '*': token_append_type(&r, T_OP_STAR,    begin, 1); break;
+            case '+': token_append_type(&r, T_OP_PLUS,    begin, 1); break;
+            case '-': token_append_type(&r, T_OP_MINUS,   begin, 1); break;
             case '.':
                 switch(*pos++) {
-                    case 'a': token_append_type(&r, begin, T_KW_ALIGN, 2); break;
-                    case 'b': token_append_type(&r, begin, T_KW_BYTES, 2); break;
-                    case 'f': token_append_type(&r, begin, T_KW_FILL, 2); break;
-                    case 'i': token_append_type(&r, begin, T_KW_INCLUDE, 2); break;
-                    case 'w': token_append_type(&r, begin, T_KW_WORDS, 2); break;
-                    default: err_fatal(ERR_BADKEYWORD, begin, 2, begin - files->zline);
+                    case 'a': token_append_type(&r, T_KW_ALIGN,   begin, 2); break;
+                    case 'b': token_append_type(&r, T_KW_BYTES,   begin, 2); break;
+                    case 'f': token_append_type(&r, T_KW_FILL,    begin, 2); break;
+                    case 'i': token_append_type(&r, T_KW_INCLUDE, begin, 2); break;
+                    case 'w': token_append_type(&r, T_KW_WORDS,   begin, 2); break;
+                    default:  err_fatal(ERR_BADKEYWORD, begin, 2, begin - files->zline);
                 }
                 break;
-            case '/': token_append_type(&r, begin, T_OP_DIVIDE, 1); break;
+            case '/': token_append_type(&r, T_OP_DIVIDE,  begin, 1); break;
             case '0': case '1': case '2': case '3': case '4':
             case '5': case '6': case '7': case '8': case '9':
                 pos = token_append_decimal(&r, begin);
                 break;
-            case ':': pos = token_append_str(&r, begin, T_LABEL); break;
+            case ':': pos = token_append_str(&r, T_LABEL, begin);    break;
             case ';': return r;
-            case '<': token_append_type(&r, begin, T_OP_LOBYTE, 1); break;
-            case '>': token_append_type(&r, begin, T_OP_HIBYTE, 1); break;
+            case '<': token_append_type(&r, T_OP_LOBYTE,  begin, 1); break;
+            case '>': token_append_type(&r, T_OP_HIBYTE,  begin, 1); break;
             case '?':
                 switch(*pos++) {
-                    case '=': token_append_type(&r, begin, T_COND_EQ, 2); break;
-                    case '-': token_append_type(&r, begin, T_COND_NEGATIVE, 2); break;
-                    case '!': token_append_type(&r, begin, T_COND_NOTEQ, 2); break;
-                    case '+': token_append_type(&r, begin, T_COND_POSITIVE, 2); break;
-                    default: err_fatal(ERR_BADCONDITION, begin, 2, begin - files->zline);
+                    case '=': token_append_cond(&r, begin, 2, '='); break;
+                    case '-': token_append_cond(&r, begin, 2, '-'); break;
+                    case '!': token_append_cond(&r, begin, 2, '!'); break;
+                    case '+': token_append_cond(&r, begin, 2, '+'); break;
+                    default:  err_fatal(ERR_BADCONDITION, begin, 2, begin - files->zline);
                 }
                 break;
-            case '\\': token_append_type(&r, begin, T_OP_REMAIN, 1); break;
-            case '^': token_append_type(&r, begin, T_OP_EXP, 1); break;
-            case '_': pos = token_append_str(&r, begin, T_LABEL_LOCAL); break;
-            case '|': token_append_type(&r, begin, T_OP_OR, 1); break;
-            default: err_fatal(ERR_BADINSTRUCTION, begin, 1, begin - files->zline);
+            case '\\': token_append_type     (&r, T_OP_REMAIN,   begin, 1); break;
+            case '^':  token_append_type     (&r, T_OP_EXP,      begin, 1); break;
+            case '_':  pos = token_append_str(&r, T_LABEL_LOCAL, begin);    break;
+            case '|':  token_append_type     (&r, T_OP_OR,       begin, 1); break;
+            default:   err_fatal(ERR_BADINSTRUCTION, begin, 1, begin - files->zline);
         }
         while(c_isspace(*pos))
             ++pos;
@@ -866,7 +843,7 @@ tokenize_line(const char *zline)
 const char *
 filename_dup(Token *token)
 {
-    const char *p = token->str, *after = token->str + token->num;
+    const char *p = token->str, *after = token->str + token->len;
     unsigned len = 0;
 
     /* match CPM filename: /\w{1,8}(\.\w{1,3}/ */
@@ -876,8 +853,8 @@ filename_dup(Token *token)
         for(++p, len = 3; p < after && c_isfname(*p) && len > 0; --len)
             ++p;
     if(p != after)
-        err_fatal_token_str(ERR_BADFILENAME, token);
-    return zstrndup(token->str, token->num);
+        err_fatal_token(ERR_BADFILENAME, token);
+    return zstrndup(token->str, token->len);
 }
 
 
@@ -975,11 +952,11 @@ label_local(Token *token)
     static char zlabelname[LABEL_MAXLEN + 1];
     char *zp = zlabelname;
     if(!zlabel)
-        err_fatal_token_str(ERR_LOCALORPHAN, token);
-    if(zstrlen(zlabel) + token->num > LABEL_MAXLEN)
-        err_fatal_token_str(ERR_BADLABEL, token);
+        err_fatal_token(ERR_LOCALORPHAN, token);
+    if(zstrlen(zlabel) + token->len > LABEL_MAXLEN)
+        err_fatal_token(ERR_BADLABEL, token);
     zp = zstrlcpy(zp, zlabel, zstrlen(zlabel), LABEL_MAXLEN);
-    zstrlcpy(zp, token->str, token->num, LABEL_MAXLEN - (zp - zlabelname));
+    zstrlcpy(zp, token->str, token->len, LABEL_MAXLEN - (zp - zlabelname));
     return zlabelname;
 }
 
@@ -999,14 +976,14 @@ parse_value(Token *token, unsigned *pvalue)
             break;
         case T_CONSTANT:
             code = ERR_UNDEFCONSTANT;
-            if((match = stack_zstrneq(symbols, token->str, token->num)))
+            if((match = stack_zstrneq(symbols, token->str, token->len)))
                 *pvalue = match->value;
             break;
         case T_LABEL:
             code = ERR_UNDEFLABEL;
             if(pass == PASS_LABELADDRS)
                 *pvalue = UINT_MAX;
-            else if((match = stack_zstrneq(symbols, token->str, token->num)))
+            else if((match = stack_zstrneq(symbols, token->str, token->len)))
                 *pvalue = match->value;
             break;
         case T_LABEL_LOCAL:
@@ -1021,7 +998,7 @@ parse_value(Token *token, unsigned *pvalue)
             return token;
     }
     if(!match)
-        err_fatal_token_str(code, token);
+        err_fatal_token(code, token);
     return token->next;
 }
 
@@ -1033,7 +1010,7 @@ parse_term(Token *token, unsigned *pvalue)
         Token *paren = token;
         token = parse_expression(token->next, pvalue);
         if(token->type != T_RPAREN)
-            err_fatal_token_str(ERR_NOPAREN, paren);
+            err_fatal_token(ERR_NOPAREN, paren);
         return token->next;
     }
     return parse_value(token, pvalue);
@@ -1055,7 +1032,7 @@ parse_factor(Token *token, unsigned *pvalue)
         *pvalue = (value >> 8) & 0xff;
     } else if(token->type == T_OP_MINUS) {
         token = parse_term(token->next, &value);
-        *pvalue = ~(value & NUMBER_MAX) + 1;
+        *pvalue = (~(value & NUMBER_MAX) + 1) & NUMBER_MAX;
     } else
         token = parse_term(token, pvalue);
     return token;
@@ -1067,33 +1044,37 @@ parse_expression(Token *token, unsigned *pvalue)
     assert(token && pvalue);
     token = parse_factor(token, pvalue);
     while(token) {
+        Token *next = NULL;
         unsigned value = 0;
         if(token->type == T_OP_PLUS) {
-            token = parse_factor(token->next, &value);
+            next = parse_factor(token->next, &value);
             *pvalue += value;
         } else if(token->type == T_OP_MINUS) {
-            token = parse_factor(token->next, &value);
+            next = parse_factor(token->next, &value);
             *pvalue -= value;
         } else if(token->type == T_OP_STAR) {
-            token = parse_factor(token->next, &value);
+            next = parse_factor(token->next, &value);
             *pvalue *= value;
         } else if(token->type == T_OP_DIVIDE) {
-            token = parse_factor(token->next, &value);
+            next = parse_factor(token->next, &value);
             *pvalue /= value;
         } else if(token->type == T_OP_REMAIN) {
-            token = parse_factor(token->next, &value);
+            next = parse_factor(token->next, &value);
             *pvalue %= value;
         } else if(token->type == T_OP_AND) {
-            token = parse_factor(token->next, &value);
+            next = parse_factor(token->next, &value);
             *pvalue &= value;
         } else if(token->type == T_OP_OR) {
-            token = parse_factor(token->next, &value);
+            next = parse_factor(token->next, &value);
             *pvalue |= value;
         } else if(token->type == T_OP_EXP) {
-            token = parse_factor(token->next, &value);
+            next = parse_factor(token->next, &value);
             *pvalue ^= value;
         } else
             return token;
+        if(value > NUMBER_MAX)
+            err_fatal_token(ERR_NUMBERTOOBIG, token);
+        token = next;
     }
     return token;
 }
@@ -1104,12 +1085,12 @@ expect_word_expression_next(Token *token, unsigned *pvalue)
     Token *expression = token->next;
     assert(token && pvalue);
     if(!expression) /* missing next token entirely */
-        err_fatal_token_value(ERR_EXPECTEXPRESSION, token);
+        err_fatal_token(ERR_EXPECTEXPRESSION, token);
     if(expression->type == T_STRING)
-        err_fatal_token_str(ERR_NOSTRINGWORD, expression);
+        err_fatal_token(ERR_NOSTRINGWORD, expression);
     token = parse_expression(expression, pvalue);
     if(token == expression) /* not an expression */
-        err_fatal_token_value(ERR_EXPECTEXPRESSION, token);
+        err_fatal_token(ERR_EXPECTEXPRESSION, token);
     return token;
 }
 
@@ -1133,7 +1114,7 @@ parse_bytes(Token *bytes)
 
     if(bytes->type == T_STRING) {
         unsigned i = 0;
-        while(i < bytes->num)
+        while(i < bytes->len)
             emit_byte(bytes->str[i]);
         next = bytes->next;
     } else {
@@ -1152,10 +1133,10 @@ parse_keyword_bytes(Token *keyword)
     Token *token = keyword->next, *next = NULL;
 
     if(!token) /* missing next token entirely */
-        err_fatal_token_str(ERR_EXPECTEXPRESSION, keyword);
+        err_fatal_token(ERR_EXPECTEXPRESSION, keyword);
     next = parse_bytes(token);
     if(next == token)
-        err_fatal_token_value(ERR_EXPECTEXPRESSION, token);
+        err_fatal_token(ERR_EXPECTEXPRESSION, token);
 
     for(token = next; token; token = next) {
         next = parse_bytes(token);
@@ -1186,9 +1167,9 @@ parse_keyword_include(Token *token)
     Token *file = token->next;
     assert(token);
     if(!file)
-        err_fatal_token_value(ERR_EXPECTFILENAME, token);
+        err_fatal_token(ERR_EXPECTFILENAME, token);
     if(file->type != T_STRING)
-        err_fatal_token_value(ERR_EXPECTFILENAME, token);
+        err_fatal_token(ERR_EXPECTFILENAME, token);
     parse_file(file_push(filename_dup(file), file_reader(file)));
     return file->next;
 }
@@ -1233,7 +1214,7 @@ parse_set_constant(Token *constant)
     unsigned value = 0;
     assert(constant);
     token = expect_word_expression_next(constant, &value);
-    symbols = symbol_set(symbols, constant->str, constant->num, value);
+    symbols = symbol_set(symbols, constant->str, constant->len, value);
     return token;
 }
 
@@ -1244,11 +1225,11 @@ parse_condition(Token *condition)
     unsigned value = 0;
     assert(condition);
     token = expect_word_expression_next(condition, &value);
-    switch(condition->type) {
-        case T_COND_EQ:       skipcol = (value == 0)      ? files->indent : UINT_MAX; break;
-        case T_COND_NEGATIVE: skipcol = (value > 0x7fff)  ? files->indent : UINT_MAX; break;
-        case T_COND_NOTEQ:    skipcol = (value != 0)      ? files->indent : UINT_MAX; break;
-        case T_COND_POSITIVE: skipcol = (value <= 0x7fff) ? files->indent : UINT_MAX; break;
+    switch(condition->num) {
+        case '=': skipcol = (value == 0)      ? files->indent : UINT_MAX; break;
+        case '-': skipcol = (value > 0x7fff)  ? files->indent : UINT_MAX; break;
+        case '!': skipcol = (value != 0)      ? files->indent : UINT_MAX; break;
+        case '+': skipcol = (value <= 0x7fff) ? files->indent : UINT_MAX; break;
         default:
             err_fatal(ERR_NUMBEROFENTRIES, __FILE__ ":" XSTRINGIFY(__LINE__), 0, token->col);
     }
@@ -1260,10 +1241,10 @@ parse_statement(Token *token)
 {
     switch(token->type) {
         case T_LABEL:
-            zlabel = zstrndup(token->str, token->num);
+            zlabel = zstrndup(token->str, token->len);
             if(pass == PASS_LABELADDRS) {
-                if(stack_zstrneq(symbols, token->str, token->num))
-                    err_fatal_token_str(ERR_DUPLABEL, token);
+                if(stack_zstrneq(symbols, token->str, token->len))
+                    err_fatal_token(ERR_DUPLABEL, token);
                 symbols = stack_push(symbols, symbol_new(zlabel, pc->value));
             }
             break;
@@ -1271,7 +1252,7 @@ parse_statement(Token *token)
             if(pass == PASS_LABELADDRS) {
                 const char *zlocal = label_local(token);
                 if(stack_zstrneq(symbols, zlocal, zstrlen(zlocal)))
-                    err_fatal_token_str(ERR_DUPLABEL, token);
+                    err_fatal_token(ERR_DUPLABEL, token);
                 symbols = stack_push(symbols, symbol_new(zstrdup(zlocal), pc->value));
             }
             break;
@@ -1288,7 +1269,7 @@ void
 parse_line(Token *token)
 {
     switch(token->type) {
-        case T_COND_EQ: case T_COND_NEGATIVE: case T_COND_NOTEQ: case T_COND_POSITIVE:
+        case T_COND:
             token = parse_condition(token);
             break;
         case T_CONSTANT:
@@ -1303,7 +1284,7 @@ parse_line(Token *token)
     }
 
     if(token != NULL)
-        err_fatal_token_value(ERR_BADINSTRUCTION, token);
+        err_fatal_token(ERR_BADINSTRUCTION, token);
 }
 
 void
@@ -1362,33 +1343,29 @@ main(int argc, const char *argv[])
     unsigned i = 0;
     const char *zpathin = argv[1], *zpathout = argc > 2 ? argv[2] : NULL;
     File *out = NULL;
-    FILE *streamin = stdin;
+    FILE *streamin = NULL;
 
     if(argc < 2 || argc > 3)
         err_usage(*argv);
-    if(!zstreq("-", zpathin))
-        streamin = xfopen(zpathin, "r");
 
     /* Pass 1: to populate label addresses */
     pass = PASS_LABELADDRS;
     pc = symbols = symbol_set(symbols, "$", 1, 0x0000);
-    parse_file(file_push(zstrdup(zpathin), streamin));
+    parse_file(file_push(zstrdup(zpathin), xfopen(zpathin, "r")));
     while(files)
         files = file_pop(files);
 
-    /* Pass 2: to generate the code */
+    /* Pass 2: to write to the codesegment */
     pass = PASS_GENERATECODE;
     pc->value = 0;
-    if(!zstreq("-", zpathin))
-        streamin = xfopen(zpathin, "r");
+    parse_file(file_push(zstrdup(zpathin), xfopen(zpathin, "r")));
+
+    /* Copy codesegment bytes to disk. */
     if(zpathout)
         zpathout = zstrdup(zpathout); /* don't try to xfree argv[2]!! */
     else
         zpathout = extreplace(zpathin);
     out = file_push(zpathout, xfopen(zpathout, "wb"));
-    parse_file(file_push(zstrdup(zpathin), streamin));
-
-    /* Copy codesegment bytes to disk. */
     for(i = 0; i < pc->value; ++i)
         fputc(codesegment[i], out->stream);
 
