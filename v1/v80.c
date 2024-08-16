@@ -572,7 +572,7 @@ File *
 file_pop(File *stale)
 {
     File *r = stale->next;
-    if(fclose(stale->stream) != 0)
+    if(stale->stream != stdin && stale->stream != stdout && stale->stream != stderr && fclose(stale->stream) != 0)
         fprintf(stderr, "v80: %s:%d: WARNING: file failed to close", files->zfname, files->lineno);
     xfree((void *)stale->zfname);
     xfree(stale);
@@ -897,8 +897,9 @@ filename_dup(Token *token)
    program = {line /(;[^\n]*)?/ "\n"} ;
 
    line
-      | constant expression
       | condition
+      | constant expression
+      | "$" expression
       | statement
       ;
 
@@ -1220,7 +1221,7 @@ parse_keywords(Token *token)
         case T_KW_FILL:    token = parse_keyword_fill(token);    break;
         case T_KW_INCLUDE: token = parse_keyword_include(token); break;
         case T_KW_WORDS:   token = parse_keyword_words(token);   break;
-        default: break;
+        default: return token;
     }
     return token ? parse_keywords(token) : NULL;
 }
@@ -1287,12 +1288,15 @@ void
 parse_line(Token *token)
 {
     switch(token->type) {
-        case T_CONSTANT:
-            token = parse_set_constant(token);
-            break;
         case T_COND_EQ: case T_COND_NEGATIVE: case T_COND_NOTEQ: case T_COND_POSITIVE:
             token = parse_condition(token);
             break;
+        case T_CONSTANT:
+            token = parse_set_constant(token);
+            break;
+        case T_DOLLAR:
+            token = expect_word_expression_next(token, &pc->value);
+            /*FALLTHROUGH*/
         default:
             token = parse_statement(token);
             break;
