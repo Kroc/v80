@@ -1,17 +1,40 @@
 /* v80.c (C) Gary V. Vaughan 2024, MIT License
 
-   On Linux and macOS, compile with:
-   $ cc -std=c89 -pedantic -O2 -D_POSIX_C_SOURCE=1 -DNDEBUG -DNO_SYS_PARAM_H -DNO_SYS_STAT_H -o bin/v80 v1/v80.c
+   On Linux, compile with C89 and minimal library functions:
+   $ cc -std=c89 -pedantic -O2 -D_POSIX_C_SOURCE=1 -DNDEBUG -o bin/v80 v1/v80.c
+
+   On macOS, compile with C99 and supporting library functions:
+   $ cc -std=c99 -O2 -D_POSIX_C_SOURCE=200809L -D_DARWIN_C_SOURCE -DNDEBUG -o bin/v80 v1/v80.c
 
    Other architectures pending - code is C89 compliant!
+
+   Add zero or more of these defines to use custom implementations if you have a
+   constrained libc missing any of these APIs:
+
+   -DNO_CTYPE_H         if <ctype.h> or missing c89 isalnum, isprint and isspace
+   -DNO_GETLINE         if <stdlib.h> or libc don't implement getline()
+   -DNO_STRDUP          if <string.h> or libc don't implement strdup()
+   -DNO_STRING_H        if <string.h> or missing c89 str* APIs
+   -DNO_STRLCAT         if <string.h> or libc don't implement strlcat()
+   -DNO_STRLCPY         if <string.h> or libc don't implement strlcpy()
+   -DNO_STRNDUP         if <string.h> or libc don't implement strndup()
+   -DNO_STRTOUL         if <stdlib.h> or libc don't implement strtoul()
+   -DNO_SYS_PARAM_H     if <sys/param.h> or missing MAXPATHLEN definition
+   -DNO_SYS_STAT_H      if <sys/stat.h> or missing lstat() API
 */
 #ifndef NDEBUG
 #   include <assert.h>
 #else
 #   define assert(_exp) (void*)NULL
 #endif
+#ifndef NO_CTYPE_H
+#  include <ctype.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
+#ifndef NO_STRING_H
+#  include <string.h>
+#endif
 #ifndef NO_SYS_PARAM_H
 #  include <sys/param.h>
 #endif
@@ -25,24 +48,28 @@
 #endif
 
 #if _POSIX_C_SOURCE < 200112L
-    /* We're not using C99, elide inline */
+    /* We're not using C99, elide inline keyword */
 #  define inline
+    /* and use some of our own functions expected to be missing in C89 */
+#  define NO_GETLINE
+#  define NO_STRDUP
+#  define NO_STRLCAT
+#  define NO_STRLCPY
+#  define NO_STRNDUP
+#  define NO_STRTOUL
 #endif
 
-#ifndef EXIT_SUCCESS
-#  define EXIT_SUCCESS  0
-#  define EXIT_FAILURE  1
-#endif
-#define EXIT_USAGE      2
 #ifndef MAXPATHLEN
-#  define MAXPATHLEN    1024
+#  define MAXPATHLEN        1024
 #endif
 #ifndef UINT_MAX
-#  define UINT_MAX      ~0
+#  define UINT_MAX          ~0
 #endif
-
-#define STRINGIFY(_x)       #_x
-#define XSTRINGIFY(_x)      STRINGIFY(_x)
+#ifndef EXIT_SUCCESS
+#  define EXIT_SUCCESS      0
+#  define EXIT_FAILURE      1
+#endif
+#define EXIT_USAGE          2
 
 #define LABEL_MAXLEN        31
 #define LINE_MAXLEN         127
@@ -50,6 +77,9 @@
 #define NOTHING_ELSE
 #define NUMBER_MAX          0xffff
 #define TOKEN_MAXLEN        31
+
+#define STRINGIFY(_x)       #_x
+#define XSTRINGIFY(_x)      STRINGIFY(_x)
 
 
 
@@ -62,11 +92,11 @@
 #ifdef Bool
 #  undef Bool
 #endif
-#ifndef TRUE
-#  define TRUE -1
-#endif
 #ifndef FALSE
 #  define FALSE 0
+#endif
+#ifndef TRUE
+#  define TRUE ~FALSE
 #endif
 
 typedef int Bool;
@@ -89,40 +119,33 @@ typedef struct includestack {
     FILE *stream;
 } File;
 
-#define TOKEN_TYPES     \
-    X(T_COND)           \
-    X(T_CONSTANT)       \
-    X(T_DOLLAR)         \
-    X(T_FILENAME)       \
-    X(T_KW_ALIGN)       \
-    X(T_KW_BYTES)       \
-    X(T_KW_FILL)        \
-    X(T_KW_INCLUDE)     \
-    X(T_KW_WORDS)       \
-    X(T_LABEL)          \
-    X(T_LABEL_LOCAL)    \
-    X(T_LPAREN)         \
-    X(T_NUMBER)         \
-    X(T_OP_AND)         \
-    X(T_OP_DIVIDE)      \
-    X(T_OP_EXP)         \
-    X(T_OP_HIBYTE)      \
-    X(T_OP_INVERT)      \
-    X(T_OP_LOBYTE)      \
-    X(T_OP_MINUS)       \
-    X(T_OP_OR)          \
-    X(T_OP_PLUS)        \
-    X(T_OP_REMAIN)      \
-    X(T_OP_STAR)        \
-    X(T_RPAREN)         \
-    X(T_STRING)         \
-NOTHING_ELSE
-
 enum type {
-#define X(_t)   _t,
-    TOKEN_TYPES
-#undef X
-    T_NUMBEROFENTRIES
+    T_COND,
+    T_CONSTANT,
+    T_DOLLAR,
+    T_FILENAME,
+    T_KW_ALIGN,
+    T_KW_BYTES,
+    T_KW_FILL,
+    T_KW_INCLUDE,
+    T_KW_WORDS,
+    T_LABEL,
+    T_LABEL_LOCAL,
+    T_LPAREN,
+    T_NUMBER,
+    T_OP_AND,
+    T_OP_DIVIDE,
+    T_OP_EXP,
+    T_OP_HIBYTE,
+    T_OP_INVERT,
+    T_OP_LOBYTE,
+    T_OP_MINUS,
+    T_OP_OR,
+    T_OP_PLUS,
+    T_OP_REMAIN,
+    T_OP_STAR,
+    T_RPAREN,
+    T_STRING
 };
 
 typedef struct token {
@@ -149,24 +172,16 @@ enum pass { PASS_LABELADDRS, PASS_GENERATECODE } pass = PASS_LABELADDRS;
 
 
 
-/* CTYPES */
+/* CTYPE */
 
+/* Replacements for any ctype functions/macros that are not provided by libc. */
+
+
+#ifdef NO_CTYPE_H
 static inline Bool
-c_iseol(int c)
+c_isalnum(int c)
 {
-    return c == '\0' || c == '\n';
-}
-
-Bool
-c_isfname(int c)
-{
-    if((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9'))
-        return TRUE;
-    switch(c) {
-        case '#': case '%': case '\'': case '@': case '^': case '_': case '`': case '{': case '}': case '~':
-            return TRUE;
-    }
-    return FALSE;
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
 }
 
 static inline Bool
@@ -184,10 +199,240 @@ c_isspace(int c)
     }
     return FALSE;
 }
+#else
+#  define c_isalnum isalnum
+#  define c_isprint isprint
+#  define c_isspace isspace
+#endif
+
+
+
+/* STDLIB */
+
+/* Wrappers for the system memory allocator, with more guarantees:
+   - immediately bail out when allocater is out of memory
+   - ignore xfree(NULL)
+   - mem = xfree(mem) sets mem to NULL after free to avoid double free
+   - xrealloc(NULL, n) calls malloc(n)
+   - xrealloc(mem, 0) calls xfree(mem) */
+
+
+void *
+xrefresh(void *stale, const void *fresh)
+{
+    if(stale && (stale != fresh))
+        free(stale);
+    return (void *)fresh;
+}
+
+static inline void *
+xfree(void *stale)
+{
+    return xrefresh(stale, NULL);
+}
+
+void *
+xhavemem(void *mem)
+{
+    if(mem)
+        return mem;
+    fprintf(stderr, "v80: %s:%d: Out of memory\n", files->zfname, files->lineno);
+    exit(EXIT_FAILURE);
+}
+
+static inline void *
+xmalloc(unsigned nbytes)
+{
+    return xhavemem(malloc(nbytes));
+}
+
+void *
+xrealloc(void *mem, unsigned nbytes)
+{
+    if(!nbytes)
+        return xfree(mem);
+    return xhavemem(mem ? realloc(mem, nbytes) : malloc(nbytes));
+}
+
+#ifdef NO_GETLINE
+unsigned
+xgetdelim(char **pzline, unsigned *pbufsiz, int delim, FILE *instream)
+{
+    unsigned i = 0, last = 0;
+    int c;
+
+    assert(pzline && pbufsiz && instream);
+
+    while((c = fgetc(instream)) != EOF) {
+        if(i == last) {
+            last += LINE_MAXLEN;
+            *pzline = xrealloc(*pzline, *pbufsiz = last + 1);
+        }
+        (*pzline)[i++] = c;
+        if(c == delim)
+            break;
+    }
+    if(*pzline)
+        (*pzline)[i] = '\0';
+    return i;
+}
+
+static inline unsigned
+xgetline(char **pzline, unsigned *pbufsiz, FILE *instream)
+{
+    return xgetdelim(pzline, pbufsiz, '\n', instream);
+}
+#else
+#  define xgetline(_pbuf, _pbufsiz, _stream) (getline(_pbuf, (size_t*)_pbufsiz, _stream))
+#endif
+
+#ifdef NO_STRTOUL
+unsigned long
+xstrtoul(const char *zbuf, char **pafter, int base)
+{
+    unsigned long number = 0;
+    const char *pbuf = zbuf;
+    while(*pbuf && !c_isspace(*pbuf)) {
+        int digit = *pbuf++;
+        if(digit <= '9')
+            digit -= '0';
+        else if(digit <= 'Z')
+            digit -= 0x37;
+        else if(digit <= 'z')
+            digit -= 0x57;
+        number = number * base + digit;
+    }
+    if(pafter)
+        *pafter = (char *)pbuf;
+    return number;
+}
+#else
+#  define xstrtoul strtoul
+#endif
+
+
+
+/* STRINGS */
+
+/* Provide our own string functions in case the host library is missing any,
+   but if the host has them, they are likely hand optimized assembly so we
+   prefer those unless NO_STRING_H is defined at compile time.
+
+   We use `z` prefix for namespacing, and to remind us to pass around `\0`
+   `\0` terminated strings! */
+
+
+#ifdef NO_STRING_H
+const char *
+zstrchr(const char *haystack, int needle)
+{
+    while(*haystack && *haystack != needle)
+        haystack++;
+    return *haystack ? haystack : NULL;
+}
+
+unsigned
+zstrlen(const char *zsrc)
+{
+    const char *zp = zsrc;
+    assert(zp);
+    while(*zp)
+        ++zp;
+    return zp - zsrc;
+}
+
+Bool
+zstrneq(const char *zp, const char *q, unsigned qlen)
+{
+    assert(zp && q);
+    /* compare `qlen` chars, or until we find a \0 or a mismatch */
+    while(*zp && qlen > 0 && *zp == *q)
+        ++zp, ++q, --qlen;
+    return (!*zp && !qlen) || (*zp == *q);
+}
+
+static inline Bool
+zstreq(const char *zp, const char *zq)
+{
+    /* \0 at the end of both strings must also match */
+    return zstrneq(zp, zq, zstrlen(zq) + 1);
+}
+
+#  define NO_STRDUP
+#  define NO_STRLCAT
+#  define NO_STRLCPY
+#  define NO_STRNDUP
+#else
+#  define zstrchr   strchr
+#  define zstrlen   strlen
+#  define zstrneq   !strncmp
+#  define zstreq    !strcmp
+#endif
+
+#ifdef NO_STRLCPY
+unsigned
+zstrlcpy(char *buf, const char *zsrc, unsigned bufsiz)
+{
+    const char *psrc = zsrc;
+    char *pdst = buf, *lastbuf = buf + bufsiz - 1;
+    while(*psrc && pdst < lastbuf)
+        *pdst++ = *psrc++;
+    if(bufsiz)
+        *pdst = '\0';
+    while(*psrc)
+        psrc++;
+    return psrc - zsrc;
+}
+#else
+#  define zstrlcpy strlcpy
+#endif
+
+#ifdef NO_STRLCAT
+unsigned
+zstrlcat(char *buf, const char *zsrc, unsigned bufsiz)
+{
+    const char *psrc = zsrc;
+    char *pdst = buf, *lastbuf = buf + bufsiz - 1;
+    while(*pdst && pdst < lastbuf)
+        pdst++;
+    pdst += zstrlcpy(pdst, zsrc, bufsiz - (pdst - buf));
+    return pdst - buf;
+}
+#else
+#  define zstrlcat strlcat
+#endif
+
+#ifdef NO_STRNDUP
+char *
+zstrndup(const char *zsrc, unsigned srclen)
+{
+    char *buf = xmalloc(srclen + 1);
+    assert(zsrc);
+    zstrlcpy(buf, zsrc, srclen + 1);
+    return buf;
+}
+#else
+#  define zstrndup strndup
+#endif
+
+#ifdef NO_STRDUP
+static inline char *
+zstrdup(const char *zsrc)
+{
+    return zstrndup(zsrc, zstrlen(zsrc));
+}
+#else
+#  define zstrdup  strdup
+#endif
 
 
 
 /* ERROR HANDLING */
+
+/* After this point, all remaining code calls err_fatal() with an error code to
+   bail out with a diagnostic that includes the file name, position and an error
+   message, along with context about the current token if provided. */
+
 
 #define ERRORHANDLING                                                           \
     X(ERR_BADBYTE,          "Value overflows 8-bits")                           \
@@ -210,7 +455,6 @@ c_isspace(int c)
     X(ERR_EXPECTFILENAME,   "Expected filename")                                \
     X(ERR_LOCALORPHAN,      "Local label without preceding label")              \
     X(ERR_NUMBERTOOBIG,     "Expression overflow")                              \
-    X(ERR_NOMEM,            "Out of memory")                                    \
     X(ERR_NOPAREN,          "Invalid expression, missing ')'")                  \
     X(ERR_NOSTRINGWORD,     "Invalid string argument to keyword")               \
     X(ERR_UNDEFCONSTANT,    "Undefined constant reference")                     \
@@ -224,8 +468,6 @@ enum ErrCode {
 #undef X
     ERR_NUMBEROFENTRIES
 };
-
-unsigned zstrlen(const char *zsrc);
 
 void
 err_print(FILE *stream, const char *err, const char *msg, unsigned len)
@@ -270,19 +512,13 @@ err_fatal(enum ErrCode code, const char *msg, unsigned len, unsigned col)
     exit(EXIT_FAILURE);
 }
 
-void
+static inline void
 err_fatal_token(enum ErrCode code, Token *token)
 {
     err_fatal(code, token->str, token->len, token->col);
 }
 
-void
-err_fatal_null(enum ErrCode code)
-{
-    err_fatal(code, NULL, 0, 0);
-}
-
-void
+__attribute__((noreturn)) void
 err_usage(const char *progname)
 {
     fprintf(stderr, "Usage: %s INPUTPATH [OUTPUTPATH]\n", progname);
@@ -291,185 +527,11 @@ err_usage(const char *progname)
 
 
 
-/* MEMORY */
-
-
-void *
-xrefresh(void *stale, const void *fresh)
-{
-    if(stale && (stale != fresh))
-        free(stale);
-    return (void *)fresh;
-}
-
-static inline void *
-xfree(void *stale)
-{
-    return xrefresh(stale, NULL);
-}
-
-void *
-xhavemem(void *mem)
-{
-    if(!mem)
-        err_fatal_null(ERR_NOMEM);
-    return mem;
-}
-
-static inline void *
-xmalloc(unsigned nbytes)
-{
-    return xhavemem(malloc(nbytes));
-}
-
-void *
-xrealloc(void *mem, unsigned nbytes)
-{
-    if(!nbytes)
-        return xfree(mem);
-    return xhavemem(mem ? realloc(mem, nbytes) : malloc(nbytes));
-}
-
-unsigned
-xgetdelim(char **pzline, unsigned *pbufsiz, int delim, FILE *instream)
-{
-    unsigned i = 0, last = 0;
-    int c;
-
-    assert(pzline && pbufsiz && instream);
-
-    while((c = fgetc(instream)) != EOF) {
-        if(i == last) {
-            last += LINE_MAXLEN;
-            *pzline = xrealloc(*pzline, *pbufsiz = last + 1);
-        }
-        (*pzline)[i++] = c;
-        if(c == delim)
-            break;
-    }
-    if(*pzline)
-        (*pzline)[i] = '\0';
-    return i;
-}
-
-static inline unsigned
-xgetline(char **pzline, unsigned *pbufsiz, FILE *instream)
-{
-    return xgetdelim(pzline, pbufsiz, '\n', instream);
-}
-
-/* Return the numeric value of the ASCII number in `zbuf` in the given
-   `base`, otherwise a fatal error if the entire buffer cannot be
-   parsed. */
-unsigned
-xstrtou(const char *zbuf, const char **pafter, int base)
-{
-    unsigned number = 0;
-    const char *pbuf = zbuf;
-    while(!c_isspace(*pbuf) && !c_iseol(*pbuf)) {
-        int digit = *pbuf++;
-        if(digit <= '9')
-            digit -= '0';
-        else if(digit <= 'Z')
-            digit -= 0x37;
-        else if(digit <= 'z')
-            digit -= 0x57;
-        if(digit >= base || digit < 0)
-            err_fatal(ERR_BADDIGIT, pbuf - 1, 1, zbuf - files->zline);
-        number = number * base + digit;
-    }
-    if(number > NUMBER_MAX)
-        err_fatal(ERR_NUMBERTOOBIG, zbuf, pbuf - zbuf, 0);
-    if(pafter)
-        *pafter = pbuf;
-    return number;
-}
-
-
-
-/* STRINGS */
-
-/* Use our own string functions in case the host library is missing any.
-   We use `z` prefix for namespacing, and to remind us to pass around
-   `\0` terminated strings! */
-
-
-const char *
-zstrchr(const char *haystack, int needle)
-{
-    while(*haystack && *haystack != needle)
-        haystack++;
-    return *haystack ? haystack : NULL;
-}
-
-unsigned
-zstrlen(const char *zsrc)
-{
-    const char *zp = zsrc;
-    assert(zp);
-    while(*zp)
-        ++zp;
-    return zp - zsrc;
-}
-
-/* Copy characters from src to buf until srclen characters have been
-   copied or buf is full, then terminate with '\0', and return the
-   address of the terminator. */
-char *
-zstrlcpy(char *buf, const char *src, unsigned srclen, unsigned bufsiz)
-{
-    const char *srclast = src + srclen;
-    char *pdst = buf, *plast = buf + bufsiz - 1;
-    while(src < srclast && pdst < plast)
-        *pdst++ = *src++;
-    if(bufsiz)
-        *pdst = '\0';
-    return pdst;
-}
-
-/* Copy as much of `\0` terminated `zsrc` into `buf` as possible.  The
-   result is guaranteed to be terminated with `\0` truncating if `zsrc`
-   is too large to fit. */
-char *
-zstrncpy(char *buf, const char *zsrc, unsigned bufsiz)
-{
-    zstrlcpy(buf, zsrc, zstrlen(zsrc), bufsiz);
-    return buf;
-}
-
-static inline char *
-zstrndup(const char *zsrc, unsigned srclen)
-{
-    assert(zsrc);
-    return zstrncpy(xmalloc(srclen + 1), zsrc, srclen + 1);
-}
-
-static inline char *
-zstrdup(const char *zsrc)
-{
-    return zstrndup(zsrc, zstrlen(zsrc));
-}
-
-Bool
-zstrneq(const char *zp, const char *q, unsigned qlen)
-{
-    assert(zp && q);
-    /* compare `qlen` chars, or until we find a \0 or a mismatch */
-    while(*zp && qlen > 0 && *zp == *q)
-        ++zp, ++q, --qlen;
-    return (!*zp && !qlen) || (*zp == *q);
-}
-
-static inline Bool
-zstreq(const char *zp, const char *zq)
-{
-    /* \0 at the end of both strings must also match */
-    return zstrneq(zp, zq, zstrlen(zq) + 1);
-}
-
-
-
 /* GENERIC STACKS */
+
+/* Some common stack (or single linked list) routines we can use for any
+   struct that starts with a next pointer and a c-string key field, so we
+   don't need separate copies for File *, for Symbol * and for Token *.  */
 
 
 void *
@@ -497,7 +559,7 @@ stack_zstrneq(void *stack, const char *key, unsigned keylen)
 {
     Stack *node;
     for(node = stack; node; node = node->next)
-        if(zstrneq(node->zkey, key, keylen))
+        if(zstrlen(node->zkey) == keylen && zstrneq(node->zkey, key, keylen))
             return node;
     return NULL;
 }
@@ -505,6 +567,12 @@ stack_zstrneq(void *stack, const char *key, unsigned keylen)
 
 
 /* FILES */
+
+/* Manage a stack of open files, the initial input file passed to the assembler
+   is at the bottom, and as we `.i "another.v80"` push those to the top of the
+   stack until parsing of every line is complete, then pop to revert to the
+   previous file and resume from where we left off. */
+
 
 FILE *
 xfopen(const char *zpath, const char *zmode)
@@ -528,7 +596,7 @@ file_reader(Token *fname)
         /* If we have stat(2), diagnose attempt to read from anything but
            a regular file. */
         struct stat statbuf;
-        if (stat(zfname, &statbuf) == 0)
+        if (lstat(zfname, &statbuf) == 0)
             if(!S_ISREG(statbuf.st_mode))
                 err_fatal_token(ERR_BADFILE, fname);
     }
@@ -559,29 +627,6 @@ file_pop(File *stale)
     return r;
 }
 
-
-void
-emit_byte(int c)
-{
-    if(pass == PASS_GENERATECODE)
-        codesegment[pc->value] = (char)c;
-    ++pc->value;
-}
-
-int
-require_byte_token(unsigned value, Token *token)
-{
-    if(value != (value & 0xff)) {
-        switch(token->type) {
-            case T_CONSTANT: case T_DOLLAR: case T_LABEL: case T_LABEL_LOCAL: case T_NUMBER:
-                err_fatal_token(ERR_BADBYTE, token);
-            default:
-                err_fatal_token(ERR_BADBYTEEXPRESSION, token);
-        }
-    }
-    return ((int)(value)) & 0xff;
-}
-
 #ifndef NDEBUG
 void
 files_dump(File *head, const char *title)
@@ -601,6 +646,10 @@ files_dump(File *head, const char *title)
 
 /* SYMBOL TABLE */
 
+/* The symbol table is a stack of Symbol structs, and the whole stack must be
+   searched from the top to the matching symbol every time a symbol is looked
+   up in here. */
+
 
 Symbol *
 symbol_new(const char *zname, unsigned value)
@@ -609,6 +658,9 @@ symbol_new(const char *zname, unsigned value)
     r->zname  = zname;
     r->value  = value;
     r->next   = NULL;
+#ifndef NDEBUG
+    fprintf(stderr, "( '%s . %d )\n", zname, value);
+#endif
     return r;
 }
 
@@ -642,6 +694,24 @@ symtab_dump(Symbol *head, const char *title)
 
 /* TOKENIZER */
 
+/* We read then tokenize one line of the input file at a time, and free all the
+   tokens after each line has been parsed & before reading the next one.
+   tokenize_line() returns a single-linked list of Token structs in the same
+   order they were encountered while reading the input line. */
+
+
+/* Return the numeric value of the ASCII number in `zbuf` in the given
+   `base`, otherwise a fatal error if the entire number cannot be parsed. */
+unsigned
+xstrtou(const char *zbuf, const char **pafter, int base)
+{
+    unsigned long number = xstrtoul(zbuf, (char **)pafter, base);
+    if(**pafter && !c_isspace(**pafter))
+        err_fatal(ERR_BADDIGIT, *pafter, 1, zbuf - files->zline);
+    if(number > NUMBER_MAX)
+        err_fatal(ERR_NUMBERTOOBIG, zbuf, *pafter - zbuf, zbuf - files->zline);
+    return (unsigned) number;
+}
 
 Token *
 token_new(enum type type, const char *begin, const char *str, unsigned len, unsigned number)
@@ -725,7 +795,7 @@ const char *
 token_append_str(Token **ptokens, enum type type, const char *begin)
 {
     const char *after = begin;
-    while(!c_isspace(*after) && !c_iseol(*after))
+    while(*after && !c_isspace(*after))
         ++after;
     if(after - begin > TOKEN_MAXLEN)
         err_fatal(ERR_BADSYMBOL, begin, after - begin, begin - files->zline);
@@ -737,7 +807,7 @@ const char *
 token_append_strliteral(Token **ptokens, const char *begin)
 {
     const char *end = begin + 1;
-    while(*end != '"' && !c_iseol(*end)) {
+    while(*end && *end != '\n' && *end != '"') {
         if(!c_isprint(*end)) {
             err_fatal(ERR_BADSTRING, begin, end - begin, begin - files->zline);
         }
@@ -766,6 +836,13 @@ elide_longline(char *zline)
     return zline;
 }
 
+/* Step through the characters in zline, skipping whitespace before each token.
+   As long as a valid token is recognized (by the first and maybe second chars)
+   then append it to the token list for this line.  Stop as soon as a ";" is
+   encountered, since that signifies the rest of the line is a comment.
+
+   If an invalid token is detected, then bail out with an appropriate fatal
+   error to provide a diagnostic with appropriate context. */
 Token *
 tokenize_line(const char *zline)
 {
@@ -773,7 +850,7 @@ tokenize_line(const char *zline)
     const char *pos = zline, *begin = NULL;
     while(c_isspace(*pos))
         ++pos;
-    while(!c_iseol(*pos)) {
+    while(*pos && *pos != '\n') {
         begin = pos;
         switch(*pos++) {
             case '\n': case '\0':
@@ -782,7 +859,7 @@ tokenize_line(const char *zline)
             case '"': pos = token_append_strliteral(&r, begin); break;
             case '#': pos = token_append_str(&r, T_CONSTANT, begin); break;
             case '$':
-                if(c_isspace(*pos) || c_iseol(*pos))
+                if(*pos && c_isspace(*pos))
                     token_append_type(&r, T_DOLLAR, begin, 1);
                 else
                     pos = token_append_hexadecimal(&r, begin);
@@ -840,6 +917,34 @@ tokenize_line(const char *zline)
 }
 
 
+
+/* PARSER */
+
+/* Implements a recursive descent parser for the GRAMMAR in the comment further
+   down.  Having successfully read and tokenized one line of input, use traverse
+   the parser functions to determine the proper action in context. */
+
+
+Bool
+c_isfname(int c)
+{
+    if(c_isalnum(c))
+        return TRUE;
+    switch(c) {
+        case '#': case '%': case '\'': case '@': case '^': case '_': case '`': case '{': case '}': case '~':
+            return TRUE;
+    }
+    return FALSE;
+}
+
+void
+emit_byte(int c)
+{
+    if(pass == PASS_GENERATECODE)
+        codesegment[pc->value] = (char)c;
+    ++pc->value;
+}
+
 const char *
 filename_dup(Token *token)
 {
@@ -857,10 +962,19 @@ filename_dup(Token *token)
     return zstrndup(token->str, token->len);
 }
 
-
-
-/* PARSER */
-
+int
+require_byte_token(unsigned value, Token *token)
+{
+    if(value != (value & 0xff)) {
+        switch(token->type) {
+            case T_CONSTANT: case T_DOLLAR: case T_LABEL: case T_LABEL_LOCAL: case T_NUMBER:
+                err_fatal_token(ERR_BADBYTE, token);
+            default:
+                err_fatal_token(ERR_BADBYTEEXPRESSION, token);
+        }
+    }
+    return ((int)(value)) & 0xff;
+}
 
 /* GRAMMAR
    =======
@@ -933,7 +1047,7 @@ filename_dup(Token *token)
 
    local = /_[^\s]+/ ;
 
-   constant = "#" /[^\s]+/ ;
+   constant = /#[^\s]+/ ;
 
    number
       = "$" /[0-9a-fA-F]+/
@@ -950,13 +1064,13 @@ const char *
 label_local(Token *token)
 {
     static char zlabelname[LABEL_MAXLEN + 1];
-    char *zp = zlabelname;
+    unsigned labellen = zstrlen(zlabel);
     if(!zlabel)
         err_fatal_token(ERR_LOCALORPHAN, token);
-    if(zstrlen(zlabel) + token->len > LABEL_MAXLEN)
+    if(labellen + token->len > LABEL_MAXLEN)
         err_fatal_token(ERR_BADLABEL, token);
-    zp = zstrlcpy(zp, zlabel, zstrlen(zlabel), LABEL_MAXLEN);
-    zstrlcpy(zp, token->str, token->len, LABEL_MAXLEN - (zp - zlabelname));
+    zstrlcpy(zlabelname, zlabel, LABEL_MAXLEN + 1);
+    zstrlcat(zlabelname + labellen, token->str, token->len + 1);
     return zlabelname;
 }
 
@@ -1307,6 +1421,18 @@ parse_file(File *file)
     files = file_pop(files);
 }
 
+
+
+/* ENTRY POINT */
+
+/* Process any command line arguments or diagnose errors in the provided
+   arguments, then read and parse the entire input twice.  This is much
+   simpler than recording possible forward references, and then back-filling
+   or showing errors in one pass: instead, fill the addresses of all labels
+   in the first pass without generating any code, and then generate the code
+   on the second pass without recording label addresses. */
+
+
 struct extmap {
     const char *extin, *extout;
 };
@@ -1329,7 +1455,7 @@ extreplace(const char *zpathin)
             unsigned bufsiz = zstrlen(zpathin) + 1 + zstrlen(p->extout) - zstrlen(p->extin);
             const char *zpathout = zstrndup(zpathin, bufsiz);
             unsigned dotidx = dotin - zpathin;
-            zstrncpy((char *)zpathout + dotidx, p->extout, bufsiz - dotidx);
+            zstrlcpy((char *)zpathout + dotidx, p->extout, bufsiz - dotidx);
             return zpathout;
         }
 
