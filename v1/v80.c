@@ -13,6 +13,7 @@
 
    -DNO_CTYPE_H         if <ctype.h> or missing c89 isalnum, isprint and isspace
    -DNO_GETLINE         if <stdlib.h> or libc don't implement getline()
+   -DNO_LIBGEN_H        if <libgen.h> or libc don't implement dirname()
    -DNO_STRDUP          if <string.h> or libc don't implement strdup()
    -DNO_STRING_H        if <string.h> or missing c89 str* APIs
    -DNO_STRLCAT         if <string.h> or libc don't implement strlcat()
@@ -29,6 +30,9 @@
 #endif
 #ifndef NO_CTYPE_H
 #  include <ctype.h>
+#endif
+#ifndef NO_LIBGEN_H
+#  include <libgen.h>
 #endif
 #include <stdio.h>
 #include <stdlib.h>
@@ -76,6 +80,7 @@
 #define LINETOOLONG_ERRSIZE 20
 #define NOTHING_ELSE
 #define NUMBER_MAX          0xffff
+#define PATH_SEPARATOR      '/'
 #define TOKEN_MAXLEN        31
 
 #define STRINGIFY(_x)       #_x
@@ -165,6 +170,7 @@ Symbol     *pc      = NULL;     /* fast access to the '$' symbol */
 unsigned    skipcol = UINT_MAX; /* skip all lines indented more than this */
 Symbol     *symbols = NULL;     /* searchable linked list of symbols */
 const char *zlabel  = NULL;     /* current non-local label name */
+const char *zincludedir  = NULL; /* directory to load included files from */
 
 char        codesegment[0x10000];
 
@@ -312,6 +318,34 @@ xstrtoul(const char *zbuf, char **pafter, int base)
 
 
 
+/* LIBGEN */
+
+#ifdef NO_LIBGEN_H
+/* This implementation deliberately mutates the contents of PATH to match
+   some vendor implementations so we have to cater for that in callers! */
+char *
+zdirname(char *path)
+{
+    if(path) {
+        char *p = path;
+        while(*p)
+            ++p;
+        while(p > path && *p != PATH_SEPARATOR)
+            --p;
+        if(*p == PATH_SEPARATOR) {
+            *p = '\0';
+            return path;
+        }
+        assert(p == path);
+    }
+    return zstrdup(".");
+}
+#else
+#  define zdirname dirname
+#endif
+
+
+
 /* STRINGS */
 
 /* Provide our own string functions in case the host library is missing any,
@@ -453,13 +487,14 @@ zstrdup(const char *zsrc)
     X(ERR_DUPLABEL,         "Labels cannot be redefined")                       \
     X(ERR_EXPECTEXPRESSION, "Expected expression")                              \
     X(ERR_EXPECTFILENAME,   "Expected filename")                                \
+    X(ERR_LINETOOLONG,      "Line exceeds " XSTRINGIFY(LINE_MAXLEN) " columns") \
     X(ERR_LOCALORPHAN,      "Local label without preceding label")              \
+    X(ERR_PATHTOOLONG,      "Include path exceeds " XSTRINGIFY(MAXPATHLEN) " characters") \
     X(ERR_NUMBERTOOBIG,     "Expression overflow")                              \
     X(ERR_NOPAREN,          "Invalid expression, missing ')'")                  \
     X(ERR_NOSTRINGWORD,     "Invalid string argument to keyword")               \
     X(ERR_UNDEFCONSTANT,    "Undefined constant reference")                     \
     X(ERR_UNDEFLABEL,       "Undefined label reference")                        \
-    X(ERR_LINETOOLONG,      "Line exceeds " XSTRINGIFY(LINE_MAXLEN) " columns") \
 NOTHING_ELSE
 
 enum ErrCode {
@@ -516,6 +551,12 @@ static inline void
 err_fatal_token(enum ErrCode code, Token *token)
 {
     err_fatal(code, token->str, token->len, token->col);
+}
+
+static inline void
+err_fatal_str(enum ErrCode code, const char *str)
+{
+    err_fatal(code, str, 0, 0);
 }
 
 __attribute__((noreturn)) void
@@ -585,23 +626,21 @@ xfopen(const char *zpath, const char *zmode)
 }
 
 FILE *
-file_reader(Token *fname)
+file_reader(const char *zincludepath)
 {
-    char *zfname = zstrndup(fname->str, fname->len);
-    FILE *r = xfopen(zfname, "r");
+    FILE *r = xfopen(zincludepath, "r");
     if(!r)
-        err_fatal_token(ERR_BADFILE, fname);
+        err_fatal_str(ERR_BADFILE, zincludepath);
 #ifndef NO_SYS_STAT_H
     {
         /* If we have stat(2), diagnose attempt to read from anything but
            a regular file. */
         struct stat statbuf;
-        if (lstat(zfname, &statbuf) == 0)
+        if (lstat(zincludepath, &statbuf) == 0)
             if(!S_ISREG(statbuf.st_mode))
-                err_fatal_token(ERR_BADFILE, fname);
+                err_fatal_str(ERR_BADFILE, zincludepath);
     }
 #endif
-    xfree(zfname);
     return r;
 }
 
@@ -946,9 +985,22 @@ emit_byte(int c)
 }
 
 const char *
-filename_dup(Token *token)
+include_path(Token *basename)
 {
-    const char *p = token->str, *after = token->str + token->len;
+    static char zpath[MAXPATHLEN + 1];
+    unsigned dirlen = zstrlen(zincludedir);
+    if(dirlen + basename->len + 1 > MAXPATHLEN)
+        err_fatal_token(ERR_PATHTOOLONG, basename);
+    zstrlcpy(zpath, zincludedir, MAXPATHLEN + 1);
+    *(zpath + dirlen) = PATH_SEPARATOR;
+    zstrlcat(zpath + dirlen + 1, basename->str, basename->len + 1);
+    return zpath;
+}
+
+const char *
+filename_dup(Token *basename)
+{
+    const char *p = basename->str, *after = basename->str + basename->len;
     unsigned len = 0;
 
     /* match CPM filename: /\w{1,8}(\.\w{1,3}/ */
@@ -958,8 +1010,8 @@ filename_dup(Token *token)
         for(++p, len = 3; p < after && c_isfname(*p) && len > 0; --len)
             ++p;
     if(p != after)
-        err_fatal_token(ERR_BADFILENAME, token);
-    return zstrndup(token->str, token->len);
+        err_fatal_token(ERR_BADFILENAME, basename);
+    return zstrdup(include_path(basename));
 }
 
 int
@@ -1278,14 +1330,15 @@ parse_keyword_fill(Token *keyword)
 Token *
 parse_keyword_include(Token *token)
 {
-    Token *file = token->next;
+    Token *basename = token->next;
+    const char *zincludepath = filename_dup(basename);
     assert(token);
-    if(!file)
+    if(!basename)
         err_fatal_token(ERR_EXPECTFILENAME, token);
-    if(file->type != T_STRING)
+    if(basename->type != T_STRING)
         err_fatal_token(ERR_EXPECTFILENAME, token);
-    parse_file(file_push(filename_dup(file), file_reader(file)));
-    return file->next;
+    parse_file(file_push(zincludepath, file_reader(zincludepath)));
+    return basename->next;
 }
 
 Token *
@@ -1473,6 +1526,8 @@ main(int argc, const char *argv[])
 
     if(argc < 2 || argc > 3)
         err_usage(*argv);
+
+    zincludedir = zdirname(zstrdup(zpathin));
 
     /* Pass 1: to populate label addresses */
     pass = PASS_LABELADDRS;
