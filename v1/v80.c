@@ -1,6 +1,9 @@
-/* v80.c (C) Gary V. Vaughan 2024, MIT License
+/* This file: */
+static const char *kversion  = "v0.1";
+static const char *kcopyleft = "Copyright (C) 2024, MIT License";
+static const char *kauthor   = "Gary V. Vaughan <gary@gnu.org>";
 
-   On Linux, compile with C89 and minimal library functions:
+/* On Linux, compile with C89 and minimal library functions:
    $ cc -std=c89 -pedantic -O2 -D_POSIX_C_SOURCE=1 -DNDEBUG -o bin/v80 v1/v80.c
 
    On macOS, compile with C99 and supporting library functions:
@@ -594,13 +597,6 @@ static inline void
 err_fatal_str(enum ErrCode code, const char *str)
 {
     err_fatal(code, str, 0, 0);
-}
-
-__attribute__((noreturn)) void
-err_usage(const char *progname)
-{
-    fprintf(stderr, "Usage: %s INPUTPATH [OUTPUTPATH]\n", progname);
-    exit(EXIT_USAGE);
 }
 
 
@@ -1215,7 +1211,7 @@ HashTable  *symbols     = NULL;     /* searchable linked list of symbols */
 unsigned    skipcol     = UINT_MAX; /* skip all lines indented more than this */
 const char *zincludedir = NULL;     /* directory to load included files from */
 const char *zlabel      = NULL;     /* current non-local label name */
-const char *zprogname   = NULL;     /* argv[0], path we called the program by */
+const char *kprogname   = NULL;     /* argv[0], path we called the program by */
 
 char        codesegment[0x10000];
 
@@ -1932,6 +1928,35 @@ extreplace(const char *zpathin)
     return zstrdup(p->extout);
 }
 
+static const char *kusage = "[-i INCLUDEPATH] INPUTPATH [OUTPUTPATH]";
+
+static const char *khelpmsg[] = {
+    "\tRead 8-bit assembly source from INPUTPATH, assemble and write the",
+    "\tresulting binary code to OUPUTPATH.  If OUTPUTPATH is not specified,",
+    "\tuse INPUTPATH with the file extension changed to `.com' for `.v80`",
+    "\tinput, `.prg` for `.v65` input, or to `v.out` otherwise.",
+    "",
+    "OPTIONS",
+    "",
+    "\t-h, --help",
+    "\t\tDisplay this help, then exit.",
+    "",
+    "\t-i INCLUDEPATH, --include INCLUDEPATH",
+    "\t\tAdditional input files to assemble before INPUTPATH.  Usually",
+    "\t\tused to set up the instruction set tables with `.m` commands.",
+    "",
+    "\t    --version",
+    "\t\tDisplay the release version, then exit.",
+    NULL,
+};
+
+__attribute__((noreturn)) void
+err_usage(const char *kprogname)
+{
+    fprintf(stderr, "Usage: %s %s\n", kprogname, kusage);
+    exit(EXIT_USAGE);
+}
+
 int
 main(int argc, const char *argv[])
 {
@@ -1941,27 +1966,44 @@ main(int argc, const char *argv[])
     FILE *streamin = NULL;
 
     /* Initialize globals */
-    zprogname = *argv;
+    kprogname = *argv++; --argc;
     symbols = hash_new(SYMBOLTABLE_MINSIZE);
 
     /* Parse command line options */
-    while(argc > 1) {
-        if (*argv[1] == '-') {
-            if(zstreq(argv[1], "-i") || zstreq(argv[1], "--isa")) {
-                parse_file(file_push(zstrdup(argv[2]), file_reader(argv[2])));
-                ++argv;
-                --argc;
-            } else
-                err_usage(zprogname);
+    while(argc > 0) {
+        const char *arg = *argv++; --argc;
+        if (*arg == '-') {
+            unsigned arglen = zstrlen(arg);
+            if(arglen > 2 && zstrneq(arg, "-i", 2))
+                parse_file(file_push(zstrdup(arg + 2),  file_reader(arg + 2)));
+            else if(arglen > 10 && zstrneq(arg, "--include=", 10))
+                parse_file(file_push(zstrdup(arg + 10), file_reader(arg + 10)));
+            else if(argc > 1 && (zstreq(arg, "-i") || zstreq(arg, "--include"))) {
+                parse_file(file_push(zstrdup(*argv),  file_reader(*argv)));
+                ++argv; --argc;
+            } else if(zstreq(arg, "-h") || zstreq(arg, "--help")) {
+                const char **phelpmsg = khelpmsg;
+                printf("Usage: %s %s\n\n", kprogname, kusage);
+                for(; *phelpmsg; ++phelpmsg)
+                    printf("%s\n", *phelpmsg);
+                exit(EXIT_SUCCESS);
+            } else if(zstreq(arg, "--version")) {
+                printf("v80.c %s\n", kversion);
+                printf("%s\nWritten by %s\n", kcopyleft, kauthor);
+                exit(EXIT_SUCCESS);
+            } else {
+                fprintf(stderr, "%s: unrecognized option '%s'\n", kprogname, arg);
+                err_usage(kprogname);
+            }
         } else if(!zpathin) {
-            zpathin = argv[1];
+            zpathin = arg;
         } else if(!zpathout) {
-            zpathout = argv[1];
+            zpathout = arg;
         } else
-            err_usage(zprogname);
-        ++argv;
-        --argc;
+            err_usage(kprogname);
     }
+    if(!zpathin)
+        err_usage(kprogname);
     zincludedir = zdirname(zstrdup(zpathin));
 
     /* Pass 1: to populate label addresses */
