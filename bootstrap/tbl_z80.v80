@@ -1250,150 +1250,150 @@
 
 .m scf                  $37
 
-.m set0*hl          $cb $86
-.m set0*hl'         $cb $86
-.m set0*ix      $dd $cb .b $86
-.m set0*iy      $fd $cb .b $86
-.m set0.a           $cb $87
-.m set0.a'          $cb $87
-.m set0.b           $cb $80
-.m set0.b'          $cb $80
-.m set0.c           $cb $81
-.m set0.c'          $cb $81
-.m set0.d           $cb $82
-.m set0.d'          $cb $82
-.m set0.e           $cb $83
-.m set0.e'          $cb $83
-.m set0.h           $cb $84
-.m set0.h'          $cb $84
-.m set0.l           $cb $85
-.m set0.l'          $cb $85
-.m set1*hl          $cb $8e
-.m set1*hl'         $cb $8e
-.m set1*ix      $dd $cb .b $8e
-.m set1*iy      $fd $cb .b $8e
-.m set1.a           $cb $8f
-.m set1.a'          $cb $8f
-.m set1.b           $cb $88
-.m set1.b'          $cb $88
-.m set1.c           $cb $89
-.m set1.c'          $cb $89
-.m set1.d           $cb $8a
-.m set1.d'          $cb $8a
-.m set1.e           $cb $8b
-.m set1.e'          $cb $8b
-.m set1.h           $cb $8c
-.m set1.h'          $cb $8c
-.m set1.l           $cb $8d
-.m set1.l'          $cb $8d
-.m set2*hl          $cb $96
-.m set2*hl'         $cb $96
-.m set2*ix      $dd $cb .b $96
-.m set2*iy      $fd $cb .b $96
-.m set2.a           $cb $97
-.m set2.a'          $cb $97
-.m set2.b           $cb $90
-.m set2.b'          $cb $90
-.m set2.c           $cb $91
-.m set2.c'          $cb $91
-.m set2.d           $cb $92
-.m set2.d'          $cb $92
-.m set2.e           $cb $93
-.m set2.e'          $cb $93
-.m set2.h           $cb $94
-.m set2.h'          $cb $94
-.m set2.l           $cb $95
-.m set2.l'          $cb $95
-.m set3*hl          $cb $9e
-.m set3*hl'         $cb $9e
-.m set3*ix          $dd $cb .b $9e
-.m set3*iy      $fd $cb .b $9e
-.m set3.a           $cb $9f
-.m set3.a'          $cb $9f
-.m set3.b           $cb $98
-.m set3.b'          $cb $98
-.m set3.c           $cb $99
-.m set3.c'          $cb $99
-.m set3.d           $cb $9a
-.m set3.d'          $cb $9a
-.m set3.e           $cb $9b
-.m set3.e'          $cb $9b
-.m set3.h           $cb $9c
-.m set3.h'          $cb $9c
-.m set3.l           $cb $9d
-.m set3.l'          $cb $9d
-.m set4*hl          $cb $a6
-.m set4*hl'         $cb $a6
-.m set4*ix      $dd $cb .b $a6
-.m set4*iy      $fd $cb .b $a6
-.m set4.a           $cb $a7
-.m set4.a'          $cb $a7
-.m set4.b           $cb $a0
-.m set4.b'          $cb $a0
-.m set4.c           $cb $a1
-.m set4.c'          $cb $a1
-.m set4.d           $cb $a2
-.m set4.d'          $cb $a2
-.m set4.e           $cb $a3
-.m set4.e'          $cb $a3
-.m set4.h           $cb $a4
-.m set4.h'          $cb $a4
-.m set4.l           $cb $a5
-.m set4.l'          $cb $a5
-.m set5*hl          $cb $ae
-.m set5*hl'         $cb $ae
-.m set5*ix      $dd $cb .b $ae
-.m set5*iy      $fd $cb .b $ae
-.m set5.a           $cb $af
-.m set5.a'          $cb $af
-.m set5.b           $cb $a8
-.m set5.b'          $cb $a8
-.m set5.c           $cb $a9
-.m set5.c'          $cb $a9
-.m set5.d           $cb $aa
-.m set5.d'          $cb $aa
-.m set5.e           $cb $ab
-.m set5.e'          $cb $ab
-.m set5.h           $cb $ac
-.m set5.h'          $cb $ac
-.m set5.l           $cb $ad
-.m set5.l'          $cb $ad
-.m set6*hl          $cb $b6
-.m set6*hl'         $cb $b6
-.m set6*ix      $dd $cb .b $b6
-.m set6*iy      $fd $cb .b $b6
-.m set6.a           $cb $b7
-.m set6.a'          $cb $b7
-.m set6.b           $cb $b0
-.m set6.b'          $cb $b0
-.m set6.c           $cb $b1
-.m set6.c'          $cb $b1
-.m set6.d           $cb $b2
-.m set6.d'          $cb $b2
-.m set6.e           $cb $b3
-.m set6.e'          $cb $b3
-.m set6.h           $cb $b4
-.m set6.h'          $cb $b4
-.m set6.l           $cb $b5
-.m set6.l'          $cb $b5
-.m set7*hl          $cb $be
-.m set7*hl'         $cb $be
-.m set7*ix      $dd $cb .b $be
-.m set7*iy      $fd $cb .b $be
-.m set7.a           $cb $bf
-.m set7.a'          $cb $bf
-.m set7.b           $cb $b8
-.m set7.b'          $cb $b8
-.m set7.c           $cb $b9
-.m set7.c'          $cb $b9
-.m set7.d           $cb $ba
-.m set7.d'          $cb $ba
-.m set7.e           $cb $bb
-.m set7.e'          $cb $bb
-.m set7.h           $cb $bc
-.m set7.h'          $cb $bc
-.m set7.l           $cb $bd
-.m set7.l'          $cb $bd
+.m set0*hl          $cb $c6
+.m set0*hl'         $cb $c6
+.m set0*ix      $dd $cb .b $c6
+.m set0*iy      $fd $cb .b $c6
+.m set0.a           $cb $c7
+.m set0.a'          $cb $c7
+.m set0.b           $cb $c0
+.m set0.b'          $cb $c0
+.m set0.c           $cb $c1
+.m set0.c'          $cb $c1
+.m set0.d           $cb $c2
+.m set0.d'          $cb $c2
+.m set0.e           $cb $c3
+.m set0.e'          $cb $c3
+.m set0.h           $cb $c4
+.m set0.h'          $cb $c4
+.m set0.l           $cb $c5
+.m set0.l'          $cb $c5
+.m set1*hl          $cb $ce
+.m set1*hl'         $cb $ce
+.m set1*ix      $dd $cb .b $ce
+.m set1*iy      $fd $cb .b $ce
+.m set1.a           $cb $cf
+.m set1.a'          $cb $cf
+.m set1.b           $cb $c8
+.m set1.b'          $cb $c8
+.m set1.c           $cb $c9
+.m set1.c'          $cb $c9
+.m set1.d           $cb $ca
+.m set1.d'          $cb $ca
+.m set1.e           $cb $cb
+.m set1.e'          $cb $cb
+.m set1.h           $cb $cc
+.m set1.h'          $cb $cc
+.m set1.l           $cb $cd
+.m set1.l'          $cb $cd
+.m set2*hl          $cb $d6
+.m set2*hl'         $cb $d6
+.m set2*ix      $dd $cb .b $d6
+.m set2*iy      $fd $cb .b $d6
+.m set2.a           $cb $d7
+.m set2.a'          $cb $d7
+.m set2.b           $cb $d0
+.m set2.b'          $cb $d0
+.m set2.c           $cb $d1
+.m set2.c'          $cb $d1
+.m set2.d           $cb $d2
+.m set2.d'          $cb $d2
+.m set2.e           $cb $d3
+.m set2.e'          $cb $d3
+.m set2.h           $cb $d4
+.m set2.h'          $cb $d4
+.m set2.l           $cb $d5
+.m set2.l'          $cb $d5
+.m set3*hl          $cb $de
+.m set3*hl'         $cb $de
+.m set3*ix          $dd $cb .b $de
+.m set3*iy      $fd $cb .b $de
+.m set3.a           $cb $df
+.m set3.a'          $cb $df
+.m set3.b           $cb $d8
+.m set3.b'          $cb $d8
+.m set3.c           $cb $d9
+.m set3.c'          $cb $d9
+.m set3.d           $cb $da
+.m set3.d'          $cb $da
+.m set3.e           $cb $db
+.m set3.e'          $cb $db
+.m set3.h           $cb $dc
+.m set3.h'          $cb $dc
+.m set3.l           $cb $dd
+.m set3.l'          $cb $dd
+.m set4*hl          $cb $e6
+.m set4*hl'         $cb $e6
+.m set4*ix      $dd $cb .b $e6
+.m set4*iy      $fd $cb .b $e6
+.m set4.a           $cb $e7
+.m set4.a'          $cb $e7
+.m set4.b           $cb $e0
+.m set4.b'          $cb $e0
+.m set4.c           $cb $e1
+.m set4.c'          $cb $e1
+.m set4.d           $cb $e2
+.m set4.d'          $cb $e2
+.m set4.e           $cb $e3
+.m set4.e'          $cb $e3
+.m set4.h           $cb $e4
+.m set4.h'          $cb $e4
+.m set4.l           $cb $e5
+.m set4.l'          $cb $e5
+.m set5*hl          $cb $ee
+.m set5*hl'         $cb $ee
+.m set5*ix      $dd $cb .b $ee
+.m set5*iy      $fd $cb .b $ee
+.m set5.a           $cb $ef
+.m set5.a'          $cb $ef
+.m set5.b           $cb $e8
+.m set5.b'          $cb $e8
+.m set5.c           $cb $e9
+.m set5.c'          $cb $e9
+.m set5.d           $cb $ea
+.m set5.d'          $cb $ea
+.m set5.e           $cb $eb
+.m set5.e'          $cb $eb
+.m set5.h           $cb $ec
+.m set5.h'          $cb $ec
+.m set5.l           $cb $ed
+.m set5.l'          $cb $ed
+.m set6*hl          $cb $f6
+.m set6*hl'         $cb $f6
+.m set6*ix      $dd $cb .b $f6
+.m set6*iy      $fd $cb .b $f6
+.m set6.a           $cb $f7
+.m set6.a'          $cb $f7
+.m set6.b           $cb $f0
+.m set6.b'          $cb $f0
+.m set6.c           $cb $f1
+.m set6.c'          $cb $f1
+.m set6.d           $cb $f2
+.m set6.d'          $cb $f2
+.m set6.e           $cb $f3
+.m set6.e'          $cb $f3
+.m set6.h           $cb $f4
+.m set6.h'          $cb $f4
+.m set6.l           $cb $f5
+.m set6.l'          $cb $f5
+.m set7*hl          $cb $fe
+.m set7*hl'         $cb $fe
+.m set7*ix      $dd $cb .b $fe
+.m set7*iy      $fd $cb .b $fe
+.m set7.a           $cb $ff
+.m set7.a'          $cb $ff
+.m set7.b           $cb $f8
+.m set7.b'          $cb $f8
+.m set7.c           $cb $f9
+.m set7.c'          $cb $f9
+.m set7.d           $cb $fa
+.m set7.d'          $cb $fa
+.m set7.e           $cb $fb
+.m set7.e'          $cb $fb
+.m set7.h           $cb $fc
+.m set7.h'          $cb $fc
+.m set7.l           $cb $fd
+.m set7.l'          $cb $fd
 
 .m sla*hl           $cb $26
 .m sla*hl'          $cb $26
