@@ -1411,7 +1411,7 @@ _ok     ex.DE.HL                        ; swap heap back to HL
         ; so that the lo-byte == string-length
         ;
         ld.DE   :buffers
-        ;-----------------------------------------------------------------------
+
         ; to allow for case-insensitivty, we force lowercase without also
         ; affecting numbers by setting bit 5. this essentially forces ASCII
         ; codes 64-95 (@A-Z[\]^_) to codes 96-127 (`a-z{|}~) which makes A-Z
@@ -1421,7 +1421,7 @@ _ok     ex.DE.HL                        ; swap heap back to HL
         ; 
         ; it also means that ASCII codes 0-31 (non-visible) are promoted
         ; to 32-64 (visible) so we must eliminate white-space first
-        ;
+        ;-----------------------------------------------------------------------
 _word   or      %00100000               ; force partial lowercase
         ld*DE.A                         ; write character
         inc.E                           ; next char in captured word
@@ -1429,18 +1429,21 @@ _word   or      %00100000               ; force partial lowercase
         cp      #SPC + 1                ; ASCII <= SPC is end-of-word
         jr?nc   _word                   ; keep reading chars
         ;-----------------------------------------------------------------------
+        ld.A.E                          ; E is our word-length
+        dec.A                           ; subtract 1 for 0-based check
+        ld*$.A  _apos +1                ; patch length into later comparison
         xor.A                           ; must write null-terminator
         ld*DE.A                         ; to end of word
+
+        ; the first character of the word is used to skip to the alphabetic
+        ; start point in the instruction list
+        ;
         ld.E.A                          ; rewind to beginning of word
         ld.A*DE                         ; restore first character
         ;///////////////////////////////////////////////////////////////////////
         call    :osPrintChar            ; print first matching character
         ld.A*DE                         ; (A not preserved)
         ;///////////////////////////////////////////////////////////////////////
-
-        ; the first character of the word is used to skip to the alphabetic
-        ; start point in the instruction list
-        ;
         sub     'a                      ; rebase to a = 0 etc.
         add.A                           ; double char for 16-bits per entry
         ld.B    0                       ; put offset into BC
@@ -1460,12 +1463,8 @@ _word   or      %00100000               ; force partial lowercase
         ; 
         inc.E                           ; E doubles as matched char count!
         ld.A*DE                         ; read 2nd input char
-        ;///////////////////////////////////////////////////////////////////////
-        call    :osPrintChar            ; print first matching character
-        ld.A*DE                         ; (A not preserved)
-        ;///////////////////////////////////////////////////////////////////////
-        cp      #SPC + 1                ; ASCII code <= 32 (space)?
-        jr?c    _err                    ; error if 1-letter word
+        and.A                           ; is it null terminator?
+        jr?z    _err                    ; error if 1-letter word
 
         jr      _loop                   ; jump into loop
 
@@ -1512,46 +1511,56 @@ _loop   ld.C*HL                         ; get instruction length byte
         ; matched count as it means we could be looking at an instruction
         ; branch that doesn't apply to us (e.g. first "." instead of "*")
         ;
-        dec.A                           ; fix A for greater-than check
+        ;dec.A                           ; fix A for greater-than check
         cp.E                            ; compare re-used with matched count
-        jr?nc   _skip                   ; skip unmatchable line
+        jr?c    _err                    ; skip unmatchable line
+        jr?nz   _skip
 
         ; match chars with current line:
         ;-----------------------------------------------------------------------
-_char   ld.A*DE                         ; retrieve our current char
-        cp*HL                           ; compare with instruction list
+_char   ld.A*DE                         ; retrieve our current input char
+
+        ; Z80:  shadow registers are marked with an apostrophe; encoding this
+        ;       in the list would add hundreds of additional lines so we cheat
+        ;       where we can. anywhere a dot appears an apostrophe is accepted
+        ;       and trailing apostrophes are ignored
+        ;
+        cp      ''                      ; is this an apostrophe?
+        jr?nz   _1                      ; if not skip over apostrophe fixing
+
+        cp*HL                           ; the list may contain an apostrophe
+        jr?z    _2                      ; if we match that, continue as normal
+
+        ; if the character we're matching against is a dot then replace
+        ; the apostrophe with dot to allow for a match
+        ;
+        ld.A    '.                      ; change input char to a dot
+
+_1      cp*HL                           ; compare with instruction list
         jr?nz   _skip                   ; no match? skip to next line
 
         ; one additional char matched!
-        ;
+        ;-----------------------------------------------------------------------
+_2      ;///////////////////////////////////////////////////////////////////////
+        ;ld.A*DE
+        call    :osPrintChar
+        ;///////////////////////////////////////////////////////////////////////
         inc.E                           ; increment matched counter
         inc.HL                          ; step to next char in list
-_get    ld.A*DE                         ; read next char from our input word
-        ;///////////////////////////////////////////////////////////////////////
-        call    :osPrintChar
-        ld.A*DE
-        ;///////////////////////////////////////////////////////////////////////
-        cp      #SPC + 1                ; is it SPC/EOL/EOF?
-        jr?c    _eow                    ; handle end-of-word...
 
-        ; Z80: shadow registers are marked with an apostrophe -- encoding this
-        ; in the list would add hundreds of additional lines so we cheat by
-        ; just 'ignoring' apostrophes. there is one exception, an apostrophe
-        ; can replace a dot, for example in `ld.a.b` -> `ld.a'b`
-        ;
-        ;cp      ''                      ; is this an apostrophe?
-        ;jr?nz   _1                      ; if not skip over apostrophe fixing
+        ld.A*DE                         ; read next char from our input word
+        and.A                           ; (set flags)
+        jr?z    _eow                    ; handle end-of-word...
 
-        ; if the character we're matching against is a dot then replace
-        ; the apostrophe with dot to allow for a match. if not, skip the
-        ; apostrophe entirely and get another character
-        ;
-        ;ld.A    '.                      ; change input char to a dot
-        ;cp*HL                           ; is the line char also a dot?
-        ;jr?nz   _get                    ; if not -- skip the apostrophe
-
-_1      dec.C                           ; one less char to check/skip
+        dec.C                           ; one less char to check/skip
         jr?nz   _char                   ; do all additional chars for this line
+
+        ; all chars matched:
+        ;-----------------------------------------------------------------------
+        ; Z80:  if the chars in the line match, but the input word is longer,
+        ;       check for trailing apostrophe
+        ;
+        cp      ''
 
         ; if the chars in the line match, but the input word is longer,
         ; we need to move to the next line, e.g.
@@ -1559,6 +1568,19 @@ _1      dec.C                           ; one less char to check/skip
         ;       adc                     ; matched, but more chars remain
         ;       adc.z                   ; complete match
         ;
+        jr?nz   _skip
+
+        ;///////////////////////////////////////////////////////////////////////
+        ;call    :osPrintChar
+        ;///////////////////////////////////////////////////////////////////////
+
+        ; has the input word come to an end? even though the list instruction
+        ; has ended, and the input word contains an apostrophe in the same
+        ; place, it could still be much longer
+        ;
+_apos   ld.A    $ff                     ; word length is patched in here
+        cp.E
+        jr?z    _ok
         jr      _skip
 
         ;-----------------------------------------------------------------------
@@ -1570,17 +1592,21 @@ _1      dec.C                           ; one less char to check/skip
 _eow    dec.C                           ; (last char did match)
         jr?nz   _err                    ; if chars remain, mismatch
 
-        ;///////////////////////////////////////////////////////////////////////
-        call    :osPrintNewline
-        ;///////////////////////////////////////////////////////////////////////
-
         ; instruction match! read the opcode and flags byte
         ; and handle parameters (if any)
-        ;
+        ;-----------------------------------------------------------------------
 _ok     ld.C*HL                         ; upon match, next byte is opcode
         inc.HL                          ;  followed by the opcode-flags
         ld.B*HL                         ;  byte for parameters
         pop.HL                          ; (restore heap address)
+
+        ;///////////////////////////////////////////////////////////////////////
+        ld.A    #TAB
+        call    :osPrintChar
+        ld.A.C
+        call    :printHexByte
+        call    :osPrintNewline
+        ;///////////////////////////////////////////////////////////////////////
 
         ; the flags byte is a set of flags for CPU-specifics and what,
         ; if any, kind of parameter is required. regardless of ISA,
@@ -1605,6 +1631,13 @@ _ok     ld.C*HL                         ; upon match, next byte is opcode
         ; (a relative jump to here is used to save 1 byte and 3 cycles
         ;  over using conditional absolute jumps in each instance)
         ;
-_err    jp      :errInvalIns
+_err    call    :osPrintNewline
+        ld.DE   :buffers
+        call    :osPrintStrZ
+        ld.A    '!
+        call    :osPrintChar
+
+        jp      :errInvalIns
+_halt   halt
 
 #size_of_parseISA2      $ - :parseISA2
