@@ -1190,150 +1190,150 @@ $0100	; v80			; z80				; opcodes
 	;-----------------------------------------------------------------------
 :scf	scf			; scf				;    37
 	;-----------------------------------------------------------------------
-:set	set0*hl			; set	0,	[HL]		;    CB 86
-	set0*hl'		; set	0,	[HL']		;    CB 86
-	set0*ix	$00		; set	0,	[IX+$00]	; DD CB 00 86
-	set0*iy	$00		; set	0,	[IY+$00]	; FD CB 00 86
-	set0.a			; set	0,	A		;    CB 87
-	set0.a'			; set	0,	A'		;    CB 87
-	set0.b			; set	0,	B		;    CB 80
-	set0.b'			; set	0,	B'		;    CB 80
-	set0.c			; set	0,	C		;    CB 81
-	set0.c'			; set	0,	C'		;    CB 81
-	set0.d			; set	0,	D		;    CB 82
-	set0.d'			; set	0,	D'		;    CB 82
-	set0.e			; set	0,	E		;    CB 83
-	set0.e'			; set	0,	E'		;    CB 83
-	set0.h			; set	0,	H		;    CB 84
-	set0.h'			; set	0,	H'		;    CB 84
-	set0.l			; set	0,	L		;    CB 85
-	set0.l'			; set	0,	L'		;    CB 85
-	set1*hl			; set	1,	[HL]		;    CB 8E
-	set1*hl'		; set	1,	[HL']		;    CB 8E
-	set1*ix	$00		; set	1,	[IX+$00]	; DD CB 00 8E
-	set1*iy	$00		; set	1,	[IY+$00]	; FD CB 00 8E
-	set1.a			; set	1,	A		;    CB 8F
-	set1.a'			; set	1,	A'		;    CB 8F
-	set1.b			; set	1,	B		;    CB 88
-	set1.b'			; set	1,	B'		;    CB 88
-	set1.c			; set	1,	C		;    CB 89
-	set1.c'			; set	1,	C'		;    CB 89
-	set1.d			; set	1,	D		;    CB 8A
-	set1.d'			; set	1,	D'		;    CB 8A
-	set1.e			; set	1,	E		;    CB 8B
-	set1.e'			; set	1,	E'		;    CB 8B
-	set1.h			; set	1,	H		;    CB 8C
-	set1.h'			; set	1,	H'		;    CB 8C
-	set1.l			; set	1,	L		;    CB 8D
-	set1.l'			; set	1,	L'		;    CB 8D
-	set2*hl			; set	2,	[HL]		;    CB 96
-	set2*hl'		; set	2,	[HL']		;    CB 96
-	set2*ix	$00		; set	2,	[IX+$00]	; DD CB 00 96
-	set2*iy	$00		; set	2,	[IY+$00]	; FD CB 00 96
-	set2.a			; set	2,	A		;    CB 97
-	set2.a'			; set	2,	A'		;    CB 97
-	set2.b			; set	2,	B		;    CB 90
-	set2.b'			; set	2,	B'		;    CB 90
-	set2.c			; set	2,	C		;    CB 91
-	set2.c'			; set	2,	C'		;    CB 91
-	set2.d			; set	2,	D		;    CB 92
-	set2.d'			; set	2,	D'		;    CB 92
-	set2.e			; set	2,	E		;    CB 93
-	set2.e'			; set	2,	E'		;    CB 93
-	set2.h			; set	2,	H		;    CB 94
-	set2.h'			; set	2,	H'		;    CB 94
-	set2.l			; set	2,	L		;    CB 95
-	set2.l'			; set	2,	L'		;    CB 95
-	set3*hl			; set	3,	[HL]		;    CB 9E
-	set3*hl'		; set	3,	[HL']		;    CB 9E
-	set3*ix	$00		; set	3,	[IX+$00]	; DD CB 00 9E
-	set3*iy	$00		; set	3,	[IY+$00]	; FD CB 00 9E
-	set3.a			; set	3,	A		;    CB 9F
-	set3.a'			; set	3,	A'		;    CB 9F
-	set3.b			; set	3,	B		;    CB 98
-	set3.b'			; set	3,	B'		;    CB 98
-	set3.c			; set	3,	C		;    CB 99
-	set3.c'			; set	3,	C'		;    CB 99
-	set3.d			; set	3,	D		;    CB 9A
-	set3.d'			; set	3,	D'		;    CB 9A
-	set3.e			; set	3,	E		;    CB 9B
-	set3.e'			; set	3,	E'		;    CB 9B
-	set3.h			; set	3,	H		;    CB 9C
-	set3.h'			; set	3,	H'		;    CB 9C
-	set3.l			; set	3,	L		;    CB 9D
-	set3.l'			; set	3,	L'		;    CB 9D
-	set4*hl			; set	4,	[HL]		;    CB A6
-	set4*hl'		; set	4,	[HL']		;    CB A6
-	set4*ix	$00		; set	4,	[IX+$00]	; DD CB 00 A6
-	set4*iy	$00		; set	4,	[IY+$00]	; FD CB 00 A6
-	set4.a			; set	4,	A		;    CB A7
-	set4.a'			; set	4,	A'		;    CB A7
-	set4.b			; set	4,	B		;    CB A0
-	set4.b'			; set	4,	B'		;    CB A0
-	set4.c			; set	4,	C		;    CB A1
-	set4.c'			; set	4,	C'		;    CB A1
-	set4.d			; set	4,	D		;    CB A2
-	set4.d'			; set	4,	D'		;    CB A2
-	set4.e			; set	4,	E		;    CB A3
-	set4.e'			; set	4,	E'		;    CB A3
-	set4.h			; set	4,	H		;    CB A4
-	set4.h'			; set	4,	H'		;    CB A4
-	set4.l			; set	4,	L		;    CB A5
-	set4.l'			; set	4,	L'		;    CB A5
-	set5*hl			; set	5,	[HL]		;    CB AE
-	set5*hl'		; set	5,	[HL']		;    CB AE
-	set5*ix	$00		; set	5,	[IX+$00]	; DD CB 00 AE
-	set5*iy	$00		; set	5,	[IY+$00]	; FD CB 00 AE
-	set5.a			; set	5,	A		;    CB AF
-	set5.a'			; set	5,	A'		;    CB AF
-	set5.b			; set	5,	B		;    CB A8
-	set5.b'			; set	5,	B'		;    CB A8
-	set5.c			; set	5,	C		;    CB A9
-	set5.c'			; set	5,	C'		;    CB A9
-	set5.d			; set	5,	D		;    CB AA
-	set5.d'			; set	5,	D'		;    CB AA
-	set5.e			; set	5,	E		;    CB AB
-	set5.e'			; set	5,	E'		;    CB AB
-	set5.h			; set	5,	H		;    CB AC
-	set5.h'			; set	5,	H'		;    CB AC
-	set5.l			; set	5,	L		;    CB AD
-	set5.l'			; set	5,	L'		;    CB AD
-	set6*hl			; set	6,	[HL]		;    CB B6
-	set6*hl'		; set	6,	[HL']		;    CB B6
-	set6*ix	$00		; set	6,	[IX+$00]	; DD CB 00 B6
-	set6*iy	$00		; set	6,	[IY+$00]	; FD CB 00 B6
-	set6.a			; set	6,	A		;    CB B7
-	set6.a'			; set	6,	A'		;    CB B7
-	set6.b			; set	6,	B		;    CB B0
-	set6.b'			; set	6,	B'		;    CB B0
-	set6.c			; set	6,	C		;    CB B1
-	set6.c'			; set	6,	C'		;    CB B1
-	set6.d			; set	6,	D		;    CB B2
-	set6.d'			; set	6,	D'		;    CB B2
-	set6.e			; set	6,	E		;    CB B3
-	set6.e'			; set	6,	E'		;    CB B3
-	set6.h			; set	6,	H		;    CB B4
-	set6.h'			; set	6,	H'		;    CB B4
-	set6.l			; set	6,	L		;    CB B5
-	set6.l'			; set	6,	L'		;    CB B5
-	set7*hl			; set	7,	[HL]		;    CB BE
-	set7*hl'		; set	7,	[HL']		;    CB BE
-	set7*ix	$00		; set	7,	[IX+$00]	; DD CB 00 BE
-	set7*iy	$00		; set	7,	[IY+$00]	; FD CB 00 BE
-	set7.a			; set	7,	A		;    CB BF
-	set7.a'			; set	7,	A'		;    CB BF
-	set7.b			; set	7,	B		;    CB B8
-	set7.b'			; set	7,	B'		;    CB B8
-	set7.c			; set	7,	C		;    CB B9
-	set7.c'			; set	7,	C'		;    CB B9
-	set7.d			; set	7,	D		;    CB BA
-	set7.d'			; set	7,	D'		;    CB BA
-	set7.e			; set	7,	E		;    CB BB
-	set7.e'			; set	7,	E'		;    CB BB
-	set7.h			; set	7,	H		;    CB BC
-	set7.h'			; set	7,	H'		;    CB BC
-	set7.l			; set	7,	L		;    CB BD
-	set7.l'			; set	7,	L'		;    CB BD
+:set	set0*hl			; set	0,	[HL]		;    CB C6
+	set0*hl'		; set	0,	[HL']		;    CB C6
+	set0*ix	$00		; set	0,	[IX+$00]	; DD CB 00 C6
+	set0*iy	$00		; set	0,	[IY+$00]	; FD CB 00 C6
+	set0.a			; set	0,	A		;    CB C7
+	set0.a'			; set	0,	A'		;    CB C7
+	set0.b			; set	0,	B		;    CB C0
+	set0.b'			; set	0,	B'		;    CB C0
+	set0.c			; set	0,	C		;    CB C1
+	set0.c'			; set	0,	C'		;    CB C1
+	set0.d			; set	0,	D		;    CB C2
+	set0.d'			; set	0,	D'		;    CB C2
+	set0.e			; set	0,	E		;    CB C3
+	set0.e'			; set	0,	E'		;    CB C3
+	set0.h			; set	0,	H		;    CB C4
+	set0.h'			; set	0,	H'		;    CB C4
+	set0.l			; set	0,	L		;    CB C5
+	set0.l'			; set	0,	L'		;    CB C5
+	set1*hl			; set	1,	[HL]		;    CB CE
+	set1*hl'		; set	1,	[HL']		;    CB CE
+	set1*ix	$00		; set	1,	[IX+$00]	; DD CB 00 CE
+	set1*iy	$00		; set	1,	[IY+$00]	; FD CB 00 CE
+	set1.a			; set	1,	A		;    CB CF
+	set1.a'			; set	1,	A'		;    CB CF
+	set1.b			; set	1,	B		;    CB C8
+	set1.b'			; set	1,	B'		;    CB C8
+	set1.c			; set	1,	C		;    CB C9
+	set1.c'			; set	1,	C'		;    CB C9
+	set1.d			; set	1,	D		;    CB CA
+	set1.d'			; set	1,	D'		;    CB CA
+	set1.e			; set	1,	E		;    CB CB
+	set1.e'			; set	1,	E'		;    CB CB
+	set1.h			; set	1,	H		;    CB CC
+	set1.h'			; set	1,	H'		;    CB CC
+	set1.l			; set	1,	L		;    CB CD
+	set1.l'			; set	1,	L'		;    CB CD
+	set2*hl			; set	2,	[HL]		;    CB D6
+	set2*hl'		; set	2,	[HL']		;    CB D6
+	set2*ix	$00		; set	2,	[IX+$00]	; DD CB 00 D6
+	set2*iy	$00		; set	2,	[IY+$00]	; FD CB 00 D6
+	set2.a			; set	2,	A		;    CB D7
+	set2.a'			; set	2,	A'		;    CB D7
+	set2.b			; set	2,	B		;    CB D0
+	set2.b'			; set	2,	B'		;    CB D0
+	set2.c			; set	2,	C		;    CB D1
+	set2.c'			; set	2,	C'		;    CB D1
+	set2.d			; set	2,	D		;    CB D2
+	set2.d'			; set	2,	D'		;    CB D2
+	set2.e			; set	2,	E		;    CB D3
+	set2.e'			; set	2,	E'		;    CB D3
+	set2.h			; set	2,	H		;    CB D4
+	set2.h'			; set	2,	H'		;    CB D4
+	set2.l			; set	2,	L		;    CB D5
+	set2.l'			; set	2,	L'		;    CB D5
+	set3*hl			; set	3,	[HL]		;    CB DE
+	set3*hl'		; set	3,	[HL']		;    CB DE
+	set3*ix	$00		; set	3,	[IX+$00]	; DD CB 00 DE
+	set3*iy	$00		; set	3,	[IY+$00]	; FD CB 00 DE
+	set3.a			; set	3,	A		;    CB DF
+	set3.a'			; set	3,	A'		;    CB DF
+	set3.b			; set	3,	B		;    CB D8
+	set3.b'			; set	3,	B'		;    CB D8
+	set3.c			; set	3,	C		;    CB D9
+	set3.c'			; set	3,	C'		;    CB D9
+	set3.d			; set	3,	D		;    CB DA
+	set3.d'			; set	3,	D'		;    CB DA
+	set3.e			; set	3,	E		;    CB DB
+	set3.e'			; set	3,	E'		;    CB DB
+	set3.h			; set	3,	H		;    CB DC
+	set3.h'			; set	3,	H'		;    CB DC
+	set3.l			; set	3,	L		;    CB DD
+	set3.l'			; set	3,	L'		;    CB DD
+	set4*hl			; set	4,	[HL]		;    CB E6
+	set4*hl'		; set	4,	[HL']		;    CB E6
+	set4*ix	$00		; set	4,	[IX+$00]	; DD CB 00 E6
+	set4*iy	$00		; set	4,	[IY+$00]	; FD CB 00 E6
+	set4.a			; set	4,	A		;    CB E7
+	set4.a'			; set	4,	A'		;    CB E7
+	set4.b			; set	4,	B		;    CB E0
+	set4.b'			; set	4,	B'		;    CB E0
+	set4.c			; set	4,	C		;    CB E1
+	set4.c'			; set	4,	C'		;    CB E1
+	set4.d			; set	4,	D		;    CB E2
+	set4.d'			; set	4,	D'		;    CB E2
+	set4.e			; set	4,	E		;    CB E3
+	set4.e'			; set	4,	E'		;    CB E3
+	set4.h			; set	4,	H		;    CB E4
+	set4.h'			; set	4,	H'		;    CB E4
+	set4.l			; set	4,	L		;    CB E5
+	set4.l'			; set	4,	L'		;    CB E5
+	set5*hl			; set	5,	[HL]		;    CB EE
+	set5*hl'		; set	5,	[HL']		;    CB EE
+	set5*ix	$00		; set	5,	[IX+$00]	; DD CB 00 EE
+	set5*iy	$00		; set	5,	[IY+$00]	; FD CB 00 EE
+	set5.a			; set	5,	A		;    CB EF
+	set5.a'			; set	5,	A'		;    CB EF
+	set5.b			; set	5,	B		;    CB E8
+	set5.b'			; set	5,	B'		;    CB E8
+	set5.c			; set	5,	C		;    CB E9
+	set5.c'			; set	5,	C'		;    CB E9
+	set5.d			; set	5,	D		;    CB EA
+	set5.d'			; set	5,	D'		;    CB EA
+	set5.e			; set	5,	E		;    CB EB
+	set5.e'			; set	5,	E'		;    CB EB
+	set5.h			; set	5,	H		;    CB EC
+	set5.h'			; set	5,	H'		;    CB EC
+	set5.l			; set	5,	L		;    CB ED
+	set5.l'			; set	5,	L'		;    CB ED
+	set6*hl			; set	6,	[HL]		;    CB F6
+	set6*hl'		; set	6,	[HL']		;    CB F6
+	set6*ix	$00		; set	6,	[IX+$00]	; DD CB 00 F6
+	set6*iy	$00		; set	6,	[IY+$00]	; FD CB 00 F6
+	set6.a			; set	6,	A		;    CB F7
+	set6.a'			; set	6,	A'		;    CB F7
+	set6.b			; set	6,	B		;    CB F0
+	set6.b'			; set	6,	B'		;    CB F0
+	set6.c			; set	6,	C		;    CB F1
+	set6.c'			; set	6,	C'		;    CB F1
+	set6.d			; set	6,	D		;    CB F2
+	set6.d'			; set	6,	D'		;    CB F2
+	set6.e			; set	6,	E		;    CB F3
+	set6.e'			; set	6,	E'		;    CB F3
+	set6.h			; set	6,	H		;    CB F4
+	set6.h'			; set	6,	H'		;    CB F4
+	set6.l			; set	6,	L		;    CB F5
+	set6.l'			; set	6,	L'		;    CB F5
+	set7*hl			; set	7,	[HL]		;    CB FE
+	set7*hl'		; set	7,	[HL']		;    CB FE
+	set7*ix	$00		; set	7,	[IX+$00]	; DD CB 00 FE
+	set7*iy	$00		; set	7,	[IY+$00]	; FD CB 00 FE
+	set7.a			; set	7,	A		;    CB FF
+	set7.a'			; set	7,	A'		;    CB FF
+	set7.b			; set	7,	B		;    CB F8
+	set7.b'			; set	7,	B'		;    CB F8
+	set7.c			; set	7,	C		;    CB F9
+	set7.c'			; set	7,	C'		;    CB F9
+	set7.d			; set	7,	D		;    CB FA
+	set7.d'			; set	7,	D'		;    CB FA
+	set7.e			; set	7,	E		;    CB FB
+	set7.e'			; set	7,	E'		;    CB FB
+	set7.h			; set	7,	H		;    CB FC
+	set7.h'			; set	7,	H'		;    CB FC
+	set7.l			; set	7,	L		;    CB FD
+	set7.l'			; set	7,	L'		;    CB FD
 	;-----------------------------------------------------------------------
 :sla	sla*hl			; sla	[HL]			;    CB 26
 	sla*hl'			; sla	[HL']			;    CB 26
