@@ -10,6 +10,7 @@ __*
 *.sym
 *.lst
 *.zip
+*.dSYM
 
 # ignore the RunCPM environment
 bin/RunCPM/A/0/*

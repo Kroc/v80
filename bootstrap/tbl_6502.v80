@@ -1,0 +1,183 @@
+.m adc      $69 .b
+.m adc.z    $65 .b
+.m adc.z.x  $75 .b
+.m adc.x*   $7d .w
+.m adc.y*   $79 .w
+.m adc.y*z  $71 .b
+.m adc*     $6d .w
+.m adc*z.x  $61 .b
+
+.m and      $29 .b
+.m and.z    $25 .b
+.m and.z.x  $35 .b
+.m and.x*   $3d .w
+.m and.y*   $39 .w
+.m and.y*z  $31 .b
+.m and*     $2d .w
+.m and*z.x  $21 .b
+
+.m asl      $0a
+.m asl.z    $06 .b
+.m asl.z.x  $16 .b
+.m asl.x*   $1e .w
+.m asl*     $0e .w
+
+.m beq      $f0 .r
+.m bne      $d0 .r
+.m bcc      $90 .r
+.m bcs      $b0 .r
+.m bmi      $30 .r
+.m bpl      $10 .r
+.m bvc      $50 .r
+.m bvs      $70 .r
+
+.m bit*     $2c .w
+.m bit.z    $24 .b
+
+.m brk      $00
+
+.m cmp      $c9 .b
+.m cmp.z    $c5 .b
+.m cmp.z.x  $d5 .b
+.m cmp.x*   $dd .w
+.m cmp.y*   $d9 .w
+.m cmp.y*z  $d1 .b
+.m cmp*     $cd .w
+.m cmp*z.x  $c1 .b
+
+.m cpx      $e0 .b
+.m cpx.z    $e4 .b
+.m cpx*     $ec .w
+
+.m cpy      $c0 .b
+.m cpy.z    $c4 .b
+.m cpy*     $cc .w
+
+.m clc      $18
+.m cli      $58
+.m cld      $d8
+.m clv      $b8
+
+.m dex      $ca
+.m dey      $88
+
+.m dec*     $ce .w
+.m dec.z    $c6 .b
+.m dec.z.x  $d6 .b
+.m dec.x*   $de .w
+
+.m inx      $e8
+.m iny      $c8
+
+.m inc*     $ee .w
+.m inc.z    $e6 .b
+.m inc.z.x  $f6 .b
+.m inc.x*   $fe .w
+
+.m jsr      $20 .w
+.m jmp      $4c .w
+.m jmp*     $6c .w
+
+.m lda      $a9 .b
+.m lda*     $ad .w
+.m lda*z.x  $a1 .b
+.m lda.z    $a5 .b
+.m lda.z.x  $b5 .b
+.m lda.x*   $bd .w
+.m lda.y*   $b9 .w
+.m lda.y*z  $b1 .b
+
+.m ldx      $a2 .b
+.m ldx*     $ae .w
+.m ldx.z    $a6 .b
+.m ldx.z.y  $b6 .b
+.m ldx.y*   $be .w
+
+.m ldy      $a0 .b
+.m ldy*     $ac .w
+.m ldy.z    $a4 .b
+.m ldy.z.x  $b4 .b
+.m ldy.x*   $bc .w
+
+.m lsr      $4a
+.m lsr*     $4e .w
+.m lsr.z    $46 .b
+.m lsr.z.x  $56 .b
+.m lsr.x*   $5e .w
+
+.m nop      $ea
+
+.m ora      $09 .b
+.m ora.z    $05 .b
+.m ora.z.x  $15 .b
+.m ora.x*   $1d .w
+.m ora.y*   $19 .w
+.m ora.y*z  $11 .b
+.m ora*     $8d .w
+.m ora*z.x  $01 .b
+
+.m pha      $48
+.m php      $08
+.m pla      $68
+.m plp      $28
+
+.m rts      $60
+.m rti      $40
+
+.m rol      $2a
+.m rol.z    $26 .b
+.m rol.z.x  $36 .b
+.m rol.x*   $3e .w
+.m rol*     $2e .w
+
+.m ror      $6a
+.m ror.z    $66 .b
+.m ror.z.x  $76 .b
+.m ror.x*   $7e .w
+.m ror*     $6e .w
+
+.m sta.z    $85 .b
+.m sta.z.x  $95 .b
+.m sta.x*   $9d .w
+.m sta.y*   $99 .w
+.m sta.y*z  $91 .b
+.m sta*     $8d .w
+.m sta*z.x  $81 .b
+
+.m stx.z    $86 .b
+.m stx.z.y  $96 .b
+.m stx*     $8e .w
+
+.m sty.z    $84 .b
+.m sty.z.x  $94 .b
+.m sty*     $8c .w
+
+.m sbc      $e9 .b
+.m sbc.z    $e5 .b
+.m sbc.z.x  $f5 .b
+.m sbc.x*   $fd .w
+.m sbc.y*   $f9 .w
+.m sbc.y*z  $f1 .b
+.m sbc*     $ed .w
+.m sbc*z.x  $e1 .b
+
+.m sec      $38
+.m sei      $78
+.m sed      $f8
+
+.m tax      $aa
+.m tay      $a8
+.m tya      $98
+.m tya      $8a
+.m txs      $9a
+.m tsx      $ba
+
+.m xor      $49 .b
+.m xor*     $4d .w
+.m xor*z.x  $41 .b
+.m xor.z    $45 .b
+.m xor.z.x  $55 .b
+.m xor.x*   $5d .w
+.m xor.y*   $59 .w
+.m xor.y*x  $51 .b
+

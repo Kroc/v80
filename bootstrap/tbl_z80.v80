@@ -1,0 +1,1538 @@
+.m adc                  $ce	.b
+.m adc*hl	            $8e
+.m adc*hl'	            $8e
+.m adc*ix       $dd     $8e	.b
+.m adc*iy       $fd     $8e	.b
+.m adc.a	            $8f
+.m adc.a'	            $8f
+.m adc.b	            $88
+.m adc.b'	            $88
+.m adc.c	            $89
+.m adc.c'	            $89
+.m adc.d	            $8a
+.m adc.d'	            $8a
+.m adc.e	            $8b
+.m adc.e'	            $8b
+.m adc.h	            $8c
+.m adc.h'	            $8c
+.m adc.hl.bc	$ed     $4a
+.m adc.hl.de	$ed     $5a
+.m adc.hl.hl	$ed     $6a
+.m adc.hl.sp	$ed     $7a
+.m adc.hl'bc'	$ed     $4a
+.m adc.hl'de'	$ed     $5a
+.m adc.hl'hl'	$ed     $6a
+.m adc.hl'sp	$ed     $7a
+.m adc.l	            $8d
+.m adc.l'	            $8d
+.m adc.ixh	    $dd     $8c
+.m adc.ixl	    $dd     $8d
+.m adc.iyh	    $fd     $8c
+.m adc.iyl	    $fd     $8d
+
+.m add       	        $c6 .b
+.m add*hl	            $86
+.m add*hl'	            $86
+.m add*ix    	$dd     $86 .b
+.m add*iy    	$fd     $86 .b
+.m add.a	            $87
+.m add.a'	            $87
+.m add.b	            $80
+.m add.b'	            $80
+.m add.c	            $81
+.m add.c'	            $81
+.m add.d	            $82
+.m add.d'	            $82
+.m add.e	            $83
+.m add.e'	            $83
+.m add.h	            $84
+.m add.h'	            $84
+.m add.hl.bc	        $09
+.m add.hl.de	        $19
+.m add.hl.hl	        $29
+.m add.hl.sp	        $39
+.m add.hl'bc'	        $09
+.m add.hl'de'	        $19
+.m add.hl'hl'	        $29
+.m add.hl'sp	        $39
+.m add.l	            $85
+.m add.l'	            $85
+.m add.ix.bc	$dd     $09
+.m add.ix.bc'	$dd     $09
+.m add.ix.de	$dd     $19
+.m add.ix.de'	$dd     $19
+.m add.ix.ix	$dd     $29
+.m add.ix.sp	$dd     $39
+.m add.ixh	    $dd     $84
+.m add.ixl	    $dd     $85
+.m add.iy.bc	$fd     $09
+.m add.iy.bc'	$fd     $09
+.m add.iy.de	$fd     $19
+.m add.iy.de'	$fd     $19
+.m add.iy.iy	$fd     $29
+.m add.iy.sp	$fd     $39
+.m add.iyh	    $fd     $84
+.m add.iyl	    $fd     $85
+
+.m and       	        $e6 .b
+.m and*hl	            $a6
+.m and*hl'	            $a6
+.m and*ix    	$dd     $a6 .b
+.m and*iy    	$fd     $a6 .b
+.m and.a	            $a7
+.m and.a'	            $a7
+.m and.b	            $a0
+.m and.b'	            $a0
+.m and.c	            $a1
+.m and.c'	            $a1
+.m and.d	            $a2
+.m and.d'	            $a2
+.m and.e	            $a3
+.m and.e'	            $a3
+.m and.h	            $a4
+.m and.h'	            $a4
+.m and.l	            $a5
+.m and.l'	            $a5
+.m and.ixh	    $dd     $a4
+.m and.ixl	    $dd     $a5
+.m and.iyh	    $dd     $a4
+.m and.iyl	    $dd     $a5
+
+.m bit0.a	        $cb $47
+.m bit0.a'	        $cb $47
+.m bit0.b	        $cb $40
+.m bit0.b'	        $cb $40
+.m bit0.c	        $cb $41
+.m bit0.c'	        $cb $41
+.m bit0.d	        $cb $42
+.m bit0.d'	        $cb $42
+.m bit0.e	        $cb $43
+.m bit0.e'	        $cb $43
+.m bit0.h	        $cb $44
+.m bit0.h'	        $cb $44
+.m bit0.l	        $cb $45
+.m bit0.l'	        $cb $45
+.m bit0*hl	        $cb $46
+.m bit0*hl'	        $cb $46
+.m bit0*ix   	$dd $cb .b $46
+.m bit0*iy   	$fd $cb .b $46
+
+.m bit1.a	        $cb $4f
+.m bit1.a'	        $cb $4f
+.m bit1.b	        $cb $48
+.m bit1.b'	        $cb $48
+.m bit1.c	        $cb $49
+.m bit1.c'	        $cb $49
+.m bit1.d	        $cb $4a
+.m bit1.d'	        $cb $4a
+.m bit1.e	        $cb $4b
+.m bit1.e'	        $cb $4b
+.m bit1.h	        $cb $4c
+.m bit1.h'	        $cb $4c
+.m bit1.l	        $cb $4d
+.m bit1.l'	        $cb $4d
+.m bit1*hl	        $cb $4e
+.m bit1*hl'	        $cb $4e
+.m bit1*ix   	$dd $cb .b $4e
+.m bit1*iy   	$fd $cb .b $4e
+
+.m bit2.a	        $cb $57
+.m bit2.a'	        $cb $57
+.m bit2.b	        $cb $50
+.m bit2.b'	        $cb $50
+.m bit2.c	        $cb $51
+.m bit2.c'	        $cb $51
+.m bit2.d	        $cb $52
+.m bit2.d'	        $cb $52
+.m bit2.e	        $cb $53
+.m bit2.e'	        $cb $53
+.m bit2.h	        $cb $54
+.m bit2.h'	        $cb $54
+.m bit2.l    	    $cb $55
+.m bit2.l'	        $cb $55
+.m bit2*hl	        $cb $56
+.m bit2*hl'	        $cb $56
+.m bit2*ix   	$dd $cb .b $56
+.m bit2*iy   	$fd $cb .b $56
+
+.m bit3.a	        $cb $5f
+.m bit3.a'	        $cb $5f
+.m bit3.b	        $cb $58
+.m bit3.b'	        $cb $58
+.m bit3.c	        $cb $59
+.m bit3.c'	        $cb $59
+.m bit3.d	        $cb $5a
+.m bit3.d'	        $cb $5a
+.m bit3.e	        $cb $5b
+.m bit3.e'	        $cb $5b
+.m bit3.h	        $cb $5c
+.m bit3.h'	        $cb $5c
+.m bit3.l	        $cb $5d
+.m bit3.l'	        $cb $5d
+.m bit3*hl	        $cb $5e
+.m bit3*hl'	        $cb $5e
+.m bit3*ix   	$dd $cb .b $5e
+.m bit3*iy   	$fd $cb .b $5e
+
+.m bit4.a	        $cb $67
+.m bit4.a'	        $cb $67
+.m bit4.b	        $cb $60
+.m bit4.b'	        $cb $60
+.m bit4.c	        $cb $61
+.m bit4.c'	        $cb $61
+.m bit4.d	        $cb $62
+.m bit4.d'	        $cb $62
+.m bit4.e	        $cb $63
+.m bit4.e'	        $cb $63
+.m bit4.h	        $cb $64
+.m bit4.h'	        $cb $64
+.m bit4.l	        $cb $65
+.m bit4.l'	        $cb $65
+.m bit4*hl	        $cb $66
+.m bit4*hl'	        $cb $66
+.m bit4*ix   	$dd $cb .b $66
+.m bit4*iy   	$fd $cb .b $66
+
+.m bit5.a	        $cb $6f
+.m bit5.a'	        $cb $6f
+.m bit5.b	        $cb $68
+.m bit5.b'	        $cb $68
+.m bit5.c	        $cb $69
+.m bit5.c'	        $cb $69
+.m bit5.d	        $cb $6a
+.m bit5.d'	        $cb $6a
+.m bit5.e	        $cb $6b
+.m bit5.e'	        $cb $6b
+.m bit5.h	        $cb $6c
+.m bit5.h'	        $cb $6c
+.m bit5.l	        $cb $6d
+.m bit5.l'	        $cb $6d
+.m bit5*hl	        $cb $6e
+.m bit5*hl'	        $cb $6e
+.m bit5*ix   	$dd $cb .b $6e
+.m bit5*iy   	$fd $cb .b $6e
+
+.m bit6.a	        $cb $77
+.m bit6.a'	        $cb $77
+.m bit6.b	        $cb $70
+.m bit6.b'	        $cb $70
+.m bit6.c	        $cb $71
+.m bit6.c'	        $cb $71
+.m bit6.d	        $cb $72
+.m bit6.d'	        $cb $72
+.m bit6.e	        $cb $73
+.m bit6.e'	        $cb $73
+.m bit6.h	        $cb $74
+.m bit6.h'	        $cb $74
+.m bit6.l	        $cb $75
+.m bit6.l'	        $cb $75
+.m bit6*hl	        $cb $76
+.m bit6*hl'	        $cb $76
+.m bit6*ix   	$dd $cb .b $76
+.m bit6*iy   	$fd $cb .b $76
+
+.m bit7.a	        $cb $7f
+.m bit7.a'	        $cb $7f
+.m bit7.b	        $cb $78
+.m bit7.b'	        $cb $78
+.m bit7.c	        $cb $79
+.m bit7.c'	        $cb $79
+.m bit7.d	        $cb $7a
+.m bit7.d'	        $cb $7a
+.m bit7.e	        $cb $7b
+.m bit7.e'	        $cb $7b
+.m bit7.h	        $cb $7c
+.m bit7.h'	        $cb $7c
+.m bit7.l	        $cb $7d
+.m bit7.l'	        $cb $7d
+.m bit7*hl	        $cb $7e
+.m bit7*hl'	        $cb $7e
+.m bit7*ix   	$dd $cb .b $7e
+.m bit7*iy   	$fd $cb .b $7e
+
+.m call                 $cd .w
+.m call?z               $cc .w
+.m call?c               $dc .w
+.m call?nz              $c4 .w
+.m call?nc              $d4 .w
+.m call?nv              $e4 .w
+.m call?m               $fc .w
+.m call?v               $ec .w
+.m call?p               $f4 .w
+.m call?pe              $ec .w
+.m call?po              $e4 .w
+
+.m cp           	    $fe .b
+.m cp.a	                $bf
+.m cp.a'	            $bf
+.m cp.b	                $b8
+.m cp.b'	            $b8
+.m cp.c	                $b9
+.m cp.c'	            $b9
+.m cp.d	                $ba
+.m cp.d'	            $ba
+.m cp.e	                $bb
+.m cp.e'	            $bb
+.m cp.h	                $bc
+.m cp.h'	            $bc
+.m cp.l	                $bd
+.m cp.l'	            $bd
+.m cp.ixh	    $dd     $bc
+.m cp.ixl	    $dd     $bd
+.m cp.iyh	    $fd     $bc
+.m cp.iyl	    $fd     $bd
+.m cp*hl	            $be
+.m cp*hl'	            $be
+.m cp*ix     	$dd     $be .b
+.m cp*iy     	$fd     $be .b
+
+.m cpd	        $ed     $a9
+.m cpdr	        $ed     $b9
+.m cpi	        $ed     $a1
+.m cpir	        $ed     $b1
+
+.m cpl	                $2f
+.m ccf	                $3f
+
+.m daa	                $27
+
+.m dec.a	            $3d
+.m dec.a'	            $3d
+.m dec.b	            $05
+.m dec.b'	            $05
+.m dec.bc	            $0b
+.m dec.bc'	            $0b
+.m dec.c	            $0d
+.m dec.c'	            $0d
+.m dec.d	            $15
+.m dec.d'	            $15
+.m dec.de	            $1b
+.m dec.de'	            $1b
+.m dec.e	            $1d
+.m dec.e'	            $1d
+.m dec.h	            $25
+.m dec.h'	            $25
+.m dec.hl	            $2b
+.m dec.hl'	            $2b
+.m dec.l	            $2d
+.m dec.l'	            $2d
+.m dec.ix	    $dd     $2b
+.m dec.ixh	    $dd     $25
+.m dec.ixl	    $dd     $2d
+.m dec.iy	    $fd     $2b
+.m dec.iyh	    $fd     $25
+.m dec.iyl	    $fd     $2d
+.m dec.sp	            $3b
+.m dec*hl	            $35
+.m dec*hl'	            $35
+.m dec*ix    	$dd     $35 .b
+.m dec*iy    	$fd     $35 .b
+
+.m di	                $f3
+
+.m djnz           	    $10 .r
+
+.m exx	                $d9
+
+.m ex.af.af	            $08
+.m ex.af.af'	        $08
+.m ex.af'af	            $08
+.m ex.de.hl	            $eb
+.m ex.de'hl'	        $eb
+.m ex.hl.de	            $eb
+.m ex.hl'de'	        $eb
+.m ex*sp.hl	            $e3
+.m ex*sp.hl'	        $e3
+.m ex*sp.ix	    $dd     $e3
+.m ex*sp.iy	    $fd     $e3
+
+.m ei	                $fb
+
+.m halt	                $76
+.m hlt	                $76
+.m hcf	                $76
+
+.m inc.a	            $3c
+.m inc.a'	            $3c
+.m inc.b	            $04
+.m inc.b'	            $04
+.m inc.bc	            $03
+.m inc.bc'	            $03
+.m inc.c	            $0c
+.m inc.c'	            $0c
+.m inc.d	            $14
+.m inc.d'	            $14
+.m inc.de	            $13
+.m inc.de'	            $13
+.m inc.e	            $1c
+.m inc.e'	            $1c
+.m inc.h	            $24
+.m inc.h'	            $24
+.m inc.hl	            $23
+.m inc.hl'	            $23
+.m inc.l	            $2c
+.m inc.l'	            $2c
+.m inc.ix	    $dd     $23
+.m inc.ixh	    $dd     $24
+.m inc.ixl	    $dd     $2c
+.m inc.iy	    $fd     $23
+.m inc.iyh	    $fd     $24
+.m inc.iyl	    $fd     $2c
+.m inc.sp	            $33
+.m inc*hl	            $34
+.m inc*hl'	            $34
+.m inc*ix    	$dd     $33 .b
+.m inc*iy    	$fd     $34 .b
+
+.m in.a*     	        $db .b
+.m in.a*c	    $ed     $78
+.m in.a*c'	    $ed     $78
+.m in.a'*    	        $db .b
+.m in.a'*c	    $ed     $78
+.m in.a'*c'	    $ed     $78
+.m in.b*c	    $ed     $40
+.m in.b'*c'	    $ed     $40
+.m in.c*c	    $ed     $48
+.m in.c'*c'	    $ed     $48
+.m in.d*c	    $ed     $50
+.m in.d'*c'	    $ed     $50
+.m in.e*c	    $ed     $58
+.m in.e'*c'	    $ed     $58
+.m in.h*c	    $ed     $60
+.m in.h'*c'	    $ed     $60
+.m in.l*c	    $ed     $68
+.m in.l'*c'	    $ed     $68
+
+.m ind	        $ed     $aa
+.m indr	        $ed     $ba
+
+.m ini	        $ed     $a2
+.m inir	        $ed     $b2
+
+.m im.0	        $ed     $46
+.m im.1	        $ed     $56
+.m im.2	        $ed     $5e
+
+.m jp                   $c3 .w
+.m jp?z                 $ca .w
+.m jp?c                 $da .w
+.m jp?nz                $c2 .w
+.m jp?nc                $d2 .w
+.m jp?nv                $e2 .w
+.m jp?m                 $fa .w
+.m jp?v                 $ea .w
+.m jp?p                 $f2 .w
+.m jp?pe                $ea .w
+.m jp?po                $e2 .w
+.m jp*hl	            $e9
+.m jp*hl'	            $e9
+.m jp*ix	    $dd     $e9
+.m jp*iy	    $fd     $e9
+
+.m jr             	    $18 .r
+.m jr?z           	    $28 .r
+.m jr?c           	    $38 .r
+.m jr?nz          	    $20 .r
+.m jr?nc          	    $30 .r
+
+.m ld*$.a         	    $32 .w
+.m ld*$.a'        	    $32 .w
+.m ld*$.bc   	$ed     $43 .w
+.m ld*$.bc'  	$ed     $43 .w
+.m ld*$.de   	$ed     $53 .w
+.m ld*$.de'  	$ed     $53 .w
+.m ld*$.hl        	    $22 .w
+.m ld*$.hl'       	    $22 .w
+.m ld*$.ix   	$dd     $22 .w
+.m ld*$.iy   	$fd     $22 .w
+.m ld*$.sp   	$ed     $73 .w
+
+.m ld*bc.a	            $02
+.m ld*bc.a'	            $02
+.m ld*bc'a	            $02
+.m ld*bc'a'	            $02
+.m ld*de.a	            $12
+.m ld*de.a'	            $12
+.m ld*de'a	            $02
+.m ld*de'a'	            $02
+.m ld*hl        	    $36 .b
+.m ld*hl.a	            $77
+.m ld*hl.a'	            $77
+.m ld*hl.b	            $70
+.m ld*hl.b'	            $70
+.m ld*hl.c	            $71
+.m ld*hl.c'	            $71
+.m ld*hl.d	            $72
+.m ld*hl.d'	            $72
+.m ld*hl.e	            $73
+.m ld*hl.e'	            $73
+.m ld*hl.h	            $74
+.m ld*hl.h'	            $74
+.m ld*hl.l	            $75
+.m ld*hl.l'	            $75
+.m ld*hl'	            $36 .b
+.m ld*hl'a	            $77
+.m ld*hl'a'	            $77
+.m ld*hl'b'	            $70
+.m ld*hl'c'	            $71
+.m ld*hl'd'	            $72
+.m ld*hl'e'	            $73
+.m ld*hl'h'	            $74
+.m ld*hl'l'	            $75
+.m ld*ix     	$dd     $36 .b .b
+.m ld*ix.a   	$dd     $77 .b
+.m ld*ix.a'  	$dd     $77 .b
+.m ld*ix.b   	$dd     $70 .b
+.m ld*ix.b'  	$dd     $70 .b
+.m ld*ix.c   	$dd     $71 .b
+.m ld*ix.c'  	$dd     $71 .b
+.m ld*ix.d   	$dd     $72 .b
+.m ld*ix.d'  	$dd     $72 .b
+.m ld*ix.e   	$dd     $73 .b
+.m ld*ix.e'  	$dd     $73 .b
+.m ld*ix.h   	$dd     $74 .b
+.m ld*ix.h'  	$dd     $74 .b
+.m ld*ix.l   	$dd     $75 .b
+.m ld*ix.l'  	$dd     $75 .b
+.m ld*iy     	$fd     $36 .b .b
+.m ld*iy.a   	$fd     $77 .b
+.m ld*iy.a'  	$fd     $77 .b
+.m ld*iy.b   	$fd     $70 .b
+.m ld*iy.b'  	$fd     $70 .b
+.m ld*iy.c   	$fd     $71 .b
+.m ld*iy.c'  	$fd     $71 .b
+.m ld*iy.d   	$fd     $72 .b
+.m ld*iy.d'  	$fd     $72 .b
+.m ld*iy.e   	$fd     $73 .b
+.m ld*iy.e'  	$fd     $73 .b
+.m ld*iy.h   	$fd     $74 .b
+.m ld*iy.h'  	$fd     $74 .b
+.m ld*iy.l   	$fd     $75 .b
+.m ld*iy.l'  	$fd     $75 .b
+
+.m ld.a         	    $3e .b
+.m ld.a.a	            $7f
+.m ld.a.b	            $78
+.m ld.a.b'	            $78
+.m ld.a.c	            $79
+.m ld.a.c'	            $79
+.m ld.a.d	            $7a
+.m ld.a.d'	            $7a
+.m ld.a.e	            $7b
+.m ld.a.e'	            $7b
+.m ld.a.h	            $7c
+.m ld.a.h'	            $7c
+.m ld.a.l	            $7d
+.m ld.a.l'	            $7d
+.m ld.a.i	    $ed     $57
+.m ld.a.ixh	    $dd     $7c
+.m ld.a.ixl	    $dd     $7d
+.m ld.a.iyh	    $fd     $7c
+.m ld.a.iyl	    $fd     $7d
+.m ld.a.r	    $ed     $5f
+
+.m ld.a'        	    $3e .b
+.m ld.a'a'	            $7f
+.m ld.a'b	            $78
+.m ld.a'b'	            $78
+.m ld.a'c	            $79
+.m ld.a'c'	            $79
+.m ld.a'd	            $7a
+.m ld.a'd'	            $7a
+.m ld.a'e	            $7b
+.m ld.a'e'	            $7b
+.m ld.a'h	            $7c
+.m ld.a'h'	            $7c
+.m ld.a'l	            $7d
+.m ld.a'l'	            $7d
+.m ld.a'i	    $ed     $57
+.m ld.a'ixh	    $dd     $7c
+.m ld.a'ixl	    $dd     $7d
+.m ld.a'iyh	    $fd     $7c
+.m ld.a'iyl	    $fd     $7d
+.m ld.a'r	    $ed     $5f
+
+.m ld.a'*         	    $3a .w
+.m ld.a'*bc	            $0a
+.m ld.a'*bc'	        $0a
+.m ld.a'*de	            $1a
+.m ld.a'*de'	        $1a
+.m ld.a'*hl	            $7e
+.m ld.a'*hl'	        $7e
+.m ld.a'*ix  	$dd     $7e .b
+.m ld.a'*iy  	$fd     $7e .b
+
+.m ld.a*          	    $3a .w
+.m ld.a*bc	            $0a
+.m ld.a*bc'	            $0a
+.m ld.a*de	            $1a
+.m ld.a*de'	            $1a
+.m ld.a*hl	            $7e
+.m ld.a*hl'	            $7e
+.m ld.a*ix   	$dd     $7e .b
+.m ld.a*iy   	$fd     $7e .b
+
+.m ld.b         	    $06 .b
+.m ld.b'        	    $06 .b
+.m ld.b'a	            $47
+.m ld.b'a'	            $47
+.m ld.b'b'	            $40
+.m ld.b'c'	            $41
+.m ld.b'd'	            $42
+.m ld.b'e'	            $43
+.m ld.b'h'	            $44
+.m ld.b'l'	            $45
+.m ld.b'ixh	    $dd     $44
+.m ld.b'ixl	    $dd     $45
+.m ld.b'iyh	    $fd     $44
+.m ld.b'iyl	    $fd     $45
+
+.m ld.b'*hl'	        $46
+.m ld.b'*ix  	$dd     $46 .b
+.m ld.b'*iy  	$fd     $46 .b
+
+.m ld.bc          	    $01 .w
+.m ld.bc*       $ed     $4b .w
+.m ld.bc'         	    $01 .w
+.m ld.bc'*      $ed     $4b .w
+
+.m ld.b*hl	            $46
+.m ld.b*ix   	$dd     $46 .b
+.m ld.b*iy   	$fd     $46 .b
+
+.m ld.b.a	            $47
+.m ld.b.a'	            $47
+.m ld.b.b	            $40
+.m ld.b.c	            $41
+.m ld.b.d	            $42
+.m ld.b.e	            $43
+.m ld.b.h	            $44
+.m ld.b.l	            $45
+.m ld.b.ixh	    $dd     $44
+.m ld.b.ixl	    $dd     $45
+.m ld.b.iyh	    $fd     $44
+.m ld.b.iyl	    $fd     $45
+
+.m ld.c      	        $0e .b
+.m ld.c'     	        $0e .b
+.m ld.c'a	            $4f
+.m ld.c'a'	            $4f
+.m ld.c'b'	            $48
+.m ld.c'c'	            $49
+.m ld.c'd'	            $4a
+.m ld.c'e'	            $4b
+.m ld.c'h'	            $4c
+.m ld.c'l'	            $4d
+.m ld.c'ixh	    $dd     $4c
+.m ld.c'ixl	    $dd     $4d
+.m ld.c'iyh	    $fd     $4c
+.m ld.c'iyl	    $fd     $4d
+
+.m ld.c'*hl'	        $4e
+.m ld.c'*ix  	$dd     $4e .b
+.m ld.c'*iy  	$fd     $4e .b
+
+.m ld.c*hl	            $4e
+.m ld.c*ix   	$dd     $4e .b
+.m ld.c*iy   	$fd     $4e .b
+
+.m ld.c.a	            $4f
+.m ld.c.a'	            $4f
+.m ld.c.b	            $48
+.m ld.c.c	            $49
+.m ld.c.d	            $4a
+.m ld.c.e	            $4b
+.m ld.c.h	            $4c
+.m ld.c.l	            $4d
+.m ld.c.ixh	    $dd     $4c
+.m ld.c.ixl	    $dd     $4d
+.m ld.c.iyh	    $fd     $4c
+.m ld.c.iyl	    $fd     $4d
+
+.m ld.d         	    $16 .b
+.m ld.d'        	    $16 .b
+.m ld.d'a	            $57
+.m ld.d'a'	            $57
+.m ld.d'b'	            $50
+.m ld.d'c'	            $51
+.m ld.d'd'	            $52
+.m ld.d'e'	            $53
+.m ld.d'h'	            $54
+.m ld.d'l'	            $55
+.m ld.d'ixh	    $dd     $54
+.m ld.d'ixl	    $dd     $55
+.m ld.d'iyh	    $fd     $54
+.m ld.d'iyl	    $fd     $55
+
+.m ld.d'*hl'	        $56
+.m ld.d'*ix  	$dd     $56 .b
+.m ld.d'*iy  	$fd     $56 .b
+
+.m ld.de          	    $11 .w
+.m ld.de*    	$ed     $5b .w
+.m ld.de'         	    $11 .w
+.m ld.de'*   	$ed     $5b .w
+
+.m ld.d*hl	            $56
+.m ld.d*ix   	$dd     $56 .b
+.m ld.d*iy   	$fd     $56 .b
+
+.m ld.d.a	            $57
+.m ld.d.a'	            $57
+.m ld.d.b	            $50
+.m ld.d.c	            $51
+.m ld.d.d	            $52
+.m ld.d.e	            $53
+.m ld.d.h	            $54
+.m ld.d.l	            $55
+.m ld.d.ixh	    $dd     $54
+.m ld.d.ixl	    $dd     $55
+.m ld.d.iyh	    $fd     $54
+.m ld.d.iyl	    $fd     $55
+
+.m ld.e         	    $1e .b
+.m ld.e'        	    $1e .b
+.m ld.e'a	            $5f
+.m ld.e'a'	            $5f
+.m ld.e'b'	            $58
+.m ld.e'c'	            $59
+.m ld.e'd'	            $5a
+.m ld.e'e'	            $5b
+.m ld.e'h'	            $5c
+.m ld.e'l'	            $5d
+.m ld.e'ixh	    $dd     $5c
+.m ld.e'ixl	    $dd     $5d
+.m ld.e'iyh	    $fd     $5c
+.m ld.e'iyl	    $fd     $5d
+
+.m ld.e'*hl'	        $5e
+.m ld.e'*ix  	$dd     $5e .b
+.m ld.e'*iy  	$fd     $5e .b
+
+.m ld.e*hl	            $5e
+.m ld.e*ix   	$dd     $5e .b
+.m ld.e*iy   	$fd     $5e .b
+
+.m ld.e.a	            $5f
+.m ld.e.a'	            $5f
+.m ld.e.b	            $58
+.m ld.e.c	            $59
+.m ld.e.d	            $5a
+.m ld.e.e	            $5b
+.m ld.e.h	            $5c
+.m ld.e.l	            $5d
+.m ld.e.ixh	    $dd     $5c
+.m ld.e.ixl	    $dd     $5d
+.m ld.e.iyh	    $fd     $5c
+.m ld.e.iyl	    $fd     $5d
+
+.m ld.h         	    $26 .b
+.m ld.h'        	    $26 .b
+.m ld.h'a	            $67
+.m ld.h'a'	            $67
+.m ld.h'b'	            $60
+.m ld.h'c'	            $61
+.m ld.h'd'	            $62
+.m ld.h'e'	            $63
+.m ld.h'h'	            $64
+.m ld.h'l'	            $65
+.m ld.h'ixh	    $dd     $64
+.m ld.h'ixl	    $dd     $65
+.m ld.h'iyh	    $fd     $64
+.m ld.h'iyl	    $fd     $65
+
+.m ld.h'*hl'	        $66
+.m ld.h'*ix  	$dd     $66 .b
+.m ld.h'*iy  	$fd     $66 .b
+
+.m ld.hl          	    $21 .w
+.m ld.hl*         	    $2a .w
+.m ld.hl'         	    $21 .w
+.m ld.hl'*        	    $2a .w
+
+.m ld.h*hl	            $66
+.m ld.h*ix   	$dd     $66 .b
+.m ld.h*iy   	$fd     $66 .b
+
+.m ld.h.a	            $67
+.m ld.h.a'	            $67
+.m ld.h.b	            $60
+.m ld.h.c	            $61
+.m ld.h.d	            $62
+.m ld.h.e	            $63
+.m ld.h.h	            $64
+.m ld.h.l	            $65
+.m ld.h.ixh	    $dd     $64
+.m ld.h.ixl	    $dd     $65
+.m ld.h.iyh	    $fd     $64
+.m ld.h.iyl	    $fd     $65
+
+.m ld.l         	    $2e .b
+.m ld.l'        	    $2e .b
+.m ld.l'a	            $6f
+.m ld.l'a'	            $6f
+.m ld.l'b'	            $68
+.m ld.l'c'	            $69
+.m ld.l'd'	            $6a
+.m ld.l'e'	            $6b
+.m ld.l'h'	            $6c
+.m ld.l'l'	            $6d
+.m ld.l'ixh	    $dd     $6c
+.m ld.l'ixl	    $dd     $6d
+.m ld.l'iyh	    $fd     $6c
+.m ld.l'iyl	    $fd     $6d
+
+.m ld.l'*hl'	        $6e
+.m ld.l'*ix  	$dd     $6e .b
+.m ld.l'*iy  	$fd     $6e .b
+
+.m ld.l*hl	            $6e
+.m ld.l*ix   	$dd     $6e .b
+.m ld.l*iy   	$fd     $6e .b
+
+.m ld.l.a	            $6f
+.m ld.l.a'	            $6f
+.m ld.l.b	            $68
+.m ld.l.c	            $69
+.m ld.l.d	            $6a
+.m ld.l.e	            $6b
+.m ld.l.h	            $6c
+.m ld.l.l	            $6d
+.m ld.l.ixh	    $dd     $6c
+.m ld.l.ixl	    $dd     $6d
+.m ld.l.iyh	    $fd     $6c
+.m ld.l.iyl	    $fd     $6d
+
+.m ld.i.a	    $ed     $47
+.m ld.i.a'	    $ed     $47
+
+.m ld.ix     	$dd     $21 .w
+.m ld.ix*    	$dd     $2a .w
+.m ld.ixh    	$dd     $26 .b
+.m ld.ixh.a	    $dd     $67
+.m ld.ixh.a'	$dd     $67
+.m ld.ixh.b	    $dd     $60
+.m ld.ixh.b'	$dd     $60
+.m ld.ixh.c	    $dd     $61
+.m ld.ixh.c'	$dd     $61
+.m ld.ixh.d	    $dd     $62
+.m ld.ixh.d'	$dd     $62
+.m ld.ixh.e	    $dd     $63
+.m ld.ixh.e'	$dd     $63
+.m ld.ixh.ixh	$dd     $64
+.m ld.ixh.ixl	$dd     $65
+.m ld.ixl    	$dd     $2e .b
+.m ld.ixl.a	    $dd     $6f
+.m ld.ixl.a'	$dd     $6f
+.m ld.ixl.b	    $dd     $68
+.m ld.ixl.b'	$dd     $68
+.m ld.ixl.c	    $dd     $69
+.m ld.ixl.c'	$dd     $69
+.m ld.ixl.d	    $dd     $6a
+.m ld.ixl.d'	$dd     $6a
+.m ld.ixl.e	    $dd     $6b
+.m ld.ixl.e'	$dd     $6b
+.m ld.ixl.ixh	$dd     $6c
+.m ld.ixl.ixl	$dd     $6d
+
+.m ld.iy     	$fd     $21 .w
+.m ld.iy*    	$fd     $2a .w
+.m ld.iyh    	$fd     $26 .b
+.m ld.iyh.a	    $fd     $67
+.m ld.iyh.a'	$fd     $67
+.m ld.iyh.b	    $fd     $60
+.m ld.iyh.b'	$fd     $60
+.m ld.iyh.c	    $fd     $61
+.m ld.iyh.c'	$fd     $61
+.m ld.iyh.d	    $fd     $62
+.m ld.iyh.d'	$fd     $62
+.m ld.iyh.e	    $fd     $63
+.m ld.iyh.e'	$fd     $63
+.m ld.iyh.iyh	$fd     $64
+.m ld.iyh.iyl	$fd     $65
+.m ld.iyl    	$fd     $2e .b
+.m ld.iyl.a	    $fd     $6f
+.m ld.iyl.a'	$fd     $6f
+.m ld.iyl.b	    $fd     $68
+.m ld.iyl.b'	$fd     $68
+.m ld.iyl.c	    $fd     $69
+.m ld.iyl.c'	$fd     $69
+.m ld.iyl.d	    $fd     $6a
+.m ld.iyl.d'	$fd     $6a
+.m ld.iyl.e	    $fd     $6b
+.m ld.iyl.e'	$fd     $6b
+.m ld.iyl.iyh	$fd     $6c
+.m ld.iyl.iyl	$fd     $6d
+
+.m ld.sp          	    $21 .w
+.m ld.sp*    	$ed     $7b .w
+.m ld.sp.hl	            $f9
+.m ld.sp.hl'	        $f9
+.m ld.sp.ix	    $dd     $f9
+.m ld.sp.iy	    $fd     $f9
+
+.m ld.r.a	    $ed     $4f
+.m ld.r.a'	    $ed     $4f
+
+.m ldd	        $ed     $a8
+.m lddr	        $ed     $b8
+.m ldi	        $ed     $a0
+.m ldir	        $ed     $b0
+
+.m neg	        $ed     $44
+
+.m nop                  $00
+
+.m or        	        $f6 .b
+.m or*hl	            $b6
+.m or*hl'        	    $b6
+.m or*ix     	$dd     $b6 .b
+.m or*iy     	$fd     $b6 .b
+.m or.a	                $b7
+.m or.a'	            $b7
+.m or.b	                $b0
+.m or.b'	            $b0
+.m or.c	                $b1
+.m or.c'	            $b1
+.m or.d	                $b2
+.m or.d'	            $b2
+.m or.e	                $b3
+.m or.e'	            $b3
+.m or.h	                $b4
+.m or.h'	            $b4
+.m or.l	                $b5
+.m or.l'	            $b5
+.m or.ixh	    $dd     $b4
+.m or.ixl	    $dd     $b5
+.m or.iyh	    $fd     $b4
+.m or.iyl	    $fd     $b5
+
+.m out*$.a      	    $d3 .b
+.m out*$.a'     	    $d3 .b
+.m out*c.a	    $ed     $79
+.m out*c.a'	    $ed     $79
+.m out*c.b	    $ed     $41
+.m out*c.b'	    $ed     $41
+.m out*c.c	    $ed     $49
+.m out*c.c'	    $ed     $49
+.m out*c.d	    $ed     $51
+.m out*c.d'	    $ed     $51
+.m out*c.e	    $ed     $59
+.m out*c.e'	    $ed     $59
+.m out*c.h	    $ed     $61
+.m out*c.h'	    $ed     $61
+.m out*c.l	    $ed     $69
+.m out*c.l'	    $ed     $69
+.m out*c'a	    $ed     $79
+.m out*c'a'	    $ed     $79
+.m out*c'b	    $ed     $41
+.m out*c'b'	    $ed     $41
+.m out*c'c	    $ed     $49
+.m out*c'c'	    $ed     $49
+.m out*c'd	    $ed     $51
+.m out*c'd'	    $ed     $51
+.m out*c'e	    $ed     $59
+.m out*c'e'	    $ed     $59
+.m out*c'h	    $ed     $61
+.m out*c'h'	    $ed     $61
+.m out*c'l	    $ed     $69
+.m out*c'l'	    $ed     $69
+
+.m outd	        $ed     $ab
+.m outi	        $ed     $a3
+.m otdr	        $ed     $bb
+.m otir	        $ed     $b3
+
+.m push.af	            $f5
+.m push.af'	            $f5
+.m push.bc	            $c5
+.m push.bc'	            $c5
+.m push.de	            $d5
+.m push.de'	            $d5
+.m push.hl	            $e5
+.m push.hl'	            $e5
+.m push.ix	    $dd     $e5
+.m push.iy	    $fd     $e5
+
+.m pop.af	            $f1
+.m pop.af'	            $f1
+.m pop.bc	            $c1
+.m pop.bc'	            $c1
+.m pop.de	            $d1
+.m pop.de'	            $d1
+.m pop.hl	            $e1
+.m pop.hl'	            $e1
+.m pop.ix	    $dd     $e1
+.m pop.iy	    $fd     $e1
+
+.m res0*hl'         $cb $86
+.m res0*ix      $dd $cb .b $86
+.m res0*iy      $fd $cb .b $86
+.m res0.a           $cb $87
+.m res0.a'          $cb $87
+.m res0.b           $cb $80
+.m res0.b'          $cb $80
+.m res0.c           $cb $81
+.m res0.c'          $cb $81
+.m res0.d           $cb $82
+.m res0.d'          $cb $82
+.m res0.e           $cb $83
+.m res0.e'          $cb $83
+.m res0.h           $cb $84
+.m res0.h'          $cb $84
+.m res0.l           $cb $85
+.m res0.l'          $cb $85
+.m res1*hl          $cb $8e
+.m res1*hl'         $cb $8e
+.m res1*ix      $dd $cb .b $8e
+.m res1*iy      $fd $cb .b $8e
+.m res1.a           $cb $8f
+.m res1.a'          $cb $8f
+.m res1.b           $cb $88
+.m res1.b'          $cb $88
+.m res1.c           $cb $89
+.m res1.c'          $cb $89
+.m res1.d           $cb $8a
+.m res1.d'          $cb $8a
+.m res1.e           $cb $8b
+.m res1.e'          $cb $8b
+.m res1.h           $cb $8c
+.m res1.h'          $cb $8c
+.m res1.l           $cb $8d
+.m res1.l'          $cb $8d
+.m res2*hl          $cb $96
+.m res2*hl          $cb $96
+.m res2*ix      $dd $cb .b $96
+.m res2*iy      $fd $cb .b $96
+.m res2.a           $cb $97
+.m res2.a'          $cb $97
+.m res2.b           $cb $90
+.m res2.b'          $cb $90
+.m res2.c           $cb $91
+.m res2.c'          $cb $91
+.m res2.d           $cb $92
+.m res2.d'          $cb $92
+.m res2.e           $cb $93
+.m res2.e'          $cb $93
+.m res2.h           $cb $94
+.m res2.h'          $cb $94
+.m res2.l           $cb $95
+.m res2.l'          $cb $95
+.m res3*hl          $cb $9e
+.m res3*hl'         $cb $9e
+.m res3*ix      $dd $cb .b $9e
+.m res3*iy      $fd $cb .b $9e
+.m res3.a           $cb $9f
+.m res3.a'          $cb $9f
+.m res3.b           $cb $98
+.m res3.b'          $cb $98
+.m res3.c           $cb $99
+.m res3.c'          $cb $99
+.m res3.d           $cb $9a
+.m res3.d'          $cb $9a
+.m res3.e           $cb $9b
+.m res3.e'          $cb $9b
+.m res3.h           $cb $9c
+.m res3.h'          $cb $9c
+.m res3.l           $cb $9d
+.m res3.l'          $cb $9d
+.m res4*hl          $cb $a6
+.m res4*hl'         $cb $a6
+.m res4*ix      $dd $cb .b $a6
+.m res4*iy      $fd $cb .b $a6
+.m res4.a           $cb $a7
+.m res4.a'          $cb $a7
+.m res4.b           $cb $a0
+.m res4.b'          $cb $a0
+.m res4.c           $cb $a1
+.m res4.c'          $cb $a1
+.m res4.d           $cb $a2
+.m res4.d'          $cb $a2
+.m res4.e           $cb $a3
+.m res4.e'          $cb $a3
+.m res4.h           $cb $a4
+.m res4.h'          $cb $a4
+.m res4.l           $cb $a5
+.m res4.l'          $cb $a5
+.m res5*hl          $cb $ae
+.m res5*hl'         $cb $ae
+.m res5*ix      $dd $cb .b $ae
+.m res5*iy      $fd $cb .b $ae
+.m res5.a           $cb $af
+.m res5.a'          $cb $af
+.m res5.b           $cb $a8
+.m res5.b'          $cb $a8
+.m res5.c           $cb $a9
+.m res5.c'          $cb $a9
+.m res5.d           $cb $aa
+.m res5.d'          $cb $aa
+.m res5.e           $cb $ab
+.m res5.e'          $cb $ab
+.m res5.h           $cb $ac
+.m res5.h'          $cb $ac
+.m res5.l           $cb $ad
+.m res5.l'          $cb $ad
+.m res6*hl          $cb $b6
+.m res6*hl'         $cb $b6
+.m res6*ix      $dd $cb .b $b6
+.m res6*iy      $fd $cb .b $b6
+.m res6.a           $cb $b7
+.m res6.a'          $cb $b7
+.m res6.b           $cb $b0
+.m res6.b'          $cb $b0
+.m res6.c           $cb $b1
+.m res6.c'          $cb $b1
+.m res6.d           $cb $b2
+.m res6.d'          $cb $b2
+.m res6.e           $cb $b3
+.m res6.e'          $cb $b3
+.m res6.h           $cb $b4
+.m res6.h'          $cb $b4
+.m res6.l           $cb $b5
+.m res6.l'          $cb $b5
+.m res7*hl          $cb $be
+.m res7*hl'         $cb $be
+.m res7*ix      $dd $cb .b $be
+.m res7*iy      $fd $cb .b $be
+.m res7.a           $cb $bf
+.m res7.a'          $cb $bf
+.m res7.b           $cb $b8
+.m res7.b'          $cb $b8
+.m res7.c           $cb $b9
+.m res7.c'          $cb $b9
+.m res7.d           $cb $ba
+.m res7.d'          $cb $ba
+.m res7.e           $cb $bb
+.m res7.e'          $cb $bb
+.m res7.h           $cb $bc
+.m res7.h'          $cb $bc
+.m res7.l           $cb $bd
+.m res7.l'          $cb $bd
+
+.m ret                  $c9
+.m ret?nz               $c0
+.m ret?z                $c8
+.m ret?nc               $d0
+.m ret?c                $d8
+.m ret?po               $e0
+.m ret?nv               $e0
+.m ret?pe               $e8
+.m ret?v                $e8
+.m ret?p                $f0
+.m ret?m                $f8
+.m retn         $ed     $45
+.m reti         $ed     $4d
+
+.m rl*hl            $cb $16
+.m rl*hl'           $cb $16
+.m rl*ix        $dd $cb .b $16
+.m rl*iy        $fd $cb .b $16
+.m rla                  $17
+.m rla'                 $17
+.m rl.a             $cb $17
+.m rl.a'            $cb $17
+.m rl.b             $cb $10
+.m rl.b'            $cb $10
+.m rl.c             $cb $11
+.m rl.c'            $cb $11
+.m rl.d             $cb $12
+.m rl.d'            $cb $12
+.m rl.e             $cb $13
+.m rl.e'            $cb $13
+.m rl.h             $cb $14
+.m rl.h'            $cb $14
+.m rl.l             $cb $15
+.m rl.l'            $cb $15
+.m rlc*hl           $cb $06
+.m rlc*hl'          $cb $06
+.m rlc*ix       $dd $cb .b $06
+.m rlc*iy       $fd $cb .b $06
+.m rlca                 $07
+.m rlca'                $07
+.m rlc.a            $cb $07
+.m rlc.a'           $cb $07
+.m rlc.b            $cb $00
+.m rlc.b'           $cb $00
+.m rlc.c            $cb $01
+.m rlc.c'           $cb $01
+.m rlc.d            $cb $02
+.m rlc.d'           $cb $02
+.m rlc.e            $cb $03
+.m rlc.e'           $cb $03
+.m rlc.h            $cb $04
+.m rlc.h'           $cb $04
+.m rlc.l            $cb $05
+.m rlc.l'           $cb $05
+.m rld          $ed     $6f
+
+.m rr*hl            $cb $1e
+.m rr*hl'           $cb $1e
+.m rr*ix        $dd $cb .b $1e
+.m rr*iy        $fd $cb .b $1e
+.m rra                  $1f
+.m rra'                 $1f
+.m rr.a             $cb $1f
+.m rr.a'            $cb $1f
+.m rr.b             $cb $18
+.m rr.b'            $cb $18
+.m rr.c             $cb $19
+.m rr.c'            $cb $19
+.m rr.d             $cb $1a
+.m rr.d'            $cb $1a
+.m rr.e             $cb $1b
+.m rr.e'            $cb $1b
+.m rr.h             $cb $1c
+.m rr.h'            $cb $1c
+.m rr.l             $cb $1d
+.m rr.l'            $cb $1d
+.m rrc*hl           $cb $0e
+.m rrc*hl'          $cb $0e
+.m rrc*ix       $dd $cb .b $0e
+.m rrc*iy       $fd $cb .b $0e
+.m rrca                 $0f
+.m rrca'                $0f
+.m rrc.a            $cb $0f
+.m rrc.a'           $cb $0f
+.m rrc.b            $cb $08
+.m rrc.b'           $cb $08
+.m rrc.c            $cb $09
+.m rrc.c'           $cb $09
+.m rrc.d            $cb $0a
+.m rrc.d'           $cb $0a
+.m rrc.e            $cb $0b
+.m rrc.e'           $cb $0b
+.m rrc.h            $cb $0c
+.m rrc.h'           $cb $0c
+.m rrc.l            $cb $0d
+.m rrc.l'           $cb $0d
+.m rrd          $ed     $67
+
+.m rst.0                $c7
+.m rst.8                $cf
+.m rst.10               $d7
+.m rst.18               $df
+.m rst.20               $e7
+.m rst.28               $ef
+.m rst.30               $f7
+.m rst.38               $ff
+
+.m sbc*hl               $9e
+.m sbc*hl'              $9e
+.m sbc*ix       $dd     $9e .b
+.m sbc*iy       $fd     $9e .b
+.m sbc                  $de .b
+.m sbc.a                $9f
+.m sbc.a'               $9f
+.m sbc.b                $98
+.m sbc.b'               $98
+.m sbc.c                $99
+.m sbc.c'               $99
+.m sbc.d                $9a
+.m sbc.d'               $9a
+.m sbc.e                $9b
+.m sbc.e'               $9b
+.m sbc.h                $9c
+.m sbc.h'               $9c
+.m sbc.l                $9d
+.m sbc.l'               $9d
+.m sbc.ixh      $dd     $9c
+.m sbc.ixl      $dd     $9d
+.m sbc.iyh      $fd     $9c
+.m sbc.iyl      $fd     $9d
+.m sbc.hl.bc    $ed     $42
+.m sbc.hl'bc'   $ed     $42
+.m sbc.hl.de    $ed     $52
+.m sbc.hl'de'   $ed     $52
+.m sbc.hl.hl    $ed     $62
+.m sbc.hl'hl'   $ed     $62
+.m sbc.hl.sp    $ed     $72
+.m sbc.hl'sp    $ed     $72
+
+.m scf                  $37
+
+.m set0*hl          $cb $c6
+.m set0*hl'         $cb $c6
+.m set0*ix      $dd $cb .b $c6
+.m set0*iy      $fd $cb .b $c6
+.m set0.a           $cb $c7
+.m set0.a'          $cb $c7
+.m set0.b           $cb $c0
+.m set0.b'          $cb $c0
+.m set0.c           $cb $c1
+.m set0.c'          $cb $c1
+.m set0.d           $cb $c2
+.m set0.d'          $cb $c2
+.m set0.e           $cb $c3
+.m set0.e'          $cb $c3
+.m set0.h           $cb $c4
+.m set0.h'          $cb $c4
+.m set0.l           $cb $c5
+.m set0.l'          $cb $c5
+.m set1*hl          $cb $ce
+.m set1*hl'         $cb $ce
+.m set1*ix      $dd $cb .b $ce
+.m set1*iy      $fd $cb .b $ce
+.m set1.a           $cb $cf
+.m set1.a'          $cb $cf
+.m set1.b           $cb $c8
+.m set1.b'          $cb $c8
+.m set1.c           $cb $c9
+.m set1.c'          $cb $c9
+.m set1.d           $cb $ca
+.m set1.d'          $cb $ca
+.m set1.e           $cb $cb
+.m set1.e'          $cb $cb
+.m set1.h           $cb $cc
+.m set1.h'          $cb $cc
+.m set1.l           $cb $cd
+.m set1.l'          $cb $cd
+.m set2*hl          $cb $d6
+.m set2*hl'         $cb $d6
+.m set2*ix      $dd $cb .b $d6
+.m set2*iy      $fd $cb .b $d6
+.m set2.a           $cb $d7
+.m set2.a'          $cb $d7
+.m set2.b           $cb $d0
+.m set2.b'          $cb $d0
+.m set2.c           $cb $d1
+.m set2.c'          $cb $d1
+.m set2.d           $cb $d2
+.m set2.d'          $cb $d2
+.m set2.e           $cb $d3
+.m set2.e'          $cb $d3
+.m set2.h           $cb $d4
+.m set2.h'          $cb $d4
+.m set2.l           $cb $d5
+.m set2.l'          $cb $d5
+.m set3*hl          $cb $de
+.m set3*hl'         $cb $de
+.m set3*ix          $dd $cb .b $de
+.m set3*iy      $fd $cb .b $de
+.m set3.a           $cb $df
+.m set3.a'          $cb $df
+.m set3.b           $cb $d8
+.m set3.b'          $cb $d8
+.m set3.c           $cb $d9
+.m set3.c'          $cb $d9
+.m set3.d           $cb $da
+.m set3.d'          $cb $da
+.m set3.e           $cb $db
+.m set3.e'          $cb $db
+.m set3.h           $cb $dc
+.m set3.h'          $cb $dc
+.m set3.l           $cb $dd
+.m set3.l'          $cb $dd
+.m set4*hl          $cb $e6
+.m set4*hl'         $cb $e6
+.m set4*ix      $dd $cb .b $e6
+.m set4*iy      $fd $cb .b $e6
+.m set4.a           $cb $e7
+.m set4.a'          $cb $e7
+.m set4.b           $cb $e0
+.m set4.b'          $cb $e0
+.m set4.c           $cb $e1
+.m set4.c'          $cb $e1
+.m set4.d           $cb $e2
+.m set4.d'          $cb $e2
+.m set4.e           $cb $e3
+.m set4.e'          $cb $e3
+.m set4.h           $cb $e4
+.m set4.h'          $cb $e4
+.m set4.l           $cb $e5
+.m set4.l'          $cb $e5
+.m set5*hl          $cb $ee
+.m set5*hl'         $cb $ee
+.m set5*ix      $dd $cb .b $ee
+.m set5*iy      $fd $cb .b $ee
+.m set5.a           $cb $ef
+.m set5.a'          $cb $ef
+.m set5.b           $cb $e8
+.m set5.b'          $cb $e8
+.m set5.c           $cb $e9
+.m set5.c'          $cb $e9
+.m set5.d           $cb $ea
+.m set5.d'          $cb $ea
+.m set5.e           $cb $eb
+.m set5.e'          $cb $eb
+.m set5.h           $cb $ec
+.m set5.h'          $cb $ec
+.m set5.l           $cb $ed
+.m set5.l'          $cb $ed
+.m set6*hl          $cb $f6
+.m set6*hl'         $cb $f6
+.m set6*ix      $dd $cb .b $f6
+.m set6*iy      $fd $cb .b $f6
+.m set6.a           $cb $f7
+.m set6.a'          $cb $f7
+.m set6.b           $cb $f0
+.m set6.b'          $cb $f0
+.m set6.c           $cb $f1
+.m set6.c'          $cb $f1
+.m set6.d           $cb $f2
+.m set6.d'          $cb $f2
+.m set6.e           $cb $f3
+.m set6.e'          $cb $f3
+.m set6.h           $cb $f4
+.m set6.h'          $cb $f4
+.m set6.l           $cb $f5
+.m set6.l'          $cb $f5
+.m set7*hl          $cb $fe
+.m set7*hl'         $cb $fe
+.m set7*ix      $dd $cb .b $fe
+.m set7*iy      $fd $cb .b $fe
+.m set7.a           $cb $ff
+.m set7.a'          $cb $ff
+.m set7.b           $cb $f8
+.m set7.b'          $cb $f8
+.m set7.c           $cb $f9
+.m set7.c'          $cb $f9
+.m set7.d           $cb $fa
+.m set7.d'          $cb $fa
+.m set7.e           $cb $fb
+.m set7.e'          $cb $fb
+.m set7.h           $cb $fc
+.m set7.h'          $cb $fc
+.m set7.l           $cb $fd
+.m set7.l'          $cb $fd
+
+.m sla*hl           $cb $26
+.m sla*hl'          $cb $26
+.m sla*ix       $dd $cb .b $26
+.m sla*iy       $fd $cb .b $26
+.m sla.a            $cb $27
+.m sla.a'           $cb $27
+.m sla.b            $cb $20
+.m sla.b'           $cb $20
+.m sla.c            $cb $21
+.m sla.c'           $cb $21
+.m sla.d            $cb $22
+.m sla.d'           $cb $22
+.m sla.e            $cb $23
+.m sla.e'           $cb $23
+.m sla.h            $cb $24
+.m sla.h'           $cb $24
+.m sla.l            $cb $25
+.m sla.l'           $cb $25
+
+.m sl1*hl           $cb $36
+.m sl1*hl'          $cb $36
+.m sl1*ix       $dd $cb .b $36
+.m sl1*iy       $fd $cb .b $36
+.m sl1.a            $cb $37
+.m sl1.a'           $cb $37
+.m sl1.b            $cb $30
+.m sl1.b'           $cb $30
+.m sl1.c            $cb $31
+.m sl1.c'           $cb $31
+.m sl1.d            $cb $32
+.m sl1.d'           $cb $32
+.m sl1.e            $cb $33
+.m sl1.e'           $cb $33
+.m sl1.h            $cb $34
+.m sl1.h'           $cb $34
+.m sl1.l            $cb $35
+.m sl1.l'           $cb $35
+.m sl1*hl           $cb $36
+.m sll*hl'          $cb $36
+.m sll*ix       $dd $cb .b $36
+.m sll*iy       $fd $cb .b $36
+.m sll.a            $cb $37
+.m sll.a'           $cb $37
+.m sll.b            $cb $30
+.m sll.b'           $cb $30
+.m sll.c            $cb $31
+.m sll.c'           $cb $31
+.m sll.d            $cb $32
+.m sll.d'           $cb $32
+.m sll.e            $cb $33
+.m sll.e'           $cb $33
+.m sll.h            $cb $34
+.m sll.h'           $cb $34
+.m sll.l            $cb $35
+.m sll.l'           $cb $35
+
+.m sra*hl           $cb $2e
+.m sra*hl'          $cb $2e
+.m sra*ix       $dd $cb .b $2e
+.m sra*iy       $fd $cb .b $2e
+.m sra.a            $cb $2f
+.m sra.a'           $cb $2f
+.m sra.b            $cb $28
+.m sra.b'           $cb $28
+.m sra.c            $cb $29
+.m sra.c'           $cb $29
+.m sra.d            $cb $2a
+.m sra.d'           $cb $2a
+.m sra.e            $cb $2b
+.m sra.e'           $cb $2b
+.m sra.h            $cb $2c
+.m sra.h'           $cb $2c
+.m sra.l            $cb $2d
+.m sra.l'           $cb $2d
+
+.m srl*hl           $cb $3e
+.m srl*hl'          $cb $3e
+.m srl*ix       $dd $cb .b $3e
+.m srl*iy       $fd $cb .b $3e
+.m srl.a            $cb $3f
+.m srl.a'           $cb $3f
+.m srl.b            $cb $38
+.m srl.b'           $cb $38
+.m srl.c            $cb $39
+.m srl.c'           $cb $39
+.m srl.d            $cb $3a
+.m srl.d'           $cb $3a
+.m srl.e            $cb $3b
+.m srl.e'           $cb $3b
+.m srl.h            $cb $3c
+.m srl.h'           $cb $3c
+.m srl.l            $cb $3d
+.m srl.l'           $cb $3d
+
+.m sub*hl               $96
+.m sub*hl'              $96
+.m sub*ix       $dd     $96 .b
+.m sub*iy       $fd     $96 .b
+.m sub                  $d6 .b
+.m sub.a                $97
+.m sub.a'               $97
+.m sub.b                $90
+.m sub.b'               $90
+.m sub.c                $91
+.m sub.c'               $91
+.m sub.d                $92
+.m sub.d'               $92
+.m sub.e                $93
+.m sub.e'               $93
+.m sub.h                $94
+.m sub.h'               $94
+.m sub.l                $95
+.m sub.l'               $95
+.m sub.ixh      $dd     $94
+.m sub.ixl      $dd     $95
+.m sub.iyh      $fd     $94
+.m sub.iyl      $fd     $95
+
+.m xor*hl               $ae
+.m xor*hl'              $ae
+.m xor*ix       $dd     $ae .b
+.m xor*iy       $fd     $ae .b
+.m xor                  $ee .b
+.m xor.a                $af
+.m xor.a'               $af
+.m xor.b                $a8
+.m xor.b'               $a8
+.m xor.c                $a9
+.m xor.c'               $a9
+.m xor.d                $aa
+.m xor.d'               $aa
+.m xor.e                $ab
+.m xor.e'               $ab
+.m xor.h                $ac
+.m xor.h'               $ac
+.m xor.l                $ad
+.m xor.l'               $ad
+.m xor.ixh      $dd     $ac
+.m xor.ixl      $dd     $ad
+.m xor.iyh      $fd     $ac
+.m xor.iyl      $fd     $ad

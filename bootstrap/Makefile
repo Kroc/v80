@@ -1,0 +1,13 @@
+CC = cc
+C89_FLAGS = -std=c89 -pedantic -D_POSIX_C_SOURCE=1
+C99_FLAGS = -std=c99 -D_POSIX_C_SOURCE=201109L
+
+INCLUDES = -I.
+MACOS_FLAGS = -D_DARWIN_C_SOURCE
+
+c89: main.c
+	$(CC) $(C89_FLAGS) $(CPPFLAGS) $(INCLUDES) $(CFLAGS) -o v80 $^
+
+macos-c99: main.c
+	$(CC) $(C99_FLAGS) $(CPPFLAGS) $(MACOS_FLAGS) $(INCLUDES) $(CFLAGS) -o v80 $^
+
