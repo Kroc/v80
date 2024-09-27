@@ -69,8 +69,10 @@ COPY /N /Y "test\*.v??"  /A "%DIR_RUNCPM%\A\0" /A  >NUL
 REM # run "test.v80" without WLA equivalent
 CALL :v80_z80 test
 
-REM # do binary comparisons
+REM # do binary comparisons:
+REM # - all Z80 instructions
 CALL :RunTestZ80 z80
+REM # - relative jump distances
 CALL :RunTestZ80 jr
 
 REM DEL /F /Q "%BIN_DIR%\agon\sdcard\v80\*.*"
@@ -92,16 +94,20 @@ COPY /N /Y "v1\*.v??" /A "%DIR_RUNCPM%\A\0" /A  >NUL
 REM # do a 1st-generation build of v80 [v1] using v80 [v0]!
 CALL :v80_z80   cpm_z80 v80.com
 
+REM # do binary comparisons:
+REM # - all Z80 instructions
 CALL :RunTestZ80 z80
 
 EXIT
 
 REM # do a 2nd-generation build of v80, i.e. v80 [v1] building v80 [v1]
-REM CALL :v80_z80   cpm_z80 v80_2nd.com
-REM 
-REM REM # compare 1st and 2nd generation builds
-REM FC /B "%DIR_NTVCM%\v80.com" "%DIR_NTVCM%\v80_2nd.com"  >NUL
-REM IF ERRORLEVEL 1 START "" %BIN_VBINDIFF% "%DIR_NTVCM%\v80.com" REM "%DIR_NTVCM%\v80_2nd.com" & GOTO :ERR
+CALL :v80_z80   cpm_z80 v80_2nd.com
+
+REM # compare 1st and 2nd generation builds
+FC /B "%DIR_NTVCM%\v80.com" "%DIR_NTVCM%\v80_2nd.com"  >NUL
+IF ERRORLEVEL 1 START "" %BIN_VBINDIFF% "%DIR_NTVCM%\v80.com"
+
+EXIT
 
 REM # 6502:
 REM # ==========================================================================
@@ -131,6 +137,8 @@ COPY /N /Y "%DIR_NTVCM%\v80.com" /B "release\v80.com" /B  >NUL
 
 ECHO [OK.]
 GOTO :END
+
+REM ////////////////////////////////////////////////////////////////////////////
 
 :RunTestZ80
 REM # ==========================================================================

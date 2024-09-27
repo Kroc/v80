@@ -117,7 +117,7 @@ $0100   :osBoot
         jp      :osInit
 
 ;-------------------------------------------------------------------------------
-; osParseParams captures the input & output file-name here:
+; :osParseParams captures the input & output file-name here:
 ;
 :_infile                                ; command-line input file-name param
         .b      "            " 0        ; (max 8.3, including dot)
@@ -186,7 +186,7 @@ $0100   :osBoot
 ; in:   DE              addr of the file-name to use, forwards, null-terminated
 ; out:  SP              stack is manipulated -- do not JP to this routine!
 ;       HL, DE          (preserved)
-;       A, BC   (clobbered)
+;       A, BC           (clobbered)
 ;-------------------------------------------------------------------------------
         ; allocate a new FileControlBlock on the stack:
         ;
@@ -221,7 +221,7 @@ _rewind dec.HL'                         ; current record byte is no.32
         jp?nv   _empty                  ;  move to the previous extent
 
         ; FIXME extent underflow? there are 32 extents (0-31)
-        ;       (CPM/3 uses FCB's SR2 byte for larger files,
+        ;       (CP/M-3 uses FCB's SR2 byte for larger files,
         ;        this would be needed for files > 2MB)
         ;
         ld.A.L'                         ; extent field is byte 12
@@ -291,10 +291,10 @@ _fcb    .w      $0000
         ;
         ld.B    8                       ; max file-name chars (sans extension)
         call    _copy                   ; test/fix and copy up to 8 chars
-        jr?z    _0                       ; if null encountered, no extension
+        jr?z    _0                      ; if null encountered, no extension
 
         ; copy file extension:
-        ; (the dot has already been skipped by `@copy`)
+        ; (the dot has already been skipped by _copy)
         ;
         ld.B    3                       ; max extension chars (sans dot)
         call    _copy                   ; copy up to 3 chars for extension
@@ -486,8 +486,8 @@ _ok     push.BC                         ; (restore our return address)
 ;===============================================================================
 ; saves the code-segment memory region in one go:
 ;
-; the output file-name was captured to `_outfile` when parsing the command-line
-; parameters (`osParseParams`)
+; the output file-name was captured to :_outfile when parsing the command-line
+; parameters (:osParseParams)
 ;
 ; in:   HL              start addr of code-segment to save
 ;       DE              end addr of  code-segment to save

@@ -4,22 +4,17 @@
 ; include the selected ISA:
 ;===============================================================================
 ; remember that this is the instruction set that you want your v80 binary
-; to assemble, not the CPU it's running on! this code is the z80 port (v80),
-; so it's implied that you're running on Z80
+; to assemble, not the CPU it's running on! this code is already the z80
+; port ("v80"), so it's implied that you're running on Z80
 ;
 ?=      #ISA_Z80 - 1
         .i      "v80_z80.v80"           ; Z80 ISA support code
-        ?=      #PARSER_VER - 1
-                .i      "isa_z80.v80"   ; Z80 ISA instructions
-        ?=      #PARSER_VER - 2
-                .i      "is2_z80.v80"   ; Z80 ISA instructions
+        .i      "isa_z80.v80"           ; Z80 ISA instructions
 
 ?=      #ISA_6502 - 1
         .i      "v80_6502.v80"          ; 6502 ISA support code
-        ?=      #PARSER_VER - 1
-                .i      "isa_6502.v80"  ; 6502 ISA instructions
-        ?=      #PARSER_VER - 2
-                .i      "is2_6502.v80"  ; 6502 ISA instructions
+        .i      "isa_6502.v80"          ; 6502 ISA instructions
+
 
 :assembleFile
 ;===============================================================================
@@ -46,7 +41,7 @@
         ld*$.BC [ :file ]               ; set current file-name addr
 
         ; reset line & column number when changing file:
-        ; (the call to @line will call nextWord which will
+        ; (the call to :_line will call :nextWord which will
         ;  set the start-of-word line/col number for us)
         ;
         xor.A                           ; (set A to zero)
@@ -319,10 +314,7 @@ _body   cp      #CHAR_KEYWORD           ; is this a keyword?
         jr?z    :_key
 
         ; if not, must be an instruction...
-        ?=      #PARSER_VER -1
-                call    :parseISA
-        ?=      #PARSER_VER -2
-                call    :parseISA2
+        call    :parseISA
 
         jr      :_next
 
@@ -1245,157 +1237,9 @@ _ret    xor.A                           ; return zero-flag set for optimisation
 ;===============================================================================
 ; parse an instruction into opcodes:
 ;
-; the CPU-specific module (e.g. "v80_z80.wla") provides a binary tree,
-; :opcodes, that this routine walks to match instruction names to opcodes
-; and a CPU-specific set of flags that determines which parameters are required
-;
-; in:   A               first character of word to parse
-;       HL              heap addr
-; out:  HL              heap addr is advanced for any expressions deferred
-;       IY              binary code is appended to the code-segment,
-;       IX              and the virtual program-counter is advanced
-;       A, BC|DE        (clobbered)
-;-------------------------------------------------------------------------------
-        ex.DE.HL                        ; swap heap to DE for now
-        ld.HL   :opcodes                ; start at beginning of opcode tree
-
-        ; the first character is already in A
-        ;
-        set5.A                          ; force lowercase (see desc. below)
-        jr      _0                      ; jump into the parsing loop
-
-        ;=======================================================================
-        ; match; follow the branch:
-        ;-----------------------------------------------------------------------
-        ; once a character matches, the next two bytes are either
-        ; an offset to the next branch to follow, or an opcode pair
-        ;
-_match  inc.HL                          ; step over the matched character
-        ld.C*HL                         ; read the offset lo-byte | opcode-byte
-        inc.HL                          ; move to next byte in tree
-        ld.B*HL                         ; read the offset hi-byte | opcode-flags
-
-        bit7.B                          ; is hi-bit of hi-byte set?
-        jr?nz   _opcode                 ; if so, this is an opcode
-
-        ; add the offset to the current position to jump to the new branch:
-        ; NOTE: the offset in the binary tree is reduced by 1 to compensate
-        ; for adding from the hi-byte addr, rather than the lo-byte addr
-        ;
-        adc.HL.BC
-
-        ; if the hi-bit is set on the hi-byte, then it's an opcode + flag pair,
-        ; not a jump! we branch away after the add to get a free flag-check
-        ;
-        ; TODO: this requires bit 6 of the opcode-flags to always be zero
-        ;       otherwise the ADC can overflow, voiding this check. this
-        ;       would leave us only 5 unique bits for any CPU
-        ;
-        ;jp?m      ,      @opcode         ; if hi-bit set, emit opcode
-
-        ; get character from input file:
-        ;-----------------------------------------------------------------------
-_next   call    :readChar               ; read from input file
-        cp      #SPC + 1                ; is it whitespace? (hold carry...)
-
-        ; force lowercase, without also affecting
-        ; numbers / [most] punctuation:
-        ;
-        ; this essentially forces ASCII codes 64-95 (@A-Z[\]^_) to codes
-        ; 96-127 (`a-z{|}~) which makes A-Z lowercase with the caveat that
-        ; some punctuation cannot be differentiated "@"<->"`", "[]"<->"{}",
-        ; "\"<->"|" and "^"<->"~" but we aren't using any of those in the
-        ; instruction names anyway
-        ;
-        ; it also means that ASCII codes 0-31 (non-visible) are promoted
-        ; to 32-64 (visible), but we have already checked for ASCII codes
-        ; 32 (space) or below and this is signalled by the carry flag; so
-        ; even though the below instruction would change tab into ")", we
-        ; will undo this afterwards
-        ;
-        set5.A                          ; force partial lowercase
-        jr?nc   _0                      ; was this a non-visible char before?
-        xor.A                           ; any whitespace = end-of-word (0)
-_0      ld.BC   3                       ; this is faster than INC HL x 3!
-
-        ; compare with opcode tree:
-        ;-----------------------------------------------------------------------
-_cp     cp*HL                           ; compare input char with tree char
-        jr?z    _match                  ; characters match?
-
-        ; if the hi-bit of the character from the opcode tree is set, it's
-        ; either a continuation character (>128) or the end of a branch (=255)
-        ;
-        bit7*HL                         ; check bit 7 of character
-        jr?nz   _cont                   ; handle continuation char / end
-
-        ; no match; try the next character:
-        ;
-_skip   add.HL.BC                       ; skip 3 bytes in opcode tree
-        jr      _cp                     ; compare next char in tree
-
-        ;-----------------------------------------------------------------------
-        ; handle continuation character / end-of-branch:
-        ;
-        ; a continuation character has no branch -- one character has to
-        ; immediately follow another -- any mismatch is an unknown opcode
-        ;
-_cont   or      %10000000               ; *add* top bit to input char
-        cp*HL                           ; redo comparison with tree
-        inc.HL                          ; (move to next char in tree)
-        jr?z    _next                   ; match, check next char
-        jp      :errInvalIns            ; error for continuation mismatch
-
-        ;=======================================================================
-        ; emit opcode(s):
-        ;-----------------------------------------------------------------------
-        ; if a branch ends in an opcode then no more characters must follow,
-        ; with one exception -- an apostrophe can be appended to an instruction
-        ; for indicating shadow registers. this is a crude hack as no check is
-        ; made to ensure it's a register at the end, but it saves hundreds of
-        ; extra branches in the opcode tree
-        ;
-_opcode and.A                           ; if the last char is already 0,
-        jr?z    _ok                     ; then no further check is needed
-
-_get    call    :readChar               ; read one more character
-        cp      ''                      ; if it is apostrophe,
-        jr?z    _get                    ;  then ignore and go again
-        cp      #SPC + 1                ; is it whitespace (or eof)?
-        jp?nc   :errInvalIns            ; if not, invalid instruction!
-
-_ok     ex.DE.HL                        ; swap heap back to HL
-
-        ; the flags byte is a set of flags for CPU-specifics and what, if any,
-        ; kind of parameter is required. regardless of ISA, a "0" (with hi-bit
-        ; removed) always indicates no-parameters
-        ;
-        ld.A.B                          ; opcode flags byte
-        and     %01111111               ; remove the top bit
-
-        ; if flags byte is non-zero, analyse further (this routine is in
-        ; the CPU-specific module, e.g. "v80_z80.v80" or "v80_6502.v80")
-        ;
-        jp?nz   :emitOpcode
-
-        ; single opcode, no params:
-        ;-----------------------------------------------------------------------
-        ld*IY.C [ 0 ]                   ; emit opcode byte
-        inc.IY                          ; move to next byte in code-segment
-        inc.IX                          ; increment virtual program-counter
-
-        ret
-
-#size_of_parseISA       $ - :parseISA
-
-
-:parseISA2
-;===============================================================================
-; parse an instruction into opcodes:
-;
-; the CPU-specific module (e.g. "v80_z80.wla") provides a list of instructions,
-; :opcodes, that this routine walks to match instruction names to opcodes and
-; a CPU-specific set of flags that determines which parameters are required
+; the CPU-specific module (e.g. "v80_z80.v80") provides a list of instructions
+; that this routine walks to match instruction names to opcodes and a set of
+; CPU-specific flags that determine which parameters are required
 ;
 ; in:   A               first character of word to parse
 ;       HL              heap addr
@@ -1412,8 +1256,8 @@ _ok     ex.DE.HL                        ; swap heap back to HL
         ;
         ld.DE   :buffers
 
-        ; to allow for case-insensitivty, we force lowercase without also
-        ; affecting numbers by setting bit 5. this essentially forces ASCII
+        ; to allow for case-insensitivty we force lowercase, without also
+        ; affecting numbers, by setting bit 5. this essentially forces ASCII
         ; codes 64-95 (@A-Z[\]^_) to codes 96-127 (`a-z{|}~) which makes A-Z
         ; lowercase with the caveat that punctuation cannot be differentiated
         ; "@"<->"`", "[]"<->"{}", "\"<->"|" and "^"<->"~" but we aren't using
@@ -1439,15 +1283,11 @@ _word   or      %00100000               ; force partial lowercase
         ; start point in the instruction list
         ;
         ld.E.A                          ; rewind to beginning of word
+        ld.B.A                          ; (for add.HL.BC, set B to zero)
         ld.A*DE                         ; restore first character
-        ;///////////////////////////////////////////////////////////////////////
-        call    :osPrintChar            ; print first matching character
-        ld.A*DE                         ; (A not preserved)
-        ;///////////////////////////////////////////////////////////////////////
-        sub     'a                      ; rebase to a = 0 etc.
+        sub     'a                      ; rebase to "a" = 0 etc.
         add.A                           ; double char for 16-bits per entry
-        ld.B    0                       ; put offset into BC
-        ld.C.A                          ;  to add to table addr
+        ld.C.A                          ; put offset into BC
         ld.HL   :opcodes                ; start of alphabetic skip table
         add.HL.BC                       ; offset HL into the table
         ld.A*HL                         ; read lo-byte of instruction list addr
@@ -1503,10 +1343,6 @@ _loop   ld.C*HL                         ; get instruction length byte
         ;       adc     <- matched to here, 3 chars
         ;       and     only 1 char re-used, no match possible
         ;
-        ; we _could_ test for this and error early but it's slightly faster to
-        ; just ignore this case -- each alphabetical block ends with a null to
-        ; catch the error since the 1st char is always assumed matched
-        ;
         ; it is normal for the number of re-used chars to be more than our
         ; matched count as it means we could be looking at an instruction
         ; branch that doesn't apply to us (e.g. first "." instead of "*")
@@ -1543,7 +1379,7 @@ _1      cp*HL                           ; compare with instruction list
         ;-----------------------------------------------------------------------
 _2      ;///////////////////////////////////////////////////////////////////////
         ;ld.A*DE
-        call    :osPrintChar
+        ;call    :osPrintChar
         ;///////////////////////////////////////////////////////////////////////
         inc.E                           ; increment matched counter
         inc.HL                          ; step to next char in list
@@ -1601,11 +1437,11 @@ _ok     ld.C*HL                         ; upon match, next byte is opcode
         pop.HL                          ; (restore heap address)
 
         ;///////////////////////////////////////////////////////////////////////
-        ld.A    #TAB
-        call    :osPrintChar
-        ld.A.C
-        call    :printHexByte
-        call    :osPrintNewline
+        ;ld.A    #TAB
+        ;call    :osPrintChar
+        ;ld.A.C
+        ;call    :printHexByte
+        ;call    :osPrintNewline
         ;///////////////////////////////////////////////////////////////////////
 
         ; the flags byte is a set of flags for CPU-specifics and what,
@@ -1613,7 +1449,6 @@ _ok     ld.C*HL                         ; upon match, next byte is opcode
         ; a zero always indicates no-parameters
         ;
         ld.A.B                          ; opcode flags byte
-        and     %01111111               ; remove the top bit
 
         ; if flags byte is non-zero, analyse further (this routine is in
         ; the CPU-specific module, e.g. "v80_z80.v80" or "v80_6502.v80")
@@ -1628,16 +1463,10 @@ _ok     ld.C*HL                         ; upon match, next byte is opcode
 
         ret
 
+        ;=======================================================================
         ; (a relative jump to here is used to save 1 byte and 3 cycles
         ;  over using conditional absolute jumps in each instance)
         ;
-_err    call    :osPrintNewline
-        ld.DE   :buffers
-        call    :osPrintStrZ
-        ld.A    '!
-        call    :osPrintChar
+_err    jp      :errInvalIns
 
-        jp      :errInvalIns
-_halt   halt
-
-#size_of_parseISA2      $ - :parseISA2
+#size_of_parseISA       $ - :parseISA

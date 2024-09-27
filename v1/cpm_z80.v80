@@ -10,7 +10,6 @@
 #SYS_CPM        1                       ; the OS is CP/M (on z80)
 #ISA_Z80        1                       ; embed parser for z80 instructions
 #ISA_6502       0                       ; (not 6502)
-#PARSER_VER     2
 
 .i      "v80_cpm.v80"
 
