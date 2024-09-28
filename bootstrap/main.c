@@ -28,8 +28,6 @@ static const char *kusage = "[-i INCLUDEPATH] INPUTPATH [OUTPUTPATH]";
 #include "polyfill/string.h"
 
 
-#define SYMBOLTABLE_MINSIZE 4095
-
 struct extmap {
     const char *extin, *extout;
 };
@@ -40,6 +38,7 @@ static int reporting = ~0;
 
 
 #include "file.c"
+#include "symtab.c"
 #include "token.c"
 #include "parser.c"
 
@@ -113,7 +112,7 @@ main(int argc, const char *argv[])
 
     /* Initialize globals */
     kprogname = *argv++; --argc;
-    symbols = hash_new(SYMBOLTABLE_MINSIZE);
+    symtab = symtab_new();
 
     /* Parse command line options */
     while(argc > 0) {
@@ -166,7 +165,7 @@ main(int argc, const char *argv[])
 
     /* Pass 1: to populate label addresses */
     pass = PASS_LABELADDRS;
-    pc = symbol_set(symbols, "$", 1, 0x0000);
+    pc = symtab_set_symbol(symtab, "$", 1, 0x0000);
     parse_file(file_push(strdup(zpathin), file_reader(zpathin)));
     assert(files == NULL);
     reporting = 0;

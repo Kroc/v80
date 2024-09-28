@@ -6,6 +6,11 @@
 #include "token.h"
 #include "hash.c"
 
+#define SYMBOLTABLE_MINSIZE 4095
+
+
+typedef HashTable SymbolTable;
+
 typedef struct {
     const char *name;
     unsigned len;
@@ -37,22 +42,47 @@ symbol_new(const char *name, unsigned len, unsigned value)
     return r;
 }
 
-static inline Symbol *
-symbol_push(HashTable *symbols, const char *name, unsigned len, unsigned value)
+static inline SymbolTable *
+symtab_new(void)
 {
-    return hash_push(symbols, name, len, symbol_new(name, len, value));
+    return hash_new(SYMBOLTABLE_MINSIZE);
+}
+
+static inline Symbol *
+symtab_push_symbol(SymbolTable *table, const char *name, unsigned len, unsigned value)
+{
+    return hash_push(table, name, len, symbol_new(name, len, value));
 }
 
 Symbol *
-symbol_set(HashTable *symbols, const char *name, unsigned len, unsigned value)
+symtab_set_symbol(SymbolTable *table, const char *name, unsigned len, unsigned value)
 {
-    Symbol *match = hash_search(symbols, name, len);
+    Symbol *match = hash_search(table, name, len);
     const char *key = NULL;
     if(match) {
         match->value = value;
         return match;
     }
-    return symbol_push(symbols, strndup(name, len), len, value);
+    return symtab_push_symbol(table, strndup(name, len), len, value);
 }
+
+static inline Symbol *
+symtab_search_symbol(SymbolTable *table, const char *name, unsigned len)
+{
+    return hash_search(table, name, len);
+}
+
+static inline Token *
+symtab_push_macro(SymbolTable *table, Token *macroname, Token *macrobody)
+{
+    return hash_push(table, strndup(macroname->str, macroname->len), macroname->len, macrobody);
+}
+
+static inline Token *
+symtab_search_macro(SymbolTable *table, const char *name, unsigned len)
+{
+    return hash_search(table, name, len);
+}
+
 
 #endif
