@@ -115,16 +115,6 @@ COPY /N /Y "%DIR_NTVCM%\v80x65.com" /B "%DIR_RUNCPM%\A\0" /B  >NUL
 REM # verify 6502 assembling
 CALL :RunTest6502 6502
 
-REM # v2:
-REM # ==========================================================================
-REM # copy v80 [v2] source into NTVCM directory
-REM COPY /N /Y "v2\*.v80" /B "%DIR_NTVCM%" /A  >NUL
-REM REM # and RunCPM
-REM COPY /N /Y "v2\*.v80" /A "%DIR_RUNCPM%\A\0" /A  >NUL
-REM 
-REM REM # build v2 of v80
-REM CALL :v80_z80   v80
-
 REM # ==========================================================================
 REM # if no errors, copy v80 binary to release folder
 
