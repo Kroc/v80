@@ -7,18 +7,14 @@ _v80_ is an 8-bit native, multi-platform, multi-CPU cross-assembler that runs on
 [NTVCM]:  https://github.com/davidly/ntvcm
 [RunCPM]: https://github.com/MockbaTheBorg/RunCPM
 
-_"v80"_ refers to the Z80 port, but versions that target different CPUs
+_"v80"_ refers to the Z80 assembler, but versions that target different CPUs
 and/or run on different host CPUs are available, or are planned:
 
-    v80         <- runs on Z80  - assembles Z80 code ".v80"
-    v80x65      <-      "       - assembles 6502 code ".v65"
-    v80x69*     <-      "       - assembles 6809 code ".v69"
-    v80x83*     <-      "       - assembles GameBoy (SM83) code ".v83"
+    v80         assembles Z80 code ".v80"
+    v65         assembles 6502 code ".v65", currently running on Z80
 
-    v65*        <- runs on 6502 - assembles 6502 code ".v65"
-
-    v69*        <- runs on 6809 - assembles 6809 code (.v69)
-    v69x65*     <-      "       - assembles 6502 code (.v65)
+    v69*        assembles 6809 code ".v69"
+    v83*        assembles GameBoy (SM83) code ".v83"
 
     *(coming in a future release)
 
@@ -42,13 +38,6 @@ If you feel like you could write a C version of _v80_, [your help](https://githu
 - No shift operators. Multiply/divide by powers of 2
 - No comparison operators -- we use the zero-flag here
 - No commas. Commas were a mistake
-
-Features added since v0:
-
-- Local labels! (`_`)
-- Decimal numbers!
-- Character literals (`'x`)
-- Fill keyword (`.f`)
 
 ## Syntax Sample:
 
@@ -173,8 +162,7 @@ _v80_ is assembled as a generic CP/M binary that should run on any Z80-based, CP
 ### 2024/7/?: v1.0.0-dev
 
 - _v80_ can assemble itself via a _v80_-syntax version of _v80_!
-- _v80_ can now assemble 6502 code!  
-  - _"v80x65"_ is a 6502 cross-assembler version of _v80_, self-assembled by _v80_ using pluggable ISAs. Support for more CPU ISAs will come in the future
+- _v65_ is a 6502 cross-assembler version of _v80_, self-assembled by _v80_ using pluggable ISAs. Support for more CPU ISAs will come in the future
 
 ### 2024/7/1: v0.1.3
 

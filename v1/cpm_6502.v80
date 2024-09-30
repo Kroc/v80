@@ -5,7 +5,7 @@
 ;
 ; - is z80 code (v80)
 ; - runs on CP/M
-; - assembles 6502 instructions
+; - assembles 6502 instructions (v65)
 ;
 #SYS_CPM        1                       ; the OS is CP/M (on z80)
 #ISA_6502       1                       ; embed parser for 6502 instructions
@@ -16,7 +16,7 @@
 ; the banner will vary for each OS/ISA pair, so is defined here.
 ; this text will be in the code-segment and will be overwritten by assembly
 ;
-:banner .b      "; v80x65 | OS: CP/M [Z80] | ISA: 6502" #LF
+:banner .b      "; v65 | OS: CP/M [Z80] | ISA: 6502" #LF
         .b      "; (C) Kroc Camen 2023-24, MIT License" #LF
         .b      "; v1.0-dev <github.com/kroc/v80>" #LF
         .b      ";" 0
@@ -24,7 +24,7 @@
 ; for CP/M specifically, this is the usage message displayed
 ; when no parameters are given on the command line:
 ;
-:usage  .b      "    V80x65 INPUT.V65 [OUTPUT.PRG]" #LF 0
+:usage  .b      "    V65 INPUT.V65 [OUTPUT.PRG]" #LF 0
 
 ; the default file-extensions to use for input & output file-names:
 ;

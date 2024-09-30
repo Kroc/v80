@@ -8,15 +8,11 @@ v80 is an 8-bit native, multi-platform, multi-CPU cross-assembler.
 "v80" refers to the Z80 port, but versions that target different CPUs
 and/or run on different host CPUs are available, or are planned:
 
-    v80         <- runs on Z80  - assembles Z80 code ".v80"
-    v80x65      <-      "       - assembles 6502 code ".v65"
-    v80x69*     <-      "       - assembles 6809 code ".v69"
-    v80x83*     <-      "       - assembles GameBoy (SM83) code ".v83"
+    v80         assembles Z80 code ".v80"
+    v65         assembles 6502 code ".v65", currently running on Z80
 
-    v65*        <- runs on 6502 - assembles 6502 code ".v65"
-
-    v69*        <- runs on 6809 - assembles 6809 code (.v69)
-    v69x65*     <-      "       - assembles 6502 code (.v65)
+    v69*        assembles 6809 code ".v69"
+    v83*        assembles GameBoy (SM83) code ".v83"
 
     *(coming in a future release)
 
@@ -31,15 +27,15 @@ PCs for 8-bit systems to do useful, creative, meaningful work.
 0. Usage:
 ================================================================================
 "v80.com" is a Z80 CP/M executable that assembles Z80 source code (in v80
-syntax). "v80x65" is a cross-assembler version of v80 that runs on Z80 CP/M
+syntax). "v65" is a cross-assembler version of v80 that runs on Z80 CP/M
 but assembles 6502 source code.
 
 Since "v80.com" is a Z80 executable that could run on real 1985 hardware,
-for assembling v80/v65 syntax source code on PCs "ntvcm.exe" is provided to
-emulate CP/M. Therefore, to invoke v80/v80x65 on PC, call it via ntvcm.exe:
+for assembling v80 syntax source code on PCs "ntvcm.exe" is provided to
+emulate CP/M. Therefore, to invoke v80/v65 on PC, call it via ntvcm.exe:
 
 |   ntvcm.exe v80.com input.v80 [output.com]
-|   ntvcm.exe v80x65.com input.v65 [output.prg]
+|   ntvcm.exe v65.com input.v65 [output.prg]
 
 The output file-name is optional and defaults to the input file-name
 with ".com" (v80) or ".prg" (v65) file-extension.
