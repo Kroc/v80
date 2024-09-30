@@ -5,7 +5,7 @@ ECHO:
 
 SET "BIN_DIR=bin"
 
-REM # the PC assembler and linker is WLA-DX
+REM # the v0 (bootstrap) PC assembler and linker is WLA-DX
 SET WLA_Z80="%BIN_DIR%\wla-dx\wla-z80.exe" -x
 SET WLA_6502="%BIN_DIR%\wla-dx\wla-6502.exe" -x
 SET WLA_LINK="%BIN_DIR%\wla-dx\wlalink.exe" -A -S
@@ -108,9 +108,9 @@ IF ERRORLEVEL 1 START "" %BIN_VBINDIFF% "%DIR_NTVCM%\v80.com"
 REM # 6502:
 REM # ==========================================================================
 REM # use v80 to assemble a version of v80 that assembles 6502 code...
-CALL :v80_z80   cpm_6502.v80 v80x65.com
+CALL :v80_z80   cpm_6502.v80 v65.com
 
-COPY /N /Y "%DIR_NTVCM%\v80x65.com" /B "%DIR_RUNCPM%\A\0" /B  >NUL
+COPY /N /Y "%DIR_NTVCM%\v65.com" /B "%DIR_RUNCPM%\A\0" /B  >NUL
 
 REM # verify 6502 assembling
 CALL :RunTest6502 6502
@@ -224,12 +224,12 @@ GOTO:EOF
 
 :v80_6502
 REM # ==========================================================================
-REM # assemble with v80-6502
+REM # assemble with v65
 REM # --------------------------------------------------------------------------
 PUSHD "%DIR_NTVCM%"
 
-ECHO * v80x65.com %~1 %~2
-%BIN_NTVCM% v80x65.com %~1 %~2  > %~n1.sym
+ECHO * v65.com %~1 %~2
+%BIN_NTVCM% v65.com %~1 %~2  > %~n1.sym
 IF ERRORLEVEL 1 TYPE %~n1.sym
 
 REM # if NTVCM hits a HALT instruction, launch RunCPM
