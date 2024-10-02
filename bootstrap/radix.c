@@ -17,7 +17,7 @@
    easily traverse all items in order later! */
 
 
-/* radix_next() yields the RadixItem from each radix_insert()ed Radixk node. */
+/* radix_next() yields the RadixItem from each radix_insert()ed Radix node. */
 typedef struct {
     const char *key;
     unsigned keylen;
@@ -243,12 +243,12 @@ RadixIter *
 radix_next_sibling(RadixIter *stack)
 {
     assert(stack->node);
-    if(stack->node->next)
-        /* If there's a next sibling, advance to it. */
-        stack->node = stack->node->next;
-    else if(stack && !stack->node->next)
-        /* Otherwise, unwind a stack node with no siblings. */
-        stack = radix_iter_node_pop(stack);
+    if(!stack->node->next)
+        /* Pop the stack when there are no more siblings. */
+        return radix_iter_node_pop(stack);
+
+    /* Since there's a next sibling, advance to it. */
+    stack->node = stack->node->next;
     return stack;
 }
 
@@ -280,6 +280,7 @@ RadixIter *
 radix_iterator(Radix *root)
 {
     RadixIter *stack = radix_iter_node_new(root);
+    assert(stack);
     while(stack->node && !stack->node->item.data)
         stack = radix_step(stack);
     return stack;
@@ -291,20 +292,19 @@ RadixItem *
 radix_next(RadixIter **piter)
 {
     RadixIter *stack = *piter;
-    RadixItem *r = &stack->node->item;
+    RadixItem *r = NULL;
 
-    if(!stack->node->item.data) {
-        while(stack)
-            stack = radix_iter_node_pop(stack);
+    if(stack) {
+        /* Next item is already primed to top of iterator stack. */
+        r = &stack->node->item;
+
+        /* Step through the radix tree until the next node with data. */
+        do {
+            stack = radix_step(stack);
+        } while(stack && stack->node && !stack->node->item.data);
+
         *piter = stack;
-        return &stack->node->item;
     }
-
-    do {
-        stack = radix_step(stack);
-    } while(stack && stack->node && !stack->node->item.data);
-
-    *piter = stack;
     return r;
 }
 
