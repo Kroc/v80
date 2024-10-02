@@ -73,7 +73,8 @@ static const char *khelpmsg[] = {
     "\tRead 8-bit assembly source from INPUTPATH, assemble and write the",
     "\tresulting binary code to OUPUTPATH.  If OUTPUTPATH is not specified,",
     "\tuse INPUTPATH with the file extension changed to `.com' for `.v80`",
-    "\tinput, `.prg` for `.v65` input, or to `v.out` otherwise.",
+    "\tinput, `.prg` for `.v65` input, or to `v.out` otherwise. A summary",
+    "\tof the symbol table is written to the terminal.",
     "",
     "OPTIONS",
     "",
@@ -83,6 +84,9 @@ static const char *khelpmsg[] = {
     "\t-i INCLUDEPATH, --include INCLUDEPATH",
     "\t\tAdditional input files to assemble before INPUTPATH.  Usually",
     "\t\tused to set up the instruction set tables with `.m` commands.",
+    "",
+    "\t-q, --quiet",
+    "\t\tDon't write a summary of the symbol table to the terminal.",
     "",
     "\t    --version",
     "\t\tDisplay the release version, then exit.",
@@ -137,7 +141,7 @@ main(int argc, const char *argv[])
                     printf("%s\n", *phelpmsg);
                 exit(EXIT_SUCCESS);
             } else if(streq(arg, "-q") || streq(arg, "--quiet")) {
-                save_reporting = ~0;
+                save_reporting = 0;
             } else if(streq(arg, "--version")) {
                 printf("v80.c %s\n", kversion);
                 printf("%s\nWritten by %s\n", kcopyleft, kauthor);
