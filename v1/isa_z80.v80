@@ -70,6 +70,36 @@
 #OP_IXW     #OP_W | #OP_IX      ; = immediate, IX ($DD), 16-bit
 #OP_IYW     #OP_W | #OP_IY      ; = immediate, IY ($FD), 16-bit
 
+
+:opcodes
+;===============================================================================
+.w      :a                      ; a..?
+.w      :b                      ; b..?
+.w      :c                      ; c..?
+.w      :d                      ; d..?
+.w      :e                      ; e..?
+.w      $0000                   ; (no f.. instructions)
+.w      $0000                   ; (no g.. instructions)
+.w      :h                      ; h..?
+.w      :i                      ; i..?
+.w      :j                      ; j..?
+.w      $0000                   ; (no k.. instructions)
+.w      :l                      ; l..?
+.w      $0000                   ; (no m.. instructions)
+.w      :n                      ; n..?
+.w      :o                      ; o..?
+.w      :p                      ; p..?
+.w      $0000                   ; (no q.. instructions)
+.w      :r                      ; r..?
+.w      :s                      ; s..?
+.w      $0000                   ; (no t.. instructions)
+.w      $0000                   ; (no u.. instructions)
+.w      $0000                   ; (no v.. instructions)
+.w      $0000                   ; (no w.. instructions)
+.w      :x                      ; x..?
+.w      $0000                   ; (no y.. instructions)
+.w      $0000                   ; (no z.. instructions)
+
 :a
 ;===============================================================================
 .b      2 *16 | 1  "dc"         $ce #OP_B       ;    CE nn    | adc       $nn
@@ -1012,17 +1042,6 @@
 .b      2 *16 | 4     "ix"      $26 #OP_CBXO    ; DD CB nn 26 | sla*ix    $nn
 .b      1 *16 | 5      "y"      $26 #OP_CBYO    ; FD CB nn 26 | sla*iy    $nn
 ;===============================================================================
-.b      3 *16 | 2   "l.a"       $37 #OP_CB      ;    CB 37    | sll.a
-.b      1 *16 | 4     "b"       $30 #OP_CB      ;    CB 30    | sll.b
-.b      1 *16 | 4     "c"       $31 #OP_CB      ;    CB 31    | sll.c
-.b      1 *16 | 4     "d"       $32 #OP_CB      ;    CB 32    | sll.d
-.b      1 *16 | 4     "e"       $33 #OP_CB      ;    CB 33    | sll.e
-.b      1 *16 | 4     "h"       $34 #OP_CB      ;    CB 34    | sll.h
-.b      1 *16 | 4     "l"       $35 #OP_CB      ;    CB 35    | sll.l
-.b      3 *16 | 3    "*hl"      $36 #OP_CB      ;    CB 36    | sll*hl
-.b      2 *16 | 4     "ix"      $36 #OP_CBXO    ; DD CB nn 36 | sll*ix    $nn
-.b      1 *16 | 5      "y"      $36 #OP_CBYO    ; FD CB nn 36 | sll*iy    $nn
-;-------------------------------------------------------------------------------
 .b      3 *16 | 2   "1.a"       $37 #OP_CB      ;    CB 37    | sl1.a
 .b      1 *16 | 4     "b"       $30 #OP_CB      ;    CB 30    | sl1.b
 .b      1 *16 | 4     "c"       $31 #OP_CB      ;    CB 31    | sl1.c
@@ -1094,33 +1113,4 @@
 ;-------------------------------------------------------------------------------
 .b      0
 
-:opcodes
-;===============================================================================
-.w      :a                      ; a..?
-.w      :b                      ; b..?
-.w      :c                      ; c..?
-.w      :d                      ; d..?
-.w      :e                      ; e..?
-.w      $0000                   ; (no f.. instructions)
-.w      $0000                   ; (no g.. instructions)
-.w      :h                      ; h..?
-.w      :i                      ; i..?
-.w      :j                      ; j..?
-.w      $0000                   ; (no k.. instructions)
-.w      :l                      ; l..?
-.w      $0000                   ; (no m.. instructions)
-.w      :n                      ; n..?
-.w      :o                      ; o..?
-.w      :p                      ; p..?
-.w      $0000                   ; (no q.. instructions)
-.w      :r                      ; r..?
-.w      :s                      ; s..?
-.w      $0000                   ; (no t.. instructions)
-.w      $0000                   ; (no u.. instructions)
-.w      $0000                   ; (no v.. instructions)
-.w      $0000                   ; (no w.. instructions)
-.w      :x                      ; x..?
-.w      $0000                   ; (no y.. instructions)
-.w      $0000                   ; (no z.. instructions)
-
-#size_of_opcodes        $ - :a
+#size_of_opcodes        $ - :opcodes

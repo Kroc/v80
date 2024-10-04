@@ -1376,23 +1376,6 @@ sl1:	sl1	[HL]			; sl1*hl		;    CB 36
 	sl1	L			; sl1.l			;    CB 35
 	sl1	L'			; sl1.l'		;    CB 35
 	sl1	[HL]			; sl1*hl		;    CB 36
-	sll	[HL']			; sll*hl'		;    CB 36
-	sll	[IX+$00]		; sll*ix	$00	; DD CB 00 36
-	sll	[IY+$00]		; sll*iy	$00	; FD CB 00 36
-	sll	A			; sll.a			;    CB 37
-	sll	A'			; sll.a'		;    CB 37
-	sll	B			; sll.b			;    CB 30
-	sll	B'			; sll.b'		;    CB 30
-	sll	C			; sll.c			;    CB 31
-	sll	C'			; sll.c'		;    CB 31
-	sll	D			; sll.d			;    CB 32
-	sll	D'			; sll.d'		;    CB 32
-	sll	E			; sll.e			;    CB 33
-	sll	E'			; sll.e'		;    CB 33
-	sll	H			; sll.h			;    CB 34
-	sll	H'			; sll.h'		;    CB 34
-	sll	L			; sll.l			;    CB 35
-	sll	L'			; sll.l'		;    CB 35
 	;-----------------------------------------------------------------------
 sra:	sra	[HL]			; sra*hl		;    CB 2E
 	sra	[HL']			; sra*hl'		;    CB 2E

@@ -16,6 +16,36 @@
 #OP_W           %00000011               ; immediate, 16-bits
 #OP_R           %00000101               ; relative-jump
 
+
+:opcodes
+;===============================================================================
+.w      :a                              ; a..?
+.w      :b                              ; b..?
+.w      :c                              ; c..?
+.w      :d                              ; d..?
+.w      :x                              ; (eor is alias for xor) 
+.w      $0000                           ; (no f.. instructions)
+.w      $0000                           ; (no g.. instructions)
+.w      $0000                           ; (no h.. instructions)
+.w      :i                              ; i..?
+.w      :j                              ; j..?
+.w      $0000                           ; (no k.. instructions)
+.w      :l                              ; l..?
+.w      $0000                           ; (no m.. instructions)
+.w      :n                              ; n..?
+.w      :o                              ; o..?
+.w      :p                              ; p..?
+.w      $0000                           ; (no q.. instructions)
+.w      :r                              ; r..?
+.w      :s                              ; s..?
+.w      :t                              ; t..?
+.w      $0000                           ; (no u.. instructions)
+.w      $0000                           ; (no v.. instructions)
+.w      $0000                           ; (no w.. instructions)
+.w      :x                              ; x..?
+.w      $0000                           ; (no y.. instructions)
+.w      $0000                           ; (no z.. instructions)
+
 :a
 ;===============================================================================
 .b      2 *16 | 1  "dc"         $69 #OP_B       ; 69 nn    | adc     $nn
@@ -256,33 +286,4 @@
 ;-------------------------------------------------------------------------------
 .b      0
 
-:opcodes
-;===============================================================================
-.w      :a                              ; a..?
-.w      :b                              ; b..?
-.w      :c                              ; c..?
-.w      :d                              ; d..?
-.w      :x                              ; (eor is alias for xor) 
-.w      $0000                           ; (no f.. instructions)
-.w      $0000                           ; (no g.. instructions)
-.w      $0000                           ; (no h.. instructions)
-.w      :i                              ; i..?
-.w      :j                              ; j..?
-.w      $0000                           ; (no k.. instructions)
-.w      :l                              ; l..?
-.w      $0000                           ; (no m.. instructions)
-.w      :n                              ; n..?
-.w      :o                              ; o..?
-.w      :p                              ; p..?
-.w      $0000                           ; (no q.. instructions)
-.w      :r                              ; r..?
-.w      :s                              ; s..?
-.w      :t                              ; t..?
-.w      $0000                           ; (no u.. instructions)
-.w      $0000                           ; (no v.. instructions)
-.w      $0000                           ; (no w.. instructions)
-.w      :x                              ; x..?
-.w      $0000                           ; (no y.. instructions)
-.w      $0000                           ; (no z.. instructions)
-
-#size_of_opcodes        $ - :a
+#size_of_opcodes        $ - :opcodes

@@ -2048,8 +2048,7 @@ opcodes:
 @set7hl .BYTE   'l', $C6+(8*7),         OP_CB   ; set7*hl       |    CB FE
         .BYTE   ERR
         ;=======================================================================
-@sla    .DATA   'l', (@sl1-CADDR)-1             ; sll?
-        .DATA   '1', (@sl1-CADDR)-1             ; sl1?
+@sla    .DATA   '1', (@sl1-CADDR)-1             ; sl1?
         .BYTE   'a'|AND                         ; sla?
         .DATA   '*', (@sla_m-CADDR)-1
         .BYTE   '.'|AND

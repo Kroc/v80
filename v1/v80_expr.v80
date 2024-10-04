@@ -827,7 +827,7 @@ _in     sla.E                           ; shift DE left by one,
 ;        ld.HL   $0000
 ;        ld.A.B
 ;        ld.B    16
-;-       sll.C
+;-       sl1.C
 ;        rla
 ;        adc.HL.HL
 ;        sbc.HL.DE

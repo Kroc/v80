@@ -56,7 +56,7 @@
 ;       heap:   symbols and other in-flight data goes here; builds downwards
 ;       stack:  usual Z80 stack; builds downwards
 ;
-; (see the end of the file for labels for str, word, expr & code)
+; (see the end of the file for :str, :word, :expr & :code labels)
 ;
 #WORD_LEN       31                      ; maximum symbol name length
 
@@ -448,7 +448,10 @@ _popw   dec.HL                          ; pop a word off the heap into BC
 ;
 ; the buffers are placed at the end of v80's fixed code, but have to be aligned
 ; to a page. the line of code below adds the remainder of a page to the current
-; addr and then defines the buffer addresses, without emitting any bytes
+; addr and then defines the buffer addresses, *without* emitting any bytes.
+; using .a or .f would emit bytes adding unecessary padding to the program but
+; we want the unused space between here and the start of the next page
+; to be back-filled with initialisation code
 ;
 ;         $xx00         $xx80
 ;   +-----+------+------+-----+-------------------------------+---------+
@@ -477,7 +480,7 @@ $ ( :buffers + 128 )            :str    ; e.g. $2180...$21FF (128 bytes)
 
 ; the buffers begin after the end of the v80's code but are aligned to the next
 ; page so that their addresses fall within a page and cycles can be saved using
-; INC E instead of INC DE etc. the code-segment, where assembled code is
+; `inc.e` instead of `inc.de` etc. the code-segment, where assembled code is
 ; written, begins after the buffers at a page bounadry. this is also
 ; necessary for CP/M which writes files in 128-byte sectors
 ;

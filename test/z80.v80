@@ -1373,23 +1373,6 @@ $0100	; v80			; z80				; opcodes
 	sl1.l			; sl1	L			;    CB 35
 	sl1.l'			; sl1	L'			;    CB 35
 	sl1*hl			; sl1	[HL]			;    CB 36
-	sll*hl'			; sll	[HL']			;    CB 36
-	sll*ix	$00		; sll	[IX+$00]		; DD CB 00 36
-	sll*iy	$00		; sll	[IY+$00]		; FD CB 00 36
-	sll.a			; sll	A			;    CB 37
-	sll.a'			; sll	A'			;    CB 37
-	sll.b			; sll	B			;    CB 30
-	sll.b'			; sll	B'			;    CB 30
-	sll.c			; sll	C			;    CB 31
-	sll.c'			; sll	C'			;    CB 31
-	sll.d			; sll	D			;    CB 32
-	sll.d'			; sll	D'			;    CB 32
-	sll.e			; sll	E			;    CB 33
-	sll.e'			; sll	E'			;    CB 33
-	sll.h			; sll	H			;    CB 34
-	sll.h'			; sll	H'			;    CB 34
-	sll.l			; sll	L			;    CB 35
-	sll.l'			; sll	L'			;    CB 35
 	;-----------------------------------------------------------------------
 :sra	sra*hl			; sra	[HL]			;    CB 2E
 	sra*hl'			; sra	[HL']			;    CB 2E

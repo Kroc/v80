@@ -139,3 +139,5 @@ _cb     ld*IY   [ 0 ]   $cb             ; emit $CB prefix byte
         inc.IX                          ; increment virtual program-counter
 
         ret
+
+#size_of_emit   $ - :emitOpcode
