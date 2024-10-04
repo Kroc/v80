@@ -7,4 +7,4 @@
 #   define assert(_exp) (void*)NULL
 #endif
 
-#endif
+#endif /*!SEEN_POLYFILL_ASSERT_H*/

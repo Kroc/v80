@@ -10,4 +10,4 @@
 #  define MAXPATHLEN        1024
 #endif
 
-#endif
+#endif /*!SEEN_POLYFILL_SYS_PARAM_H*/

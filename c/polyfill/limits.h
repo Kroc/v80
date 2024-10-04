@@ -5,4 +5,4 @@
 #  define UINT_MAX          ~0
 #endif
 
-#endif
+#endif /*!SEEN_POLYFILL_LIMITS_H*/
