@@ -2,7 +2,6 @@
 #define SEEN_V80_PARSER_C
 
 #include "polyfill/assert.h"
-#include "polyfill/bool.h"
 #include "polyfill/ctype.h"
 #include "polyfill/libgen.h"
 #include "polyfill/limits.h"
@@ -37,16 +36,16 @@ const char  *kprogname  = NULL;     /* argv[0], path we called the program by */
 char        codesegment[0x10000];
 
 
-Bool
+int
 c_isfname(int c)
 {
     if(isalnum(c))
-        return TRUE;
+        return ~0;
     switch(c) {
         case '#': case '%': case '\'': case '@': case '^': case '_': case '`': case '{': case '}': case '~':
-            return TRUE;
+            return ~0;
     }
-    return FALSE;
+    return 0;
 }
 
 void
