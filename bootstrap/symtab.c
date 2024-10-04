@@ -2,9 +2,11 @@
 #define SEEN_V80_SYMTAB_C
 
 #include "polyfill/stdio.h"
+#include "polyfill/stdlib.h"
 
 #include "token.h"
-#include "hash.c"
+#include "radix.c"
+
 
 typedef struct {
     const char *name;
@@ -12,12 +14,16 @@ typedef struct {
     unsigned value;
 } Symbol;
 
+typedef struct {
+    Radix *root;
+} SymbolTable;
+
 
 /* SYMBOL TABLE */
 
-/* The symbol table is a generic hash of Symbol structs.  Constants and labels
+/* The symbol table is a radix tree of Symbol structs.  Constants and labels
    share the same table, and do not clash because of # and : prefixes.  The key
-   string memory used for the hashtable points directly to the key string memory
+   string memory used by the radix nodes points directly to the key string memory
    allocated in the Symbol.  */
 
 Symbol *
@@ -37,22 +43,49 @@ symbol_new(const char *name, unsigned len, unsigned value)
     return r;
 }
 
-static inline Symbol *
-symbol_push(HashTable *symbols, const char *name, unsigned len, unsigned value)
+static inline SymbolTable *
+symtab_new(void)
 {
-    return hash_push(symbols, name, len, symbol_new(name, len, value));
+    return xcalloc(1, sizeof(SymbolTable));
+}
+
+static inline Symbol *
+symtab_push_symbol(SymbolTable *table, const char *name, unsigned len, unsigned value)
+{
+    Symbol *r = symbol_new(name, len, value);
+    table->root = radix_insert(table->root, name, len, r);
+    return r;
 }
 
 Symbol *
-symbol_set(HashTable *symbols, const char *name, unsigned len, unsigned value)
+symtab_set_symbol(SymbolTable *table, const char *name, unsigned len, unsigned value)
 {
-    Symbol *match = hash_search(symbols, name, len);
+    Symbol *match = radix_search(table->root, name, len);
     const char *key = NULL;
     if(match) {
         match->value = value;
         return match;
     }
-    return symbol_push(symbols, strndup(name, len), len, value);
+    return symtab_push_symbol(table, strndup(name, len), len, value);
+}
+
+static inline Symbol *
+symtab_search_symbol(SymbolTable *table, const char *name, unsigned len)
+{
+    return radix_search(table->root, name, len);
+}
+
+static inline Token *
+symtab_push_macro(SymbolTable *table, Token *macroname, Token *macrobody)
+{
+    table->root = radix_insert(table->root, strndup(macroname->str, macroname->len), macroname->len, macrobody);
+    return macrobody;
+}
+
+static inline Token *
+symtab_search_macro(SymbolTable *table, const char *name, unsigned len)
+{
+    return radix_search(table->root, name, len);
 }
 
 #endif

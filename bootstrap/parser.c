@@ -27,12 +27,12 @@
    the parser functions to determine the proper action in context. */
 
 
-Symbol     *pc          = NULL;     /* fast access to the '$' symbol */
-HashTable  *symbols     = NULL;     /* searchable linked list of symbols */
-unsigned    skipcol     = UINT_MAX; /* skip all lines indented more than this */
-const char *zincludedir = NULL;     /* directory to load included files from */
-const char *zlabel      = NULL;     /* current non-local label name */
-const char *kprogname   = NULL;     /* argv[0], path we called the program by */
+Symbol      *pc         = NULL;     /* fast access to the '$' symbol */
+SymbolTable *symtab     = NULL;     /* searchable table of symbols */
+unsigned     skipcol    = UINT_MAX; /* skip all lines indented more than this */
+const char  *zincludedir= NULL;     /* directory to load included files from */
+const char  *zlabel     = NULL;     /* current non-local label name */
+const char  *kprogname  = NULL;     /* argv[0], path we called the program by */
 
 char        codesegment[0x10000];
 
@@ -238,14 +238,14 @@ parse_value(Token *token, unsigned *pvalue)
             break;
         case T_CONSTANT:
             code = ERR_UNDEFCONSTANT;
-            if((match = hash_search(symbols, token->str, token->len)))
+            if((match = symtab_search_symbol(symtab, token->str, token->len)))
                 *pvalue = match->value;
             break;
         case T_LABEL:
             code = ERR_UNDEFLABEL;
             if(pass == PASS_LABELADDRS)
                 *pvalue = UINT_MAX;
-            else if((match = hash_search(symbols, token->str, token->len)))
+            else if((match = symtab_search_symbol(symtab, token->str, token->len)))
                 *pvalue = match->value;
             else if(pass == PASS_LABELREFS)
                 code = ERR_NOFORWARDREF;
@@ -255,7 +255,7 @@ parse_value(Token *token, unsigned *pvalue)
             zlocal = label_local(token);
             if(pass == PASS_LABELADDRS)
                 *pvalue = UINT_MAX;
-            else if ((match = hash_search(symbols, zlocal, strlen(zlocal))))
+            else if ((match = symtab_search_symbol(symtab, zlocal, strlen(zlocal))))
                 *pvalue = match->value;
             else if(pass == PASS_LABELREFS)
                 code = ERR_NOFORWARDREF;
@@ -264,7 +264,7 @@ parse_value(Token *token, unsigned *pvalue)
             /* not recognized: nothing consumed */
             return token;
     }
-    if(!match) /* hash_search called, and returned NULL */
+    if(!match) /* symtab_search_symbol called, and returned NULL */
         err_fatal_token(code, token);
     return token->next;
 }
@@ -492,7 +492,7 @@ parse_keyword_macro(Token *token)
     we have to duplicate them otherwise files->zline they point to will be gone! */
     for(token = macroname->next; token; token = token->next)
         macrobody = stack_append(macrobody, token_dup(token));
-    hash_push(symbols, strndup(macroname->str, macroname->len), macroname->len, macrobody);
+    symtab_push_macro(symtab, macroname, macrobody);
     assert(token == NULL);
     return token;
 }
@@ -535,7 +535,7 @@ parse_set_constant(Token *constant)
     unsigned value = 0;
     assert(constant);
     token = expect_word_expression_next(constant, &value);
-    symbol_set(symbols, constant->str, constant->len, value);
+    symtab_set_symbol(symtab, constant->str, constant->len, value);
     return token;
 }
 
@@ -562,7 +562,7 @@ parse_instruction(Token *instruction)
 {
     Token *token, *next = instruction->next;
     char *zmacronamelower = zstrntolower(instruction->str, instruction->len);
-    Token *macrobody = hash_search(symbols, zmacronamelower, instruction->len);
+    Token *macrobody = symtab_search_macro(symtab, zmacronamelower, instruction->len);
     unsigned value = 0;
     if(!macrobody)
         err_fatal_token(ERR_BADINSTRUCTION, instruction);
@@ -628,18 +628,18 @@ parse_statement(Token *token)
         case T_LABEL:
             zlabel = strndup(token->str, token->len);
             if(pass == PASS_LABELADDRS) {
-                if(hash_search(symbols, token->str, token->len))
+                if(symtab_search_symbol(symtab, token->str, token->len))
                     err_fatal_token(ERR_DUPLABEL, token);
-                symbol_push(symbols, zlabel, token->len, pc->value);
+                symtab_push_symbol(symtab, zlabel, token->len, pc->value);
             }
             token = token->next;
             break;
         case T_LABEL_LOCAL:
             if(pass == PASS_LABELADDRS) {
                 const char *zlocal = label_local(token);
-                if(hash_search(symbols, zlocal, strlen(zlocal)))
+                if(symtab_search_symbol(symtab, zlocal, strlen(zlocal)))
                     err_fatal_token(ERR_DUPLABEL, token);
-                symbol_push(symbols, strdup(zlocal), strlen(zlocal), pc->value);
+                symtab_push_symbol(symtab, strdup(zlocal), strlen(zlocal), pc->value);
             }
             token = token->next;
             break;

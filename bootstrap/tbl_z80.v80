@@ -1001,7 +1001,7 @@
 .m res1.l           $cb $8d
 .m res1.l'          $cb $8d
 .m res2*hl          $cb $96
-.m res2*hl          $cb $96
+.m res2*hl'         $cb $96
 .m res2*ix      $dd $cb .b $96
 .m res2*iy      $fd $cb .b $96
 .m res2.a           $cb $97
@@ -1432,7 +1432,7 @@
 .m sl1.h'           $cb $34
 .m sl1.l            $cb $35
 .m sl1.l'           $cb $35
-.m sl1*hl           $cb $36
+.m sll*hl           $cb $36
 .m sll*hl'          $cb $36
 .m sll*ix       $dd $cb .b $36
 .m sll*iy       $fd $cb .b $36
