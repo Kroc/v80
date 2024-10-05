@@ -39,7 +39,7 @@ err_print(FILE *stream, const char *err, const char *msg, unsigned len)
 void
 err_fatal(enum ErrCode code, const char *msg, unsigned len, unsigned col)
 {
-    fprintf(stderr, "v80: %s:%d", files->zfname, files->lineno);
+    fprintf(stderr, "%s: %s:%d", kprogname, files->zfname, files->lineno);
     if(col)
         fprintf(stderr, ".%d", col);
     fprintf(stderr, ": ERROR: ");

@@ -18,7 +18,7 @@ xfopen(const char *zpath, const char *zmode)
     FILE *r = fopen(zpath, zmode);
     if(r != NULL)
         return r;
-    fprintf(stderr, "v80: %s: unable to open file\n", zpath);
+    fprintf(stderr, "%s: %s: unable to open file\n", kprogname, zpath);
     exit(EXIT_USAGE);
 }
 
@@ -49,7 +49,7 @@ file_pop(File *stale)
 {
     File *r = stale->next;
     if(stale->stream != stdin && stale->stream != stdout && stale->stream != stderr && fclose(stale->stream) != 0)
-        fprintf(stderr, "v80: %s:%d: WARNING: file failed to close", files->zfname, files->lineno);
+        fprintf(stderr, "%s: %s:%d: WARNING: file failed to close", kprogname, files->zfname, files->lineno);
     xfree((void *)stale->zfname);
     xfree(stale);
     return r;

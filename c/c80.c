@@ -130,7 +130,7 @@ main(int argc, const char *argv[])
             } else if(streq(arg, "-q") || streq(arg, "--quiet")) {
                 save_reporting = 0;
             } else if(streq(arg, "--version")) {
-                printf("v80.c %s\n", kversion);
+                printf("c80 %s\n", kversion);
                 printf("%s\nWritten by %s\n", kcopyleft, kauthor);
                 exit(EXIT_SUCCESS);
             } else {
@@ -150,7 +150,7 @@ main(int argc, const char *argv[])
     zincludedir = dirname(strdup(zpathin));
 
     /*  Banner */
-    printf("; v80.c %s\n", kversion);
+    printf("; c80 %s\n", kversion);
     printf("; %s\n", kcopyleft);
     printf("; Written by %s\n\n", kauthor);
 
