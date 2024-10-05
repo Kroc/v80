@@ -111,7 +111,7 @@ main(int argc, const char *argv[])
     /* Initialize globals */
     kprogname = *argv++; --argc;
     symtab = symtab_new();
-    codesegment = xmalloc(0x10000);
+    codesegment = xmalloc(CODESEGMENT_SIZE);
 
     /* Parse command line options */
     while(argc > 0) {
@@ -186,7 +186,7 @@ main(int argc, const char *argv[])
         files = file_pop(files);
 
     printf(";  CODE: %6d bytes\n", *pc);
-    printf(";  FREE: %6d bytes\n", (unsigned)sizeof(codesegment) - *pc);
+    printf(";  FREE: %6d bytes\n", CODESEGMENT_SIZE - *pc);
 
     return EXIT_SUCCESS;
 }

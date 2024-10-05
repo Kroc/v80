@@ -12,6 +12,7 @@
 
 #include "polyfill/stdio.h"
 
+#define CODESEGMENT_SIZE    0x10000
 #define LABEL_MAXLEN        31
 #define LINE_MAXLEN         127
 #define LINETOOLONG_ERRSIZE 20
