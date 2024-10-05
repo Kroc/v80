@@ -1,5 +1,4 @@
-#ifndef SEEN_V80_PARSER_C
-#define SEEN_V80_PARSER_C
+#include "c80.h"
 
 #include "polyfill/assert.h"
 #include "polyfill/ctype.h"
@@ -10,14 +9,6 @@
 #include "polyfill/string.h"
 #include "polyfill/sys/param.h"
 
-#include "error.c"
-#include "file.h"
-#include "stack.c"
-#include "symtab.c"
-#include "token.h"
-
-#define LABEL_MAXLEN        31
-
 
 /* PARSER */
 
@@ -26,14 +17,8 @@
    the parser functions to determine the proper action in context. */
 
 
-Symbol      *pc         = NULL;     /* fast access to the '$' symbol */
-SymbolTable *symtab     = NULL;     /* searchable table of symbols */
 unsigned     skipcol    = UINT_MAX; /* skip all lines indented more than this */
-const char  *zincludedir= NULL;     /* directory to load included files from */
 const char  *zlabel     = NULL;     /* current non-local label name */
-const char  *kprogname  = NULL;     /* argv[0], path we called the program by */
-
-char        codesegment[0x10000];
 
 
 int
@@ -205,7 +190,6 @@ require_byte_token(unsigned value, Token *token)
 */
 
 Token *parse_expression(Token *token, unsigned *pvalue);
-void parse_file(File *file);
 
 const char *
 label_local(Token *token)
@@ -383,7 +367,7 @@ expect_word_expression(Token *token, Token *expression, unsigned *pvalue)
     return token;
 }
 
-static inline Token *
+static Token *
 expect_word_expression_next(Token *token, unsigned *pvalue)
 {
     assert(token && token->next);
@@ -714,5 +698,3 @@ parse_file(File *file)
     if(reporting)
         printf(";------------------------------------\n");
 }
-
-#endif

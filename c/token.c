@@ -1,17 +1,8 @@
-#ifndef SEEN_V80_TOKEN_C
-#define SEEN_V80_TOKEN_C
+#include "c80.h"
 
 #include "polyfill/ctype.h"
 #include "polyfill/stdlib.h"
 #include "polyfill/string.h"
-
-#include "error.c"
-#include "stack.c"
-#include "token.h"
-
-#define LINETOOLONG_ERRSIZE 20
-#define LINE_MAXLEN         127
-#define TOKEN_MAXLEN        31
 
 
 /* TOKENIZER */
@@ -21,12 +12,6 @@
    tokenize_line() returns a single-linked list of Token structs in the same
    order they were encountered while reading the input line. */
 
-
-static inline void
-err_fatal_token(enum ErrCode code, Token *token)
-{
-    err_fatal(code, token->str, token->len, token->col);
-}
 
 /* Return the numeric value of the ASCII number in `zbuf` in the given
    `base`, otherwise a fatal error if the entire number cannot be parsed. */
@@ -54,7 +39,7 @@ token_new(enum type type, const char *begin, const char *str, unsigned len, unsi
     return r;
 }
 
-static Token *
+Token *
 token_dup(Token *token)
 {
     Token *r = xmalloc(sizeof *r);
@@ -67,7 +52,7 @@ token_dup(Token *token)
     return r;
 }
 
-static Token *
+Token *
 token_free(Token *stale)
 {
 #ifndef NDEBUG
@@ -79,13 +64,13 @@ token_free(Token *stale)
     return xfree(stale);
 }
 
-static inline Token *
+static Token *
 token_new_number(const char *begin, const char *after, unsigned number)
 {
     return token_new(T_NUMBER, begin, begin, after - begin, number);
 }
 
-static inline Token *
+static Token *
 token_new_string(enum type type, const char *begin, const char *str, unsigned len)
 {
     return token_new(type, begin, str, len, 0);
@@ -109,7 +94,7 @@ token_append_charliteral(Token **ptokens, const char *begin)
     return begin + 2;
 }
 
-static inline void
+static void
 token_append_cond(Token **ptokens, const char *begin, unsigned len, int cond)
 {
     *ptokens = stack_append(*ptokens, token_new(T_COND, begin, begin, len, (unsigned)cond));
@@ -173,7 +158,7 @@ token_append_strliteral(Token **ptokens, const char *begin)
     return ++end;
 }
 
-static inline void
+static void
 token_append_type(Token **ptokens, enum type type, const char *begin, unsigned len)
 {
     *ptokens = stack_append(*ptokens, token_new_string(type, begin, begin, len));
@@ -197,7 +182,7 @@ elide_longline(char *zline)
 
    If an invalid token is detected, then bail out with an appropriate fatal
    error to provide a diagnostic with appropriate context. */
-static Token *
+Token *
 tokenize_line(const char *zline)
 {
     Token *r = NULL;
@@ -273,7 +258,3 @@ tokenize_line(const char *zline)
     }
     return r;
 }
-
-
-
-#endif

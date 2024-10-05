@@ -1,26 +1,10 @@
-/* This file: */
 static const char *kversion  = "v0.1";
 static const char *kcopyleft = "Copyright (C) 2024, MIT License";
 static const char *kauthor   = "Gary V. Vaughan <gary@gnu.org>";
 
 static const char *kusage = "[-i INCLUDEPATH] INPUTPATH [OUTPUTPATH]";
 
-
-#ifndef __GNUC__
-    /* We're not using GNU C, elide __attribute__ */
-#  define  __attribute__(x)  /*NOTHING*/
-#endif
-
-#if _POSIX_C_SOURCE < 200112L
-    /* We're not using C99, elide inline keyword */
-#  define inline
-    /* and use some of our own functions expected to be missing in C89 */
-#  define NO_GETLINE
-#  define NO_STRDUP
-#  define NO_STRLCPY
-#  define NO_STRNDUP
-#  define NO_STRTOUL
-#endif
+#include "c80.h"
 
 #include "polyfill/libgen.h"
 #include "polyfill/stdio.h"
@@ -32,16 +16,18 @@ struct extmap {
     const char *extin, *extout;
 };
 
-static enum pass { PASS_LABELADDRS, PASS_GENERATECODE, PASS_LABELREFS } pass = PASS_LABELADDRS;
 
-static int reporting = ~0;
+Symbol      *pc         = NULL;     /* fast access to the '$' symbol */
+SymbolTable *symtab     = NULL;     /* searchable table of symbols */
+const char  *zincludedir= NULL;     /* directory to load included files from */
+const char  *kprogname  = NULL;     /* argv[0], path we called the program by */
+File        *files      = NULL;     /* current file on top of include stack */
+
+char        *codesegment;
 
 
-#include "file.c"
-#include "symtab.c"
-#include "token.c"
-#include "parser.c"
-
+enum pass    pass       = PASS_LABELADDRS;
+int          reporting  = ~0;
 
 static struct extmap extmap[] = {
     {".v65", ".prg"},
@@ -93,7 +79,7 @@ static const char *khelpmsg[] = {
     NULL,
 };
 
-__attribute__((noreturn)) void
+void
 err_usage(const char *kprogname)
 {
     fprintf(stderr, "Usage: %s %s\n", kprogname, kusage);
@@ -117,6 +103,7 @@ main(int argc, const char *argv[])
     /* Initialize globals */
     kprogname = *argv++; --argc;
     symtab = symtab_new();
+    codesegment = xmalloc(0x10000);
 
     /* Parse command line options */
     while(argc > 0) {
@@ -195,8 +182,6 @@ main(int argc, const char *argv[])
 
     printf(";  CODE: %6d bytes\n", pc->value);
     printf(";  FREE: %6d bytes\n", (unsigned)sizeof(codesegment) - pc->value);
-#ifndef NDEBUG
-    files_dump(files, "FILES");
-#endif
+
     return EXIT_SUCCESS;
 }

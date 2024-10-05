@@ -1,12 +1,8 @@
-#ifndef SEEN_V80_FILE_C
-#define SEEN_V80_FILE_C
+#include "c80.h"
 
 #include "polyfill/stdio.h"
 #include "polyfill/stdlib.h"
 #include "polyfill/sys/stat.h"
-
-#include "error.c"
-#include "file.h"
 
 
 /* FILES */
@@ -16,7 +12,7 @@
    stack until parsing of every line is complete, then pop to revert to the
    previous file and resume from where we left off. */
 
-static FILE *
+FILE *
 xfopen(const char *zpath, const char *zmode)
 {
     FILE *r = fopen(zpath, zmode);
@@ -26,7 +22,7 @@ xfopen(const char *zpath, const char *zmode)
     exit(EXIT_USAGE);
 }
 
-static FILE *
+FILE *
 file_reader(const char *zincludepath)
 {
     FILE *r = xfopen(zincludepath, "r");
@@ -37,7 +33,7 @@ file_reader(const char *zincludepath)
     return r;
 }
 
-static File *
+File *
 file_push(const char *zfname, FILE *stream)
 {
     File *r   = xmalloc(sizeof *r);
@@ -48,7 +44,7 @@ file_push(const char *zfname, FILE *stream)
     return ((files = r));
 }
 
-static File *
+File *
 file_pop(File *stale)
 {
     File *r = stale->next;
@@ -58,22 +54,3 @@ file_pop(File *stale)
     xfree(stale);
     return r;
 }
-
-#ifndef NDEBUG
-static void
-files_dump(File *head, const char *title)
-{
-    if(title) {
-        fprintf(stderr, "%s\n", title);
-        if(!files)
-            fprintf(stderr, "\tNULL\n");
-    }
-    if(head) {
-        fprintf(stderr, "\t%s=%d\n", head->zfname, head->lineno);
-        files_dump(head->next, NULL);
-    }
-}
-#endif
-
-
-#endif
