@@ -1,4 +1,4 @@
-static const char *kversion  = "v0.1";
+static const char *kversion  = "v0.2";
 static const char *kcopyleft = "Copyright (C) 2024, MIT License";
 static const char *kauthor   = "Gary V. Vaughan <gary@gnu.org>";
 
@@ -86,6 +86,14 @@ err_usage(const char *kprogname)
     exit(EXIT_USAGE);
 }
 
+void
+show_version(const char *prefix)
+{
+    printf("%sc80 %s\n", prefix, kversion);
+    printf("%s%s\n", prefix, kcopyleft);
+    printf("%sWritten by %s\n\n", prefix, kauthor);
+}
+
 /* Process any command line arguments or diagnose errors in the provided
    arguments, then read and parse the entire input twice.  This is much
    simpler than recording possible forward references, and then back-filling
@@ -130,8 +138,7 @@ main(int argc, const char *argv[])
             } else if(streq(arg, "-q") || streq(arg, "--quiet")) {
                 save_reporting = 0;
             } else if(streq(arg, "--version")) {
-                printf("c80 %s\n", kversion);
-                printf("%s\nWritten by %s\n", kcopyleft, kauthor);
+                show_version("");
                 exit(EXIT_SUCCESS);
             } else {
                 fprintf(stderr, "%s: unrecognized option '%s'\n", kprogname, arg);
@@ -150,9 +157,7 @@ main(int argc, const char *argv[])
     zincludedir = dirname(strdup(zpathin));
 
     /*  Banner */
-    printf("; c80 %s\n", kversion);
-    printf("; %s\n", kcopyleft);
-    printf("; Written by %s\n\n", kauthor);
+    show_version("; ");
 
     /* Pass 1: to populate label addresses */
     pass = PASS_LABELADDRS;
