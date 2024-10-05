@@ -38,11 +38,11 @@ emit_byte(int c)
 {
     if(pass == PASS_GENERATECODE) {
 #ifndef NDEBUG
-        fprintf(stderr, "$%04x = $%02x ; %s", pc->value, c, files->zline);
+        fprintf(stderr, "$%04x = $%02x ; %s", *pc, c, files->zline);
 #endif
-        codesegment[pc->value] = (char)c;
+        codesegment[*pc] = (char)c;
     }
-    ++pc->value;
+    ++(*pc);
 }
 
 void
@@ -217,19 +217,19 @@ parse_value(Token *token, unsigned *pvalue)
             *pvalue = token->num;
             break;
         case T_DOLLAR:
-            *pvalue = pc->value;
+            *pvalue = *pc;
             break;
         case T_CONSTANT:
             code = ERR_UNDEFCONSTANT;
             if((match = symtab_search_symbol(symtab, token->str, token->len)))
-                *pvalue = match->value;
+                *pvalue = *match;
             break;
         case T_LABEL:
             code = ERR_UNDEFLABEL;
             if(pass == PASS_LABELADDRS)
                 *pvalue = UINT_MAX;
             else if((match = symtab_search_symbol(symtab, token->str, token->len)))
-                *pvalue = match->value;
+                *pvalue = *match;
             else if(pass == PASS_LABELREFS)
                 code = ERR_NOFORWARDREF;
             break;
@@ -239,7 +239,7 @@ parse_value(Token *token, unsigned *pvalue)
             if(pass == PASS_LABELADDRS)
                 *pvalue = UINT_MAX;
             else if ((match = symtab_search_symbol(symtab, zlocal, strlen(zlocal))))
-                *pvalue = match->value;
+                *pvalue = *match;
             else if(pass == PASS_LABELREFS)
                 code = ERR_NOFORWARDREF;
             break;
@@ -381,7 +381,7 @@ parse_keyword_align(Token *keyword)
     unsigned align;
     assert(keyword);
     token = expect_word_expression(keyword, keyword->next, &align);
-    while(pc->value % align)
+    while(*pc % align)
         emit_byte(0);
     assert(token);
     return token;
@@ -587,7 +587,7 @@ parse_instruction(Token *instruction)
                     err_fatal_token(ERR_EXPECTEXPRESSION, instruction);
                 token = next;
                 next = parse_expression(token, &value);
-                emit_byte(value - pc->value - 1);
+                emit_byte(value - *pc - 1);
                 macrobody = macrobody->next;
                 break;
             default:
@@ -613,7 +613,7 @@ parse_statement(Token *token)
             if(pass == PASS_LABELADDRS) {
                 if(symtab_search_symbol(symtab, token->str, token->len))
                     err_fatal_token(ERR_DUPLABEL, token);
-                symtab_push_symbol(symtab, zlabel, token->len, pc->value);
+                symtab_push_symbol(symtab, zlabel, token->len, *pc);
             }
             token = token->next;
             break;
@@ -622,12 +622,12 @@ parse_statement(Token *token)
                 const char *zlocal = label_local(token);
                 if(symtab_search_symbol(symtab, zlocal, strlen(zlocal)))
                     err_fatal_token(ERR_DUPLABEL, token);
-                symtab_push_symbol(symtab, strdup(zlocal), strlen(zlocal), pc->value);
+                symtab_push_symbol(symtab, strdup(zlocal), strlen(zlocal), *pc);
             }
             token = token->next;
             break;
         case T_NUMBER:
-            pc->value = token->num;
+            *pc = token->num;
             token = token->next;
             break;
         case T_INSTRUCTION:
@@ -652,9 +652,9 @@ parse_line(Token *token)
         case T_CONSTANT: token = parse_set_constant(token);  break;
         case T_KW_ALIGN: token = parse_keyword_align(token); break;
         case T_DOLLAR:
-            token = expect_word_expression_next(token, &pc->value);
+            token = expect_word_expression_next(token, pc);
 #ifndef NDEBUG
-            fprintf(stderr, "   $ := $%04x\t; %s", pc->value, files->zline);
+            fprintf(stderr, "   $ := $%04x\t; %s", *pc, files->zline);
 #endif
             /*FALLTHROUGH*/
         default:

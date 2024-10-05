@@ -240,31 +240,12 @@ radix_search(Radix *node, const char *key, unsigned keylen)
 
 /* SYMBOL TABLE */
 
-/* The symbol table is a radix tree of Symbol structs.  Constants and labels
-   share the same table, and do not clash because of # and : prefixes.  The key
-   string memory used by the radix nodes points directly to the key string memory
-   allocated in the Symbol.  */
+/* The symbol table is a radix tree of Symbol values.  Constants and labels
+   share the same table, and do not clash because of # and : prefixes. */
 
 struct symtab {
     Radix *root;
 };
-
-Symbol *
-symbol_new(const char *name, unsigned len, unsigned value)
-{
-    Symbol *r = xmalloc(sizeof *r);
-    r->name  = name;
-    r->len = len;
-    r->value  = value;
-
-    if(reporting) {
-        if(*name == '#')
-            printf("%-32s$%04X\n", name, value);
-        else if(*name == ':')
-            printf("$%04X %.*s\n", value, len, name);
-    }
-    return r;
-}
 
 SymbolTable *
 symtab_new(void)
@@ -275,8 +256,16 @@ symtab_new(void)
 Symbol *
 symtab_push_symbol(SymbolTable *table, const char *name, unsigned len, unsigned value)
 {
-    Symbol *r = symbol_new(name, len, value);
+    Symbol *r = xmalloc(sizeof *r);
+    *r = value;
     table->root = radix_insert(table->root, name, len, r);
+
+    if(reporting) {
+        if(*name == '#')
+            printf("%-32s$%04X\n", name, value);
+        else if(*name == ':')
+            printf("$%04X %.*s\n", value, len, name);
+    }
     return r;
 }
 
@@ -286,7 +275,7 @@ symtab_set_symbol(SymbolTable *table, const char *name, unsigned len, unsigned v
     Symbol *match = radix_search(table->root, name, len);
     const char *key = NULL;
     if(match) {
-        match->value = value;
+        *match = value;
         return match;
     }
     return symtab_push_symbol(table, strndup(name, len), len, value);

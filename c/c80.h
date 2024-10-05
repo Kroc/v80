@@ -37,11 +37,7 @@ extern File *file_pop(File *stale);
 extern FILE *file_reader(const char *zincludepath);
 extern FILE *xfopen(const char *zpath, const char *zmode);
 
-typedef struct {
-    const char *name;
-    unsigned len;
-    unsigned value;
-} Symbol;
+typedef unsigned Symbol;
 
 enum type {
     T_COND,
@@ -145,7 +141,6 @@ extern void * stack_search(void *stack, const char *key, unsigned len);
 
 typedef struct symtab SymbolTable;
 
-extern Symbol       *symbol_new(const char *name, unsigned len, unsigned value);
 extern SymbolTable  *symtab_new(void);
 extern Symbol       *symtab_push_symbol(SymbolTable *table, const char *name, unsigned len, unsigned value);
 extern Symbol       *symtab_set_symbol(SymbolTable *table, const char *name, unsigned len, unsigned value);

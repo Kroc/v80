@@ -163,7 +163,7 @@ main(int argc, const char *argv[])
 
     /* Pass 2: to write to the codesegment */
     pass = PASS_GENERATECODE;
-    pc->value = 0;
+    *pc = 0;
     parse_file(file_push(strdup(zpathin), file_reader(zpathin)));
 
     /* Copy codesegment bytes to disk. */
@@ -173,15 +173,15 @@ main(int argc, const char *argv[])
         zpathout = extreplace(zpathin);
     out = file_push(zpathout, xfopen(zpathout, "wb"));
 
-    for(i = 0x100; i < pc->value || i % 128; ++i)
+    for(i = 0x100; i < *pc || i % 128; ++i)
         fputc(codesegment[i], out->stream);
 
     /* Show a warning for any files that wouldn't close before exiting. */
     while(files)
         files = file_pop(files);
 
-    printf(";  CODE: %6d bytes\n", pc->value);
-    printf(";  FREE: %6d bytes\n", (unsigned)sizeof(codesegment) - pc->value);
+    printf(";  CODE: %6d bytes\n", *pc);
+    printf(";  FREE: %6d bytes\n", (unsigned)sizeof(codesegment) - *pc);
 
     return EXIT_SUCCESS;
 }
