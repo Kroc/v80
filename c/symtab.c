@@ -13,13 +13,6 @@
    don't need separate copies for File * and for Token *.  */
 
 void *
-stack_push(void *stack, void *node)
-{
-    ((Stack *)node)->next = stack;
-    return node;
-}
-
-void *
 stack_append(void *stack, void *node)
 {
     if(stack) {
@@ -30,18 +23,6 @@ stack_append(void *stack, void *node)
         return stack;
     }
     return node;
-}
-
-void *
-stack_search(void *stack, const char *key, unsigned len)
-{
-    Stack *node;
-    if(len == 0)
-        len = strlen(key);
-    for(node = stack; node; node = node->next)
-        if(node->len == len && strneq(node->key, key, len))
-            return node;
-    return NULL;
 }
 
 

@@ -131,13 +131,9 @@ extern void err_fatal_token(enum ErrCode code, Token *token);
 
 typedef struct stack {
     struct stack *next;
-    const char *key;
-    unsigned len;
 } Stack;
 
-extern void * stack_push(void *stack, void *node);
 extern void * stack_append(void *stack, void *node);
-extern void * stack_search(void *stack, const char *key, unsigned len);
 
 typedef struct symtab SymbolTable;
 

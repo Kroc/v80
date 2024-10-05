@@ -13,7 +13,7 @@
 /* PARSER */
 
 /* Implements a recursive descent parser for the GRAMMAR in the comment further
-   down.  Having successfully read and tokenized one line of input, use traverse
+   down.  Having successfully read and tokenized one line of input, traverse
    the parser functions to determine the proper action in context. */
 
 
