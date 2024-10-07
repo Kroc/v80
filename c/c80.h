@@ -124,7 +124,6 @@ enum ErrCode {
     ERR_NUMBEROFENTRIES
 };
 
-extern void err_print(FILE *stream, const char *err, const char *msg, unsigned len);
 extern void err_fatal(enum ErrCode code, const char *msg, unsigned len, unsigned col);
 extern void err_fatal_token(enum ErrCode code, Token *token);
 #define err_fatal_str(_code, _str)      (err_fatal(_code, _str, 0, 0))

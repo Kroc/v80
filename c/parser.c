@@ -14,8 +14,8 @@
    the parser functions to determine the proper action in context. */
 
 
-unsigned     skipcol    = UINT_MAX; /* skip all lines indented more than this */
-const char  *zlabel     = NULL;     /* current non-local label name */
+static unsigned      skipcol    = UINT_MAX; /* skip all lines indented more than this */
+static const char   *zlabel     = NULL;     /* current non-local label name */
 
 
 /* Return a copy of no more than SRCLEN characers from ZSRC, with all uppercase
@@ -33,7 +33,7 @@ zstrntolower(const char *zsrc, unsigned srclen)
     return buf;
 }
 
-void
+static void
 emit_byte(int c)
 {
     if(pass == PASS_GENERATECODE) {
@@ -45,14 +45,14 @@ emit_byte(int c)
     ++(*pc);
 }
 
-void
+static void
 emit_word(unsigned value)
 {
     emit_byte(value & 0xff);
     emit_byte((value >> 8) & 0xff);
 }
 
-int
+static int
 require_byte_token(unsigned value, Token *token)
 {
     if(value != (value & 0xff)) {
@@ -159,9 +159,9 @@ require_byte_token(unsigned value, Token *token)
       ;
 */
 
-Token *parse_expression(Token *token, unsigned *pvalue);
+static Token *parse_expression(Token *token, unsigned *pvalue);
 
-const char *
+static const char *
 label_local(Token *token)
 {
     static char zlabelname[LABEL_MAXLEN + 1];
@@ -175,7 +175,7 @@ label_local(Token *token)
     return zlabelname;
 }
 
-Token *
+static Token *
 parse_value(Token *token, unsigned *pvalue)
 {
     enum ErrCode code = ERR_NUMBEROFENTRIES;
@@ -222,7 +222,7 @@ parse_value(Token *token, unsigned *pvalue)
     return token->next;
 }
 
-Token *
+static Token *
 parse_term(Token *token, unsigned *pvalue)
 {
     assert(token && pvalue);
@@ -243,7 +243,7 @@ parse_term(Token *token, unsigned *pvalue)
     return parse_value(token, pvalue);
 }
 
-Token *
+static Token *
 parse_factor(Token *token, unsigned *pvalue)
 {
     unsigned value = 0;
@@ -272,7 +272,7 @@ parse_factor(Token *token, unsigned *pvalue)
     return token;
 }
 
-Token *
+static Token *
 parse_expression(Token *token, unsigned *pvalue)
 {
     assert(token && pvalue);
@@ -323,7 +323,7 @@ parse_expression(Token *token, unsigned *pvalue)
     return token;
 }
 
-Token *
+static Token *
 expect_word_expression(Token *token, Token *expression, unsigned *pvalue)
 {
     assert(token && expression && pvalue);
@@ -344,7 +344,7 @@ expect_word_expression_next(Token *token, unsigned *pvalue)
     return expect_word_expression(token, token->next, pvalue);
 }
 
-Token *
+static Token *
 parse_keyword_align(Token *keyword)
 {
     Token *token = NULL;
@@ -357,7 +357,7 @@ parse_keyword_align(Token *keyword)
     return token;
 }
 
-Token *
+static Token *
 parse_bytes(Token *bytes)
 {
     Token *next = NULL;
@@ -376,7 +376,7 @@ parse_bytes(Token *bytes)
     return next;
 }
 
-Token *
+static Token *
 parse_keyword_bytes(Token *keyword)
 {
     unsigned value = 0;
@@ -397,7 +397,7 @@ parse_keyword_bytes(Token *keyword)
     return token;
 }
 
-Token *
+static Token *
 parse_keyword_fill(Token *keyword)
 {
     Token *token = NULL;
@@ -411,7 +411,7 @@ parse_keyword_fill(Token *keyword)
     return token;
 }
 
-Token *
+static Token *
 parse_keyword_include(Token *token)
 {
     Token *basename = token->next;
@@ -425,7 +425,7 @@ parse_keyword_include(Token *token)
     return basename->next;
 }
 
-Token *
+static Token *
 parse_keyword_macro(Token *token)
 {
     Token *macroname, *macrobody = NULL;
@@ -450,7 +450,7 @@ parse_keyword_macro(Token *token)
     return token;
 }
 
-Token *
+static Token *
 parse_keyword_words(Token *token)
 {
     unsigned value = 0;
@@ -467,7 +467,7 @@ parse_keyword_words(Token *token)
     return token;
 }
 
-Token *
+static Token *
 parse_keywords(Token *token)
 {
     switch(token->type) {
@@ -481,7 +481,7 @@ parse_keywords(Token *token)
     return token ? parse_keywords(token) : NULL;
 }
 
-Token *
+static Token *
 parse_set_constant(Token *constant)
 {
     Token *token = NULL;
@@ -492,7 +492,7 @@ parse_set_constant(Token *constant)
     return token;
 }
 
-Token *
+static Token *
 parse_condition(Token *condition)
 {
     Token *token = NULL;
@@ -510,7 +510,7 @@ parse_condition(Token *condition)
     return token;
 }
 
-Token *
+static Token *
 parse_instruction(Token *instruction)
 {
     Token *token, *next = instruction->next;
@@ -574,7 +574,7 @@ parse_instruction(Token *instruction)
     return next;
 }
 
-Token *
+static Token *
 parse_statement(Token *token)
 {
     switch(token->type) {
@@ -610,7 +610,7 @@ parse_statement(Token *token)
     return token ? parse_statement(token) : NULL;
 }
 
-void
+static void
 parse_line(Token *token)
 {
     enum pass saved = pass;

@@ -11,7 +11,7 @@
    bail out with a diagnostic that includes the file name, position and an error
    message, along with context about the current token if provided. */
 
-void
+static void
 err_print(FILE *stream, const char *err, const char *msg, unsigned len)
 {
     fprintf(stream, "%s", err);

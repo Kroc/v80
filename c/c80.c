@@ -35,7 +35,7 @@ static struct extmap extmap[] = {
     {NULL,   "v.out"}
 };
 
-const char *
+static const char *
 extreplace(const char *zpathin)
 {
     const char *dotin = strchr(zpathin, '.');
@@ -79,14 +79,14 @@ static const char *khelpmsg[] = {
     NULL,
 };
 
-void
+static void
 err_usage(const char *kprogname)
 {
     fprintf(stderr, "Usage: %s %s\n", kprogname, kusage);
     exit(EXIT_USAGE);
 }
 
-void
+static void
 show_version(const char *prefix)
 {
     printf("%sc80 %s\n", prefix, kversion);

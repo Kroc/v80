@@ -59,7 +59,7 @@ typedef struct radixnode {
    We save the full matching key and data for the node in `item`, and in `p`
    the additional characters of the partial search key needed to match this
    node beyond those characters in parent nodes that led us here. */
-Radix *
+static Radix *
 radixnode_new(Radix *next, Radix *child, const char *p, unsigned plen, void *data, const char *key, unsigned keylen)
 {
     Radix *r = xmalloc(sizeof *r);
@@ -96,12 +96,12 @@ radixnode_split(Radix *child, const char *p, unsigned plen, RadixItem *item)
 }
 
 /* Declare mutually recursive function */
-Radix *radix_insert_child(Radix *next, Radix *node, const char *p, unsigned plen, void *data, const char *key, unsigned keylen);
+static Radix *radix_insert_child(Radix *next, Radix *node, const char *p, unsigned plen, void *data, const char *key, unsigned keylen);
 
 /* Try to insert a new node in asciibetical order along the `next` chain from
    `root`, unless the partial key has the same first character as one of the
    existing nodes in the `next` chain. */
-Radix *
+static Radix *
 radix_insert_next(Radix *root, const char *p, unsigned plen, void *data, const char *key, unsigned keylen)
 {
     Radix *node = root, *prev = NULL;
@@ -129,7 +129,7 @@ radix_insert_next(Radix *root, const char *p, unsigned plen, void *data, const c
 
 /* Insert a new node into the `child` element of `node`, either by splitting
    `node` if `p` is a substring, or appending to the `child` chain otherwise. */
-Radix *
+static Radix *
 radix_insert_child(Radix *root, Radix *node, const char *p, unsigned plen, void *data, const char *key, unsigned keylen)
 {
     const char *k = p, *afterk = p + plen;
@@ -171,7 +171,7 @@ radix_insert(Radix *root, const char *key, unsigned keylen, void *data)
 
 /* Return the `data` originally inserted along with matching `key`, or NULL
    if no nodes match provided `key`. */
-void *
+static void *
 radix_search(Radix *node, const char *key, unsigned keylen)
 {
     const char *afterk = key + keylen;
