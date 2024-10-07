@@ -1,7 +1,6 @@
 #ifndef SEEN_POLYFILL_STDLIB_H
 #define SEEN_POLYFILL_STDLIB_H
 
-#include <stdio.h>
 #include <stdlib.h>
 
 #ifndef NULL
@@ -40,59 +39,5 @@ zstrtoul(const char *zbuf, char **pafter, int base)
 #define strtoul zstrtoul
 
 #endif /*NO_STRTOUL*/
-
-#define xfree(_stale)       xrefresh(_stale, NULL)
-#define xmalloc(_nbytes)    xhavemem(malloc(_nbytes))
-
-extern const char *kprogname;
-
-/* Wrappers for the system memory allocator, with more guarantees:
-   - immediately bail out when allocater is out of memory
-   - ignore xfree(NULL)
-   - mem = xfree(mem) sets mem to NULL after free to avoid double free
-   - xrealloc(NULL, n) calls xmalloc(n)
-   - xrealloc(mem, 0) calls xfree(mem) */
-
-static void *
-xrefresh(void *stale, const void *fresh)
-{
-    if(stale && (stale != fresh))
-        free(stale);
-    return (void *)fresh;
-}
-
-static void *
-xhavemem(void *pmem)
-{
-    if(pmem)
-        return pmem;
-    fprintf(stderr, "%s: Out of memory\n", kprogname);
-    exit(EXIT_FAILURE);
-}
-
-static void
-xbzero(char *pmem, unsigned nbytes)
-{
-    char *after = pmem + nbytes;
-    while(pmem < after)
-        *pmem++ = 0;
-}
-
-static void *
-xcalloc(unsigned nitems, unsigned itemsize)
-{
-    unsigned nbytes = nitems * itemsize, i;
-    char *pmem = (char *)xmalloc(nbytes);
-    xbzero(pmem, nbytes);
-    return pmem;
-}
-
-static void *
-xrealloc(void *pmem, unsigned nbytes)
-{
-    if(!nbytes)
-        return xfree(pmem);
-    return xhavemem(pmem ? realloc(pmem, nbytes) : malloc(nbytes));
-}
 
 #endif /*!SEEN_POLYFILL_STDLIB_H*/

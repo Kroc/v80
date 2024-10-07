@@ -145,6 +145,11 @@ extern Symbol       *symtab_search_symbol(SymbolTable *table, const char *name, 
 extern Token        *symtab_push_macro(SymbolTable *table, Token *macroname, Token *macrobody);
 extern Token        *symtab_search_macro(SymbolTable *table, const char *name, unsigned len);
 
+extern void         *xfree(void *stale);
+extern void         *xcalloc(unsigned nitems, unsigned itemsize);
+extern void         *xmalloc(unsigned nbytes);
+extern void         *xrealloc(void *pmem, unsigned nbytes);
+
 extern char         *codesegment;
 extern File         *files;
 extern const char   *kprogname;
@@ -157,5 +162,7 @@ extern void parse_file(File *file);
 enum pass { PASS_LABELADDRS, PASS_GENERATECODE, PASS_LABELREFS };
 
 extern enum pass pass;
+
+
 
 #endif /*!SEEN_C80_H*/

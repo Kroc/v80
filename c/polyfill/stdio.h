@@ -3,6 +3,9 @@
 
 #include <stdio.h>
 
+#include "stdlib.h"
+
+
 #ifdef NO_SIZE_T
 #  define NO_GETLINE
 #  define size_t unsigned
@@ -30,7 +33,11 @@ zgetdelim(char **pzline, size_t *pbufsiz, int delim, FILE *instream)
     while((c = fgetc(instream)) != EOF) {
         if(i == last) {
             last += GETDELIM_CHUNKSIZE;
-            *pzline = xrealloc(*pzline, *pbufsiz = last + 1);
+            *pzline = realloc(*pzline, *pbufsiz = last + 1);
+            if(!*pzline) {
+                fprintf(stderr, "polyfill/stdio.h:zgetdelim: Out of memory\n");
+                exit(EXIT_FAILURE);
+            }
         }
         (*pzline)[i++] = c;
         if(c == delim)

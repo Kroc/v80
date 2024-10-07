@@ -6,7 +6,7 @@ C99_FLAGS 		= -std=c99 -D_POSIX_C_SOURCE=201109L
 INCLUDES 		= 
 MACOS_FLAGS 	= -D_DARWIN_C_SOURCE
 
-C80_SRCS = c80.c error.c file.c parser.c symtab.c token.c
+C80_SRCS = c80.c error.c file.c parser.c symtab.c token.c xalloc.c
 
 POLYFILL_HDRS = 			\
 	polyfill/assert.h		\
