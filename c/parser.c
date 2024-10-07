@@ -21,6 +21,21 @@ unsigned     skipcol    = UINT_MAX; /* skip all lines indented more than this */
 const char  *zlabel     = NULL;     /* current non-local label name */
 
 
+/* Return a copy of no more than SRCLEN characers from ZSRC, with all uppercase
+ * characters folded to lowercase. */
+static char *
+zstrntolower(const char *zsrc, unsigned srclen)
+{
+    const char *after = zsrc + srclen;
+    char *buf = (char *)xmalloc(srclen + 1);
+    char *p = buf;
+    assert(zsrc);
+    while(zsrc < after)
+        *p++ = tolower(*zsrc++);
+    *p = '\0';
+    return buf;
+}
+
 int
 c_isfname(int c)
 {

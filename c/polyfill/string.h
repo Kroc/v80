@@ -115,20 +115,4 @@ zstrdup(const char *zsrc)
 #define strdup zstrdup
 #endif /*NO_STRDUP*/
 
-
-/* Return a copy of no more than SRCLEN characers from ZSRC, with all uppercase
- * characters folded to lowercase. */
-static char *
-zstrntolower(const char *zsrc, unsigned srclen)
-{
-    const char *after = zsrc + srclen;
-    char *buf = (char *)xmalloc(srclen + 1);
-    char *p = buf;
-    assert(zsrc);
-    while(zsrc < after)
-        *p++ = tolower(*zsrc++);
-    *p = '\0';
-    return buf;
-}
-
 #endif /*!SEEN_POLYFILL_STRING_H*/
