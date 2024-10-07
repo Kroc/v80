@@ -1,23 +1,25 @@
 #ifndef SEEN_POLYFILL_SYS_STAT_H
 #define SEEN_POLYFILL_SYS_STAT_H
-/* Replacements for any stat functions/macros that are not provided by libc. */
+/* Replacements for some stat functions/macros that are not provided by libc. */
 
 #ifndef NO_SYS_STAT_H
 #  include <sys/stat.h>
-#endif
+#else
+
+struct stat {
+    unsigned st_mode;
+};
+
+#define S_ISREG(_mode)  ((_mode) != 0)
 
 static int
-s_isreg(const char *kpath)
+lstat(const char *kpath, struct stat *buf)
 {
-#ifndef NO_SYS_STAT_H
-    struct stat statbuf;
-    /* If we have stat(2), diagnose attempt to read from anything but
-       a regular file. */
-    if(lstat(kpath, &statbuf) == 0)
-        return(S_ISREG(statbuf.st_mode));
-#endif
-    return ~0;
+    buf->st_mode = ~0;
+    return 0;
 }
+
+#endif /*NO_SYS_STAT_H*/
 
 #endif /*!SEEN_POLYFILL_SYS_STAT_H*/
 

@@ -26,10 +26,12 @@ FILE *
 file_reader(const char *zincludepath)
 {
     FILE *r = xfopen(zincludepath, "r");
+    struct stat statbuf;
     if(!r)
         err_fatal_str(ERR_BADFILE, zincludepath);
-    if(!s_isreg(zincludepath))
-        err_fatal_str(ERR_BADFILE, zincludepath);
+    if(lstat(zincludepath, &statbuf) == 0)
+        if(!S_ISREG(statbuf.st_mode))
+            err_fatal_str(ERR_BADFILE, zincludepath);
     return r;
 }
 
