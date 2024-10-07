@@ -1,13 +1,10 @@
 #include "c80.h"
 
 #include "polyfill/assert.h"
-#include "polyfill/ctype.h"
-#include "polyfill/libgen.h"
 #include "polyfill/limits.h"
 #include "polyfill/stdio.h"
 #include "polyfill/stdlib.h"
 #include "polyfill/string.h"
-#include "polyfill/sys/param.h"
 
 
 /* PARSER */
@@ -36,18 +33,6 @@ zstrntolower(const char *zsrc, unsigned srclen)
     return buf;
 }
 
-int
-c_isfname(int c)
-{
-    if(isalnum(c))
-        return ~0;
-    switch(c) {
-        case '#': case '%': case '\'': case '@': case '^': case '_': case '`': case '{': case '}': case '~':
-            return ~0;
-    }
-    return 0;
-}
-
 void
 emit_byte(int c)
 {
@@ -65,36 +50,6 @@ emit_word(unsigned value)
 {
     emit_byte(value & 0xff);
     emit_byte((value >> 8) & 0xff);
-}
-
-const char *
-include_path(Token *basename)
-{
-    static char zpath[MAXPATHLEN + 1];
-    unsigned dirlen = strlen(zincludedir);
-    if(dirlen + basename->len + 1 > MAXPATHLEN)
-        err_fatal_token(ERR_PATHTOOLONG, basename);
-    strlcpy(zpath, zincludedir, MAXPATHLEN + 1);
-    *(zpath + dirlen) = PATH_SEPARATOR;
-    strlcpy(zpath + dirlen + 1, basename->str, basename->len + 1);
-    return zpath;
-}
-
-const char *
-filename_dup(Token *basename)
-{
-    const char *p = basename->str, *after = basename->str + basename->len;
-    unsigned len = 0;
-
-    /* match CPM filename: /\w{1,8}(\.\w{1,3}/ */
-    for(++p, len = 8; p < after && c_isfname(*p) && len > 0; --len)
-        ++p;
-    if(*p == '.')
-        for(++p, len = 3; p < after && c_isfname(*p) && len > 0; --len)
-            ++p;
-    if(p != after)
-        err_fatal_token(ERR_BADFILENAME, basename);
-    return strdup(include_path(basename));
 }
 
 int

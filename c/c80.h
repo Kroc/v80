@@ -19,25 +19,6 @@
 #define NUMBER_MAX          0xffff
 #define TOKEN_MAXLEN        31
 
-extern int reporting;
-
-#define NOTHING_ELSE
-#define STRINGIFY(_x)       #_x
-#define XSTRINGIFY(_x)      STRINGIFY(_x)
-
-typedef struct includestack {
-    struct includestack *next;
-    const char *zfname, *zline;
-    size_t bufsiz;
-    unsigned lineno, indent;
-    FILE *stream;
-} File;
-
-extern File *file_push(const char *zfname, FILE *stream);
-extern File *file_pop(File *stale);
-extern FILE *file_reader(const char *zincludepath);
-extern FILE *xfopen(const char *zpath, const char *zmode);
-
 typedef unsigned Symbol;
 
 enum type {
@@ -84,6 +65,24 @@ typedef struct token {
 extern Token *token_dup(Token *token);
 extern Token *token_free(Token *stale);
 extern Token *tokenize_line(const char *zline);
+
+typedef struct includestack {
+    struct includestack *next;
+    const char *zfname, *zline;
+    size_t bufsiz;
+    unsigned lineno, indent;
+    FILE *stream;
+} File;
+
+extern File *file_push(const char *zfname, FILE *stream);
+extern File *file_pop(File *stale);
+extern FILE *file_reader(const char *zincludepath);
+extern FILE *xfopen(const char *zpath, const char *zmode);
+extern const char *filename_dup(Token *basename);
+
+#define NOTHING_ELSE
+#define STRINGIFY(_x)       #_x
+#define XSTRINGIFY(_x)      STRINGIFY(_x)
 
 #define ERRORHANDLING                                                           \
     X(ERR_BADBYTE,          "Value overflows 8-bits")                           \
@@ -154,6 +153,7 @@ extern char         *codesegment;
 extern File         *files;
 extern const char   *kprogname;
 extern Symbol       *pc;
+extern int           reporting;
 extern SymbolTable  *symtab;
 extern const char   *zincludedir;
 
