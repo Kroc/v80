@@ -18,7 +18,7 @@ flags:  unless otherwise noted, flags are preserved by default.
         =       set|clear according to value:
 
         z=      zero-flag (z) set if result is 0, otherwise clear
-        s=      sign-bit (z) is bit 7, 0=positive, 1=negative
+        s=      sign-bit (s) is bit 7, 0=positive, 1=negative
         v=      overlflow set if sign flips, otherwise clear
 
         [^n]    see footnote n
@@ -239,7 +239,7 @@ sty.z   $zz         sty $zz                     2   3       preserved
 sty.z.x $zz         sty $zz, x                  2   4       preserved
 sty*    $nnnn       sty $nnnn                   3   4       preserved
 ================================================================================
-:: transger registers:                          #   cycles  flags
+:: transfer registers:                          #   cycles  flags
 ================================================================================
 tax                 tax                         1   2       z=,s=
 tay                 tay                         1   2       z=,s=
