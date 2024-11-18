@@ -138,7 +138,7 @@
         ; initialise stack / heap:
         ;
         ; this *assumes* the stack is completely empty, i.e. at $FD00 rather
-        ; than $FCFE. the OS bootstrap *must* JP to main instead of CALL!
+        ; than $FCFE. the OS bootstrap *must* JP to :main instead of CALL!
         ;
         ;   - - - -------+------------------+
         ;         <-heap |          <-stack |
@@ -478,11 +478,9 @@ $ ( :buffers + 127 )            :expr   ; e.g. $2120...$217F (96 bytes)
 ;
 $ ( :buffers + 128 )            :str    ; e.g. $2180...$21FF (128 bytes)
 
-; the buffers begin after the end of the v80's code but are aligned to the next
-; page so that their addresses fall within a page and cycles can be saved using
-; `inc.e` instead of `inc.de` etc. the code-segment, where assembled code is
-; written, begins after the buffers at a page bounadry. this is also
-; necessary for CP/M which writes files in 128-byte sectors
+; the code-segment, where assembled code is written, begins after the buffers
+; at a page bounadry. this is also necessary for CP/M which writes files in
+; 128-byte sectors
 ;
 $ ( :buffers + 256 )            :code   ; e.g. $2200
 

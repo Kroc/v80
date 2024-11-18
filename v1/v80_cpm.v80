@@ -15,7 +15,7 @@
 ;       :osFileOpen                     open file (read-only)
 ;       :osFileClose                    close file (read-only)
 ;       :osSaveCode                     save binary to file-name parsed
-;                                       in osParseParams
+;                                       in :osParseParams
 ;       :osGetChar                      read char from current open file
 ;       :osPrintLn                      print null-terminated string + newline
 ;       :osPrintNewline                 print a newline (sys/OS-dependant)
@@ -25,7 +25,6 @@
 ;
 ; system constants:
 ;-------------------------------------------------------------------------------
-#NULL                   0
 #LO                     0
 #HI                     1
 
@@ -119,10 +118,12 @@ $0100   :osBoot
 ;-------------------------------------------------------------------------------
 ; :osParseParams captures the input & output file-name here:
 ;
-:_infile                                ; command-line input file-name param
-        .b      "            " 0        ; (max 8.3, including dot)
-:_outfile                               ; command-line output file-name param
-        .b      "            " 0        ; (max 8.3, including dot)
+#FNAME_LEN      14                      ; opt. drive ("A:") + 8.3 file-name
+
+:_infile
+        .f      #SPC #FNAME_LEN 0       ; + null-terminator
+:_outfile
+        .f      #SPC #FNAME_LEN 0       ; + null-terminator
 
 
 :osQuitErr
@@ -207,7 +208,7 @@ $0100   :osBoot
         ; (in the random record field that isn't used by us)
         ;
         ld.A.L'                         ; FCB+33 is random-record byte
-        add     33                      ;  we use to backup the read index
+        add     33                      ;  we use to backup the char index
         ld.L'A                          ;  (random records are not used)
         ld.A*   [ :osGetChar_index + 1 ]
         ld*HL'A
@@ -231,8 +232,8 @@ _rewind dec.HL'                         ; current record byte is no.32
 
         ; construct an empty FileControlBlock on the stack, working backwards
         ; (we don't use random records so the last 2 bytes are excluded to save
-        ; stack space). we can zero all fields as _setFCBFileName will pad the
-        ; file-name field with spaces
+        ; stack space). we can zero all fields as :_setFCBFileName will pad
+        ; the file-name field with spaces
         ;
 _empty  ld.DE'  0                       ; fill 34 bytes with zeroes
         ld.B'   34 / 2                  ; (half because pushing 2 bytes)
@@ -249,7 +250,7 @@ _push   push.DE'                        ; push 2 zeroes to the stack
         call    :errIfStackOverflow     ; sanity check stack
 
         ; copy new file-name [DE] to the new FCB:
-        ; (note _setFCBFileName preserves HL & DE)
+        ; (note :_setFCBFileName preserves HL & DE)
         ;
         ld.HL*  [ _fcb ]                ; retrieve new FCB addr
         call    :_setFCBFileName        ; copy and validate file-name to FCB
@@ -283,15 +284,46 @@ _fcb    .w      $0000
 ;       A, BC           (clobbered)
 ;       -               any invalid char halts with error
 ;-------------------------------------------------------------------------------
+        ; (WARN: INC.L implies the stack cannot be larger than 256 bytes)
+        ;
         ld*HL   0                       ; set default drive code
-        inc.HL                          ; next byte is start of FCB file-name
+        inc.L                           ; next byte is start of FCB file-name
         push.DE                         ; preserve start addr of file-name str
 
-        ; copy & validate file-name according to CP/M rules:
+        ; is there a drive specification? e.g. "A:"
+        ;-----------------------------------------------------------------------
+        inc.L                           ; check 2nd char
+        ld.A*HL                         ;  for the colon
+        dec.L                           ; (return to 1st char)
+        cp      ':                      ; if it isn't that,
+        jr?nz   _0                      ;  continue parsing file-name
+
+        ; extract drive-letter and apply to the FCB:
         ;
-        ld.B    8                       ; max file-name chars (sans extension)
+        ; the letter could be in either case so set bit 5 to normalise
+        ; lowercase 'a-'z to 'A-'Z (all other characters invalid)
+        ;
+        or      %0010000                ; set bit 5, forcing uppercase alpha
+        sub     'A                      ; check within range...
+        jr?c    _err                    ; invalid name if drive < 'A
+        cp      'P                      ; invalid name if drive > 'P
+        jp?c    _err                    ; ...
+
+        ; a drive-code of 0 is for the default (current) drive,
+        ; with drive A = 1, B = 2 etc.
+        ;
+        inc.A                           ; rebase 'A = 1, 'B = 2 etc.
+        dec.L                           ; step back to drive-code field
+        ld*HL.A                         ;  update the drive-code
+        inc.L                           ; return to drive letter
+        inc.L                           ; skip the colon
+        inc.L                           ; set new 1st char of file-name
+
+        ; validate 8.3 file-name:
+        ;-----------------------------------------------------------------------
+_0      ld.B    8                       ; max file-name chars (sans extension)
         call    _copy                   ; test/fix and copy up to 8 chars
-        jr?z    _0                      ; if null encountered, no extension
+        jr?z    _1                      ; if null encountered, no extension
 
         ; copy file extension:
         ; (the dot has already been skipped by _copy)
@@ -301,7 +333,7 @@ _fcb    .w      $0000
         jr?nz   _err                    ; dot not allowed in extensions!
 
         ; return start of FCB addr:
-_0      ld.BC   -12                     ; (use negative add to avoid SBC)
+_1      ld.BC   -12                     ; (use negative add to avoid SBC)
         add.HL.BC                       ; rewind HL to start of FCB addr
         pop.DE                          ; restore file-name str start addr
         ret
@@ -444,7 +476,7 @@ _err    jp      :errInvalFile
 ; closes the currently open file:
 ; (and return to the previously open file)
 ;
-; this routine must be called at the same stack level as the last osFileOpen
+; this routine must be called at the same stack level as the last :osFileOpen
 ; call because the previous FileControlBlock is restored from the stack
 ;
 ; out:  SP              stack is manipulated -- do not JP to this routine!
@@ -500,7 +532,7 @@ _ok     push.BC                         ; (restore our return address)
         ex.DE.HL                        ; swap end addr to HL for padding
         jr      _0                      ; jump into loop (optimises exit cond.)
         ;-----------------------------------------------------------------------
-_pad    ld*HL   #NULL                   ; append a null byte
+_pad    ld*HL   0                       ; append a null byte
         inc.HL                          ; increment end addr
 _0      ld.A.L                          ; check if the lo-byte addr
         and     %01111111               ;  is $00 or $80 (every 128 bytes)
@@ -689,7 +721,7 @@ _fcb    ld.DE'  :cpm_fcb                ; select FileControlBlock
 ;       HL, BC          (preserved)
 ;-------------------------------------------------------------------------------
         ld.A*DE                         ; read a character
-        cp      #SPC                    ; check for ASCII control codes!)
+        cp      #SPC                    ; check for ASCII control codes!
         inc.DE                          ; (go to next char, does not set zf!)
         jr?c    _cc                     ; handle control codes
         exx                             ; swap to shadow registers
@@ -846,7 +878,7 @@ _str    .b      "! ERROR: CP/M 2.2 or higher required!$"
 
         ; copy input file-name to output file-name as-is:
         ;
-        ld.C    13                      ; full field, including null-terminator
+        ld.C    #FNAME_LEN +1           ; full field, including null-terminator
         ld.HL   :_infile                ; copying from input file-name
         ldir                            ; copy BC bytes from HL to DE
 
@@ -910,12 +942,12 @@ _ok     ld.DE   :_infile                ; return input name str addr
         ; out:  zf      zero-flag set if "." found
         ;               zero-flag clear if stopped at null-terminator
         ;       DE      string addr is position ON the first dot or null
-        ;       BC      13 minus the number of chars walked , i.e. how many
+        ;       BC      15 minus the number of chars walked , i.e. how many
         ;               chars remain in the maximum allowed file-name length
         ;       HL      (preserved)
         ;       A       (clobbered)
         ;-----------------------------------------------------------------------
-_dot    ld.BC   13                      ; (we need to track string-length)
+_dot    ld.BC   #FNAME_LEN +1           ; (we need to track string-length)
         jr      _in                     ; jump into loop
         ;-----------------------------------------------------------------------
 _loop   inc.DE                          ; next char in file-name
@@ -946,13 +978,14 @@ _help   ld.DE   :usage                  ; no parameters!
 ; this routine walks along the command tail and finds the start of a parameter
 ; word (any non-space chars) which will be copied to the destination addr [DE]
 ;
-; for CP/M a limit of 12 characters is imposed as CP/M files must be in 8.3
-; format, even though CP/M doesn't store the "." internally, meaning that the
-; file-name could still be invalid if the dot is missing or in the wrong place
-; -- these checks are done when opening the file
+; for CP/M a limit of 14 characters is imposed as CP/M files must be in 8.3
+; format (with optional drive specification, e.g. "A:"). even though CP/M
+; doesn't store the "." or ":" internally -- the file-name could still be
+; invalid if the dot/colon are missing or in the wrong place, these checks
+; are done when opening the file
 ;
 ; in:   HL              addr of command-line string, null-terminated
-;       DE              addr of space to copy parameter to, up to 12 characters
+;       DE              addr to copy parameter to, up to 14 characters
 ;                       will be copied and a null-terminator appended
 ;
 ; out:  HL              the string addr is advanced according to the param read
@@ -960,10 +993,10 @@ _help   ld.DE   :usage                  ; no parameters!
 ;                       characters are captured!
 ;       DE              (preserved) -- rewound to the start of the param str
 ;       A, BC           (clobbered)
-;       -               halts with error if file-name exceeds 12 chars
+;       !               halts with error if file-name exceeds 14 chars
 ;-------------------------------------------------------------------------------
-        ld.BC   13                      ; reset char limit
-        .b      $e6                     ; skip next instruction; $E6 = AND $..
+        ld.BC   #FNAME_LEN +1           ; reset char limit
+.b      $e6                             ; skip next instruction; $E6 = AND $..
         ;-----------------------------------------------------------------------
 _skip   inc.L                           ; move to next char in command tail
         ld.A*HL                         ; read char from command tail

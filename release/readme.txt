@@ -343,7 +343,7 @@ The align keyword pads the binary with null bytes until the virtual program-
 counter modulo the parameter equals zero. That is, bytes are added until the
 program-counter divides evenly with the given parameter with no remainder.
 If the current program-counter already divides evenly, then no bytes are
- emitted.
+emitted.
 
 |   .a  $100                ; align to next page
 |   .a  $c130               ; pad to specific desired program-counter
