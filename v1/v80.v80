@@ -7,36 +7,36 @@
 ;
 ; syntax:
 ;
-#CHAR_COMMENT           ';              ; comment
-#CHAR_KEYWORD           '.              ; keyword
-#CHAR_HEX               '$              ; hexadecimal literal or PC
-#CHAR_BIN               '%              ; binary literal
-#CHAR_CHAR              ''              ; character literal
-#CHAR_LABEL             ':              ; a label (16-bit)
-#CHAR_LOCAL             '_              ; local label
-#CHAR_CONST             '#              ; a constant (flexible size)
-#CHAR_STR               '"              ; a string
-#CHAR_COND              '?              ; condition marker
-#CHAR_COND_Z            '=              ; `?=`, condition equal marker
-#CHAR_COND_NZ           '!              ; `?!`, condition not-equal marker
-#CHAR_COND_POS          '+              ; `?+`, condition positive marker
-#CHAR_COND_NEG          '-              ; `?-`, condition negative marker
-#CHAR_OP_LO             '<              ; lo-byte unary operator
-#CHAR_OP_HI             '>              ; hi-byte unary operator
-#CHAR_OP_NOT            '!              ; not unary operator
-#CHAR_OP_NEG            '-              ; negate unary operator
-#CHAR_OP_ADD            '+              ; add operator
-#CHAR_OP_SUB            '-              ; subtract operator
-#CHAR_OP_MUL            '*              ; multiply operator
-#CHAR_OP_DIV            '/              ; divide operator
-#CHAR_OP_AND            '&              ; and operator
-#CHAR_OP_OR             '|              ; or operator
-#CHAR_OP_XOR            '^              ; xor operator
-#CHAR_OP_MOD            '\              ; modulo operator
-#CHAR_EXPR_IN1          '(              ; open parenthesis
-#CHAR_EXPR_OUT1         ')              ; close parenthesis
-#CHAR_EXPR_IN2          '[              ; square brackets for marking
-#CHAR_EXPR_OUT2         ']              ;  memory references in instructions
+#CHR_COMMENT            ';              ; comment
+#CHR_KEYWORD            '.              ; keyword
+#CHR_HEX                '$              ; hexadecimal literal or PC
+#CHR_BIN                '%              ; binary literal
+#CHR_CHAR               ''              ; character literal
+#CHR_LABEL              ':              ; a label (16-bit)
+#CHR_LOCAL              '_              ; local label
+#CHR_CONST              '#              ; a constant (flexible size)
+#CHR_STR                '"              ; a string
+#CHR_COND               '?              ; condition marker
+#CHR_COND_Z             '=              ; `?=`, condition equal marker
+#CHR_COND_NZ            '!              ; `?!`, condition not-equal marker
+#CHR_COND_POS           '+              ; `?+`, condition positive marker
+#CHR_COND_NEG           '-              ; `?-`, condition negative marker
+#CHR_OP_LO              '<              ; lo-byte unary operator
+#CHR_OP_HI              '>              ; hi-byte unary operator
+#CHR_OP_NOT             '!              ; not unary operator
+#CHR_OP_NEG             '-              ; negate unary operator
+#CHR_OP_ADD             '+              ; add operator
+#CHR_OP_SUB             '-              ; subtract operator
+#CHR_OP_MUL             '*              ; multiply operator
+#CHR_OP_DIV             '/              ; divide operator
+#CHR_OP_AND             '&              ; and operator
+#CHR_OP_OR              '|              ; or operator
+#CHR_OP_XOR             '^              ; xor operator
+#CHR_OP_MOD             '\              ; modulo operator
+#CHR_EXPR_IN1           '(              ; open parenthesis
+#CHR_EXPR_OUT1          ')              ; close parenthesis
+#CHR_EXPR_IN2           '[              ; square brackets for marking
+#CHR_EXPR_OUT2          ']              ;  memory references in instructions
 
 #DEBUG                  0               ; set to 1 to enable debug features
 

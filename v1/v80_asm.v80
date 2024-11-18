@@ -74,7 +74,7 @@
         ; flip the flag and fill in the true value of the label
         ;
 _local  ld.A    $00                     ; check first char (patched above)
-        cp      #CHAR_LOCAL             ; was this a local label?
+        cp      #CHR_LOCAL              ; was this a local label?
         jr?z    _0                      ; if yes, skip over last-defined
         ld*$.BC [ :local ]              ; set last defined label addr
 
@@ -97,7 +97,7 @@ _0      push.BC                         ; we'll  print the label name later
         call    :printHexNum            ; print value in BC with "$" sigil
         call    :echoSpc                ; print spc between addr & label name
         pop.DE                          ; restore label-name addr from earlier
-        ld.A    #CHAR_LABEL             ;  and print label name
+        ld.A    #CHR_LABEL              ;  and print label name
         call    :printSymbolNameSigil   ;  + newline
         call    :osPrintNewline         ;  ...
 
@@ -165,7 +165,7 @@ _get    push.DE                         ; before parsing value, preserve addr
         ; echo const name:
         ld.D.B                          ; (findSymbol returns the addr
         ld.E.C                          ;  of the const name in BC)
-        ld.A    #CHAR_CONST             ; print const name
+        ld.A    #CHR_CONST              ; print const name
         call    :printSymbolNameSigil   ;  (+ prepend sigil)
         ld.A    #WORD_LEN               ; calculate number of spaces to print
         sub.C                           ;  for const names up to 32 chars
@@ -266,14 +266,14 @@ _eol    cp.A                            ; set zero flag without changing A
         ; will be the first char of a line, which could be another conditional
         ; so it is guaranteed to return zero-flag set for this purpose
         ;
-_cond   cp      #CHAR_COND              ; is condition marker?
+_cond   cp      #CHR_COND               ; is condition marker?
         call?z  :parseCond              ; handle condition, skip lines etc.
         jr?z    _cond                   ; after skipped lines, re-check
 
         ; a hexadecimal number at the start of a line
         ; defines the virtual program-counter
         ;
-        cp      #CHAR_HEX               ; hexadecimal literal?
+        cp      #CHR_HEX                ; hexadecimal literal?
         call?z  :_pc                    ; if yes set virtual program-counter
         jr?z    :_nleof                 ; this may cause end-of-line|file
 
@@ -284,11 +284,11 @@ _cond   cp      #CHAR_COND              ; is condition marker?
         ;
         ; defining a label or constant?
         ;
-        cp      #CHAR_LABEL             ; is label?
+        cp      #CHR_LABEL              ; is label?
         jp?z    :_label                 ; define a label
-        cp      #CHAR_LOCAL             ; or local label?
+        cp      #CHR_LOCAL              ; or local label?
         jp?z    :_label                 ; as above
-        cp      #CHAR_CONST             ; is constant?
+        cp      #CHR_CONST              ; is constant?
         jp?z    :_const                 ; define a constant
 
         ; if no label or constant, fall through to body
@@ -310,7 +310,7 @@ _cond   cp      #CHAR_COND              ; is condition marker?
         jr?z    :_nleof                 ; did we hit newline or end-of-file?
 
         ;-----------------------------------------------------------------------
-_body   cp      #CHAR_KEYWORD           ; is this a keyword?
+_body   cp      #CHR_KEYWORD            ; is this a keyword?
         jr?z    :_key
 
         ; if not, must be an instruction...
@@ -436,7 +436,7 @@ _b      ld.A    1                       ; set parameter size to 1 (bytes)
         ;
 _data   call    :nextWord               ; skip in-between spaces
         jp?z    :_nleof                 ; stop at EOL/EOF
-        cp      #CHAR_STR               ; a string?
+        cp      #CHR_STR                ; a string?
         jr?z    _str                    ; process string literal
 
         ; not a string, parse as an expression and output to code-segment:
@@ -456,33 +456,33 @@ _isexpr call    :nextParam
         cp      '9 + 1                  ; is above 0, is <= 9?
         jr?c    _isexpr                 ; if 0-9 is expr
 
-_gt9    cp      #CHAR_LABEL             ; a label?
+_gt9    cp      #CHR_LABEL              ; a label?
         jr?z    _isexpr                 ; ...
-        cp      #CHAR_LOCAL             ; (or local label)
+        cp      #CHR_LOCAL              ; (or local label)
         jr?z    _isexpr                 ; ...
-        cp      #CHAR_OP_LO             ; the lo-byte unary operator?
+        cp      #CHR_OP_LO              ; the lo-byte unary operator?
         jr?z    _isexpr                 ; ...
-        cp      #CHAR_OP_HI             ; the hi-byte unary operator?
+        cp      #CHR_OP_HI              ; the hi-byte unary operator?
         jr?z    _isexpr                 ; ...
-        cp      #CHAR_EXPR_IN2          ; the square bracket
+        cp      #CHR_EXPR_IN2           ; the square bracket
         jr?z    _isexpr                 ; ...
         jp      :_next                  ; leave if not an expression
 
-_lt0    cp      #CHAR_CONST             ; a constant?
+_lt0    cp      #CHR_CONST              ; a constant?
         jr?z    _isexpr                 ; ...
-        cp      #CHAR_HEX               ; a hexadecimal literal / PC?
+        cp      #CHR_HEX                ; a hexadecimal literal / PC?
         jr?z    _isexpr                 ; ...
-        cp      #CHAR_BIN               ; a binary literal?
+        cp      #CHR_BIN                ; a binary literal?
         jr?z    _isexpr                 ; ...
-        cp      #CHAR_CHAR              ; a character literal?
+        cp      #CHR_CHAR               ; a character literal?
         jr?z    _isexpr                 ; ...
-        cp      #CHAR_OP_NEG            ; the negate unary operator
+        cp      #CHR_OP_NEG             ; the negate unary operator
         jr?z    _isexpr                 ; ...
-        cp      #CHAR_OP_NOT            ; the not unary operator?
+        cp      #CHR_OP_NOT             ; the not unary operator?
         jr?z    _isexpr                 ; ...
-        cp      #CHAR_EXPR_IN1          ; a parenthesis
+        cp      #CHR_EXPR_IN1           ; a parenthesis
         jr?z    _isexpr                 ; ...
-        cp      #CHAR_STR               ; a string?
+        cp      #CHR_STR                ; a string?
         jp?nz   :_next                  ; leave if not an expression
 
         ; fall through to handle string
@@ -501,7 +501,7 @@ _str    ld.A*   [ :param ]              ; a string cannot be a part of
         ;-----------------------------------------------------------------------
 _0      call    :readChar               ; read next character
         jp?z    :errInvalStr            ; sudden EOL/EOF? unterminated string!
-        cp      #CHAR_STR               ; string terminator?
+        cp      #CHR_STR                ; string terminator?
         jr?z    _data                   ; yes, check for next string|expr
         ld*IY.A [ 0 ]                   ; emit byte to code-segment
         inc.IY                          ; move to next byte in code-segment
@@ -522,17 +522,17 @@ _0      call    :readChar               ; read next character
         ;
 _i      call    :nextWord               ; skip in-between spaces
         jp?z    :errUnexpEOL            ; error if no parameter!
-        cp      #CHAR_STR               ; is it a string?
+        cp      #CHR_STR                ; is it a string?
         jp?nz   :errInvalFile           ; error if not a string
         ld.DE   :str                    ; addr of forwards string-buffer $xx80
         ;-----------------------------------------------------------------------
 _1      call    :readChar               ; read next character
         jp?z    :errInvalStr            ; sudden EOL/EOF? unterminated string!
-        cp      #CHAR_STR               ; string terminator?
-        jr?z    _2                       ; yes, stop reading chars
+        cp      #CHR_STR                ; string terminator?
+        jr?z    _2                      ; yes, stop reading chars
         ld*DE.A                         ; add char to word-buffer
         inc.E                           ; move to next byte in string-buffer
-        jr      _1                       ; keep reading
+        jr      _1                      ; keep reading
         ;-----------------------------------------------------------------------
 _2      xor.A                           ; add null terminator
         ld*DE.A                         ; ...
@@ -599,7 +599,7 @@ _get    call    :readChar               ; read a character (returns z-flag)
         jr?c    _get                    ; keep reading if codes 1-31
         jr?z    _get                    ; also, keep reading if space
 
-        cp      #CHAR_COMMENT           ; is this the start of a comment?
+        cp      #CHR_COMMENT            ; is this the start of a comment?
         jr?z    _skip                   ; if yes, skip comment
 
         ; start of a word, update the line/col number for errors
@@ -644,11 +644,11 @@ _skip   call    :readChar               ; read a character (returns z-flag)
 ;       BC              (clobbered)
 ;-------------------------------------------------------------------------------
         ld.DE   :word                   ; top of word-buffer
-        cp      #CHAR_LOCAL             ; is this a local label?
+        cp      #CHR_LOCAL              ; is this a local label?
         call?z  _local                  ; prepend last label defined
-        cp      #CHAR_LABEL             ; skip sigil for label?
+        cp      #CHR_LABEL              ; skip sigil for label?
         jr?z    _loop                   ; enter loop at point that skips char
-        cp      #CHAR_CONST             ; do the same for const sigil
+        cp      #CHR_CONST              ; do the same for const sigil
         jr?nz   _in                     ; otherwise, append first char
         ;-----------------------------------------------------------------------
 _loop   call    :readChar               ; read char from input file
@@ -681,7 +681,7 @@ _local  push.HL                         ; preserve HL before copy
         lddr                            ; copy BC bytes from [HL] to [DE]
 
         inc.E                           ; compensate for last DEC before return
-        ld.A    #CHAR_LOCAL             ; local label sigil must be included
+        ld.A    #CHR_LOCAL              ; local label sigil must be included
         pop.HL                          ; restore HL used for copy
         ret
 
@@ -1159,13 +1159,13 @@ _end    ex.DE.HL                        ; return last addr as DE
         ; test the condition against the value:
         ;-----------------------------------------------------------------------
         pop.AF                          ; restore conditon type
-        cp      #CHAR_COND_Z            ; zero?
+        cp      #CHR_COND_Z             ; zero?
         jr?z    _z                      ; ...
-        cp      #CHAR_COND_NZ           ; not-zero?
+        cp      #CHR_COND_NZ            ; not-zero?
         jr?z    _nz                     ; ...
-        cp      #CHAR_COND_POS          ; positive?
+        cp      #CHR_COND_POS           ; positive?
         jr?z    _pos                    ; ...
-        cp      #CHAR_COND_NEG          ; negative?
+        cp      #CHR_COND_NEG           ; negative?
         jp?nz   :errInvalCond           ; not one of the condition markers!
 
         ; fall through for neagtive

@@ -343,9 +343,9 @@ _nest   .b      $00                     ; parenthesis nested depth counter
         ;=======================================================================
         ; label:
         ;-----------------------------------------------------------------------
-_label  cp      #CHAR_LABEL             ; a label?
-        jr?z    _in                      ; ...
-        cp      #CHAR_LOCAL             ; or local label?
+_label  cp      #CHR_LABEL              ; a label?
+        jr?z    _in                     ; ...
+        cp      #CHR_LOCAL              ; or local label?
         jp?nz   :errUnexpEOL            ; no? expression has no value!!
         ;-----------------------------------------------------------------------
 
@@ -380,7 +380,7 @@ _in     ex*SP.HL
         ; NOTE: it is very important to be aware that in the case of carry-set,
         ;       getLabel has returned the addr of the label's flag byte in DE
         ;
-        ld*HL   #CHAR_LABEL             ; push the label token
+        ld*HL   #CHR_LABEL              ; push the label token
         ld.B.D                          ; copy label addr to BC and jump to
         ld.C.E                          ;  where tokens are added to the expr
         jr      _val                    ;  bytecode to save a few bytes
@@ -427,16 +427,16 @@ _next   ld*HL.A                         ; push token in A to expr
         ;
         ; unary operators can be stacked, e.g. `!<#value`
         ;
-_unary  cp      #CHAR_OP_LO             ; lo-byte operator?
+_unary  cp      #CHR_OP_LO              ; lo-byte operator?
         jr?z    _next                   ; add unary operator and check again
         ;-----------------------------------------------------------------------
-        cp      #CHAR_OP_HI             ; hi-byte operator?
+        cp      #CHR_OP_HI              ; hi-byte operator?
         jr?z    _next                   ; add unary operator and check again
         ;-----------------------------------------------------------------------
-        cp      #CHAR_OP_NOT            ; not operator?
+        cp      #CHR_OP_NOT             ; not operator?
         jr?z    _next                   ; add unary operator and check again
         ;-----------------------------------------------------------------------
-        cp      #CHAR_OP_NEG            ; negate operator?
+        cp      #CHR_OP_NEG             ; negate operator?
         jr?z    _next                   ; add unary operator and check again
         
         ; after unary operator(s), a value *must* follow
@@ -444,9 +444,9 @@ _unary  cp      #CHAR_OP_LO             ; lo-byte operator?
 
         ; values:
         ;=======================================================================
-_value  cp      #CHAR_EXPR_IN1          ; parenthesis?
+_value  cp      #CHR_EXPR_IN1           ; parenthesis?
         jr?z    _paren                  ; handle nested expression!
-        cp      #CHAR_EXPR_IN2          ; (and its square cousin)
+        cp      #CHR_EXPR_IN2           ; (and its square cousin)
         jr?z    _paren                  ; ...
 
         ; PRO-TIP: check for decimal digits first! the result of the comparison
@@ -456,13 +456,13 @@ _value  cp      #CHAR_EXPR_IN1          ; parenthesis?
         cp      '0                      ; decimal digit "0" or above?
         jr?nc   _0                      ; ...
 
-        cp      #CHAR_HEX               ; a hexadecimal literal?
+        cp      #CHR_HEX                ; a hexadecimal literal?
         jr?z    _hex                    ; ...
-        cp      #CHAR_CONST             ; a constant?
+        cp      #CHR_CONST              ; a constant?
         jr?z    _const                  ; ...
-        cp      #CHAR_BIN               ; a binary literal?
+        cp      #CHR_BIN                ; a binary literal?
         jr?z    _bin                    ; ...
-        cp      #CHAR_CHAR              ; a character literal?
+        cp      #CHR_CHAR               ; a character literal?
         jp?nz   :errUnexpEOL            ; no? expression has no value!
 
         ; fall through
@@ -513,7 +513,7 @@ _hex    call?z  :parseHexNum            ; parse the hex number into BC
 
         ; push a number literal token:
         ;-----------------------------------------------------------------------
-_num    ld*HL   #CHAR_HEX               ; push a number token
+_num    ld*HL   #CHR_HEX                ; push a number token
 _val    dec.HL                          ; move to next token space
         ld*HL.B                         ; push the number hi-byte
         dec.HL                          ; move to next token space
@@ -534,28 +534,28 @@ _op     ld.A*   [ :char ]               ; last read character
         call    :nextWord               ; read first character of the next word
         jr?z    _end                    ; end expr at newline / end-of-file
 
-_more   cp      #CHAR_OP_ADD            ; add operator?
+_more   cp      #CHR_OP_ADD             ; add operator?
         jr?z    _next                   ; push token to heap, find next operand
-        cp      #CHAR_OP_SUB            ; subtract operator?
+        cp      #CHR_OP_SUB             ; subtract operator?
         jr?z    _next                   ; ...
-        cp      #CHAR_OP_AND            ; and operator?
+        cp      #CHR_OP_AND             ; and operator?
         jr?z    _next                   ; ...
-        cp      #CHAR_OP_OR             ; or operator?
+        cp      #CHR_OP_OR              ; or operator?
         jr?z    _next                   ; ...
-        cp      #CHAR_OP_XOR            ; xor operator?
+        cp      #CHR_OP_XOR             ; xor operator?
         jr?z    _next                   ; ...
-        cp      #CHAR_OP_MUL            ; multiply operator?
+        cp      #CHR_OP_MUL             ; multiply operator?
         jr?z    _next                   ; ...
-        cp      #CHAR_OP_MOD            ; modulo operator?
+        cp      #CHR_OP_MOD             ; modulo operator?
         jr?z    _next                   ; ...
-        cp      #CHAR_OP_DIV            ; divide operator?
+        cp      #CHR_OP_DIV             ; divide operator?
         jp?z    _next                   ; ...
 
         ; closing parenthesis?
         ;-----------------------------------------------------------------------
-        cp      #CHAR_EXPR_OUT1         ; check for closing parenthesis
+        cp      #CHR_EXPR_OUT1          ; check for closing parenthesis
         jr?z    _out                    ; ...
-        cp      #CHAR_EXPR_OUT2         ; (and our square cousin)
+        cp      #CHR_EXPR_OUT2          ; (and our square cousin)
         jr?nz   _end                    ; if not, expr has ended
 
 _out    ex.DE.HL                        ; put HL aside
@@ -652,9 +652,9 @@ _isop   ld.A*HL                         ; read token type
         and.A                           ; (set CPU flags!)
         ret?z                           ; end on expr terminator
         dec.HL                          ; move to next token space
-        cp      #CHAR_EXPR_OUT1         ; close parenthesis?
+        cp      #CHR_EXPR_OUT1          ; close parenthesis?
         ret?z                           ; also end of current expr
-        cp      #CHAR_EXPR_OUT2         ; (also our square cousin)
+        cp      #CHR_EXPR_OUT2          ; (also our square cousin)
         ret?z                           ; ...
 
         ; an operator follows:
@@ -679,19 +679,19 @@ _isop   ld.A*HL                         ; read token type
         ;-----------------------------------------------------------------------
         ; (these operators do not need to use HL)
         ;
-_op     cp      #CHAR_OP_AND            ; bitwise AND operator?
+_op     cp      #CHR_OP_AND             ; bitwise AND operator?
         jr?z    _and                    ; ...
-        cp      #CHAR_OP_OR             ; bitwise OR operator?
+        cp      #CHR_OP_OR              ; bitwise OR operator?
         jr?z    _or                     ; ...
-        cp      #CHAR_OP_XOR            ; bitwise XOR operator?
+        cp      #CHR_OP_XOR             ; bitwise XOR operator?
         jr?z    _xor                    ; ...
 
         ; the +/- operators require HL:
         ;
         ex.DE.HL                        ; swap operand to HL, token-addr to DE
-        cp      #CHAR_OP_ADD            ; add operator?
+        cp      #CHR_OP_ADD             ; add operator?
         jr?z    _add                    ; ...
-        cp      #CHAR_OP_SUB            ; subtract operator?
+        cp      #CHR_OP_SUB             ; subtract operator?
         jr?z    _sub                    ; ...
 
         ; the multiply / divide / modulo
@@ -700,9 +700,9 @@ _op     cp      #CHAR_OP_AND            ; bitwise AND operator?
         push.DE                         ; preserve token addr
         ex.DE.HL                        ; swap left-hand operand to DE
 
-        cp      #CHAR_OP_MUL            ; multiply operator?
+        cp      #CHR_OP_MUL             ; multiply operator?
         jr?z    _mul                    ; ...
-        cp      #CHAR_OP_MOD            ; modulo operator?
+        cp      #CHR_OP_MOD             ; modulo operator?
         jr?z    _mod                    ; ...
 
         ; only remaining operator is DIV!
@@ -856,14 +856,14 @@ _in     sla.E                           ; shift DE left by one,
 
         ; take fast-path for values without a unary operator
         ;
-        cp      #CHAR_HEX               ; number literal?
+        cp      #CHR_HEX                ; number literal?
         jr?z    _hex                    ; ...
-        cp      #CHAR_LABEL             ; a label? (that was deferred)
+        cp      #CHR_LABEL              ; a label? (that was deferred)
         jr?z    _label                  ; ...
 
-        cp      #CHAR_EXPR_IN1          ; check for parenthesis
+        cp      #CHR_EXPR_IN1           ; check for parenthesis
         jr?z    _paren                  ; recurse for parens
-        cp      #CHAR_EXPR_IN2          ; (and our square cousin)
+        cp      #CHR_EXPR_IN2           ; (and our square cousin)
         jr?z    _paren                  ; ...
 
         ; we don't care what unary operator is present, we'll need
@@ -875,11 +875,11 @@ _in     sla.E                           ; shift DE left by one,
         ;
         call    :evalValue              ; (returns value in BC)
         pop.AF                          ; restore the unary operator
-        cp      #CHAR_OP_LO             ; lo-byte unary operator?
+        cp      #CHR_OP_LO              ; lo-byte unary operator?
         jr?z    _lo                     ; ...
-        cp      #CHAR_OP_HI             ; hi-byte unary operator?
+        cp      #CHR_OP_HI              ; hi-byte unary operator?
         jr?z    _hi                     ; ...
-        cp      #CHAR_OP_NEG            ; negate unary operator?
+        cp      #CHR_OP_NEG             ; negate unary operator?
         jr?z    _neg                    ; ...
 
         ; ...

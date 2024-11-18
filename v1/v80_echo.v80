@@ -12,7 +12,7 @@
 ; out:  A               (clobbered)
 ;       BC, DE, HL      (preserved)
 ;-------------------------------------------------------------------------------
-        ld.A    #CHAR_COMMENT           ; print "; "
+        ld.A    #CHR_COMMENT            ; print "; "
         call    :osPrintChar            ; ...
 
         ; fall through
@@ -68,7 +68,7 @@
 ;-------------------------------------------------------------------------------
         push.DE
         call    :printThis
-                .b      #CHAR_COMMENT "------------------------------------"
+                .b      #CHR_COMMENT "------------------------------------"
                 .b      #LF 0
         pop.DE
         ret
@@ -161,7 +161,7 @@ _loop   dec.HL                          ; (move to next char in string)
 ; out:  BC, DE, HL      (preserved)
 ;       A               (clobbered)
 ;-------------------------------------------------------------------------------
-        ld.A    #CHAR_HEX
+        ld.A    #CHR_HEX
         call    :osPrintChar
 
         ; fall through
