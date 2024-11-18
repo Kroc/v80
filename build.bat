@@ -23,10 +23,27 @@ SET BIN_NTVCM=ntvcm.exe -l -p
 REM # VBinDiff for visual difference comparing
 SET "BIN_VBINDIFF=%BIN_DIR%\vbindiff\VBinDiff.exe"
 
-REM # build v80 assembler [v0] from WLA-DX source:
-REM # ==========================================================================
+REM # Tiny C Compiler
+SET "BIN_TCC=%BIN_DIR%\tcc\tcc.exe"
+
+REM # (ensure build directory exists and is clean)
 IF NOT EXIST "build" MKDIR "build"
 DEL /F /Q "build\*.*"
+
+REM # compile c80 from source using TCC
+REM # ==========================================================================
+PUSHD "c"
+
+"..\%BIN_TCC%" -vv ^
+    -I="../../../c/polyfill" ^
+    -o "c80.exe" -static -DNO_CTYPE_H ^
+        c80.c error.c file.c parser.c symtab.c token.c xalloc.c
+
+POPD
+EXIT
+
+REM # build v80 assembler [v0] from WLA-DX source:
+REM # ==========================================================================
 
 %WLA_Z80% -v ^
     -I "v0" ^
