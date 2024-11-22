@@ -1,0 +1,33 @@
+; v80, (C) Kroc Camen 2023-2024, MIT License
+; an 8-bit native multi-platform, multi-ISA assembler
+;
+; this file produces a build of v80 that:
+;
+; - is z80 code (v80)
+; - runs on CP/M
+; - assembles z80 instructions
+;
+.i      "v80_defs.v80"                 ; include global constants
+
+#V80_ISA        #ISA_Z80                ; we will assemble Z80 instructions
+#V80_SYS        #SYS_CPM                ; the OS is CP/M (on z80)
+
+.i      "v80_cpm.v80"                   ; include the CP/M (Z80) OS
+
+; the banner will vary for each OS/ISA pair, so is defined here.
+; this text will be in the code-segment and will be overwritten by assembly
+;
+:banner .b      "; v80 | OS: CP/M [Z80] | ISA: Z80" #LF
+        .b      "; (C) Kroc Camen 2023-24, MIT License" #LF
+        .b      "; v2.0-dev <github.com/kroc/v80>" #LF
+        .b      ";" 0
+
+; for CP/M specifically, this is the usage message displayed
+; when no parameters are given on the command line:
+;
+:usage  .b      "    V80 INPUT.V80 [OUTPUT.COM]" #LF 0
+
+; the default file-extensions to use for input & output file-names:
+;
+:inext  .b      ".V80" 0
+:outext .b      ".COM" 0

@@ -1,0 +1,16 @@
+; v80, (C) Kroc Camen 2023-2024, MIT License
+; top-level shared constants, before OS init
+;
+;#DEBUG                  0               ; set to 1 to enable debug features
+
+;#SPC                    $20             ; ASCII space (whitespace)
+;#TAB                    $09             ; ASCII tab (whitespace)
+;#CR                     $0d             ; ASCII carriage-return
+;#LF                     $0a             ; ASCII line-feed
+
+;#V80_SYS                0               ; which operating system:
+#SYS_CPM                1               ; CP/M on Z80
+
+#V80_ISA                0               ; which ISA to include:
+#ISA_Z80                1               ; = assemble Z80 instructions
+;#ISA_6502               2               ; = assemble 6502 instructions

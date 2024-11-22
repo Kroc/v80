@@ -114,6 +114,17 @@ COPY /N /Y "%DIR_BUILD%\v65.com" /B "%DIR_RUNCPM%\A\0" /B  >NUL
 REM # verify 6502 assembling
 CALL :RunTest6502 6502
 
+REM # build v80 [v2]:
+REM # ==========================================================================
+REM # copy v2 code to build directory
+COPY /N /Y "v2\*.v??" /B "%DIR_BUILD%" /A  >NUL
+REM # and to RunCPM
+COPY /N /Y "v2\*.v??" /A "%DIR_RUNCPM%\A\0" /A  >NUL
+
+REM # use v80 [v1] to build v80 [v2]
+CALL :v80_wla "cpm_z80.v80" "v80.com"
+REM CALL :v80 "cpm_z80.v80" "v80.com"
+
 REM # ==========================================================================
 REM # if no errors, copy v80 binary to release folder
 

@@ -1,0 +1,223 @@
+; v80, (C) Kroc Camen 2023-2024, MIT License
+; error stuff
+;
+:_errmsg
+;===============================================================================
+_inval_cond     .b "Invalid condition" 0
+_inval_expr     .b "Invalid expression" 0
+_inval_file     .b "Invalid file-name" 0
+_inval_ins      .b "Invalid instruction" 0
+_inval_key      .b "Invalid keyword" 0
+_inval_num      .b "Invalid number" 0
+_inval_str      .b "Invalid string" 0
+_inval_sym      .b "Invalid symbol name" 0
+_range_disk     .b "Disk full" 0
+_range_heap     .b "Heap overflow" 0
+_range_line     .b "Line too long, 127 cols max." 0
+_range_over     .b "Expression overflow" 0
+_range_param    .b "Expression exceeds 8-bit parameter" 0
+_range_stack    .b "Stack overflow" 0
+_range_str      .b ".w cannot take strings" 0
+_redef_label    .b "Labels cannot be redefined" 0
+_undef_const    .b "Undefined constant" 0
+_undef_file     .b "File not found" 0
+_undef_label    .b "Label was not defined" 0
+_undef_local    .b "Local label without label" 0
+_unexp_defer    .b "Forward-references to labels not allowed here" 0
+_unexp_eol      .b "Expected expression" 0
+
+
+; print error message and quit:
+;===============================================================================
+; this is a fall through 'ladder' that sets HL to the error string addr based
+; on entrypoint. opcode $DD is manually inserted to "skip" the next LD HL $....
+; instruction by converting it to LD IX $.... (with IX not being used)
+; 
+:errInvalCond
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_inval_cond
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errInvalExpr
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_inval_expr
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errInvalFile
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_inval_file
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errInvalIns
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_inval_ins
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errInvalKey
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_inval_key
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errInvalNum
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_inval_num
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errInvalStr
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_inval_str
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errInvalSym
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_inval_sym
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errRangeDisk
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_range_disk
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errRangeHeap
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_range_heap
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errRangeLine
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_range_line
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errRangeOver
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_range_over
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errRangeParam
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_range_param
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errRangeStack
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_range_stack
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errRangeStr
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_range_str
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errRedefLabel
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_redef_label
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errUndefConst
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_undef_const
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errUndefFile
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_undef_file
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errUndefLabel
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_undef_label
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errUndefLocal
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_undef_local
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errUnexpDefer
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_unexp_defer
+        .b      $dd                     ; = LD IX, $nnnn (skip next 3 bytes!)
+:errUnexpEOL
+        ;-----------------------------------------------------------------------
+        ld.HL   :_errmsg_unexp_eol
+
+        ; fall through
+        ; ...
+
+:err
+;===============================================================================
+; print an error message and quit:
+;
+; in:   HL              error string addr
+; out:  -               program terminates!
+;===============================================================================
+        call    :printThis
+                .b      #LF #LF         ; print two newlines
+                .b      "! ERROR: " 0   ;  and a leading error marker
+
+        ex.DE.HL                        ; swap error string addr to DE
+        call    :osPrintStrZ            ; print passed error-string
+
+        ; (a trailing "!" is shared between all error messages,
+        ;  this saves 1 byte each error message, after the 8th)
+        call    :printThis
+                .b      "!" #LF
+                .b      "!        See errors.txt for detailed causes" #LF 0
+
+        ; if the file-name addr is $0000 this is not a parsing error,
+        ; such as the command line parameter file-name not being found
+        ;
+        ld.A*   [ :file + 1 ]           ; file-names are pushed to the heap
+        and.A                           ;  so it is sufficient to check only
+        jp?z    :osQuit                 ;  if the hi-byte is $00
+
+        ; print file-name, line number and column:
+        ;-----------------------------------------------------------------------
+        call    :printThis
+                .b      "!  FILE: " 0
+        ld.DE*  [ :file ]               ; addr of current file-name
+        call    :printSymbolName        ; print the backwards string
+        call    :osPrintNewline         ;  + newline
+
+        ; print start-of-word line number and column:
+        ; (this is not the same as the line/col of last char read
+        ;  which could be the end-of-line after an expression)
+        ;
+        call    :printThis
+                .b      "!  LINE: " 0
+        ld.BC*  [ :wrow ]
+        call    :printDecNum
+        call    :printThis
+                .b      #LF
+                .b      "!   COL: " 0
+        ld.A*   [ :wcol ]
+        ld.C.A
+        ld.B    0
+        call    :printDecNum
+
+        ;-----------------------------------------------------------------------
+        ld.A    1                       ; return non-zero error-number to host
+        jp      :osQuitErr
+
+
+:errIfStackOverflow
+;===============================================================================
+; check to see if the stack hasn't overflowed:
+;
+; out:  A               (clobbered)
+;       BC, DE, HL      (preserved)
+;       -               halts with error if stack overflowed
+;-------------------------------------------------------------------------------
+        ld*$.SP [ _sp ]                 ; store current stack pointer
+        ld.A*   [ _sp + #HI ]           ; get hi-byte of stack addr
+_hi     cp      $ff                     ; (this byte patched in main)
+        ret?nc                          ; fast-return if stack is in page
+        jp      :errRangeStack          ; stack overflow!
+
+_sp     .w      $0000
+
+
+:errIfHeapOverflow
+;===============================================================================
+; check to see the heap hasn't overflowed into the code-segment:
+;
+; in:   HL              heap addr
+;       IY              code-segment addr
+; out:  cf              carry-flag is always returned clear
+;       HL, BC, DE, IY  (preserved)
+;       A               (clobbered)
+;       -               halts with error if heap overflows
+;-------------------------------------------------------------------------------
+        ; check that IY is not > HL. they can be equal because the code-segment
+        ; addr points to the last unused byte, where as the heap addr points
+        ; to the last used byte
+        ;
+        ld.A.H                          ; check hi-byte of heap is not
+        cp.IYH                          ;  less than hi-byte of code-segment
+        jr?c    _err                    ; err if heap below code-segment!
+        ret?nz                          ; skip if hi-bytes mismatch
+        ld.A.L                          ; assuming hi-bytes match,
+        cp.IYL                          ;  test lo-bytes
+        ret?nc                          ; OK if heap addr >= code-segment addr
+
+_err    jp      :errRangeHeap           ; err if heap below code-segment!

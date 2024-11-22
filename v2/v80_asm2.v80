@@ -1,0 +1,540 @@
+; v80, (C) Kroc Camen 2023-2024, MIT License
+; the parsing / assembling loop
+;
+; TODO: could we hold the scope permenantly in A'?
+;
+; include the selected ISA:
+;===============================================================================
+; remember that this is the instruction set that you want your v80 binary
+; to assemble, not the CPU it's running on! this code is already the z80
+; port ("v80"), so it's implied that you're running on Z80
+;
+?=      #V80_ISA - #ISA_Z80
+        .i      "v80_z80.v80"           ; Z80 ISA support code
+        .i      "isa_z80.v80"           ; Z80 ISA instructions
+
+; (for measuring size of new assembler)
+:asm2
+
+; types:
+; - conditionals
+; - keywords
+; - strings
+; - instructions
+; - numbers / constants / labels or parens
+; - operators
+
+; there are only a handful of scopes that dictate
+; which types are expected, where
+;
+; starting scope for an empty line:
+; - PC (number)
+; - label definition
+; - conditional
+#SCOPE_ROOT     $00
+; an expression -- specifically an operand:
+; - number / constant / label or parens
+; - unary operator: < > ! -
+#SCOPE_EXPR     $10
+; an infix operator: + - * / & | ^ \
+#SCOPE_INFIX    $11
+
+:scope  .b      #SCOPE_ROOT             ; current scope during parsing
+
+; which characters are valid in symbol names:
+;-------------------------------------------------------------------------------
+:symchr .b      $ff                     ; $20 SPC space
+        .b      $ff                     ; $21  !  unary NOT operator
+        .b      $ff                     ; $22  "  string marker
+        .b      $ff                     ; $23  #  constant
+        .b      $ff                     ; $24  $  hex literal / PC
+        .b      $ff                     ; $25  %  binary literal
+        .b      $ff                     ; $26  &  unary AND operator
+        .b      $00                     ; $27  '  character literal
+        .b      $ff                     ; $28  (  open parenthesis
+        .b      $ff                     ; $29  )  close parenthesis
+        .b      $ff                     ; $2A  *  multiply operator
+        .b      $ff                     ; $2B  +  add operator
+        .b      $ff                     ; $2C  ,  ...
+        .b      $ff                     ; $2D  -  subtract operator
+        .b      $00                     ; $2E  .  keyword
+        .b      $ff                     ; $2F  /  divide operator
+        .b      $00                     ; $30  0  decimal literal
+        .b      $00                     ; $31  1  decimal literal
+        .b      $00                     ; $32  2  decimal literal
+        .b      $00                     ; $33  3  decimal literal
+        .b      $00                     ; $34  4  decimal literal
+        .b      $00                     ; $35  5  decimal literal
+        .b      $00                     ; $36  6  decimal literal
+        .b      $00                     ; $37  7  decimal literal
+        .b      $00                     ; $38  8  decimal literal
+        .b      $00                     ; $39  9  decimal literal
+        .b      $ff                     ; $3A  :  label
+        .b      $ff                     ; $3B  ;  comment
+        .b      $ff                     ; $3C  <  unary lo-byte operator
+        .b      $ff                     ; $3D  =  ...
+        .b      $ff                     ; $3E  >  unary hi-byte operator
+        .b      $ff                     ; $3F  ?  condition marker
+        .b      $ff                     ; $40  @  ...
+        .b      $00                     ; $41  A  CPU instruction mnemonic
+        .b      $00                     ; $42  B  CPU instruction mnemonic
+        .b      $00                     ; $43  C  CPU instruction mnemonic
+        .b      $00                     ; $44  D  CPU instruction mnemonic
+        .b      $00                     ; $45  E  CPU instruction mnemonic
+        .b      $00                     ; $46  F  CPU instruction mnemonic
+        .b      $00                     ; $47  G  CPU instruction mnemonic
+        .b      $00                     ; $48  H  CPU instruction mnemonic
+        .b      $00                     ; $49  I  CPU instruction mnemonic
+        .b      $00                     ; $4A  J  CPU instruction mnemonic
+        .b      $00                     ; $4B  K  CPU instruction mnemonic
+        .b      $00                     ; $4C  L  CPU instruction mnemonic
+        .b      $00                     ; $4D  M  CPU instruction mnemonic
+        .b      $00                     ; $4E  N  CPU instruction mnemonic
+        .b      $00                     ; $4F  O  CPU instruction mnemonic
+        .b      $00                     ; $50  P  CPU instruction mnemonic
+        .b      $00                     ; $51  Q  CPU instruction mnemonic
+        .b      $00                     ; $52  R  CPU instruction mnemonic
+        .b      $00                     ; $53  S  CPU instruction mnemonic
+        .b      $00                     ; $54  T  CPU instruction mnemonic
+        .b      $00                     ; $55  U  CPU instruction mnemonic
+        .b      $00                     ; $56  V  CPU instruction mnemonic
+        .b      $00                     ; $57  W  CPU instruction mnemonic
+        .b      $00                     ; $58  X  CPU instruction mnemonic
+        .b      $00                     ; $59  Y  CPU instruction mnemonic
+        .b      $00                     ; $5A  Z  CPU instruction mnemonic
+        .b      $ff                     ; $5B  [  open square brackets
+        .b      $ff                     ; $5C  \  modulo operator
+        .b      $ff                     ; $5D  ]  close square brackets
+        .b      $ff                     ; $5E  ^  ...
+        .b      $00                     ; $5F  _  ...
+        .b      $ff                     ; $60  `  ...
+        .b      $00                     ; $61  a  CPU instruction mnemonic
+        .b      $00                     ; $62  b  CPU instruction mnemonic
+        .b      $00                     ; $63  c  CPU instruction mnemonic
+        .b      $00                     ; $64  d  CPU instruction mnemonic
+        .b      $00                     ; $65  e  CPU instruction mnemonic
+        .b      $00                     ; $66  f  CPU instruction mnemonic
+        .b      $00                     ; $67  g  CPU instruction mnemonic
+        .b      $00                     ; $68  h  CPU instruction mnemonic
+        .b      $00                     ; $69  i  CPU instruction mnemonic
+        .b      $00                     ; $6A  j  CPU instruction mnemonic
+        .b      $00                     ; $6B  k  CPU instruction mnemonic
+        .b      $00                     ; $6C  l  CPU instruction mnemonic
+        .b      $00                     ; $6D  m  CPU instruction mnemonic
+        .b      $00                     ; $6E  n  CPU instruction mnemonic
+        .b      $00                     ; $6F  o  CPU instruction mnemonic
+        .b      $00                     ; $70  p  CPU instruction mnemonic
+        .b      $00                     ; $71  q  CPU instruction mnemonic
+        .b      $00                     ; $72  r  CPU instruction mnemonic
+        .b      $00                     ; $73  s  CPU instruction mnemonic
+        .b      $00                     ; $74  t  CPU instruction mnemonic
+        .b      $00                     ; $75  u  CPU instruction mnemonic
+        .b      $00                     ; $76  v  CPU instruction mnemonic
+        .b      $00                     ; $77  w  CPU instruction mnemonic
+        .b      $00                     ; $78  x  CPU instruction mnemonic
+        .b      $00                     ; $79  y  CPU instruction mnemonic
+        .b      $00                     ; $7A  z  CPU instruction mnemonic
+        .b      $ff                     ; $7B  {  ...
+        .b      $ff                     ; $7C  |  unary OR operator
+        .b      $ff                     ; $7D  }  ...
+        .b      $ff                     ; $7E  ~  ...
+        .b      $ff                     ; $7F DEL ERROR
+
+
+:getChr
+;===============================================================================
+; gets the next character from input file:
+; current row and column are maintained
+;
+; out:  A               ASCII code
+;       zf              zero-flag is set *both* for end-of-file and newline!
+;       :char           the character read is also written to RAM
+;       :crow, :ccol    line & column number are advanced accordingly
+;       BC, DE, HL      (preserved)
+;-------------------------------------------------------------------------------
+        call    :osGetChar              ; read a char from file
+        ld*$.A  [ :char ]               ; retain returned character
+
+        ?!      #DEBUG
+                ;///////////////////////////////////////////////////////////////
+                push.AF
+                call    :osPrintChar    ; print each character as we receive it
+                pop.AF                  ; (zero-flag must be preserved)
+                ;///////////////////////////////////////////////////////////////
+        ret?z                           ; return on end-of-file
+
+        ; check for end-of-line:
+        ;-----------------------------------------------------------------------
+        cp      #CR                     ; /r is always ignored,
+        jr?z    :getChr                 ;  don't advance row/col, get next char
+
+        exx                             ; must preserve HL & DE
+        ld.HL'  :ccol                   ; prepare to increment column number
+
+        cp      #LF                     ; /n is newline
+        jr?z    _row                    ; handle newline
+        cp      #TAB                    ; /t is tab
+        jr?z    _tab                    ; handle tab
+
+        ; increment column number:
+        ;-----------------------------------------------------------------------
+        ; lines in v80 source code are hard limited to 127 columns to ensure
+        ; PC-users don't write code that exceeds real 8-bit hardware's limits,
+        ; although 80 cols is strongly recommended as this is the practical
+        ; width of many 8-bit system's displays
+        ;
+_col    inc*HL'                         ; line length is limited to 127 bytes
+        jp?m    :errRangeLine           ; 128th char (sign bit) line too long!
+        exx                             ; restore HL/DE
+        ret
+
+        ;-----------------------------------------------------------------------
+        ; increment line-number:
+        ;
+_row    ld.DE'* [ :crow ]               ; 16-bit load,
+        inc.DE'                         ;  and increment,
+        ld*$.DE' [ :crow ]              ;  and write
+        ld*HL'  $00                     ; reset column number
+
+        exx                             ; restore HL/DE
+        ret                             ; return z-flag set for newline/EOF
+
+        ;-----------------------------------------------------------------------
+        ; handle tab-character:
+        ;
+_tab    dec.A                           ; \t = 9, so change to 8 (width of tab)
+        add*HL'                         ; add 8 to current column
+        and     %11111000               ; clip to every 8th column
+        jp?m    :errRangeLine           ; stop if line too long! (>=128 chars)
+        ld*HL'A                         ; update column number
+        ld.A    #SPC                    ; return a single space instead
+        ld*$.A  [ :char ]               ; update retained value to match
+        and.A                           ; ensure zero-flag is clear!
+
+        exx                             ; restore HL/DE
+        ret
+
+
+:getSymbol
+;===============================================================================
+; consume a symbol name from input:
+;
+; (pulls characters from input until a non-symbol character is reached)
+; TODO: prepend label name for local labels ("_")
+;
+; NOTE: the symbol is written *downwards* in RAM, to match how symbols are
+;       pushed to the heap, for faster comparison -- we use the bottom of a
+;       page to hold the incoming symbol so that we can get away with using
+;       `dec.L` instead of `dec.HL`
+;
+; in:   A               first char is already read
+; out:  A               length of word
+;       HL              HL is set to the first byte (length) of :word
+;       :char           the last character read will always be some kind
+;                       of whitespace -- space, newline or end-of-file
+;       DE              (preserved)
+;       BC              (clobbered)
+;-------------------------------------------------------------------------------
+        ld.HL   :word                   ; top of word-buffer
+        jr?nz   _in                     ; consume first char when entering loop
+        ;-----------------------------------------------------------------------
+_loop   call    :getChr                 ; read char from input file
+        cp      #SPC + 1                ; whitespace or end-of-line/file?
+        jr?c    _ok                     ; (leave loop at whitespace)
+_in     dec.E                           ; move to next space in buffer
+        ld*DE.A                         ; add the character to the buffer
+        jp?p    _loop                   ; keep going until buffer full
+        ;-----------------------------------------------------------------------
+        jp      :errInvalSym            ; quit with invalid symbol error
+
+        ;-----------------------------------------------------------------------
+_ok     ld.A    #WORD_LEN               ; max size - characters remaining
+        sub.E                           ;  = length of word
+        ld.E    <:word                  ; snap back to length byte
+        ld*HL.A                         ; write word-length byte
+        ret
+
+
+:defLabel
+;===============================================================================
+        ret
+
+:chrErr
+;===============================================================================
+        halt
+
+:chrAny
+;===============================================================================
+        ret
+
+:chrEOL
+;===============================================================================
+; could be newline (LF), or end-of-file
+;-------------------------------------------------------------------------------
+        ret
+
+:chrSpc
+;===============================================================================
+        ret
+
+:chrComment
+;===============================================================================
+        ret
+
+:chrKeyword
+;===============================================================================
+        ret
+
+:chrHex
+;===============================================================================
+        ; parse the number first, decide what to do based on scope afterwards:
+        ;
+        ; note that if the word is a single `$`, the current
+        ; program-counter value is returned with carry-flag set
+        ;
+        ; FIXME :parseHexNum must break at any non-number,
+        ;       not just whitespace, e.g. operators
+        ;
+        call    :parseHexNum            ; parse number into BC
+        ld.A*   [ :scope ]              ; (get current scope)
+        jr?c    _pc                     ; is program-counter?
+
+        ;jp?z   :exprPushOperand        ; append value to the expr bytecode
+
+        ret
+
+        ;-----------------------------------------------------------------------
+_pc     and.A                           ; check if scope is zero (root)
+        jr?z    _pcexpr                 ; defining program counter with expr?
+        ; TODO: if yes, we are defining the program-counter
+        ;jp     :exprPushOperand        ; otherwise append vaue to expr
+
+        ;-----------------------------------------------------------------------
+_pcexpr 
+
+:chrBin
+;===============================================================================
+        ret
+
+:chrDec
+;===============================================================================
+        ret
+
+:chrChr
+;===============================================================================
+        ret
+
+:chrLabel
+;===============================================================================
+        ; assume correctness and read the label first
+        ;
+        ld.A    ':
+        call    :getSymbol
+
+;;        ; is a label expected in this mode?
+;;        ;
+;;        pop.AF                          ; current mode
+;;        cp      #MODE_LINE              ; at the start of a line?
+;;        jp?z    :defLabel               ; if yes, define a label
+
+        halt                            ; unexpected label!
+
+:chrLocal
+;===============================================================================
+        ret
+
+:chrConst
+;===============================================================================
+        ret
+
+:chrStr
+;===============================================================================
+        ret
+
+:chrCond
+;===============================================================================
+        ret
+
+:chrEqu
+;===============================================================================
+        ret
+
+:chrLo
+;===============================================================================
+        ret
+
+:chrHi
+;===============================================================================
+        ret
+
+:chrAND
+;===============================================================================
+        ret
+
+:chrOR
+;===============================================================================
+        ret
+
+:chrNOT
+;===============================================================================
+        ret
+
+:chrXOR
+;===============================================================================
+        ret
+
+:chrIn
+;===============================================================================
+        ret
+
+:chrOut
+;===============================================================================
+        ret
+
+:chrAdd
+;===============================================================================
+        ret
+
+:chrSub
+;===============================================================================
+        ret
+
+:chrMul
+;===============================================================================
+        ret
+
+:chrDiv
+;===============================================================================
+        ret
+
+:chrMod
+;===============================================================================
+        ret
+
+:chrCPU
+;===============================================================================
+        ret
+
+;===============================================================================
+.a      $0100
+
+:ascjp  .w      :chrSpc                 ; $20 SPC space
+        .w      :chrNOT                 ; $21  !  unary NOT operator
+        .w      :chrStr                 ; $22  "  string marker
+        .w      :chrConst               ; $23  #  constant
+        .w      :chrHex                 ; $24  $  hex literal / PC
+        .w      :chrBin                 ; $25  %  binary literal
+        .w      :chrAND                 ; $26  &  unary AND operator
+        .w      :chrChr                 ; $27  '  character literal
+        .w      :chrIn                  ; $28  (  open parenthesis
+        .w      :chrOut                 ; $29  )  close parenthesis
+        .w      :chrMul                 ; $2A  *  multiply operator
+        .w      :chrAdd                 ; $2B  +  add operator
+        .w      :chrAny                 ; $2C  ,  ...
+        .w      :chrSub                 ; $2D  -  subtract operator
+        .w      :chrKeyword             ; $2E  .  keyword
+        .w      :chrDiv                 ; $2F  /  divide operator
+        .w      :chrDec                 ; $30  0  decimal literal
+        .w      :chrDec                 ; $31  1  decimal literal
+        .w      :chrDec                 ; $32  2  decimal literal
+        .w      :chrDec                 ; $33  3  decimal literal
+        .w      :chrDec                 ; $34  4  decimal literal
+        .w      :chrDec                 ; $35  5  decimal literal
+        .w      :chrDec                 ; $36  6  decimal literal
+        .w      :chrDec                 ; $37  7  decimal literal
+        .w      :chrDec                 ; $38  8  decimal literal
+        .w      :chrDec                 ; $39  9  decimal literal
+        .w      :chrLabel               ; $3A  :  label
+        .w      :chrComment             ; $3B  ;  comment
+        .w      :chrLo                  ; $3C  <  unary lo-byte operator
+        .w      :chrAny                 ; $3D  =  ...
+        .w      :chrHi                  ; $3E  >  unary hi-byte operator
+        .w      :chrCond                ; $3F  ?  condition marker
+        .w      :chrAny                 ; $40  @  ...
+        .w      :chrCPU                 ; $41  A  CPU instruction mnemonic
+        .w      :chrCPU                 ; $42  B  CPU instruction mnemonic
+        .w      :chrCPU                 ; $43  C  CPU instruction mnemonic
+        .w      :chrCPU                 ; $44  D  CPU instruction mnemonic
+        .w      :chrCPU                 ; $45  E  CPU instruction mnemonic
+        .w      :chrCPU                 ; $46  F  CPU instruction mnemonic
+        .w      :chrCPU                 ; $47  G  CPU instruction mnemonic
+        .w      :chrCPU                 ; $48  H  CPU instruction mnemonic
+        .w      :chrCPU                 ; $49  I  CPU instruction mnemonic
+        .w      :chrCPU                 ; $4A  J  CPU instruction mnemonic
+        .w      :chrCPU                 ; $4B  K  CPU instruction mnemonic
+        .w      :chrCPU                 ; $4C  L  CPU instruction mnemonic
+        .w      :chrCPU                 ; $4D  M  CPU instruction mnemonic
+        .w      :chrCPU                 ; $4E  N  CPU instruction mnemonic
+        .w      :chrCPU                 ; $4F  O  CPU instruction mnemonic
+        .w      :chrCPU                 ; $50  P  CPU instruction mnemonic
+        .w      :chrCPU                 ; $51  Q  CPU instruction mnemonic
+        .w      :chrCPU                 ; $52  R  CPU instruction mnemonic
+        .w      :chrCPU                 ; $53  S  CPU instruction mnemonic
+        .w      :chrCPU                 ; $54  T  CPU instruction mnemonic
+        .w      :chrCPU                 ; $55  U  CPU instruction mnemonic
+        .w      :chrCPU                 ; $56  V  CPU instruction mnemonic
+        .w      :chrCPU                 ; $57  W  CPU instruction mnemonic
+        .w      :chrCPU                 ; $58  X  CPU instruction mnemonic
+        .w      :chrCPU                 ; $59  Y  CPU instruction mnemonic
+        .w      :chrCPU                 ; $5A  Z  CPU instruction mnemonic
+        .w      :chrIn                  ; $5B  [  open square brackets
+        .w      :chrMod                 ; $5C  \  modulo operator
+        .w      :chrOut                 ; $5D  ]  close square brackets
+        .w      :chrAny                 ; $5E  ^  ...
+        .w      :chrLocal               ; $5F  _  ...
+        .w      :chrAny                 ; $60  `  ...
+        .w      :chrCPU                 ; $61  a  CPU instruction mnemonic
+        .w      :chrCPU                 ; $62  b  CPU instruction mnemonic
+        .w      :chrCPU                 ; $63  c  CPU instruction mnemonic
+        .w      :chrCPU                 ; $64  d  CPU instruction mnemonic
+        .w      :chrCPU                 ; $65  e  CPU instruction mnemonic
+        .w      :chrCPU                 ; $66  f  CPU instruction mnemonic
+        .w      :chrCPU                 ; $67  g  CPU instruction mnemonic
+        .w      :chrCPU                 ; $68  h  CPU instruction mnemonic
+        .w      :chrCPU                 ; $69  i  CPU instruction mnemonic
+        .w      :chrCPU                 ; $6A  j  CPU instruction mnemonic
+        .w      :chrCPU                 ; $6B  k  CPU instruction mnemonic
+        .w      :chrCPU                 ; $6C  l  CPU instruction mnemonic
+        .w      :chrCPU                 ; $6D  m  CPU instruction mnemonic
+        .w      :chrCPU                 ; $6E  n  CPU instruction mnemonic
+        .w      :chrCPU                 ; $6F  o  CPU instruction mnemonic
+        .w      :chrCPU                 ; $70  p  CPU instruction mnemonic
+        .w      :chrCPU                 ; $71  q  CPU instruction mnemonic
+        .w      :chrCPU                 ; $72  r  CPU instruction mnemonic
+        .w      :chrCPU                 ; $73  s  CPU instruction mnemonic
+        .w      :chrCPU                 ; $74  t  CPU instruction mnemonic
+        .w      :chrCPU                 ; $75  u  CPU instruction mnemonic
+        .w      :chrCPU                 ; $76  v  CPU instruction mnemonic
+        .w      :chrCPU                 ; $77  w  CPU instruction mnemonic
+        .w      :chrCPU                 ; $78  x  CPU instruction mnemonic
+        .w      :chrCPU                 ; $79  y  CPU instruction mnemonic
+        .w      :chrCPU                 ; $7A  z  CPU instruction mnemonic
+        .w      :chrAny                 ; $7B  {  ...
+        .w      :chrOR                  ; $7C  |  unary OR operator
+        .w      :chrAny                 ; $7D  }  ...
+        .w      :chrAny                 ; $7E  ~  ...
+        .w      :chrErr                 ; $7F DEL ERROR
+
+:nextToken
+;===============================================================================
+        call    :readChar               ; pull the next character from input
+        cp      #SPC                    ; is non-visible ASCII code < $20?
+        jp?c    :chrEOL                 ; handle CR|LF (EOL) or EOF
+
+        ; TODO: can remove this instruction if we place :nextToken before
+        ;       the table and offset the table by 32 bytes, or expand the
+        ;       table to include $00-$1F so the space comparison is not
+        ;       paid for every byte at the cost of 64 bytes
+        ;
+        sub     $20                     ; rebase ASCII code for table
+        add.A                           ; x2 for table of addresses
+        ld*$.A  [ _jp + 1 ]             ; set lo-byte of table-entry    ;+13=13
+_jp     ld.HL*  [ :ascjp ]              ; read addr from table          ;+16=29
+        jp*HL                           ; jump to result!               ;+ 4=33
+
+
+:asm
+;===============================================================================
+        jp      :nextToken
+
+#size_of_asm2   $ - :asm2

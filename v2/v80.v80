@@ -2,8 +2,8 @@
 ; an 8-bit native multi-platform, multi-ISA assembler
 ;
 ; you cannot assemble this file! -- you must assemble from a chosen operating-
-; system and ISA pair such as "cpm_z80.v80" which assembles a version of v80
-; that runs on CP/M, and assembles z80 instructions
+; system + ISA pair such as "cpm_z80.v80" (which assembles a version of v80
+; that runs on CP/M, and assembles z80 instructions)
 ;
 ; syntax:
 ;
@@ -37,8 +37,6 @@
 #CHR_EXPR_OUT1          ')              ; close parenthesis
 #CHR_EXPR_IN2           '[              ; square brackets for marking
 #CHR_EXPR_OUT2          ']              ;  memory references in instructions
-
-#DEBUG                  0               ; set to 1 to enable debug features
 
 ; memory map:
 ;
@@ -131,7 +129,7 @@
 .i      "v80_echo.v80"                  ; various printing routines
 .i      "v80_err.v80"                   ; error messages
 .i      "v80_expr.v80"                  ; expression parsing and evaluation
-.i      "v80_asm.v80"                   ; main parsing and assembling loop
+.i      "v80_asm2.v80"                  ; main parsing and assembling loop
 
 :main
 ;===============================================================================

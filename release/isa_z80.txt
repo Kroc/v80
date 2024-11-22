@@ -344,7 +344,7 @@ im.2                im  2                       2   8       preserved
 ================================================================================
 :: jump:                                        #   =  !    flags
 ================================================================================
-jp  $nnnn           jp  $nnnn                   3   10      preserved
+jp      $nnnn       jp  $nnnn                   3   10      preserved
 jp?nz   $nnnn       jp  nc, $nnnn               3   10      preserved
 jp?z    $nnnn       jp  z,  $nnnn               3   10      preserved
 jp?nc   $nnnn       jp  nc, $nnnn               3   10      preserved
@@ -359,7 +359,7 @@ jp.hl               jp  [HL]                    1   4       preserved
 jp.ix               jp  [IX]                    2   8       preserved
 jp.iy               jp  [IY]                    2   8       preserved
 --------------------------------------------------------------------------------
-jr  $nnnn           jr  $nnnn                   2   12      preserved
+jr      $nnnn       jr  $nnnn                   2   12      preserved
 jr?c    $nnnn       jr  c,  $nnnn               2   12|7    preserved
 jr?nc   $nnnn       jr  nc, $nnnn               2   12|7    preserved
 jr?z    $nnnn       jr  z,  $nnnn               2   12|7    preserved
@@ -521,7 +521,7 @@ ld.i.a              ld  I,  A                   2   9       preserved
 ld.a.r              ld  A,  R                   2   9       preserved
 ld.r.a              ld  R,  A                   2   9       preserved
 --------------------------------------------------------------------------------
-ld*$.a              ld  [$nnnn],    A           3   13      preserved
+ld*$.a  $nnnn       ld  [$nnnn],    A           3   13      preserved
 ld*bc.a             ld  [BC],       A           1   7       preserved
 ld*de.a             ld  [DE],       A           1   7       preserved
 ld*hl.a             ld  [HL],       A           1   7       preserved
