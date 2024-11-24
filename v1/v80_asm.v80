@@ -143,13 +143,19 @@ _0      push.BC                         ; we'll  print the label name later
         lddr                            ; copy BC bytes from [HL] to [DE]!
 
         ; DE is the addr at the bottom of the heap where the const value will
-        ; be written. copy this to HL and decrement again to ensure the heap
-        ; addr in HL will match DE when the the const value is written
+        ; be written (noting that LDDR does a final decrement on HL/DE).
+        ; copy DE to HL and decrement again to ensure the heap addr (where
+        ; new data will be pushed) is *after* the const value we are about
+        ; to write (where the heap is decrement-then-write)
+        ;
+        ;              - - - -+---------+---+---+---+---+---+-----+------+
+        ;              <-heap | lo | hi | t | s | n | o | c | len | link |
+        ;              - - - -+---------+---+---+---+---+---+-----+------+
+        ;                     ^ HL ^ DE
         ;
         ld.H.D                          ; LDDR does an additional decrement
         ld.L.E                          ;  so we save one instruction (:P)
-        inc.DE                          ;  by accomodating for it, correcting
-        dec.HL                          ;  DE up so HL only needs one dec
+        dec.HL                          ;  by not needing to DEC HL twice
 
         call    :errIfHeapOverflow      ; check for heap overflow
 
@@ -178,7 +184,6 @@ _get    push.DE                         ; before parsing value, preserve addr
 
         pop.DE                          ; restore const addr
         ex.DE.HL                        ; swap to HL for writing
-        dec.HL                          ; pre-decrement heap to empty byte
         ld*HL.B                         ; because we're writing downwards
         dec.HL                          ;  in RAM, write value hi-byte first
         ld*HL.C                         ;  followed by value lo-byte
