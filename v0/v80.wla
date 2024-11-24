@@ -46,7 +46,7 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 .DEF    CHAR_EXPR_IN2   '['             ; square brackets for marking
 .DEF    CHAR_EXPR_OUT2  ']'             ;  memory references in instructions
 
-;.DEF    DEBUG                           ; enable debug features
+;.DEF    DEBUG           1               ; enable debug features
 
 .INC    "cpm.wla"                       ; CP/M bootstrap and interface
 .INC    "debug.wla"                     ; debug-only functionality

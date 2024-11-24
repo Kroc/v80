@@ -171,6 +171,7 @@ _printHL:
         ld      B,      H
         ld      C,      L
         call    printHexNumber
+        pop     BC
         pop     AF
         ret
 
