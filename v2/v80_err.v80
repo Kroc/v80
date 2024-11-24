@@ -189,7 +189,7 @@ _unexp_eol      .b "Expected expression" 0
 ;       -               halts with error if stack overflowed
 ;-------------------------------------------------------------------------------
         ld*$.SP [ _sp ]                 ; store current stack pointer
-        ld.A*   [ _sp + #HI ]           ; get hi-byte of stack addr
+        ld.A*   [ _sp +1 ]              ; get hi-byte of stack addr
 _hi     cp      $ff                     ; (this byte patched in main)
         ret?nc                          ; fast-return if stack is in page
         jp      :errRangeStack          ; stack overflow!

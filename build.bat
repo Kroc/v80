@@ -240,9 +240,9 @@ GOTO:EOF
 
 :runCPM
 REM # --------------------------------------------------------------------------
+TYPE %~n1.sym
 POPD
-COPY /N /Y "%DIR_BUILD%\v80.com" /B "%DIR_RUNCPM%\A\0\v80.com" /B  >NUL
-START "RunCPM" /D "%DIR_RUNCPM%" %BIN_RUNCPM% & GOTO:ERR
+START "RunCPM" /D "%DIR_RUNCPM%" %BIN_RUNCPM%
 GOTO:ERR
 
 :RunTest6502

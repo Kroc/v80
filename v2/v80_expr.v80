@@ -474,7 +474,7 @@ _value  cp      #CHR_EXPR_IN1           ; parenthesis?
         ; the character following the sigil determines the value,
         ; although it must be non-whitespace
         ;
-        call    :readChar               ; get next char from input
+        call    :getChr                 ; get next char from input
         cp      #SPC + 1                ; is it non-visible? SPC, EOL, EOF
         jp?c    :errInvalNum            ; error if sigil followed by whitespace
         ld.C.A                          ; load character value into BC
@@ -989,7 +989,7 @@ _err    jp      :errUndefLabel
         ld.BC   5 * 256                 ; B=5, C=0
         ld.DE   :buffers                ; where to write the bytes
         ;-----------------------------------------------------------------------
-_loop   call    :readChar               ; read a char from file
+_loop   call    :getChr                 ; read a char from file
         cp      #SPC + 1                ; ASCII space or below?
         jr?c    _ok                     ; stop when reaching whitespace
         ld*DE.A                         ; append byte
@@ -1113,7 +1113,7 @@ _af     add     10                      ; change "A"-"F" to 10-15
         ld.DE   $0000                   ; starting value
         ld.B    17                      ; following char must be whitespace!
         ;-----------------------------------------------------------------------
-_loop   call    :readChar               ; read char from input
+_loop   call    :getChr                 ; read char from input
         sub     '0                      ; rebase to 0 for digits "0" and above
         jr?c     _last                   ; check chars < "0" for end-of-number
         sub     2                       ; eliminate digits above 1
@@ -1157,7 +1157,7 @@ _last   add     ( '0 - #SPC - 1 )       ; adjust again so <= SPC is negative
         ld.HL   $0000                   ; initialise working value
         jr      _1st                    ; jump into loop as 1st char known
         ;-----------------------------------------------------------------------
-_loop   call    :readChar               ; get digit from input
+_loop   call    :getChr                 ; get digit from input
 _1st    sub     '0                      ; re-base "0" to 0
         jr?c    _last                   ; if < "0", check for end-of-number
         cp      10                      ; check if >9

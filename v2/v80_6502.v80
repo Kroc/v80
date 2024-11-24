@@ -1,0 +1,33 @@
+; v80, (C) Kroc Camen 2023-2024, MIT License
+; code specifically for emitting 6502 opcodes
+;
+:emitOpcode
+;===============================================================================
+; write CPU opcode bytes, parsing any required parameters:
+;
+; in:   B               opcode flags byte from the opcode table
+;       A               same as above but with bit 7 ANDed off
+;       C               opcode byte
+;       HL              heap address for any deferred expressions
+;
+; out:  HL              parsing of instruction parameters may push to heap
+;       A, BC, DE       (clobbered)
+;===============================================================================
+        xor.A                           ; (set A to zero, clear flags)
+        rr.B                            ; pop off flags bit 0 (1-byte param)
+        rla                             ; set A to 1 if 1-byte param
+        rr.B                            ; pop off flags bit 1 (2-byte param)
+        adc     0                       ; set A to 2 if 2-byte param
+        rr.B                            ; pop off flags bit 3 (relative jump)
+        rla                             ; shift-in relative-flag to bit 0
+        rrca                            ;  then rotate it into bit 7
+
+        ld*IY.C [ 0 ]                   ; emit opcode byte
+        inc.IY                          ; move to next byte in code-segment
+        inc.IX                          ; increment virtual program-counter
+
+        ; parse the following expression and
+        ; write the value to the code-segment
+        jp      :parseParam
+
+#size_of_emit   $ - :emitOpcode
