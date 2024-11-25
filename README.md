@@ -159,10 +159,14 @@ _v80_ is assembled as a generic CP/M binary that should run on any Z80-based, CP
 
 ## Change History
 
-### 2024/7/?: v1.0.0-dev
+### ?/?/?: v1.0.0-dev
 
 - _v80_ can assemble itself via a _v80_-syntax version of _v80_!
 - _v65_ is a 6502 cross-assembler version of _v80_, self-assembled by _v80_ using pluggable ISAs. Support for more CPU ISAs will come in the future
+
+### 2024/11/24: v0.1.4
+
+An off-by-one error with defining constants was corrupting the linked-list leading to constants appearing undefined later on. I have NO IDEA how this bug went untriggered this whole time despite v80 being able to assemble itself!
 
 ### 2024/7/1: v0.1.3
 
