@@ -69,7 +69,7 @@
         call    :getLabel               ; get label value or push as fwd-ref
         jp?nc   :errRedefLabel          ; cannot redefine labels!
 
-        ; getLabel has returned the addr of the label name length byte [BC]
+        ; :getLabel has returned the addr of the label name length byte [BC]
         ; and the addr of the flag-byte of the label record [DE] so we can
         ; flip the flag and fill in the true value of the label
         ;

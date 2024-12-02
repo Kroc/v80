@@ -128,6 +128,7 @@
 
 .i      "v80_echo.v80"                  ; various printing routines
 .i      "v80_err.v80"                   ; error messages
+.i      "v80_heap.v80"                  ; heap management
 .i      "v80_expr.v80"                  ; expression parsing and evaluation
 .i      "v80_asm2.v80"                  ; main parsing and assembling loop
 

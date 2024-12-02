@@ -37,6 +37,7 @@ DEL /F /Q "%DIR_RUNCPM%\A\0\*.*"  >NUL 2>&1
 REM # build v80 assembler [v0] from WLA-DX source:
 REM # ==========================================================================
 REM # this builds "v80_wla.com", the WLA version of v80
+ECHO v0:
 
 %WLA_Z80% -v ^
     -I "v0" ^
@@ -89,6 +90,8 @@ COPY /N /Y "v1\*.v??" /B "%DIR_BUILD%" /A  >NUL
 REM # and to RunCPM
 COPY /N /Y "v1\*.v??" /A "%DIR_RUNCPM%\A\0" /A  >NUL
 
+ECHO v1:
+
 REM # do a 1st-generation build of v80 [v1] using v80 [v0]!
 CALL :v80_wla "cpm_z80.v80" "v80.com"
 
@@ -120,6 +123,8 @@ REM # copy v2 code to build directory
 COPY /N /Y "v2\*.v??" /B "%DIR_BUILD%" /A  >NUL
 REM # and to RunCPM
 COPY /N /Y "v2\*.v??" /A "%DIR_RUNCPM%\A\0" /A  >NUL
+
+ECHO v2:
 
 REM # use v80 [v1] to build v80 [v2]
 CALL :v80_wla "cpm_z80.v80" "v80.com"
@@ -304,7 +309,6 @@ IF %ERRORLEVEL% EQU -1 POPD & START "RunCPM" /D "%DIR_RUNCPM%" %BIN_RUNCPM% & GO
 IF ERRORLEVEL 1 GOTO:ERR
 
 POPD
-ECHO:
 GOTO:EOF
 
 REM ////////////////////////////////////////////////////////////////////////////
