@@ -106,11 +106,16 @@
 ; so we enter the "body" scope to exclude that:
 #SCOPE_BODY     $02
 
+; when a parameter is parsed and no other content is allowed on the line,
+; e.g. a constant definition, this scope expects only end-of-line or file
+#SCOPE_EOL      $0f
+
 ; an expression -- specifically an operand:
 ; - number / constant / label or parens
 ; - unary operator: < > ! -
 #SCOPE_EXPR     $10
-; an infix operator: + - * / & | ^ \
+; once an operand is parsed it must be followed by either an infix operator,
+; + - * / & | ^ \, or a non-expression word ending the expression
 #SCOPE_INFIX    $11
 
 :scope  .b      #SCOPE_ROOT             ; current scope during parsing
@@ -150,7 +155,9 @@
         ld*$.BC [ :crow ]               ;  defaults to 1
 
         ld.A    #SCOPE_ROOT             ; set starting parsing scope
-        jp      :next                   ; run the parsing loop
+        call    :next                   ; run the parsing loop
+
+        halt
 
         ; execution will be returned here
         ; once the end of the file is reached
@@ -170,14 +177,14 @@ _eof    call    :osFileClose            ; close the file
         .b      $ff                     ; $23  #  constant
         .b      $ff                     ; $24  $  hex literal / PC
         .b      $ff                     ; $25  %  binary literal
-        .b      $ff                     ; $26  &  unary AND operator
+        .b      $ff                     ; $26  &  AND operator
         .b      $ff                     ; $27  '  character literal
         .b      $ff                     ; $28  (  open parenthesis
         .b      $ff                     ; $29  )  close parenthesis
         .b      $ff                     ; $2A  *  multiply operator
         .b      $ff                     ; $2B  +  add operator
         .b      $ff                     ; $2C  ,  ...
-        .b      $ff                     ; $2D  -  subtract operator
+        .b      $ff                     ; $2D  -  negate / subtract operator
         .b      $00                     ; $2E  .  keyword
         .b      $ff                     ; $2F  /  divide operator
         .b      $00                     ; $30  0  decimal literal
@@ -226,7 +233,7 @@ _eof    call    :osFileClose            ; close the file
         .b      $ff                     ; $5B  [  open square brackets
         .b      $ff                     ; $5C  \  modulo operator
         .b      $ff                     ; $5D  ]  close square brackets
-        .b      $ff                     ; $5E  ^  ...
+        .b      $ff                     ; $5E  ^  XOR operator
         .b      $00                     ; $5F  _  ...
         .b      $ff                     ; $60  `  ...
         .b      $00                     ; $61  a  CPU instruction mnemonic
@@ -256,7 +263,7 @@ _eof    call    :osFileClose            ; close the file
         .b      $00                     ; $79  y  CPU instruction mnemonic
         .b      $00                     ; $7A  z  CPU instruction mnemonic
         .b      $ff                     ; $7B  {  ...
-        .b      $ff                     ; $7C  |  unary OR operator
+        .b      $ff                     ; $7C  |  OR operator
         .b      $ff                     ; $7D  }  ...
         .b      $ff                     ; $7E  ~  ...
         .b      $ff                     ; $7F DEL ERROR
@@ -461,13 +468,38 @@ _tab    dec.A                           ; \t = 9, so change to 8 (width of tab)
         exx                             ; restore HL/DE
         ret
 
+
+:next
+;===============================================================================
+; parse the next word:
+;
+; a word is read from the source and, based on the first
+; character, we jump to a routine to parse that type
+;
+; in:   A       parsing scope to use
+; out:  *       (clobbered)
+;-------------------------------------------------------------------------------
+        ld*$.A  [ :scope ]              ; set the parsing scope from param
+
+        call    :getChr                 ; pull the next character from input
+        cp      #SPC                    ; is non-visible ASCII code < $20?
+        jp?c    :chrEOL                 ; handle CR|LF (EOL) or EOF
+
+        ; TODO: can remove this instruction if we place :next before
+        ;       the table and offset the table by 32 bytes, or expand the
+        ;       table to include $00-$1F so the space comparison is not
+        ;       paid for every word at the cost of 64 bytes
+        ;
+        sub     $20                     ; rebase ASCII code for table
+        add.A                           ; x2 for table of addresses
+        ld*$.A  [ _jp + 1 ]             ; set lo-byte of table-entry    ;+13=13
+_jp     ld.HL*  [ :ascjp ]              ; read addr from table          ;+16=29
+        jp*HL                           ; jump to result!               ;+ 4=33
+
+
 :chrErr
 ;===============================================================================
         halt
-
-:chrAny
-;===============================================================================
-        ret
 
 :chrEOL
 ;===============================================================================
@@ -489,7 +521,8 @@ _tab    dec.A                           ; \t = 9, so change to 8 (width of tab)
 
 :chrHex
 ;===============================================================================
-; word is a hexadecimal number literal, or the program-counter symbol:
+; word is a hexadecimal number literal,
+; or the program-counter symbol:
 ;-------------------------------------------------------------------------------
         ; parse the number first, decide what to do based on scope afterwards:
         ;
@@ -721,7 +754,7 @@ _def    halt
         .w      :chrOut                 ; $29  )  close parenthesis
         .w      :chrMul                 ; $2A  *  multiply operator
         .w      :chrAdd                 ; $2B  +  add operator
-        .w      :chrAny                 ; $2C  ,  ...
+        .w      :chrErr                 ; $2C  ,  ...
         .w      :chrSub                 ; $2D  -  subtract operator
         .w      :chrKeyword             ; $2E  .  keyword
         .w      :chrDiv                 ; $2F  /  divide operator
@@ -738,10 +771,10 @@ _def    halt
         .w      :chrLabel               ; $3A  :  label
         .w      :chrComment             ; $3B  ;  comment
         .w      :chrLo                  ; $3C  <  unary lo-byte operator
-        .w      :chrAny                 ; $3D  =  ...
+        .w      :chrErr                 ; $3D  =  ...
         .w      :chrHi                  ; $3E  >  unary hi-byte operator
         .w      :chrCond                ; $3F  ?  condition marker
-        .w      :chrAny                 ; $40  @  ...
+        .w      :chrErr                 ; $40  @  ...
         .w      :chrCPU                 ; $41  A  CPU instruction mnemonic
         .w      :chrCPU                 ; $42  B  CPU instruction mnemonic
         .w      :chrCPU                 ; $43  C  CPU instruction mnemonic
@@ -771,9 +804,9 @@ _def    halt
         .w      :chrIn                  ; $5B  [  open square brackets
         .w      :chrMod                 ; $5C  \  modulo operator
         .w      :chrOut                 ; $5D  ]  close square brackets
-        .w      :chrAny                 ; $5E  ^  ...
-        .w      :chrLocal               ; $5F  _  ...
-        .w      :chrAny                 ; $60  `  ...
+        .w      :chrXOR                 ; $5E  ^  XOR operator
+        .w      :chrLocal               ; $5F  _  local label
+        .w      :chrErr                 ; $60  `  ...
         .w      :chrCPU                 ; $61  a  CPU instruction mnemonic
         .w      :chrCPU                 ; $62  b  CPU instruction mnemonic
         .w      :chrCPU                 ; $63  c  CPU instruction mnemonic
@@ -800,37 +833,10 @@ _def    halt
         .w      :chrCPU                 ; $78  x  CPU instruction mnemonic
         .w      :chrCPU                 ; $79  y  CPU instruction mnemonic
         .w      :chrCPU                 ; $7A  z  CPU instruction mnemonic
-        .w      :chrAny                 ; $7B  {  ...
+        .w      :chrErr                 ; $7B  {  ...
         .w      :chrOR                  ; $7C  |  unary OR operator
-        .w      :chrAny                 ; $7D  }  ...
-        .w      :chrAny                 ; $7E  ~  ...
+        .w      :chrErr                 ; $7D  }  ...
+        .w      :chrErr                 ; $7E  ~  ...
         .w      :chrErr                 ; $7F DEL ERROR
-
-:next
-;===============================================================================
-; parse the next word:
-;
-; a word is read from the source, and based on the first
-; character we jump to a routine to parse that type
-;
-; in:   A       parsing scope to use
-; out:  *       (clobbered)
-;-------------------------------------------------------------------------------
-        ld*$.A  [ :scope ]              ; set the parsing scope from param
-
-        call    :getChr                 ; pull the next character from input
-        cp      #SPC                    ; is non-visible ASCII code < $20?
-        jp?c    :chrEOL                 ; handle CR|LF (EOL) or EOF
-
-        ; TODO: can remove this instruction if we place :next before
-        ;       the table and offset the table by 32 bytes, or expand the
-        ;       table to include $00-$1F so the space comparison is not
-        ;       paid for every word at the cost of 64 bytes
-        ;
-        sub     $20                     ; rebase ASCII code for table
-        add.A                           ; x2 for table of addresses
-        ld*$.A  [ _jp + 1 ]             ; set lo-byte of table-entry    ;+13=13
-_jp     ld.HL*  [ :ascjp ]              ; read addr from table          ;+16=29
-        jp*HL                           ; jump to result!               ;+ 4=33
 
 #size_of_asm2   $ - :asm2
