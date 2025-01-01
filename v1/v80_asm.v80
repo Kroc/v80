@@ -1,4 +1,4 @@
-; v80, (C) Kroc Camen 2023-2024, MIT License
+; v80, (C) Kroc Camen 2023-2025, MIT License
 ; the parsing / assembling loop
 ;
 ; include the selected ISA:

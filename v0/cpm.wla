@@ -1,4 +1,4 @@
-; v80, (C) Kroc Camen 2023-2024, MIT License
+; v80, (C) Kroc Camen 2023-2025, MIT License
 ; CP/M-2.2 interface
 ;
 ; each supported operating system must implement this interface:
@@ -155,7 +155,7 @@ osBoot:
 
         ;-----------------------------------------------------------------------
 @banner .BYTE   CHAR_COMMENT, " v80 CP/M v0.1.4 - github.com/kroc/v80\n"
-        .BYTE   CHAR_COMMENT, " (C) Kroc Camen 2023-2024, MIT License", 0
+        .BYTE   CHAR_COMMENT, " (C) Kroc Camen 2023-2025, MIT License", 0
 
         ;=======================================================================
         ; CP/M version less than 2.2 -- call BDOS manually for safety
