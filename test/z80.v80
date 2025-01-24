@@ -1,38 +1,40 @@
 ; v80 test file; z80 instructions:
 ;===============================================================================
+adc	$1234
+
 $0100	; v80			; z80				; opcodes
 	;-----------------------------------------------------------------------
-:adc	adc*hl			; adc	A,	[HL]		;    8E
-	adc*hl'			; adc	A,	[HL']		;    8E
-	adc*ix	$00		; adc	A,	[IX+$00]	; DD 8E 00
-	adc*iy	$00		; adc	A,	[IY+$00]	; FD 8E 00
+:adc	adc	[HL]		; adc	A,	[HL]		;    8E
+	adc	[HL']		; adc	A,	[HL']		;    8E
+	adc	[IX+$00]	; adc	A,	[IX+$00]	; DD 8E 00
+	adc	[IY+$00]	; adc	A,	[IY+$00]	; FD 8E 00
 	adc	$00		; adc	A,	$00		;    CE 00
-	adc.a			; adc	A,	A		;    8F
-	adc.a'			; adc	A,	A'		;    8F
-	adc.b			; adc	A,	B		;    88
-	adc.b'			; adc	A,	B'		;    88
-	adc.c			; adc	A,	C		;    89
-	adc.c'			; adc	A,	C'		;    89
-	adc.d			; adc	A,	D		;    8A
-	adc.d'			; adc	A,	D'		;    8A
-	adc.e			; adc	A,	E		;    8B
-	adc.e'			; adc	A,	E'		;    8B
-	adc.h			; adc	A,	H		;    8C
-	adc.h'			; adc	A,	H'		;    8C
-	adc.l			; adc	A,	L		;    8D
-	adc.l'			; adc	A,	L'		;    8D
-	adc.ixh			; adc	A,	IXH		; DD 8C
-	adc.ixl			; adc	A,	IXL		; DD 8D
-	adc.iyh			; adc	A,	IYH		; FD 8C
-	adc.iyl			; adc	A,	IYL		; FD 8D
-	adc.hl.bc		; adc	HL,	BC		; ED 4A
-	adc.hl'bc'		; adc	HL',	BC'		; ED 4A
-	adc.hl.de		; adc	HL,	DE		; ED 5A
-	adc.hl'de'		; adc	HL',	DE'		; ED 5A
-	adc.hl.hl		; adc	HL,	HL		; ED 6A
-	adc.hl'hl'		; adc	HL',	HL'		; ED 6A
-	adc.hl.sp		; adc	HL,	SP		; ED 7A
-	adc.hl'sp		; adc	HL',	SP		; ED 7A
+	adc	A		; adc	A,	A		;    8F
+	adc	A'		; adc	A,	A'		;    8F
+	adc	B		; adc	A,	B		;    88
+	adc	B'		; adc	A,	B'		;    88
+	adc	C		; adc	A,	C		;    89
+	adc	C'		; adc	A,	C'		;    89
+	adc	D		; adc	A,	D		;    8A
+	adc	D'		; adc	A,	D'		;    8A
+	adc	E		; adc	A,	E		;    8B
+	adc	E'		; adc	A,	E'		;    8B
+	adc	H		; adc	A,	H		;    8C
+	adc	H'		; adc	A,	H'		;    8C
+	adc	L		; adc	A,	L		;    8D
+	adc	L'		; adc	A,	L'		;    8D
+	adc	IXH		; adc	A,	IXH		; DD 8C
+	adc	IXL		; adc	A,	IXL		; DD 8D
+	adc	IYH		; adc	A,	IYH		; FD 8C
+	adc	IYL		; adc	A,	IYL		; FD 8D
+	adc	HL	BC	; adc	HL,	BC		; ED 4A
+	adc	HL'	BC'	; adc	HL',	BC'		; ED 4A
+	adc	HL	DE	; adc	HL,	DE		; ED 5A
+	adc	HL'	DE'	; adc	HL',	DE'		; ED 5A
+	adc	HL	HL	; adc	HL,	HL		; ED 6A
+	adc	HL'	HL'	; adc	HL',	HL'		; ED 6A
+	adc	HL	SP	; adc	HL,	SP		; ED 7A
+	adc	HL'	SP	; adc	HL',	SP		; ED 7A
 	;-----------------------------------------------------------------------
 :add	add*hl			; add	A,	[HL]		;    86
 	add*hl'			; add	A,	[HL']		;    86

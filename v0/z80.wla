@@ -246,1014 +246,1026 @@ opcodes:
 
 a:
 ;===============================================================================
-.BYTE   2 *16 | 1, "dc"        ,$ce, OP_B       ;    CE nn    | adc       $nn
-.BYTE   3 *16 | 3,   "*hl"     ,$8e, OP         ;    8E       | adc*hl
-.BYTE   2 *16 | 4,    "ix"     ,$8e, OP_IXO     ; DD 8E nn    | adc*ix    $nn
-.BYTE   1 *16 | 5,     "y"     ,$8e, OP_IYO     ; FD 8E nn    | adc*iy    $nn
-.BYTE   2 *16 | 3,   ".a"      ,$8f, OP         ;    8F       | adc.a
-.BYTE   1 *16 | 4,    "b"      ,$88, OP         ;    88       | adc.b
-.BYTE   1 *16 | 4,    "c"      ,$89, OP         ;    89       | adc.c
-.BYTE   1 *16 | 4,    "d"      ,$8a, OP         ;    8A       | adc.d
-.BYTE   1 *16 | 4,    "e"      ,$8b, OP         ;    8B       | adc.e
-.BYTE   1 *16 | 4,    "h"      ,$8c, OP         ;    8C       | adc.h
-.BYTE   4 *16 | 5,     "l.bc"  ,$4a, OP_ED      ; ED 4A       | adc.hl.bc
-.BYTE   2 *16 | 7,       "de"  ,$5a, OP_ED      ; ED 5A       | adc.hl.de
-.BYTE   2 *16 | 7,       "hl"  ,$6a, OP_ED      ; ED 6A       | adc.hl.hl
-.BYTE   2 *16 | 7,       "sp"  ,$7a, OP_ED      ; ED 7A       | adc.hl.sp
-.BYTE   1 *16 | 4,    "l"      ,$8d, OP         ;    8D       | adc.l
-.BYTE   3 *16 | 4,    "ixh"    ,$8c, OP_IX      ; DD 8C       | adc.ixh
-.BYTE   1 *16 | 6,      "l"    ,$8d, OP_IX      ; DD 8D       | adc.ixl
-.BYTE   2 *16 | 5,     "yh"    ,$8c, OP_IY      ; FD 8C       | adc.iyh
-.BYTE   1 *16 | 6,      "l"    ,$8d, OP_IY      ; FD 8D       | adc.iyl
+; NOTE:
+; -     a single space will match multiple spaces from the input
+; -     "$" is expanded to a full expression, i.e. a parameter
+; -     apostrophes are always optional, and a trailing apostrophe
+;       is allowed for all instructions (so, not needed here)
+;
+;       .---------- = number of new chars introduced (i.e. str-length)
+;       |       .-- = number of chars re-used from previous line
+;       |       |     (with the first character assumed)
+;       V       V
+.BYTE   4 *16 | 1, "dc $"       ,$ce, OP_B      ;    CE nn    | adc $nn
+.BYTE   5 *16 | 4,    "[HL']"   ,$8e, OP        ;    8E       | adc [HL]
+.BYTE   5 *16 | 5,     "IX+$]"  ,$8e, OP_IXO    ; DD 8E nn    | adc [IX+$nn]
+.BYTE   4 *16 | 6,      "Y+$]"  ,$8e, OP_IYO    ; FD 8E nn    | adc [IY+$nn]
+.BYTE   1 *16 | 4,    "A"       ,$8f, OP        ;    8F       | adc A
+.BYTE   1 *16 | 4,    "B"       ,$88, OP        ;    88       | adc B
+.BYTE   1 *16 | 4,    "C"       ,$89, OP        ;    89       | adc C
+.BYTE   1 *16 | 4,    "D"       ,$8a, OP        ;    8A       | adc D
+.BYTE   1 *16 | 4,    "E"       ,$8b, OP        ;    8B       | adc E
+.BYTE   1 *16 | 4,    "H"       ,$8c, OP        ;    8C       | adc H
+.BYTE   5 *16 | 5,     "L' BC"  ,$4a, OP_ED     ; ED 4A       | adc HL BC
+.BYTE   2 *16 | 8,        "DE"  ,$5a, OP_ED     ; ED 5A       | adc HL DE
+.BYTE   2 *16 | 8,        "HL"  ,$6a, OP_ED     ; ED 6A       | adc HL HL
+.BYTE   2 *16 | 8,        "SP"  ,$7a, OP_ED     ; ED 7A       | adc HL SP
+.BYTE   1 *16 | 4,    "L"       ,$8d, OP        ;    8D       | adc L
+.BYTE   3 *16 | 4,    "IXH"     ,$8c, OP_IX     ; DD 8C       | adc IXH
+.BYTE   1 *16 | 6,      "L"     ,$8d, OP_IX     ; DD 8D       | adc IXL
+.BYTE   2 *16 | 5,     "YH"     ,$8c, OP_IY     ; FD 8C       | adc IYH
+.BYTE   1 *16 | 6,      "L"     ,$8d, OP_IY     ; FD 8D       | adc IYL
 ;-------------------------------------------------------------------------------
-.BYTE   1 *16 | 2,  "d"        ,$c6, OP_B       ;    C6 nn    | add       $nn
-.BYTE   3 *16 | 3,   "*hl"     ,$86, OP         ;    86       | add*hl
-.BYTE   2 *16 | 4,    "ix"     ,$86, OP_IXO     ; DD 86 nn    | add*ix    $nn
-.BYTE   1 *16 | 5,     "y"     ,$86, OP_IYO     ; FD 86 nn    | add*iy    $nn
-.BYTE   2 *16 | 3,   ".a"      ,$87, OP         ;    87       | add.a
-.BYTE   1 *16 | 4,    "b"      ,$80, OP         ;    80       | add.b
-.BYTE   1 *16 | 4,    "c"      ,$81, OP         ;    81       | add.c
-.BYTE   1 *16 | 4,    "d"      ,$82, OP         ;    82       | add.d
-.BYTE   1 *16 | 4,    "e"      ,$83, OP         ;    83       | add.e
-.BYTE   1 *16 | 4,    "h"      ,$84, OP         ;    84       | add.h
-.BYTE   4 *16 | 5,     "l.bc"  ,$09, OP         ;    09       | add.hl.bc
-.BYTE   2 *16 | 7,       "de"  ,$19, OP         ;    19       | add.hl.de
-.BYTE   2 *16 | 7,       "hl"  ,$29, OP         ;    29       | add.hl.hl
-.BYTE   2 *16 | 7,       "sp"  ,$39, OP         ;    39       | add.hl.sp
-.BYTE   1 *16 | 4,    "l"      ,$85, OP         ;    85       | add.l
-.BYTE   5 *16 | 4,    "ix.bc"  ,$09, OP_IX      ; DD 09       | add.ix.bc
-.BYTE   2 *16 | 7,       "de"  ,$19, OP_IX      ; DD 19       | add.ix.de
-.BYTE   2 *16 | 7,       "ix"  ,$29, OP_IX      ; DD 29       | add.ix.ix
-.BYTE   2 *16 | 7,       "sp"  ,$39, OP_IX      ; DD 39       | add.ix.sp
-.BYTE   1 *16 | 6,      "h"    ,$84, OP_IX      ; DD 84       | add.ixh
-.BYTE   1 *16 | 6,      "l"    ,$85, OP_IX      ; DD 85       | add.ixl
-.BYTE   4 *16 | 5,     "y.bc"  ,$09, OP_IY      ; FD 09       | add.iy.bc
-.BYTE   2 *16 | 7,       "de"  ,$19, OP_IY      ; FD 19       | add.iy.de
-.BYTE   2 *16 | 7,       "iy"  ,$29, OP_IY      ; FD 29       | add.iy.iy
-.BYTE   2 *16 | 7,       "sp"  ,$39, OP_IY      ; FD 39       | add.iy.sp
-.BYTE   1 *16 | 6,      "h"    ,$84, OP_IY      ; FD 84       | add.iyh
-.BYTE   1 *16 | 6,      "l"    ,$85, OP_IY      ; FD 85       | add.iyl
+.BYTE   0
+
+.BYTE   1 *16 | 2,  "d"         ,$c6, OP_B      ;    C6 nn    | add       $nn
+.BYTE   3 *16 | 3,   "*hl"      ,$86, OP        ;    86       | add*hl
+.BYTE   2 *16 | 4,    "ix"      ,$86, OP_IXO    ; DD 86 nn    | add*ix    $nn
+.BYTE   1 *16 | 5,     "y"      ,$86, OP_IYO    ; FD 86 nn    | add*iy    $nn
+.BYTE   2 *16 | 3,   ".a"       ,$87, OP        ;    87       | add.a
+.BYTE   1 *16 | 4,    "b"       ,$80, OP        ;    80       | add.b
+.BYTE   1 *16 | 4,    "c"       ,$81, OP        ;    81       | add.c
+.BYTE   1 *16 | 4,    "d"       ,$82, OP        ;    82       | add.d
+.BYTE   1 *16 | 4,    "e"       ,$83, OP        ;    83       | add.e
+.BYTE   1 *16 | 4,    "h"       ,$84, OP        ;    84       | add.h
+.BYTE   4 *16 | 5,     "l.bc"   ,$09, OP        ;    09       | add.hl.bc
+.BYTE   2 *16 | 7,       "de"   ,$19, OP        ;    19       | add.hl.de
+.BYTE   2 *16 | 7,       "hl"   ,$29, OP        ;    29       | add.hl.hl
+.BYTE   2 *16 | 7,       "sp"   ,$39, OP        ;    39       | add.hl.sp
+.BYTE   1 *16 | 4,    "l"       ,$85, OP        ;    85       | add.l
+.BYTE   5 *16 | 4,    "ix.bc"   ,$09, OP_IX     ; DD 09       | add.ix.bc
+.BYTE   2 *16 | 7,       "de"   ,$19, OP_IX     ; DD 19       | add.ix.de
+.BYTE   2 *16 | 7,       "ix"   ,$29, OP_IX     ; DD 29       | add.ix.ix
+.BYTE   2 *16 | 7,       "sp"   ,$39, OP_IX     ; DD 39       | add.ix.sp
+.BYTE   1 *16 | 6,      "h"     ,$84, OP_IX     ; DD 84       | add.ixh
+.BYTE   1 *16 | 6,      "l"     ,$85, OP_IX     ; DD 85       | add.ixl
+.BYTE   4 *16 | 5,     "y.bc"   ,$09, OP_IY     ; FD 09       | add.iy.bc
+.BYTE   2 *16 | 7,       "de"   ,$19, OP_IY     ; FD 19       | add.iy.de
+.BYTE   2 *16 | 7,       "iy"   ,$29, OP_IY     ; FD 29       | add.iy.iy
+.BYTE   2 *16 | 7,       "sp"   ,$39, OP_IY     ; FD 39       | add.iy.sp
+.BYTE   1 *16 | 6,      "h"     ,$84, OP_IY     ; FD 84       | add.iyh
+.BYTE   1 *16 | 6,      "l"     ,$85, OP_IY     ; FD 85       | add.iyl
 ;-------------------------------------------------------------------------------
-.BYTE   2 *16 | 1, "nd"        ,$e6, OP_B       ;    E6 nn    | and       $nn
-.BYTE   3 *16 | 3,   "*hl"     ,$a6, OP         ;    A6       | and*hl
-.BYTE   2 *16 | 4,    "ix"     ,$a6, OP_IXO     ; DD A6 nn    | and*ix    $nn
-.BYTE   1 *16 | 5,     "y"     ,$a6, OP_IYO     ; FD A6 nn    | and*iy    $nn
-.BYTE   2 *16 | 3,   ".a"      ,$a7, OP         ;    A7       | and.a
-.BYTE   1 *16 | 4,    "b"      ,$a0, OP         ;    A0       | and.b
-.BYTE   1 *16 | 4,    "c"      ,$a1, OP         ;    A1       | and.c
-.BYTE   1 *16 | 4,    "d"      ,$a2, OP         ;    A2       | and.d
-.BYTE   1 *16 | 4,    "e"      ,$a3, OP         ;    A3       | and.e
-.BYTE   1 *16 | 4,    "h"      ,$a4, OP         ;    A4       | and.h
-.BYTE   1 *16 | 4,    "l"      ,$a5, OP         ;    A5       | and.l
-.BYTE   3 *16 | 4,    "ixh"    ,$a4, OP_IX      ; DD A4       | and.ixh
-.BYTE   1 *16 | 6,      "l"    ,$a5, OP_IX      ; DD A5       | and.ixl
-.BYTE   2 *16 | 5,     "yh"    ,$a4, OP_IY      ; DD A4       | and.iyh
-.BYTE   1 *16 | 6,      "l"    ,$a5, OP_IY      ; DD A5       | and.iyl
+.BYTE   2 *16 | 1, "nd"         ,$e6, OP_B      ;    E6 nn    | and       $nn
+.BYTE   3 *16 | 3,   "*hl"      ,$a6, OP        ;    A6       | and*hl
+.BYTE   2 *16 | 4,    "ix"      ,$a6, OP_IXO    ; DD A6 nn    | and*ix    $nn
+.BYTE   1 *16 | 5,     "y"      ,$a6, OP_IYO    ; FD A6 nn    | and*iy    $nn
+.BYTE   2 *16 | 3,   ".a"       ,$a7, OP        ;    A7       | and.a
+.BYTE   1 *16 | 4,    "b"       ,$a0, OP        ;    A0       | and.b
+.BYTE   1 *16 | 4,    "c"       ,$a1, OP        ;    A1       | and.c
+.BYTE   1 *16 | 4,    "d"       ,$a2, OP        ;    A2       | and.d
+.BYTE   1 *16 | 4,    "e"       ,$a3, OP        ;    A3       | and.e
+.BYTE   1 *16 | 4,    "h"       ,$a4, OP        ;    A4       | and.h
+.BYTE   1 *16 | 4,    "l"       ,$a5, OP        ;    A5       | and.l
+.BYTE   3 *16 | 4,    "ixh"     ,$a4, OP_IX     ; DD A4       | and.ixh
+.BYTE   1 *16 | 6,      "l"     ,$a5, OP_IX     ; DD A5       | and.ixl
+.BYTE   2 *16 | 5,     "yh"     ,$a4, OP_IY     ; DD A4       | and.iyh
+.BYTE   1 *16 | 6,      "l"     ,$a5, OP_IY     ; DD A5       | and.iyl
 ;-------------------------------------------------------------------------------
 .BYTE   0
 
 b:
 ;===============================================================================
-.BYTE   5 *16 | 1, "it0.a"     ,$47, OP_CB      ;    CB 47    | bit0.a
-.BYTE   1 *16 | 5,     "b"     ,$40, OP_CB      ;    CB 40    | bit0.b
-.BYTE   1 *16 | 5,     "c"     ,$41, OP_CB      ;    CB 41    | bit0.c
-.BYTE   1 *16 | 5,     "d"     ,$42, OP_CB      ;    CB 42    | bit0.d
-.BYTE   1 *16 | 5,     "e"     ,$43, OP_CB      ;    CB 43    | bit0.e
-.BYTE   1 *16 | 5,     "h"     ,$44, OP_CB      ;    CB 44    | bit0.h
-.BYTE   1 *16 | 5,     "l"     ,$45, OP_CB      ;    CB 45    | bit0.l
-.BYTE   3 *16 | 4,    "*hl"    ,$46, OP_CB      ;    CB 46    | bit0*hl
-.BYTE   2 *16 | 5,     "ix"    ,$46, OP_CBXO    ; DD CB nn 46 | bit0*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$46, OP_CBYO    ; FD CB nn 46 | bit0*iy   $nn
+.BYTE   5 *16 | 1, "it0.a"      ,$47, OP_CB     ;    CB 47    | bit0.a
+.BYTE   1 *16 | 5,     "b"      ,$40, OP_CB     ;    CB 40    | bit0.b
+.BYTE   1 *16 | 5,     "c"      ,$41, OP_CB     ;    CB 41    | bit0.c
+.BYTE   1 *16 | 5,     "d"      ,$42, OP_CB     ;    CB 42    | bit0.d
+.BYTE   1 *16 | 5,     "e"      ,$43, OP_CB     ;    CB 43    | bit0.e
+.BYTE   1 *16 | 5,     "h"      ,$44, OP_CB     ;    CB 44    | bit0.h
+.BYTE   1 *16 | 5,     "l"      ,$45, OP_CB     ;    CB 45    | bit0.l
+.BYTE   3 *16 | 4,    "*hl"     ,$46, OP_CB     ;    CB 46    | bit0*hl
+.BYTE   2 *16 | 5,     "ix"     ,$46, OP_CBXO   ; DD CB nn 46 | bit0*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$46, OP_CBYO   ; FD CB nn 46 | bit0*iy   $nn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 3,   "1.a"     ,$4f, OP_CB      ;    CB 4F    | bit1.a
-.BYTE   1 *16 | 5,     "b"     ,$48, OP_CB      ;    CB 48    | bit1.b
-.BYTE   1 *16 | 5,     "c"     ,$49, OP_CB      ;    CB 49    | bit1.c
-.BYTE   1 *16 | 5,     "d"     ,$4a, OP_CB      ;    CB 4A    | bit1.d
-.BYTE   1 *16 | 5,     "e"     ,$4b, OP_CB      ;    CB 4B    | bit1.e
-.BYTE   1 *16 | 5,     "h"     ,$4c, OP_CB      ;    CB 4C    | bit1.h
-.BYTE   1 *16 | 5,     "l"     ,$4d, OP_CB      ;    CB 4D    | bit1.l
-.BYTE   3 *16 | 4,    "*hl"    ,$4e, OP_CB      ;    CB 4E    | bit1*hl
-.BYTE   2 *16 | 5,     "ix"    ,$4e, OP_CBXO    ; DD CB nn 4E | bit1*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$4e, OP_CBYO    ; FD CB nn 4E | bit1*iy   $nn
+.BYTE   3 *16 | 3,   "1.a"      ,$4f, OP_CB     ;    CB 4F    | bit1.a
+.BYTE   1 *16 | 5,     "b"      ,$48, OP_CB     ;    CB 48    | bit1.b
+.BYTE   1 *16 | 5,     "c"      ,$49, OP_CB     ;    CB 49    | bit1.c
+.BYTE   1 *16 | 5,     "d"      ,$4a, OP_CB     ;    CB 4A    | bit1.d
+.BYTE   1 *16 | 5,     "e"      ,$4b, OP_CB     ;    CB 4B    | bit1.e
+.BYTE   1 *16 | 5,     "h"      ,$4c, OP_CB     ;    CB 4C    | bit1.h
+.BYTE   1 *16 | 5,     "l"      ,$4d, OP_CB     ;    CB 4D    | bit1.l
+.BYTE   3 *16 | 4,    "*hl"     ,$4e, OP_CB     ;    CB 4E    | bit1*hl
+.BYTE   2 *16 | 5,     "ix"     ,$4e, OP_CBXO   ; DD CB nn 4E | bit1*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$4e, OP_CBYO   ; FD CB nn 4E | bit1*iy   $nn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 3,   "2.a"     ,$57, OP_CB      ;    CB 57    | bit2.a
-.BYTE   1 *16 | 5,     "b"     ,$50, OP_CB      ;    CB 50    | bit2.b
-.BYTE   1 *16 | 5,     "c"     ,$51, OP_CB      ;    CB 51    | bit2.c
-.BYTE   1 *16 | 5,     "d"     ,$52, OP_CB      ;    CB 52    | bit2.d
-.BYTE   1 *16 | 5,     "e"     ,$53, OP_CB      ;    CB 53    | bit2.e
-.BYTE   1 *16 | 5,     "h"     ,$54, OP_CB      ;    CB 54    | bit2.h
-.BYTE   1 *16 | 5,     "l"     ,$55, OP_CB      ;    CB 55    | bit2.l
-.BYTE   3 *16 | 4,    "*hl"    ,$56, OP_CB      ;    CB 56    | bit2*hl
-.BYTE   2 *16 | 5,     "ix"    ,$56, OP_CBXO    ; DD CB nn 56 | bit2*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$56, OP_CBYO    ; FD CB nn 56 | bit2*iy   $nn
+.BYTE   3 *16 | 3,   "2.a"      ,$57, OP_CB     ;    CB 57    | bit2.a
+.BYTE   1 *16 | 5,     "b"      ,$50, OP_CB     ;    CB 50    | bit2.b
+.BYTE   1 *16 | 5,     "c"      ,$51, OP_CB     ;    CB 51    | bit2.c
+.BYTE   1 *16 | 5,     "d"      ,$52, OP_CB     ;    CB 52    | bit2.d
+.BYTE   1 *16 | 5,     "e"      ,$53, OP_CB     ;    CB 53    | bit2.e
+.BYTE   1 *16 | 5,     "h"      ,$54, OP_CB     ;    CB 54    | bit2.h
+.BYTE   1 *16 | 5,     "l"      ,$55, OP_CB     ;    CB 55    | bit2.l
+.BYTE   3 *16 | 4,    "*hl"     ,$56, OP_CB     ;    CB 56    | bit2*hl
+.BYTE   2 *16 | 5,     "ix"     ,$56, OP_CBXO   ; DD CB nn 56 | bit2*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$56, OP_CBYO   ; FD CB nn 56 | bit2*iy   $nn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 3,   "3.a"     ,$5f, OP_CB      ;    CB 5F    | bit3.a
-.BYTE   1 *16 | 5,     "b"     ,$58, OP_CB      ;    CB 58    | bit3.b
-.BYTE   1 *16 | 5,     "c"     ,$59, OP_CB      ;    CB 59    | bit3.c
-.BYTE   1 *16 | 5,     "d"     ,$5a, OP_CB      ;    CB 5A    | bit3.d
-.BYTE   1 *16 | 5,     "e"     ,$5b, OP_CB      ;    CB 5B    | bit3.e
-.BYTE   1 *16 | 5,     "h"     ,$5c, OP_CB      ;    CB 5C    | bit3.h
-.BYTE   1 *16 | 5,     "l"     ,$5d, OP_CB      ;    CB 5D    | bit3.l
-.BYTE   3 *16 | 4,    "*hl"    ,$5e, OP_CB      ;    CB 5E    | bit3*hl
-.BYTE   2 *16 | 5,     "ix"    ,$5e, OP_CBXO    ; DD CB nn 5E | bit3*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$5e, OP_CBYO    ; FD CB nn 5E | bit3*iy   $nn
+.BYTE   3 *16 | 3,   "3.a"      ,$5f, OP_CB     ;    CB 5F    | bit3.a
+.BYTE   1 *16 | 5,     "b"      ,$58, OP_CB     ;    CB 58    | bit3.b
+.BYTE   1 *16 | 5,     "c"      ,$59, OP_CB     ;    CB 59    | bit3.c
+.BYTE   1 *16 | 5,     "d"      ,$5a, OP_CB     ;    CB 5A    | bit3.d
+.BYTE   1 *16 | 5,     "e"      ,$5b, OP_CB     ;    CB 5B    | bit3.e
+.BYTE   1 *16 | 5,     "h"      ,$5c, OP_CB     ;    CB 5C    | bit3.h
+.BYTE   1 *16 | 5,     "l"      ,$5d, OP_CB     ;    CB 5D    | bit3.l
+.BYTE   3 *16 | 4,    "*hl"     ,$5e, OP_CB     ;    CB 5E    | bit3*hl
+.BYTE   2 *16 | 5,     "ix"     ,$5e, OP_CBXO   ; DD CB nn 5E | bit3*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$5e, OP_CBYO   ; FD CB nn 5E | bit3*iy   $nn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 3,   "4.a"     ,$67, OP_CB      ;    CB 67    | bit4.a
-.BYTE   1 *16 | 5,     "b"     ,$60, OP_CB      ;    CB 60    | bit4.b
-.BYTE   1 *16 | 5,     "c"     ,$61, OP_CB      ;    CB 61    | bit4.c
-.BYTE   1 *16 | 5,     "d"     ,$62, OP_CB      ;    CB 62    | bit4.d
-.BYTE   1 *16 | 5,     "e"     ,$63, OP_CB      ;    CB 63    | bit4.e
-.BYTE   1 *16 | 5,     "h"     ,$64, OP_CB      ;    CB 64    | bit4.h
-.BYTE   1 *16 | 5,     "l"     ,$65, OP_CB      ;    CB 65    | bit4.l
-.BYTE   3 *16 | 4,    "*hl"    ,$66, OP_CB      ;    CB 66    | bit4*hl
-.BYTE   2 *16 | 5,     "ix"    ,$66, OP_CBXO    ; DD CB nn 66 | bit4*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$66, OP_CBYO    ; FD CB nn 66 | bit4*iy   $nn
+.BYTE   3 *16 | 3,   "4.a"      ,$67, OP_CB     ;    CB 67    | bit4.a
+.BYTE   1 *16 | 5,     "b"      ,$60, OP_CB     ;    CB 60    | bit4.b
+.BYTE   1 *16 | 5,     "c"      ,$61, OP_CB     ;    CB 61    | bit4.c
+.BYTE   1 *16 | 5,     "d"      ,$62, OP_CB     ;    CB 62    | bit4.d
+.BYTE   1 *16 | 5,     "e"      ,$63, OP_CB     ;    CB 63    | bit4.e
+.BYTE   1 *16 | 5,     "h"      ,$64, OP_CB     ;    CB 64    | bit4.h
+.BYTE   1 *16 | 5,     "l"      ,$65, OP_CB     ;    CB 65    | bit4.l
+.BYTE   3 *16 | 4,    "*hl"     ,$66, OP_CB     ;    CB 66    | bit4*hl
+.BYTE   2 *16 | 5,     "ix"     ,$66, OP_CBXO   ; DD CB nn 66 | bit4*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$66, OP_CBYO   ; FD CB nn 66 | bit4*iy   $nn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 3,   "5.a"     ,$6f, OP_CB      ;    CB 6F    | bit5.a
-.BYTE   1 *16 | 5,     "b"     ,$68, OP_CB      ;    CB 68    | bit5.b
-.BYTE   1 *16 | 5,     "c"     ,$69, OP_CB      ;    CB 69    | bit5.c
-.BYTE   1 *16 | 5,     "d"     ,$6a, OP_CB      ;    CB 6A    | bit5.d
-.BYTE   1 *16 | 5,     "e"     ,$6b, OP_CB      ;    CB 6B    | bit5.e
-.BYTE   1 *16 | 5,     "h"     ,$6c, OP_CB      ;    CB 6C    | bit5.h
-.BYTE   1 *16 | 5,     "l"     ,$6d, OP_CB      ;    CB 6D    | bit5.l
-.BYTE   3 *16 | 4,    "*hl"    ,$6e, OP_CB      ;    CB 6E    | bit5*hl
-.BYTE   2 *16 | 5,     "ix"    ,$6e, OP_CBXO    ; DD CB nn 6E | bit5*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$6e, OP_CBYO    ; FD CB nn 6E | bit5*iy   $nn
+.BYTE   3 *16 | 3,   "5.a"      ,$6f, OP_CB     ;    CB 6F    | bit5.a
+.BYTE   1 *16 | 5,     "b"      ,$68, OP_CB     ;    CB 68    | bit5.b
+.BYTE   1 *16 | 5,     "c"      ,$69, OP_CB     ;    CB 69    | bit5.c
+.BYTE   1 *16 | 5,     "d"      ,$6a, OP_CB     ;    CB 6A    | bit5.d
+.BYTE   1 *16 | 5,     "e"      ,$6b, OP_CB     ;    CB 6B    | bit5.e
+.BYTE   1 *16 | 5,     "h"      ,$6c, OP_CB     ;    CB 6C    | bit5.h
+.BYTE   1 *16 | 5,     "l"      ,$6d, OP_CB     ;    CB 6D    | bit5.l
+.BYTE   3 *16 | 4,    "*hl"     ,$6e, OP_CB     ;    CB 6E    | bit5*hl
+.BYTE   2 *16 | 5,     "ix"     ,$6e, OP_CBXO   ; DD CB nn 6E | bit5*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$6e, OP_CBYO   ; FD CB nn 6E | bit5*iy   $nn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 3,   "6.a"     ,$77, OP_CB      ;    CB 77    | bit6.a
-.BYTE   1 *16 | 5,     "b"     ,$70, OP_CB      ;    CB 70    | bit6.b
-.BYTE   1 *16 | 5,     "c"     ,$71, OP_CB      ;    CB 71    | bit6.c
-.BYTE   1 *16 | 5,     "d"     ,$72, OP_CB      ;    CB 72    | bit6.d
-.BYTE   1 *16 | 5,     "e"     ,$73, OP_CB      ;    CB 73    | bit6.e
-.BYTE   1 *16 | 5,     "h"     ,$74, OP_CB      ;    CB 74    | bit6.h
-.BYTE   1 *16 | 5,     "l"     ,$75, OP_CB      ;    CB 75    | bit6.l
-.BYTE   3 *16 | 4,    "*hl"    ,$76, OP_CB      ;    CB 76    | bit6*hl
-.BYTE   2 *16 | 5,     "ix"    ,$76, OP_CBXO    ; DD CB nn 76 | bit6*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$76, OP_CBYO    ; FD CB nn 76 | bit6*iy   $nn
+.BYTE   3 *16 | 3,   "6.a"      ,$77, OP_CB     ;    CB 77    | bit6.a
+.BYTE   1 *16 | 5,     "b"      ,$70, OP_CB     ;    CB 70    | bit6.b
+.BYTE   1 *16 | 5,     "c"      ,$71, OP_CB     ;    CB 71    | bit6.c
+.BYTE   1 *16 | 5,     "d"      ,$72, OP_CB     ;    CB 72    | bit6.d
+.BYTE   1 *16 | 5,     "e"      ,$73, OP_CB     ;    CB 73    | bit6.e
+.BYTE   1 *16 | 5,     "h"      ,$74, OP_CB     ;    CB 74    | bit6.h
+.BYTE   1 *16 | 5,     "l"      ,$75, OP_CB     ;    CB 75    | bit6.l
+.BYTE   3 *16 | 4,    "*hl"     ,$76, OP_CB     ;    CB 76    | bit6*hl
+.BYTE   2 *16 | 5,     "ix"     ,$76, OP_CBXO   ; DD CB nn 76 | bit6*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$76, OP_CBYO   ; FD CB nn 76 | bit6*iy   $nn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 3,   "7.a"     ,$7f, OP_CB      ;    CB 7F    | bit7.a
-.BYTE   1 *16 | 5,     "b"     ,$78, OP_CB      ;    CB 78    | bit7.b
-.BYTE   1 *16 | 5,     "c"     ,$79, OP_CB      ;    CB 79    | bit7.c
-.BYTE   1 *16 | 5,     "d"     ,$7a, OP_CB      ;    CB 7A    | bit7.d
-.BYTE   1 *16 | 5,     "e"     ,$7b, OP_CB      ;    CB 7B    | bit7.e
-.BYTE   1 *16 | 5,     "h"     ,$7c, OP_CB      ;    CB 7C    | bit7.h
-.BYTE   1 *16 | 5,     "l"     ,$7d, OP_CB      ;    CB 7D    | bit7.l
-.BYTE   3 *16 | 4,    "*hl"    ,$7e, OP_CB      ;    CB 7E    | bit7*hl
-.BYTE   2 *16 | 5,     "ix"    ,$7e, OP_CBXO    ; DD CB nn 7E | bit7*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$7e, OP_CBYO    ; FD CB nn 7E | bit7*iy   $nn
+.BYTE   3 *16 | 3,   "7.a"      ,$7f, OP_CB     ;    CB 7F    | bit7.a
+.BYTE   1 *16 | 5,     "b"      ,$78, OP_CB     ;    CB 78    | bit7.b
+.BYTE   1 *16 | 5,     "c"      ,$79, OP_CB     ;    CB 79    | bit7.c
+.BYTE   1 *16 | 5,     "d"      ,$7a, OP_CB     ;    CB 7A    | bit7.d
+.BYTE   1 *16 | 5,     "e"      ,$7b, OP_CB     ;    CB 7B    | bit7.e
+.BYTE   1 *16 | 5,     "h"      ,$7c, OP_CB     ;    CB 7C    | bit7.h
+.BYTE   1 *16 | 5,     "l"      ,$7d, OP_CB     ;    CB 7D    | bit7.l
+.BYTE   3 *16 | 4,    "*hl"     ,$7e, OP_CB     ;    CB 7E    | bit7*hl
+.BYTE   2 *16 | 5,     "ix"     ,$7e, OP_CBXO   ; DD CB nn 7E | bit7*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$7e, OP_CBYO   ; FD CB nn 7E | bit7*iy   $nn
 ;-------------------------------------------------------------------------------
 .BYTE   0
 
 c:
 ;===============================================================================
-.BYTE   3 *16 | 1, "all"       ,$cd, OP_W       ;    CD nn nn | call      $nnnn
-.BYTE   2 *16 | 4,    "?z"     ,$cc, OP_W       ;    CC nn nn | call?z    $nnnn
-.BYTE   1 *16 | 5,     "c"     ,$dc, OP_W       ;    DC nn nn | call?c    $nnnn
-.BYTE   2 *16 | 5,     "nz"    ,$c4, OP_W       ;    C4 nn nn | call?nz   $nnnn
-.BYTE   1 *16 | 6,      "c"    ,$d4, OP_W       ;    D4 nn nn | call?nc   $nnnn
-.BYTE   1 *16 | 6,      "v"    ,$e4, OP_W       ;    E4 nn nn | call?nv   $nnnn
-.BYTE   1 *16 | 5,     "m"     ,$fc, OP_W       ;    FC nn nn | call?m    $nnnn
-.BYTE   1 *16 | 5,     "v"     ,$ec, OP_W       ;    EC nn nn | call?v    $nnnn
-.BYTE   1 *16 | 5,     "p"     ,$f4, OP_W       ;    F4 nn nn | call?p    $nnnn
-.BYTE   1 *16 | 6,      "e"    ,$ec, OP_W       ;    EC nn nn | call?pe   $nnnn
-.BYTE   1 *16 | 6,      "o"    ,$e4, OP_W       ;    E4 nn nn | call?po   $nnnn
+.BYTE   3 *16 | 1, "all"        ,$cd, OP_W      ;    CD nn nn | call      $nnnn
+.BYTE   2 *16 | 4,    "?z"      ,$cc, OP_W      ;    CC nn nn | call?z    $nnnn
+.BYTE   1 *16 | 5,     "c"      ,$dc, OP_W      ;    DC nn nn | call?c    $nnnn
+.BYTE   2 *16 | 5,     "nz"     ,$c4, OP_W      ;    C4 nn nn | call?nz   $nnnn
+.BYTE   1 *16 | 6,      "c"     ,$d4, OP_W      ;    D4 nn nn | call?nc   $nnnn
+.BYTE   1 *16 | 6,      "v"     ,$e4, OP_W      ;    E4 nn nn | call?nv   $nnnn
+.BYTE   1 *16 | 5,     "m"      ,$fc, OP_W      ;    FC nn nn | call?m    $nnnn
+.BYTE   1 *16 | 5,     "v"      ,$ec, OP_W      ;    EC nn nn | call?v    $nnnn
+.BYTE   1 *16 | 5,     "p"      ,$f4, OP_W      ;    F4 nn nn | call?p    $nnnn
+.BYTE   1 *16 | 6,      "e"     ,$ec, OP_W      ;    EC nn nn | call?pe   $nnnn
+.BYTE   1 *16 | 6,      "o"     ,$e4, OP_W      ;    E4 nn nn | call?po   $nnnn
 ;-------------------------------------------------------------------------------
-.BYTE   1 *16 | 1, "p"         ,$fe, OP_B       ;    FE nn    | cp        $nn
-.BYTE   2 *16 | 2,  ".a"       ,$bf, OP         ;    BF       | cp.a
-.BYTE   1 *16 | 3,   "b"       ,$b8, OP         ;    B8       | cp.b
-.BYTE   1 *16 | 3,   "c"       ,$b9, OP         ;    B9       | cp.c
-.BYTE   1 *16 | 3,   "d"       ,$ba, OP         ;    BA       | cp.d
-.BYTE   1 *16 | 3,   "e"       ,$bb, OP         ;    BB       | cp.e
-.BYTE   1 *16 | 3,   "h"       ,$bc, OP         ;    BC       | cp.h
-.BYTE   1 *16 | 3,   "l"       ,$bd, OP         ;    BD       | cp.l
-.BYTE   3 *16 | 3,   "ixh"     ,$bc, OP_IX      ; DD BC       | cp.ixh
-.BYTE   1 *16 | 5,     "l"     ,$bd, OP_IX      ; DD BD       | cp.ixl
-.BYTE   2 *16 | 4,    "yh"     ,$bc, OP_IY      ; FD BC       | cp.iyh
-.BYTE   1 *16 | 5,     "l"     ,$bd, OP_IY      ; FD BD       | cp.iyl
-.BYTE   3 *16 | 2,  "*hl"      ,$be, OP         ;    BE       | cp*hl
-.BYTE   2 *16 | 3,   "ix"      ,$be, OP_IXO     ; DD BE nn    | cp*ix     $nn
-.BYTE   1 *16 | 4,    "y"      ,$be, OP_IYO     ; FD BE nn    | cp*iy     $nn
+.BYTE   1 *16 | 1, "p"          ,$fe, OP_B      ;    FE nn    | cp        $nn
+.BYTE   2 *16 | 2,  ".a"        ,$bf, OP        ;    BF       | cp.a
+.BYTE   1 *16 | 3,   "b"        ,$b8, OP        ;    B8       | cp.b
+.BYTE   1 *16 | 3,   "c"        ,$b9, OP        ;    B9       | cp.c
+.BYTE   1 *16 | 3,   "d"        ,$ba, OP        ;    BA       | cp.d
+.BYTE   1 *16 | 3,   "e"        ,$bb, OP        ;    BB       | cp.e
+.BYTE   1 *16 | 3,   "h"        ,$bc, OP        ;    BC       | cp.h
+.BYTE   1 *16 | 3,   "l"        ,$bd, OP        ;    BD       | cp.l
+.BYTE   3 *16 | 3,   "ixh"      ,$bc, OP_IX     ; DD BC       | cp.ixh
+.BYTE   1 *16 | 5,     "l"      ,$bd, OP_IX     ; DD BD       | cp.ixl
+.BYTE   2 *16 | 4,    "yh"      ,$bc, OP_IY     ; FD BC       | cp.iyh
+.BYTE   1 *16 | 5,     "l"      ,$bd, OP_IY     ; FD BD       | cp.iyl
+.BYTE   3 *16 | 2,  "*hl"       ,$be, OP        ;    BE       | cp*hl
+.BYTE   2 *16 | 3,   "ix"       ,$be, OP_IXO    ; DD BE nn    | cp*ix     $nn
+.BYTE   1 *16 | 4,    "y"       ,$be, OP_IYO    ; FD BE nn    | cp*iy     $nn
 ;-------------------------------------------------------------------------------
-.BYTE   1 *16 | 2,   "d"       ,$a9, OP_ED      ; ED A9       | cpd
-.BYTE   1 *16 | 3,    "r"      ,$b9, OP_ED      ; ED B9       | cpdr
-.BYTE   1 *16 | 2,   "i"       ,$a1, OP_ED      ; ED A1       | cpi
-.BYTE   1 *16 | 3,    "r"      ,$b1, OP_ED      ; ED B1       | cpir
+.BYTE   1 *16 | 2,   "d"        ,$a9, OP_ED     ; ED A9       | cpd
+.BYTE   1 *16 | 3,    "r"       ,$b9, OP_ED     ; ED B9       | cpdr
+.BYTE   1 *16 | 2,   "i"        ,$a1, OP_ED     ; ED A1       | cpi
+.BYTE   1 *16 | 3,    "r"       ,$b1, OP_ED     ; ED B1       | cpir
 ;-------------------------------------------------------------------------------
-.BYTE   1 *16 | 2,   "l"       ,$2f, OP         ;    2F       | cpl
-.BYTE   2 *16 | 1,  "cf"       ,$3f, OP         ;    3F       | ccf
+.BYTE   1 *16 | 2,   "l"        ,$2f, OP        ;    2F       | cpl
+.BYTE   2 *16 | 1,  "cf"        ,$3f, OP        ;    3F       | ccf
 ;-------------------------------------------------------------------------------
 .BYTE   0
 
 d:
 ;===============================================================================
-.BYTE   3 *16 | 1, "jnz"       ,$10, OP_R       ;    10 nn    | djnz      $nnnn
+.BYTE   3 *16 | 1, "jnz"        ,$10, OP_R      ;    10 nn    | djnz      $nnnn
 ;-------------------------------------------------------------------------------
-.BYTE   4 *16 | 1, "ec.a"      ,$3d, OP         ;    3D       | dec.a
-.BYTE   1 *16 | 4,    "b"      ,$05, OP         ;    05       | dec.b
-.BYTE   1 *16 | 5,     "c"     ,$0b, OP         ;    0B       | dec.bc
-.BYTE   1 *16 | 4,    "c"      ,$0d, OP         ;    0D       | dec.c
-.BYTE   1 *16 | 4,    "d"      ,$15, OP         ;    15       | dec.d
-.BYTE   1 *16 | 5,     "e"     ,$1b, OP         ;    1B       | dec.de
-.BYTE   1 *16 | 4,    "e"      ,$1d, OP         ;    1D       | dec.e
-.BYTE   1 *16 | 4,    "h"      ,$25, OP         ;    25       | dec.h
-.BYTE   1 *16 | 5,     "l"     ,$2b, OP         ;    2B       | dec.hl
-.BYTE   1 *16 | 4,    "l"      ,$2d, OP         ;    2D       | dec.l
-.BYTE   2 *16 | 4,    "ix"     ,$2b, OP_IX      ; DD 2B       | dec.ix
-.BYTE   1 *16 | 6,      "h"    ,$25, OP_IX      ; DD 25       | dec.ixh
-.BYTE   1 *16 | 6,      "l"    ,$2d, OP_IX      ; DD 2D       | dec.ixl
-.BYTE   1 *16 | 5,     "y"     ,$2b, OP_IY      ; FD 2B       | dec.iy
-.BYTE   1 *16 | 6,      "h"    ,$25, OP_IY      ; FD 25       | dec.iyh
-.BYTE   1 *16 | 6,      "l"    ,$2d, OP_IY      ; FD 2D       | dec.iyl
-.BYTE   2 *16 | 4,    "sp"     ,$3b, OP         ;    3B       | dec.sp
-.BYTE   3 *16 | 3,   "*hl"     ,$35, OP         ;    35       | dec*hl
-.BYTE   2 *16 | 4,    "ix"     ,$35, OP_IXO     ; DD 35 nn    | dec*ix    $nn
-.BYTE   1 *16 | 5,     "y"     ,$35, OP_IYO     ; FD 35 nn    | dec*iy    $nn
+.BYTE   4 *16 | 1, "ec.a"       ,$3d, OP        ;    3D       | dec.a
+.BYTE   1 *16 | 4,    "b"       ,$05, OP        ;    05       | dec.b
+.BYTE   1 *16 | 5,     "c"      ,$0b, OP        ;    0B       | dec.bc
+.BYTE   1 *16 | 4,    "c"       ,$0d, OP        ;    0D       | dec.c
+.BYTE   1 *16 | 4,    "d"       ,$15, OP        ;    15       | dec.d
+.BYTE   1 *16 | 5,     "e"      ,$1b, OP        ;    1B       | dec.de
+.BYTE   1 *16 | 4,    "e"       ,$1d, OP        ;    1D       | dec.e
+.BYTE   1 *16 | 4,    "h"       ,$25, OP        ;    25       | dec.h
+.BYTE   1 *16 | 5,     "l"      ,$2b, OP        ;    2B       | dec.hl
+.BYTE   1 *16 | 4,    "l"       ,$2d, OP        ;    2D       | dec.l
+.BYTE   2 *16 | 4,    "ix"      ,$2b, OP_IX     ; DD 2B       | dec.ix
+.BYTE   1 *16 | 6,      "h"     ,$25, OP_IX     ; DD 25       | dec.ixh
+.BYTE   1 *16 | 6,      "l"     ,$2d, OP_IX     ; DD 2D       | dec.ixl
+.BYTE   1 *16 | 5,     "y"      ,$2b, OP_IY     ; FD 2B       | dec.iy
+.BYTE   1 *16 | 6,      "h"     ,$25, OP_IY     ; FD 25       | dec.iyh
+.BYTE   1 *16 | 6,      "l"     ,$2d, OP_IY     ; FD 2D       | dec.iyl
+.BYTE   2 *16 | 4,    "sp"      ,$3b, OP        ;    3B       | dec.sp
+.BYTE   3 *16 | 3,   "*hl"      ,$35, OP        ;    35       | dec*hl
+.BYTE   2 *16 | 4,    "ix"      ,$35, OP_IXO    ; DD 35 nn    | dec*ix    $nn
+.BYTE   1 *16 | 5,     "y"      ,$35, OP_IYO    ; FD 35 nn    | dec*iy    $nn
 ;-------------------------------------------------------------------------------
-.BYTE   1 *16 | 1, "i"         ,$f3, OP         ;    F3       | di
+.BYTE   1 *16 | 1, "i"          ,$f3, OP        ;    F3       | di
 ;-------------------------------------------------------------------------------
-.BYTE   2 *16 | 1, "aa"        ,$27, OP         ;    27       | daa
+.BYTE   2 *16 | 1, "aa"         ,$27, OP        ;    27       | daa
 ;-------------------------------------------------------------------------------
 .BYTE   0
 
 e:
 ;===============================================================================
-.BYTE   2 *16 | 1, "xx"        ,$d9, OP         ;    D9       | exx
+.BYTE   2 *16 | 1, "xx"         ,$d9, OP        ;    D9       | exx
 ;-------------------------------------------------------------------------------
-.BYTE   6 *16 | 2,  ".af.af"   ,$08, OP         ;    08       | ex.af.af
-.BYTE   5 *16 | 3,   "de.hl"   ,$eb, OP         ;    EB       | ex.de.hl
-.BYTE   5 *16 | 3,   "hl.de"   ,$eb, OP         ;    EB       | ex.hl.de
-.BYTE   6 *16 | 2,  "*sp.hl"   ,$e3, OP         ;    E3       | ex*sp.hl
-.BYTE   2 *16 | 6,      "ix"   ,$e3, OP_IX      ; DD E3       | ex*sp.ix
-.BYTE   1 *16 | 7,       "y"   ,$e3, OP_IY      ; FD E3       | ex*sp.iy
+.BYTE   6 *16 | 2,  ".af.af"    ,$08, OP        ;    08       | ex.af.af
+.BYTE   5 *16 | 3,   "de.hl"    ,$eb, OP        ;    EB       | ex.de.hl
+.BYTE   5 *16 | 3,   "hl.de"    ,$eb, OP        ;    EB       | ex.hl.de
+.BYTE   6 *16 | 2,  "*sp.hl"    ,$e3, OP        ;    E3       | ex*sp.hl
+.BYTE   2 *16 | 6,      "ix"    ,$e3, OP_IX     ; DD E3       | ex*sp.ix
+.BYTE   1 *16 | 7,       "y"    ,$e3, OP_IY     ; FD E3       | ex*sp.iy
 ;-------------------------------------------------------------------------------
-.BYTE   1 *16 | 1, "i"         ,$fb, OP         ;    FB       | ei
+.BYTE   1 *16 | 1, "i"          ,$fb, OP        ;    FB       | ei
 ;-------------------------------------------------------------------------------
 .BYTE   0
 
 h:
 ;===============================================================================
-.BYTE   3 *16 | 1, "alt"       ,$76, OP         ;    76       | halt
-.BYTE   2 *16 | 1, "lt"        ,$76, OP         ;    76       | hlt
-.BYTE   2 *16 | 1, "cf"        ,$76, OP         ;    76       | hcf
+.BYTE   3 *16 | 1, "alt"        ,$76, OP        ;    76       | halt
+.BYTE   2 *16 | 1, "lt"         ,$76, OP        ;    76       | hlt
+.BYTE   2 *16 | 1, "cf"         ,$76, OP        ;    76       | hcf
 ;-------------------------------------------------------------------------------
 .BYTE   0
 
 i:
 ;===============================================================================
-.BYTE   4 *16 | 1, "nc.a"      ,$3c, OP         ;    3C       | inc.a
-.BYTE   1 *16 | 4,    "b"      ,$04, OP         ;    04       | inc.b
-.BYTE   1 *16 | 5,     "c"     ,$03, OP         ;    03       | inc.bc
-.BYTE   1 *16 | 4,    "c"      ,$0c, OP         ;    0C       | inc.c
-.BYTE   1 *16 | 4,    "d"      ,$14, OP         ;    14       | inc.d
-.BYTE   1 *16 | 5,     "e"     ,$13, OP         ;    13       | inc.de
-.BYTE   1 *16 | 4,    "e"      ,$1c, OP         ;    1C       | inc.e
-.BYTE   1 *16 | 4,    "h"      ,$24, OP         ;    24       | inc.h
-.BYTE   1 *16 | 5,     "l"     ,$23, OP         ;    23       | inc.hl
-.BYTE   1 *16 | 4,    "l"      ,$2c, OP         ;    2C       | inc.l
-.BYTE   2 *16 | 4,    "ix"     ,$23, OP_IX      ; DD 23       | inc.ix
-.BYTE   1 *16 | 6,      "h"    ,$24, OP_IX      ; DD 24       | inc.ixh
-.BYTE   1 *16 | 6,      "l"    ,$2c, OP_IX      ; DD 2C       | inc.ixl
-.BYTE   1 *16 | 5,     "y"     ,$23, OP_IY      ; FD 23       | inc.iy
-.BYTE   1 *16 | 6,      "h"    ,$24, OP_IY      ; FD 24       | inc.iyh
-.BYTE   1 *16 | 6,      "l"    ,$2c, OP_IY      ; FD 2C       | inc.iyl
-.BYTE   2 *16 | 4,    "sp"     ,$33, OP         ;    33       | inc.sp
-.BYTE   3 *16 | 3,   "*hl"     ,$34, OP         ;    34       | inc*hl
-.BYTE   2 *16 | 4,    "ix"     ,$34, OP_IXO     ; DD 33 nn    | inc*ix    $nn
-.BYTE   1 *16 | 5,     "y"     ,$34, OP_IYO     ; FD 34 nn    | inc*iy    $nn
+.BYTE   4 *16 | 1, "nc.a"       ,$3c, OP        ;    3C       | inc.a
+.BYTE   1 *16 | 4,    "b"       ,$04, OP        ;    04       | inc.b
+.BYTE   1 *16 | 5,     "c"      ,$03, OP        ;    03       | inc.bc
+.BYTE   1 *16 | 4,    "c"       ,$0c, OP        ;    0C       | inc.c
+.BYTE   1 *16 | 4,    "d"       ,$14, OP        ;    14       | inc.d
+.BYTE   1 *16 | 5,     "e"      ,$13, OP        ;    13       | inc.de
+.BYTE   1 *16 | 4,    "e"       ,$1c, OP        ;    1C       | inc.e
+.BYTE   1 *16 | 4,    "h"       ,$24, OP        ;    24       | inc.h
+.BYTE   1 *16 | 5,     "l"      ,$23, OP        ;    23       | inc.hl
+.BYTE   1 *16 | 4,    "l"       ,$2c, OP        ;    2C       | inc.l
+.BYTE   2 *16 | 4,    "ix"      ,$23, OP_IX     ; DD 23       | inc.ix
+.BYTE   1 *16 | 6,      "h"     ,$24, OP_IX     ; DD 24       | inc.ixh
+.BYTE   1 *16 | 6,      "l"     ,$2c, OP_IX     ; DD 2C       | inc.ixl
+.BYTE   1 *16 | 5,     "y"      ,$23, OP_IY     ; FD 23       | inc.iy
+.BYTE   1 *16 | 6,      "h"     ,$24, OP_IY     ; FD 24       | inc.iyh
+.BYTE   1 *16 | 6,      "l"     ,$2c, OP_IY     ; FD 2C       | inc.iyl
+.BYTE   2 *16 | 4,    "sp"      ,$33, OP        ;    33       | inc.sp
+.BYTE   3 *16 | 3,   "*hl"      ,$34, OP        ;    34       | inc*hl
+.BYTE   2 *16 | 4,    "ix"      ,$34, OP_IXO    ; DD 33 nn    | inc*ix    $nn
+.BYTE   1 *16 | 5,     "y"      ,$34, OP_IYO    ; FD 34 nn    | inc*iy    $nn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 2,  ".a*"      ,$db, OP_B       ;    DB nn    | in.a*     $nn
-.BYTE   1 *16 | 5,     "c"     ,$78, OP_ED      ; ED 78       | in.a*c
-.BYTE   2 *16 | 4,    "'*"     ,$db, OP_B       ;    DB nn    | in.a'*    $nn
-.BYTE   1 *16 | 6,      "c"    ,$78, OP_ED      ; ED 78       | in.a'*c
-.BYTE   3 *16 | 3,   "b*c"     ,$40, OP_ED      ; ED 40       | in.b*c
-.BYTE   3 *16 | 4,    "'*c"    ,$40, OP_ED      ; ED 40       | in.b'*c'
-.BYTE   3 *16 | 3,   "c*c"     ,$48, OP_ED      ; ED 48       | in.c*c
-.BYTE   3 *16 | 4,    "'*c"    ,$48, OP_ED      ; ED 48       | in.c'*c'
-.BYTE   3 *16 | 3,   "d*c"     ,$50, OP_ED      ; ED 50       | in.d*c
-.BYTE   3 *16 | 4,    "'*c"    ,$50, OP_ED      ; ED 50       | in.d'*c'
-.BYTE   3 *16 | 3,   "e*c"     ,$58, OP_ED      ; ED 58       | in.e*c
-.BYTE   3 *16 | 4,    "'*c"    ,$58, OP_ED      ; ED 58       | in.e'*c'
-.BYTE   3 *16 | 3,   "h*c"     ,$60, OP_ED      ; ED 60       | in.h*c
-.BYTE   3 *16 | 4,    "'*c"    ,$60, OP_ED      ; ED 60       | in.h'*c'
-.BYTE   3 *16 | 3,   "l*c"     ,$68, OP_ED      ; ED 68       | in.l*c
-.BYTE   3 *16 | 4,    "'*c"    ,$68, OP_ED      ; ED 68       | in.l'*c'
+.BYTE   3 *16 | 2,  ".a*"       ,$db, OP_B      ;    DB nn    | in.a*     $nn
+.BYTE   1 *16 | 5,     "c"      ,$78, OP_ED     ; ED 78       | in.a*c
+.BYTE   2 *16 | 4,    "'*"      ,$db, OP_B      ;    DB nn    | in.a'*    $nn
+.BYTE   1 *16 | 6,      "c"     ,$78, OP_ED     ; ED 78       | in.a'*c
+.BYTE   3 *16 | 3,   "b*c"      ,$40, OP_ED     ; ED 40       | in.b*c
+.BYTE   3 *16 | 4,    "'*c"     ,$40, OP_ED     ; ED 40       | in.b'*c'
+.BYTE   3 *16 | 3,   "c*c"      ,$48, OP_ED     ; ED 48       | in.c*c
+.BYTE   3 *16 | 4,    "'*c"     ,$48, OP_ED     ; ED 48       | in.c'*c'
+.BYTE   3 *16 | 3,   "d*c"      ,$50, OP_ED     ; ED 50       | in.d*c
+.BYTE   3 *16 | 4,    "'*c"     ,$50, OP_ED     ; ED 50       | in.d'*c'
+.BYTE   3 *16 | 3,   "e*c"      ,$58, OP_ED     ; ED 58       | in.e*c
+.BYTE   3 *16 | 4,    "'*c"     ,$58, OP_ED     ; ED 58       | in.e'*c'
+.BYTE   3 *16 | 3,   "h*c"      ,$60, OP_ED     ; ED 60       | in.h*c
+.BYTE   3 *16 | 4,    "'*c"     ,$60, OP_ED     ; ED 60       | in.h'*c'
+.BYTE   3 *16 | 3,   "l*c"      ,$68, OP_ED     ; ED 68       | in.l*c
+.BYTE   3 *16 | 4,    "'*c"     ,$68, OP_ED     ; ED 68       | in.l'*c'
 ;-------------------------------------------------------------------------------
-.BYTE   1 *16 | 2,  "d"        ,$aa, OP_ED      ; ED AA       | ind
-.BYTE   1 *16 | 3,   "r"       ,$ba, OP_ED      ; ED BA       | indr
+.BYTE   1 *16 | 2,  "d"         ,$aa, OP_ED     ; ED AA       | ind
+.BYTE   1 *16 | 3,   "r"        ,$ba, OP_ED     ; ED BA       | indr
 ;-------------------------------------------------------------------------------
-.BYTE   1 *16 | 2,  "i"        ,$a2, OP_ED      ; ED A2       | ini
-.BYTE   1 *16 | 3,   "r"       ,$b2, OP_ED      ; ED B2       | inir
+.BYTE   1 *16 | 2,  "i"         ,$a2, OP_ED     ; ED A2       | ini
+.BYTE   1 *16 | 3,   "r"        ,$b2, OP_ED     ; ED B2       | inir
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 1, "m.0"       ,$46, OP_ED      ; ED 46       | im.0
-.BYTE   1 *16 | 3,   "1"       ,$56, OP_ED      ; ED 56       | im.1
-.BYTE   1 *16 | 3,   "2"       ,$5e, OP_ED      ; ED 5E       | im.2
+.BYTE   3 *16 | 1, "m.0"        ,$46, OP_ED     ; ED 46       | im.0
+.BYTE   1 *16 | 3,   "1"        ,$56, OP_ED     ; ED 56       | im.1
+.BYTE   1 *16 | 3,   "2"        ,$5e, OP_ED     ; ED 5E       | im.2
 ;-------------------------------------------------------------------------------
 .BYTE   0
 
 j:
 ;===============================================================================
-.BYTE   1 *16 | 1, "p"         ,$c3, OP_W       ;    C3 nn nn | jp        $nnnn
-.BYTE   2 *16 | 2,  "?z"       ,$ca, OP_W       ;    CA nn nn | jp?z      $nnnn
-.BYTE   1 *16 | 3,   "c"       ,$da, OP_W       ;    DA nn nn | jp?c      $nnnn
-.BYTE   2 *16 | 3,   "nz"      ,$c2, OP_W       ;    C2 nn nn | jp?nz     $nnnn
-.BYTE   1 *16 | 4,    "c"      ,$d2, OP_W       ;    D2 nn nn | jp?nc     $nnnn
-.BYTE   1 *16 | 4,    "v"      ,$e2, OP_W       ;    E2 nn nn | jp?nv     $nnnn
-.BYTE   1 *16 | 3,   "m"       ,$fa, OP_W       ;    FA nn nn | jp?m      $nnnn
-.BYTE   1 *16 | 3,   "v"       ,$ea, OP_W       ;    EA nn nn | jp?v      $nnnn
-.BYTE   1 *16 | 3,   "p"       ,$f2, OP_W       ;    F2 nn nn | jp?p      $nnnn
-.BYTE   1 *16 | 4,    "e"      ,$ea, OP_W       ;    EA nn nn | jp?pe     $nnnn
-.BYTE   1 *16 | 4,    "o"      ,$e2, OP_W       ;    E2 nn nn | jp?po     $nnnn
-.BYTE   3 *16 | 2,  "*hl"      ,$e9, OP         ;    E9       | jp*hl
-.BYTE   2 *16 | 3,   "ix"      ,$e9, OP_IX      ; DD E9       | jp*ix
-.BYTE   1 *16 | 4,    "y"      ,$e9, OP_IY      ; FD E9       | jp*iy
+.BYTE   1 *16 | 1, "p"          ,$c3, OP_W      ;    C3 nn nn | jp        $nnnn
+.BYTE   2 *16 | 2,  "?z"        ,$ca, OP_W      ;    CA nn nn | jp?z      $nnnn
+.BYTE   1 *16 | 3,   "c"        ,$da, OP_W      ;    DA nn nn | jp?c      $nnnn
+.BYTE   2 *16 | 3,   "nz"       ,$c2, OP_W      ;    C2 nn nn | jp?nz     $nnnn
+.BYTE   1 *16 | 4,    "c"       ,$d2, OP_W      ;    D2 nn nn | jp?nc     $nnnn
+.BYTE   1 *16 | 4,    "v"       ,$e2, OP_W      ;    E2 nn nn | jp?nv     $nnnn
+.BYTE   1 *16 | 3,   "m"        ,$fa, OP_W      ;    FA nn nn | jp?m      $nnnn
+.BYTE   1 *16 | 3,   "v"        ,$ea, OP_W      ;    EA nn nn | jp?v      $nnnn
+.BYTE   1 *16 | 3,   "p"        ,$f2, OP_W      ;    F2 nn nn | jp?p      $nnnn
+.BYTE   1 *16 | 4,    "e"       ,$ea, OP_W      ;    EA nn nn | jp?pe     $nnnn
+.BYTE   1 *16 | 4,    "o"       ,$e2, OP_W      ;    E2 nn nn | jp?po     $nnnn
+.BYTE   3 *16 | 2,  "*hl"       ,$e9, OP        ;    E9       | jp*hl
+.BYTE   2 *16 | 3,   "ix"       ,$e9, OP_IX     ; DD E9       | jp*ix
+.BYTE   1 *16 | 4,    "y"       ,$e9, OP_IY     ; FD E9       | jp*iy
 ;-------------------------------------------------------------------------------
-.BYTE   1 *16 | 1, "r"         ,$18, OP_R       ;    18 nn    | jr        $nnnn
-.BYTE   2 *16 | 2,  "?z"       ,$28, OP_R       ;    28 nn    | jr?z      $nnnn
-.BYTE   1 *16 | 3,   "c"       ,$38, OP_R       ;    38 nn    | jr?c      $nnnn
-.BYTE   2 *16 | 3,   "nz"      ,$20, OP_R       ;    20 nn    | jr?nz     $nnnn
-.BYTE   1 *16 | 4,    "c"      ,$30, OP_R       ;    30 nn    | jr?nc     $nnnn
+.BYTE   3 *16 | 1, "r $"        ,$18, OP_R      ;    18 nn    | jr z  $nnnn
+.BYTE   3 *16 | 3,   "z $"      ,$28, OP_R      ;    28 nn    | jr z  $nnnn
+.BYTE   3 *16 | 3,   "c $"      ,$38, OP_R      ;    38 nn    | jr c  $nnnn
+.BYTE   4 *16 | 3,   "nz $"     ,$20, OP_R      ;    20 nn    | jr nz $nnnn
+.BYTE   3 *16 | 4,    "c $"     ,$30, OP_R      ;    30 nn    | jr nc $nnnn
 ;-------------------------------------------------------------------------------
 .BYTE   0
 
 l:
 ;===============================================================================
-.BYTE   5 *16 | 1, "d*$.a"     ,$32, OP_W       ;    32 nn nn | ld*$.a    $nnnn
-.BYTE   2 *16 | 5,     "bc"    ,$43, OP_EDW     ; ED 43 nn nn | ld*$.bc   $nnnn
-.BYTE   2 *16 | 5,     "de"    ,$53, OP_EDW     ; ED 53 nn nn | ld*$.de   $nnnn
-.BYTE   2 *16 | 5,     "hl"    ,$22, OP_W       ;    22 nn nn | ld*$.hl   $nnnn
-.BYTE   2 *16 | 5,     "ix"    ,$22, OP_IXW     ; DD 22 nn nn | ld*$.ix   $nnnn
-.BYTE   1 *16 | 6,      "y"    ,$22, OP_IYW     ; FD 22 nn nn | ld*$.iy   $nnnn
-.BYTE   2 *16 | 5,     "sp"    ,$73, OP_EDW     ; ED 73 nn nn | ld*$.sp   $nnnn
+.BYTE   5 *16 | 1, "d*$.a"      ,$32, OP_W      ;    32 nn nn | ld*$.a    $nnnn
+.BYTE   2 *16 | 5,     "bc"     ,$43, OP_EDW    ; ED 43 nn nn | ld*$.bc   $nnnn
+.BYTE   2 *16 | 5,     "de"     ,$53, OP_EDW    ; ED 53 nn nn | ld*$.de   $nnnn
+.BYTE   2 *16 | 5,     "hl"     ,$22, OP_W      ;    22 nn nn | ld*$.hl   $nnnn
+.BYTE   2 *16 | 5,     "ix"     ,$22, OP_IXW    ; DD 22 nn nn | ld*$.ix   $nnnn
+.BYTE   1 *16 | 6,      "y"     ,$22, OP_IYW    ; FD 22 nn nn | ld*$.iy   $nnnn
+.BYTE   2 *16 | 5,     "sp"     ,$73, OP_EDW    ; ED 73 nn nn | ld*$.sp   $nnnn
 ;-------------------------------------------------------------------------------
-.BYTE   4 *16 | 3,   "bc.a"    ,$02, OP         ;    02       | ld*bc.a
-.BYTE   4 *16 | 3,   "de.a"    ,$12, OP         ;    12       | ld*de.a
-.BYTE   2 *16 | 3,   "hl"      ,$36, OP_B       ;    36 nn    | ld*hl     $nn
-.BYTE   2 *16 | 5,     ".a"    ,$77, OP         ;    77       | ld*hl.a
-.BYTE   1 *16 | 6,      "b"    ,$70, OP         ;    70       | ld*hl.b
-.BYTE   1 *16 | 6,      "c"    ,$71, OP         ;    71       | ld*hl.c
-.BYTE   1 *16 | 6,      "d"    ,$72, OP         ;    72       | ld*hl.d
-.BYTE   1 *16 | 6,      "e"    ,$73, OP         ;    73       | ld*hl.e
-.BYTE   1 *16 | 6,      "h"    ,$74, OP         ;    74       | ld*hl.h
-.BYTE   1 *16 | 6,      "l"    ,$75, OP         ;    75       | ld*hl.l
-.BYTE   2 *16 | 3,   "ix"      ,$36, OP_IXOB    ; DD 36 nn nn | ld*ix $nn $nn
-.BYTE   2 *16 | 5,     ".a"    ,$77, OP_IXO     ; DD 77 nn    | ld*ix.a   $nn
-.BYTE   1 *16 | 6,      "b"    ,$70, OP_IXO     ; DD 70 nn    | ld*ix.BYTE$nn
-.BYTE   1 *16 | 6,      "c"    ,$71, OP_IXO     ; DD 71 nn    | ld*ix.c   $nn
-.BYTE   1 *16 | 6,      "d"    ,$72, OP_IXO     ; DD 72 nn    | ld*ix.d   $nn
-.BYTE   1 *16 | 6,      "e"    ,$73, OP_IXO     ; DD 73 nn    | ld*ix.e   $nn
-.BYTE   1 *16 | 6,      "h"    ,$74, OP_IXO     ; DD 74 nn    | ld*ix.h   $nn
-.BYTE   1 *16 | 6,      "l"    ,$75, OP_IXO     ; DD 75 nn    | ld*ix.l   $nn
-.BYTE   1 *16 | 4,    "y"      ,$36, OP_IYOB    ; FD 36 nn nn | ld*iy $nn $nn
-.BYTE   2 *16 | 5,     ".a"    ,$77, OP_IYO     ; FD 77 nn    | ld*iy.a   $nn
-.BYTE   1 *16 | 6,      "b"    ,$70, OP_IYO     ; FD 70 nn    | ld*iy.BYTE$nn
-.BYTE   1 *16 | 6,      "c"    ,$71, OP_IYO     ; FD 71 nn    | ld*iy.c   $nn
-.BYTE   1 *16 | 6,      "d"    ,$72, OP_IYO     ; FD 72 nn    | ld*iy.d   $nn
-.BYTE   1 *16 | 6,      "e"    ,$73, OP_IYO     ; FD 73 nn    | ld*iy.e   $nn
-.BYTE   1 *16 | 6,      "h"    ,$74, OP_IYO     ; FD 74 nn    | ld*iy.h   $nn
-.BYTE   1 *16 | 6,      "l"    ,$75, OP_IYO     ; FD 75 nn    | ld*iy.l   $nn
+.BYTE   4 *16 | 3,   "bc.a"     ,$02, OP        ;    02       | ld*bc.a
+.BYTE   4 *16 | 3,   "de.a"     ,$12, OP        ;    12       | ld*de.a
+.BYTE   2 *16 | 3,   "hl"       ,$36, OP_B      ;    36 nn    | ld*hl     $nn
+.BYTE   2 *16 | 5,     ".a"     ,$77, OP        ;    77       | ld*hl.a
+.BYTE   1 *16 | 6,      "b"     ,$70, OP        ;    70       | ld*hl.b
+.BYTE   1 *16 | 6,      "c"     ,$71, OP        ;    71       | ld*hl.c
+.BYTE   1 *16 | 6,      "d"     ,$72, OP        ;    72       | ld*hl.d
+.BYTE   1 *16 | 6,      "e"     ,$73, OP        ;    73       | ld*hl.e
+.BYTE   1 *16 | 6,      "h"     ,$74, OP        ;    74       | ld*hl.h
+.BYTE   1 *16 | 6,      "l"     ,$75, OP        ;    75       | ld*hl.l
+.BYTE   2 *16 | 3,   "ix"       ,$36, OP_IXOB   ; DD 36 nn nn | ld*ix $nn $nn
+.BYTE   2 *16 | 5,     ".a"     ,$77, OP_IXO    ; DD 77 nn    | ld*ix.a   $nn
+.BYTE   1 *16 | 6,      "b"     ,$70, OP_IXO    ; DD 70 nn    | ld*ix.BYTE$nn
+.BYTE   1 *16 | 6,      "c"     ,$71, OP_IXO    ; DD 71 nn    | ld*ix.c   $nn
+.BYTE   1 *16 | 6,      "d"     ,$72, OP_IXO    ; DD 72 nn    | ld*ix.d   $nn
+.BYTE   1 *16 | 6,      "e"     ,$73, OP_IXO    ; DD 73 nn    | ld*ix.e   $nn
+.BYTE   1 *16 | 6,      "h"     ,$74, OP_IXO    ; DD 74 nn    | ld*ix.h   $nn
+.BYTE   1 *16 | 6,      "l"     ,$75, OP_IXO    ; DD 75 nn    | ld*ix.l   $nn
+.BYTE   1 *16 | 4,    "y"       ,$36, OP_IYOB   ; FD 36 nn nn | ld*iy $nn $nn
+.BYTE   2 *16 | 5,     ".a"     ,$77, OP_IYO    ; FD 77 nn    | ld*iy.a   $nn
+.BYTE   1 *16 | 6,      "b"     ,$70, OP_IYO    ; FD 70 nn    | ld*iy.BYTE$nn
+.BYTE   1 *16 | 6,      "c"     ,$71, OP_IYO    ; FD 71 nn    | ld*iy.c   $nn
+.BYTE   1 *16 | 6,      "d"     ,$72, OP_IYO    ; FD 72 nn    | ld*iy.d   $nn
+.BYTE   1 *16 | 6,      "e"     ,$73, OP_IYO    ; FD 73 nn    | ld*iy.e   $nn
+.BYTE   1 *16 | 6,      "h"     ,$74, OP_IYO    ; FD 74 nn    | ld*iy.h   $nn
+.BYTE   1 *16 | 6,      "l"     ,$75, OP_IYO    ; FD 75 nn    | ld*iy.l   $nn
 ;===============================================================================
-.BYTE   2 *16 | 2,  ".a"       ,$3e, OP_B       ;    3E nn    | ld.a      $nn
-.BYTE   2 *16 | 4,    ".a"     ,$7f, OP         ;    7F       | ld.a.a
-.BYTE   1 *16 | 5,     "b"     ,$78, OP         ;    78       | ld.a.b
-.BYTE   1 *16 | 5,     "c"     ,$79, OP         ;    79       | ld.a.c
-.BYTE   1 *16 | 5,     "d"     ,$7a, OP         ;    7A       | ld.a.d
-.BYTE   1 *16 | 5,     "e"     ,$7b, OP         ;    7B       | ld.a.e
-.BYTE   1 *16 | 5,     "h"     ,$7c, OP         ;    7C       | ld.a.h
-.BYTE   1 *16 | 5,     "l"     ,$7d, OP         ;    7D       | ld.a.l
-.BYTE   1 *16 | 5,     "i"     ,$57, OP_ED      ; ED 57       | ld.a.i
-.BYTE   2 *16 | 6,      "xh"   ,$7c, OP_IX      ; DD 7C       | ld.a.ixh
-.BYTE   1 *16 | 7,       "l"   ,$7d, OP_IX      ; DD 7D       | ld.a.ixl
-.BYTE   2 *16 | 6,      "yh"   ,$7c, OP_IY      ; FD 7C       | ld.a.iyh
-.BYTE   1 *16 | 7,       "l"   ,$7d, OP_IY      ; FD 7D       | ld.a.iyl
-.BYTE   1 *16 | 5,     "r"     ,$5f, OP_ED      ; ED 5F       | ld.a.r
+.BYTE   2 *16 | 2,  ".a"        ,$3e, OP_B      ;    3E nn    | ld.a      $nn
+.BYTE   2 *16 | 4,    ".a"      ,$7f, OP        ;    7F       | ld.a.a
+.BYTE   1 *16 | 5,     "b"      ,$78, OP        ;    78       | ld.a.b
+.BYTE   1 *16 | 5,     "c"      ,$79, OP        ;    79       | ld.a.c
+.BYTE   1 *16 | 5,     "d"      ,$7a, OP        ;    7A       | ld.a.d
+.BYTE   1 *16 | 5,     "e"      ,$7b, OP        ;    7B       | ld.a.e
+.BYTE   1 *16 | 5,     "h"      ,$7c, OP        ;    7C       | ld.a.h
+.BYTE   1 *16 | 5,     "l"      ,$7d, OP        ;    7D       | ld.a.l
+.BYTE   1 *16 | 5,     "i"      ,$57, OP_ED     ; ED 57       | ld.a.i
+.BYTE   2 *16 | 6,      "xh"    ,$7c, OP_IX     ; DD 7C       | ld.a.ixh
+.BYTE   1 *16 | 7,       "l"    ,$7d, OP_IX     ; DD 7D       | ld.a.ixl
+.BYTE   2 *16 | 6,      "yh"    ,$7c, OP_IY     ; FD 7C       | ld.a.iyh
+.BYTE   1 *16 | 7,       "l"    ,$7d, OP_IY     ; FD 7D       | ld.a.iyl
+.BYTE   1 *16 | 5,     "r"      ,$5f, OP_ED     ; ED 5F       | ld.a.r
 ;-------------------------------------------------------------------------------
-.BYTE   1 *16 | 5,     "*"     ,$3a, OP_W       ;    3A nn nn | ld.a'*    $nnnn
-.BYTE   2 *16 | 6,      "bc"   ,$0a, OP         ;    0A       | ld.a'*bc
-.BYTE   2 *16 | 6,      "de"   ,$1a, OP         ;    1A       | ld.a'*de
-.BYTE   2 *16 | 6,      "hl"   ,$7e, OP         ;    7E       | ld.a'*hl
-.BYTE   2 *16 | 6,     "ix"    ,$7e, OP_IXO     ; DD 7E nn    | ld.a'*ix  $nn
-.BYTE   1 *16 | 7,      "y"    ,$7e, OP_IYO     ; FD 7E nn    | ld.a'*iy  $nn
+.BYTE   1 *16 | 5,     "*"      ,$3a, OP_W      ;    3A nn nn | ld.a'*    $nnnn
+.BYTE   2 *16 | 6,      "bc"    ,$0a, OP        ;    0A       | ld.a'*bc
+.BYTE   2 *16 | 6,      "de"    ,$1a, OP        ;    1A       | ld.a'*de
+.BYTE   2 *16 | 6,      "hl"    ,$7e, OP        ;    7E       | ld.a'*hl
+.BYTE   2 *16 | 6,     "ix"     ,$7e, OP_IXO    ; DD 7E nn    | ld.a'*ix  $nn
+.BYTE   1 *16 | 7,      "y"     ,$7e, OP_IYO    ; FD 7E nn    | ld.a'*iy  $nn
 ;-------------------------------------------------------------------------------
-.BYTE   1 *16 | 4,    "*"      ,$3a, OP_W       ;    3A nn nn | ld.a*     $nnnn
-.BYTE   2 *16 | 5,     "bc"    ,$0a, OP         ;    0A       | ld.a*bc
-.BYTE   2 *16 | 5,     "de"    ,$1a, OP         ;    1A       | ld.a*de
-.BYTE   2 *16 | 5,     "hl"    ,$7e, OP         ;    7E       | ld.a*hl
-.BYTE   2 *16 | 5,     "ix"    ,$7e, OP_IXO     ; DD 7E nn    | ld.a*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$7e, OP_IYO     ; FD 7E nn    | ld.a*iy   $nn
+.BYTE   1 *16 | 4,    "*"       ,$3a, OP_W      ;    3A nn nn | ld.a*     $nnnn
+.BYTE   2 *16 | 5,     "bc"     ,$0a, OP        ;    0A       | ld.a*bc
+.BYTE   2 *16 | 5,     "de"     ,$1a, OP        ;    1A       | ld.a*de
+.BYTE   2 *16 | 5,     "hl"     ,$7e, OP        ;    7E       | ld.a*hl
+.BYTE   2 *16 | 5,     "ix"     ,$7e, OP_IXO    ; DD 7E nn    | ld.a*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$7e, OP_IYO    ; FD 7E nn    | ld.a*iy   $nn
 ;===============================================================================
-.BYTE   1 *16 | 3,   "b"       ,$06, OP_B       ;    06 nn    | ld.BYTE   $nn
-.BYTE   2 *16 | 4,    ".a"     ,$47, OP         ;    47       | ld.b.a
-.BYTE   1 *16 | 5,     "b"     ,$40, OP         ;    40       | ld.b.b
-.BYTE   1 *16 | 5,     "c"     ,$41, OP         ;    41       | ld.b.c
-.BYTE   1 *16 | 5,     "d"     ,$42, OP         ;    42       | ld.b.d
-.BYTE   1 *16 | 5,     "e"     ,$43, OP         ;    43       | ld.b.e
-.BYTE   1 *16 | 5,     "h"     ,$44, OP         ;    44       | ld.b.h
-.BYTE   1 *16 | 5,     "l"     ,$45, OP         ;    45       | ld.b.l
-.BYTE   3 *16 | 5,     "ixh"   ,$44, OP_IX      ; DD 44       | ld.b.ixh
-.BYTE   1 *16 | 7,       "l"   ,$45, OP_IX      ; DD 45       | ld.b.ixl
-.BYTE   2 *16 | 6,      "yh"   ,$44, OP_IY      ; FD 44       | ld.b.iyh
-.BYTE   1 *16 | 7,       "l"   ,$45, OP_IY      ; FD 45       | ld.b.iyl
+.BYTE   1 *16 | 3,   "b"        ,$06, OP_B      ;    06 nn    | ld.BYTE   $nn
+.BYTE   2 *16 | 4,    ".a"      ,$47, OP        ;    47       | ld.b.a
+.BYTE   1 *16 | 5,     "b"      ,$40, OP        ;    40       | ld.b.b
+.BYTE   1 *16 | 5,     "c"      ,$41, OP        ;    41       | ld.b.c
+.BYTE   1 *16 | 5,     "d"      ,$42, OP        ;    42       | ld.b.d
+.BYTE   1 *16 | 5,     "e"      ,$43, OP        ;    43       | ld.b.e
+.BYTE   1 *16 | 5,     "h"      ,$44, OP        ;    44       | ld.b.h
+.BYTE   1 *16 | 5,     "l"      ,$45, OP        ;    45       | ld.b.l
+.BYTE   3 *16 | 5,     "ixh"    ,$44, OP_IX     ; DD 44       | ld.b.ixh
+.BYTE   1 *16 | 7,       "l"    ,$45, OP_IX     ; DD 45       | ld.b.ixl
+.BYTE   2 *16 | 6,      "yh"    ,$44, OP_IY     ; FD 44       | ld.b.iyh
+.BYTE   1 *16 | 7,       "l"    ,$45, OP_IY     ; FD 45       | ld.b.iyl
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 5,     "*hl"   ,$46, OP         ;    46       | ld.b'*hl'
-.BYTE   2 *16 | 6,      "ix"   ,$46, OP_IXO     ; DD 46 nn    | ld.b'*ix  $nn
-.BYTE   1 *16 | 7,       "y"   ,$46, OP_IYO     ; FD 46 nn    | ld.b'*iy  $nn
+.BYTE   3 *16 | 5,     "*hl"    ,$46, OP        ;    46       | ld.b'*hl'
+.BYTE   2 *16 | 6,      "ix"    ,$46, OP_IXO    ; DD 46 nn    | ld.b'*ix  $nn
+.BYTE   1 *16 | 7,       "y"    ,$46, OP_IYO    ; FD 46 nn    | ld.b'*iy  $nn
 ;-------------------------------------------------------------------------------
-.BYTE   1 *16 | 4,    "c"      ,$01, OP_W       ;    01 nn nn | ld.bc     $nnnn
-.BYTE   1 *16 | 5,     "*"     ,$4b, OP_EDW     ; ED 4B nn nn | ld.bc*    $nnnn
-.BYTE   2 *16 | 5,     "'*"    ,$4b, OP_EDW     ; ED 4B nn nn | ld.bc'*   $nnnn
+.BYTE   1 *16 | 4,    "c"       ,$01, OP_W      ;    01 nn nn | ld.bc     $nnnn
+.BYTE   1 *16 | 5,     "*"      ,$4b, OP_EDW    ; ED 4B nn nn | ld.bc*    $nnnn
+.BYTE   2 *16 | 5,     "'*"     ,$4b, OP_EDW    ; ED 4B nn nn | ld.bc'*   $nnnn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 4,    "*hl"    ,$46, OP         ;    46       | ld.b*hl
-.BYTE   2 *16 | 5,     "ix"    ,$46, OP_IXO     ; DD 46 nn    | ld.b*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$46, OP_IYO     ; FD 46 nn    | ld.b*iy   $nn
+.BYTE   3 *16 | 4,    "*hl"     ,$46, OP        ;    46       | ld.b*hl
+.BYTE   2 *16 | 5,     "ix"     ,$46, OP_IXO    ; DD 46 nn    | ld.b*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$46, OP_IYO    ; FD 46 nn    | ld.b*iy   $nn
 ;===============================================================================
-.BYTE   1 *16 | 3,   "c"       ,$0e, OP_B       ;    0E nn    | ld.c      $nn
-.BYTE   2 *16 | 4,    ".a"     ,$4f, OP         ;    4F       | ld.c.a
-.BYTE   1 *16 | 5,     "b"     ,$48, OP         ;    48       | ld.c.b
-.BYTE   1 *16 | 5,     "c"     ,$49, OP         ;    49       | ld.c.c
-.BYTE   1 *16 | 5,     "d"     ,$4a, OP         ;    4A       | ld.c.d
-.BYTE   1 *16 | 5,     "e"     ,$4b, OP         ;    4B       | ld.c.e
-.BYTE   1 *16 | 5,     "h"     ,$4c, OP         ;    4C       | ld.c.h
-.BYTE   1 *16 | 5,     "l"     ,$4d, OP         ;    4D       | ld.c.l
-.BYTE   3 *16 | 5,     "ixh"   ,$4c, OP_IX      ; DD 4C       | ld.c.ixh
-.BYTE   1 *16 | 7,       "l"   ,$4d, OP_IX      ; DD 4D       | ld.c.ixl
-.BYTE   2 *16 | 6,      "yh"   ,$4c, OP_IY      ; FD 4C       | ld.c.iyh
-.BYTE   1 *16 | 7,       "l"   ,$4d, OP_IY      ; FD 4D       | ld.c.iyl
+.BYTE   1 *16 | 3,   "c"        ,$0e, OP_B      ;    0E nn    | ld.c      $nn
+.BYTE   2 *16 | 4,    ".a"      ,$4f, OP        ;    4F       | ld.c.a
+.BYTE   1 *16 | 5,     "b"      ,$48, OP        ;    48       | ld.c.b
+.BYTE   1 *16 | 5,     "c"      ,$49, OP        ;    49       | ld.c.c
+.BYTE   1 *16 | 5,     "d"      ,$4a, OP        ;    4A       | ld.c.d
+.BYTE   1 *16 | 5,     "e"      ,$4b, OP        ;    4B       | ld.c.e
+.BYTE   1 *16 | 5,     "h"      ,$4c, OP        ;    4C       | ld.c.h
+.BYTE   1 *16 | 5,     "l"      ,$4d, OP        ;    4D       | ld.c.l
+.BYTE   3 *16 | 5,     "ixh"    ,$4c, OP_IX     ; DD 4C       | ld.c.ixh
+.BYTE   1 *16 | 7,       "l"    ,$4d, OP_IX     ; DD 4D       | ld.c.ixl
+.BYTE   2 *16 | 6,      "yh"    ,$4c, OP_IY     ; FD 4C       | ld.c.iyh
+.BYTE   1 *16 | 7,       "l"    ,$4d, OP_IY     ; FD 4D       | ld.c.iyl
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 5,     "*hl"   ,$4e, OP         ;    4E       | ld.c'*hl'
-.BYTE   2 *16 | 6,      "ix"   ,$4e, OP_IXO     ; DD 4E nn    | ld.c'*ix  $nn
-.BYTE   1 *16 | 7,       "y"   ,$4e, OP_IYO     ; FD 4E nn    | ld.c'*iy  $nn
+.BYTE   3 *16 | 5,     "*hl"    ,$4e, OP        ;    4E       | ld.c'*hl'
+.BYTE   2 *16 | 6,      "ix"    ,$4e, OP_IXO    ; DD 4E nn    | ld.c'*ix  $nn
+.BYTE   1 *16 | 7,       "y"    ,$4e, OP_IYO    ; FD 4E nn    | ld.c'*iy  $nn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 4,    "*hl"    ,$4e, OP         ;    4E       | ld.c*hl
-.BYTE   2 *16 | 5,     "ix"    ,$4e, OP_IXO     ; DD 4E nn    | ld.c*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$4e, OP_IYO     ; FD 4E nn    | ld.c*iy   $nn
+.BYTE   3 *16 | 4,    "*hl"     ,$4e, OP        ;    4E       | ld.c*hl
+.BYTE   2 *16 | 5,     "ix"     ,$4e, OP_IXO    ; DD 4E nn    | ld.c*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$4e, OP_IYO    ; FD 4E nn    | ld.c*iy   $nn
 ;===============================================================================
-.BYTE   1 *16 | 3,   "d"       ,$16, OP_B       ;    16 nn    | ld.d      $nn
-.BYTE   2 *16 | 4,    ".a"     ,$57, OP         ;    57       | ld.d.a
-.BYTE   1 *16 | 5,     "b"     ,$50, OP         ;    50       | ld.d.b
-.BYTE   1 *16 | 5,     "c"     ,$51, OP         ;    51       | ld.d.c
-.BYTE   1 *16 | 5,     "d"     ,$52, OP         ;    52       | ld.d.d
-.BYTE   1 *16 | 5,     "e"     ,$53, OP         ;    53       | ld.d.e
-.BYTE   1 *16 | 5,     "h"     ,$54, OP         ;    54       | ld.d.h
-.BYTE   1 *16 | 5,     "l"     ,$55, OP         ;    55       | ld.d.l
-.BYTE   3 *16 | 5,     "ixh"   ,$54, OP_IX      ; DD 54       | ld.d.ixh
-.BYTE   1 *16 | 7,       "l"   ,$55, OP_IX      ; DD 55       | ld.d.ixl
-.BYTE   2 *16 | 6,      "yh"   ,$54, OP_IY      ; FD 54       | ld.d.iyh
-.BYTE   1 *16 | 7,       "l"   ,$55, OP_IY      ; FD 55       | ld.d.iyl
+.BYTE   1 *16 | 3,   "d"        ,$16, OP_B      ;    16 nn    | ld.d      $nn
+.BYTE   2 *16 | 4,    ".a"      ,$57, OP        ;    57       | ld.d.a
+.BYTE   1 *16 | 5,     "b"      ,$50, OP        ;    50       | ld.d.b
+.BYTE   1 *16 | 5,     "c"      ,$51, OP        ;    51       | ld.d.c
+.BYTE   1 *16 | 5,     "d"      ,$52, OP        ;    52       | ld.d.d
+.BYTE   1 *16 | 5,     "e"      ,$53, OP        ;    53       | ld.d.e
+.BYTE   1 *16 | 5,     "h"      ,$54, OP        ;    54       | ld.d.h
+.BYTE   1 *16 | 5,     "l"      ,$55, OP        ;    55       | ld.d.l
+.BYTE   3 *16 | 5,     "ixh"    ,$54, OP_IX     ; DD 54       | ld.d.ixh
+.BYTE   1 *16 | 7,       "l"    ,$55, OP_IX     ; DD 55       | ld.d.ixl
+.BYTE   2 *16 | 6,      "yh"    ,$54, OP_IY     ; FD 54       | ld.d.iyh
+.BYTE   1 *16 | 7,       "l"    ,$55, OP_IY     ; FD 55       | ld.d.iyl
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 5,     "*hl"   ,$56, OP         ;    56       | ld.d'*hl'
-.BYTE   2 *16 | 6,      "ix"   ,$56, OP_IXO     ; DD 56 nn    | ld.d'*ix  $nn
-.BYTE   1 *16 | 7,       "y"   ,$56, OP_IYO     ; FD 56 nn    | ld.d'*iy  $nn
+.BYTE   3 *16 | 5,     "*hl"    ,$56, OP        ;    56       | ld.d'*hl'
+.BYTE   2 *16 | 6,      "ix"    ,$56, OP_IXO    ; DD 56 nn    | ld.d'*ix  $nn
+.BYTE   1 *16 | 7,       "y"    ,$56, OP_IYO    ; FD 56 nn    | ld.d'*iy  $nn
 ;-------------------------------------------------------------------------------
-.BYTE   1 *16 | 4,    "e"      ,$11, OP_W       ;    11 nn nn | ld.de     $nnnn
-.BYTE   1 *16 | 5,     "*"     ,$5b, OP_EDW     ; ED 5B nn nn | ld.de*    $nnnn
-.BYTE   2 *16 | 5,     "'*"    ,$5b, OP_EDW     ; ED 5B nn nn | ld.de'*   $nnnn
+.BYTE   1 *16 | 4,    "e"       ,$11, OP_W      ;    11 nn nn | ld.de     $nnnn
+.BYTE   1 *16 | 5,     "*"      ,$5b, OP_EDW    ; ED 5B nn nn | ld.de*    $nnnn
+.BYTE   2 *16 | 5,     "'*"     ,$5b, OP_EDW    ; ED 5B nn nn | ld.de'*   $nnnn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 4,    "*hl"    ,$56, OP         ;    56       | ld.d*hl
-.BYTE   2 *16 | 5,     "ix"    ,$56, OP_IXO     ; DD 56 nn    | ld.d*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$56, OP_IYO     ; FD 56 nn    | ld.d*iy   $nn
+.BYTE   3 *16 | 4,    "*hl"     ,$56, OP        ;    56       | ld.d*hl
+.BYTE   2 *16 | 5,     "ix"     ,$56, OP_IXO    ; DD 56 nn    | ld.d*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$56, OP_IYO    ; FD 56 nn    | ld.d*iy   $nn
 ;===============================================================================
-.BYTE   1 *16 | 3,   "e"       ,$1e, OP_B       ;    1E nn    | ld.e      $nn
-.BYTE   2 *16 | 4,    ".a"     ,$5f, OP         ;    5F       | ld.e.a
-.BYTE   1 *16 | 5,     "b"     ,$58, OP         ;    58       | ld.e.b
-.BYTE   1 *16 | 5,     "c"     ,$59, OP         ;    59       | ld.e.c
-.BYTE   1 *16 | 5,     "d"     ,$5a, OP         ;    5A       | ld.e.d
-.BYTE   1 *16 | 5,     "e"     ,$5b, OP         ;    5B       | ld.e.e
-.BYTE   1 *16 | 5,     "h"     ,$5c, OP         ;    5C       | ld.e.h
-.BYTE   1 *16 | 5,     "l"     ,$5d, OP         ;    5D       | ld.e.l
-.BYTE   3 *16 | 5,     "ixh"   ,$5c, OP_IX      ; DD 5C       | ld.e.ixh
-.BYTE   1 *16 | 7,       "l"   ,$5d, OP_IX      ; DD 5D       | ld.e.ixl
-.BYTE   2 *16 | 6,      "yh"   ,$5c, OP_IY      ; FD 5C       | ld.e.iyh
-.BYTE   1 *16 | 7,       "l"   ,$5d, OP_IY      ; FD 5D       | ld.e.iyl
+.BYTE   1 *16 | 3,   "e"        ,$1e, OP_B      ;    1E nn    | ld.e      $nn
+.BYTE   2 *16 | 4,    ".a"      ,$5f, OP        ;    5F       | ld.e.a
+.BYTE   1 *16 | 5,     "b"      ,$58, OP        ;    58       | ld.e.b
+.BYTE   1 *16 | 5,     "c"      ,$59, OP        ;    59       | ld.e.c
+.BYTE   1 *16 | 5,     "d"      ,$5a, OP        ;    5A       | ld.e.d
+.BYTE   1 *16 | 5,     "e"      ,$5b, OP        ;    5B       | ld.e.e
+.BYTE   1 *16 | 5,     "h"      ,$5c, OP        ;    5C       | ld.e.h
+.BYTE   1 *16 | 5,     "l"      ,$5d, OP        ;    5D       | ld.e.l
+.BYTE   3 *16 | 5,     "ixh"    ,$5c, OP_IX     ; DD 5C       | ld.e.ixh
+.BYTE   1 *16 | 7,       "l"    ,$5d, OP_IX     ; DD 5D       | ld.e.ixl
+.BYTE   2 *16 | 6,      "yh"    ,$5c, OP_IY     ; FD 5C       | ld.e.iyh
+.BYTE   1 *16 | 7,       "l"    ,$5d, OP_IY     ; FD 5D       | ld.e.iyl
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 5,     "*hl"   ,$5e, OP         ;    5E       | ld.e'*hl'
-.BYTE   2 *16 | 6,      "ix"   ,$5e, OP_IXO     ; DD 5E nn    | ld.e'*ix  $nn
-.BYTE   1 *16 | 7,       "y"   ,$5e, OP_IYO     ; FD 5E nn    | ld.e'*iy  $nn
+.BYTE   3 *16 | 5,     "*hl"    ,$5e, OP        ;    5E       | ld.e'*hl'
+.BYTE   2 *16 | 6,      "ix"    ,$5e, OP_IXO    ; DD 5E nn    | ld.e'*ix  $nn
+.BYTE   1 *16 | 7,       "y"    ,$5e, OP_IYO    ; FD 5E nn    | ld.e'*iy  $nn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 4,    "*hl"    ,$5e, OP         ;    5E       | ld.e*hl
-.BYTE   2 *16 | 5,     "ix"    ,$5e, OP_IXO     ; DD 5E nn    | ld.e*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$5e, OP_IYO     ; FD 5E nn    | ld.e*iy   $nn
+.BYTE   3 *16 | 4,    "*hl"     ,$5e, OP        ;    5E       | ld.e*hl
+.BYTE   2 *16 | 5,     "ix"     ,$5e, OP_IXO    ; DD 5E nn    | ld.e*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$5e, OP_IYO    ; FD 5E nn    | ld.e*iy   $nn
 ;===============================================================================
-.BYTE   1 *16 | 3,   "h"       ,$26, OP_B       ;    26 nn    | ld.h      $nn
-.BYTE   2 *16 | 4,    ".a"     ,$67, OP         ;    67       | ld.h.a
-.BYTE   1 *16 | 5,     "b"     ,$60, OP         ;    60       | ld.h.b
-.BYTE   1 *16 | 5,     "c"     ,$61, OP         ;    61       | ld.h.c
-.BYTE   1 *16 | 5,     "d"     ,$62, OP         ;    62       | ld.h.d
-.BYTE   1 *16 | 5,     "e"     ,$63, OP         ;    63       | ld.h.e
-.BYTE   1 *16 | 5,     "h"     ,$64, OP         ;    64       | ld.h.h
-.BYTE   1 *16 | 5,     "l"     ,$65, OP         ;    65       | ld.h.l
-.BYTE   3 *16 | 5,     "ixh"   ,$64, OP_IX      ; DD 64       | ld.h.ixh
-.BYTE   1 *16 | 7,       "l"   ,$65, OP_IX      ; DD 65       | ld.h.ixl
-.BYTE   2 *16 | 6,      "yh"   ,$64, OP_IY      ; FD 64       | ld.h.iyh
-.BYTE   1 *16 | 7,       "l"   ,$65, OP_IY      ; FD 65       | ld.h.iyl
+.BYTE   1 *16 | 3,   "h"        ,$26, OP_B      ;    26 nn    | ld.h      $nn
+.BYTE   2 *16 | 4,    ".a"      ,$67, OP        ;    67       | ld.h.a
+.BYTE   1 *16 | 5,     "b"      ,$60, OP        ;    60       | ld.h.b
+.BYTE   1 *16 | 5,     "c"      ,$61, OP        ;    61       | ld.h.c
+.BYTE   1 *16 | 5,     "d"      ,$62, OP        ;    62       | ld.h.d
+.BYTE   1 *16 | 5,     "e"      ,$63, OP        ;    63       | ld.h.e
+.BYTE   1 *16 | 5,     "h"      ,$64, OP        ;    64       | ld.h.h
+.BYTE   1 *16 | 5,     "l"      ,$65, OP        ;    65       | ld.h.l
+.BYTE   3 *16 | 5,     "ixh"    ,$64, OP_IX     ; DD 64       | ld.h.ixh
+.BYTE   1 *16 | 7,       "l"    ,$65, OP_IX     ; DD 65       | ld.h.ixl
+.BYTE   2 *16 | 6,      "yh"    ,$64, OP_IY     ; FD 64       | ld.h.iyh
+.BYTE   1 *16 | 7,       "l"    ,$65, OP_IY     ; FD 65       | ld.h.iyl
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 5,     "*hl"   ,$66, OP         ;    66       | ld.h'*hl'
-.BYTE   2 *16 | 6,      "ix"   ,$66, OP_IXO     ; DD 66 nn    | ld.h'*ix  $nn
-.BYTE   1 *16 | 7,       "y"   ,$66, OP_IYO     ; FD 66 nn    | ld.h'*iy  $nn
+.BYTE   3 *16 | 5,     "*hl"    ,$66, OP        ;    66       | ld.h'*hl'
+.BYTE   2 *16 | 6,      "ix"    ,$66, OP_IXO    ; DD 66 nn    | ld.h'*ix  $nn
+.BYTE   1 *16 | 7,       "y"    ,$66, OP_IYO    ; FD 66 nn    | ld.h'*iy  $nn
 ;-------------------------------------------------------------------------------
-.BYTE   1 *16 | 4,    "l"      ,$21, OP_W       ;    21 nn nn | ld.hl     $nnnn
-.BYTE   1 *16 | 5,     "*"     ,$2a, OP_W       ;    2A nn nn | ld.hl*    $nnnn
-.BYTE   2 *16 | 5,     "'*"    ,$2a, OP_W       ;    2A nn nn | ld.hl'*   $nnnn
+.BYTE   1 *16 | 4,    "l"       ,$21, OP_W      ;    21 nn nn | ld.hl     $nnnn
+.BYTE   1 *16 | 5,     "*"      ,$2a, OP_W      ;    2A nn nn | ld.hl*    $nnnn
+.BYTE   2 *16 | 5,     "'*"     ,$2a, OP_W      ;    2A nn nn | ld.hl'*   $nnnn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 4,    "*hl"    ,$66, OP         ;    66       | ld.h*hl
-.BYTE   2 *16 | 5,     "ix"    ,$66, OP_IXO     ; DD 66 nn    | ld.h*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$66, OP_IYO     ; FD 66 nn    | ld.h*iy   $nn
+.BYTE   3 *16 | 4,    "*hl"     ,$66, OP        ;    66       | ld.h*hl
+.BYTE   2 *16 | 5,     "ix"     ,$66, OP_IXO    ; DD 66 nn    | ld.h*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$66, OP_IYO    ; FD 66 nn    | ld.h*iy   $nn
 ;===============================================================================
-.BYTE   1 *16 | 3,   "l"       ,$2e, OP_B       ;    2E nn    | ld.l      $nn
-.BYTE   2 *16 | 4,    ".a"     ,$6f, OP         ;    6F       | ld.l.a
-.BYTE   1 *16 | 6,      "'"    ,$6f, OP         ;    6F       | ld.l.a'
-.BYTE   1 *16 | 5,     "b"     ,$68, OP         ;    68       | ld.l.b
-.BYTE   1 *16 | 5,     "c"     ,$69, OP         ;    69       | ld.l.c
-.BYTE   1 *16 | 5,     "d"     ,$6a, OP         ;    6A       | ld.l.d
-.BYTE   1 *16 | 5,     "e"     ,$6b, OP         ;    6B       | ld.l.e
-.BYTE   1 *16 | 5,     "h"     ,$6c, OP         ;    6C       | ld.l.h
-.BYTE   1 *16 | 5,     "l"     ,$6d, OP         ;    6D       | ld.l.l
-.BYTE   3 *16 | 5,     "ixh"   ,$6c, OP_IX      ; DD 6C       | ld.l.ixh
-.BYTE   1 *16 | 7,       "l"   ,$6d, OP_IX      ; DD 6D       | ld.l.ixl
-.BYTE   2 *16 | 6,      "yh"   ,$6c, OP_IY      ; FD 6C       | ld.l.iyh
-.BYTE   1 *16 | 7,       "l"   ,$6d, OP_IY      ; FD 6D       | ld.l.iyl
+.BYTE   1 *16 | 3,   "l"        ,$2e, OP_B      ;    2E nn    | ld.l      $nn
+.BYTE   2 *16 | 4,    ".a"      ,$6f, OP        ;    6F       | ld.l.a
+.BYTE   1 *16 | 6,      "'"     ,$6f, OP        ;    6F       | ld.l.a'
+.BYTE   1 *16 | 5,     "b"      ,$68, OP        ;    68       | ld.l.b
+.BYTE   1 *16 | 5,     "c"      ,$69, OP        ;    69       | ld.l.c
+.BYTE   1 *16 | 5,     "d"      ,$6a, OP        ;    6A       | ld.l.d
+.BYTE   1 *16 | 5,     "e"      ,$6b, OP        ;    6B       | ld.l.e
+.BYTE   1 *16 | 5,     "h"      ,$6c, OP        ;    6C       | ld.l.h
+.BYTE   1 *16 | 5,     "l"      ,$6d, OP        ;    6D       | ld.l.l
+.BYTE   3 *16 | 5,     "ixh"    ,$6c, OP_IX     ; DD 6C       | ld.l.ixh
+.BYTE   1 *16 | 7,       "l"    ,$6d, OP_IX     ; DD 6D       | ld.l.ixl
+.BYTE   2 *16 | 6,      "yh"    ,$6c, OP_IY     ; FD 6C       | ld.l.iyh
+.BYTE   1 *16 | 7,       "l"    ,$6d, OP_IY     ; FD 6D       | ld.l.iyl
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 5,     "*hl"   ,$6e, OP         ;    6E       | ld.l'*hl'
-.BYTE   2 *16 | 6,      "ix"   ,$6e, OP_IXO     ; DD 6E nn    | ld.l'*ix  $nn
-.BYTE   1 *16 | 7,       "y"   ,$6e, OP_IYO     ; FD 6E nn    | ld.l'*iy  $nn
+.BYTE   3 *16 | 5,     "*hl"    ,$6e, OP        ;    6E       | ld.l'*hl'
+.BYTE   2 *16 | 6,      "ix"    ,$6e, OP_IXO    ; DD 6E nn    | ld.l'*ix  $nn
+.BYTE   1 *16 | 7,       "y"    ,$6e, OP_IYO    ; FD 6E nn    | ld.l'*iy  $nn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 4,    "*hl"    ,$6e, OP         ;    6E       | ld.l*hl
-.BYTE   2 *16 | 5,     "ix"    ,$6e, OP_IXO     ; DD 6E nn    | ld.l*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$6e, OP_IYO     ; FD 6E nn    | ld.l*iy   $nn
+.BYTE   3 *16 | 4,    "*hl"     ,$6e, OP        ;    6E       | ld.l*hl
+.BYTE   2 *16 | 5,     "ix"     ,$6e, OP_IXO    ; DD 6E nn    | ld.l*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$6e, OP_IYO    ; FD 6E nn    | ld.l*iy   $nn
 ;===============================================================================
-.BYTE   3 *16 | 3,   "i.a"     ,$47, OP_ED      ; ED 47       | ld.i.a
+.BYTE   3 *16 | 3,   "i.a"      ,$47, OP_ED     ; ED 47       | ld.i.a
 ;-------------------------------------------------------------------------------
-.BYTE   1 *16 | 4,    "x"      ,$21, OP_IXW     ; DD 21 nn nn | ld.ix     $nnnn
-.BYTE   1 *16 | 5,     "*"     ,$2a, OP_IXW     ; DD 2A nn nn | ld.ix*    $nnnn
-.BYTE   1 *16 | 5,     "h"     ,$26, OP_IXO     ; DD 26 nn    | ld.ixh    $nn
-.BYTE   2 *16 | 6,      ".a"   ,$67, OP_IX      ; DD 67       | ld.ixh.a
-.BYTE   1 *16 | 7,       "b"   ,$60, OP_IX      ; DD 60       | ld.ixh.b
-.BYTE   1 *16 | 7,       "c"   ,$61, OP_IX      ; DD 61       | ld.ixh.c
-.BYTE   1 *16 | 7,       "d"   ,$62, OP_IX      ; DD 62       | ld.ixh.d
-.BYTE   1 *16 | 7,       "e"   ,$63, OP_IX      ; DD 63       | ld.ixh.e
-.BYTE   3 *16 | 7,       "ixh" ,$64, OP_IX      ; DD 64       | ld.ixh.ixh
-.BYTE   1 *16 | 9,         "l" ,$65, OP_IX      ; DD 65       | ld.ixh.ixl
-.BYTE   1 *16 | 5,     "l"     ,$2e, OP_IXO     ; DD 2E nn    | ld.ixl    $nn
-.BYTE   2 *16 | 6,      ".a"   ,$6f, OP_IX      ; DD 6F       | ld.ixl.a
-.BYTE   1 *16 | 7,       "b"   ,$68, OP_IX      ; DD 68       | ld.ixl.b
-.BYTE   1 *16 | 7,       "c"   ,$69, OP_IX      ; DD 69       | ld.ixl.c
-.BYTE   1 *16 | 7,       "d"   ,$6a, OP_IX      ; DD 6A       | ld.ixl.d
-.BYTE   1 *16 | 7,       "e"   ,$6b, OP_IX      ; DD 6B       | ld.ixl.e
-.BYTE   3 *16 | 7,       "ixh" ,$6c, OP_IX      ; DD 6C       | ld.ixl.ixh
-.BYTE   1 *16 | 9,         "l" ,$6d, OP_IX      ; DD 6D       | ld.ixl.ixl
+.BYTE   1 *16 | 4,    "x"       ,$21, OP_IXW    ; DD 21 nn nn | ld.ix     $nnnn
+.BYTE   1 *16 | 5,     "*"      ,$2a, OP_IXW    ; DD 2A nn nn | ld.ix*    $nnnn
+.BYTE   1 *16 | 5,     "h"      ,$26, OP_IXO    ; DD 26 nn    | ld.ixh    $nn
+.BYTE   2 *16 | 6,      ".a"    ,$67, OP_IX     ; DD 67       | ld.ixh.a
+.BYTE   1 *16 | 7,       "b"    ,$60, OP_IX     ; DD 60       | ld.ixh.b
+.BYTE   1 *16 | 7,       "c"    ,$61, OP_IX     ; DD 61       | ld.ixh.c
+.BYTE   1 *16 | 7,       "d"    ,$62, OP_IX     ; DD 62       | ld.ixh.d
+.BYTE   1 *16 | 7,       "e"    ,$63, OP_IX     ; DD 63       | ld.ixh.e
+.BYTE   3 *16 | 7,       "ixh"  ,$64, OP_IX     ; DD 64       | ld.ixh.ixh
+.BYTE   1 *16 | 9,         "l"  ,$65, OP_IX     ; DD 65       | ld.ixh.ixl
+.BYTE   1 *16 | 5,     "l"      ,$2e, OP_IXO    ; DD 2E nn    | ld.ixl    $nn
+.BYTE   2 *16 | 6,      ".a"    ,$6f, OP_IX     ; DD 6F       | ld.ixl.a
+.BYTE   1 *16 | 7,       "b"    ,$68, OP_IX     ; DD 68       | ld.ixl.b
+.BYTE   1 *16 | 7,       "c"    ,$69, OP_IX     ; DD 69       | ld.ixl.c
+.BYTE   1 *16 | 7,       "d"    ,$6a, OP_IX     ; DD 6A       | ld.ixl.d
+.BYTE   1 *16 | 7,       "e"    ,$6b, OP_IX     ; DD 6B       | ld.ixl.e
+.BYTE   3 *16 | 7,       "ixh"  ,$6c, OP_IX     ; DD 6C       | ld.ixl.ixh
+.BYTE   1 *16 | 9,         "l"  ,$6d, OP_IX     ; DD 6D       | ld.ixl.ixl
 ;-------------------------------------------------------------------------------
-.BYTE   1 *16 | 4,    "y"      ,$21, OP_IYW     ; FD 21 nn nn | ld.iy     $nnnn
-.BYTE   1 *16 | 5,     "*"     ,$2a, OP_IYW     ; FD 2A nn nn | ld.iy*    $nnnn
-.BYTE   1 *16 | 5,     "h"     ,$26, OP_IYO     ; FD 26 nn    | ld.iyh    $nn
-.BYTE   2 *16 | 6,      ".a"   ,$67, OP_IY      ; FD 67       | ld.iyh.a
-.BYTE   1 *16 | 7,       "b"   ,$60, OP_IY      ; FD 60       | ld.iyh.b
-.BYTE   1 *16 | 7,       "c"   ,$61, OP_IY      ; FD 61       | ld.iyh.c
-.BYTE   1 *16 | 7,       "d"   ,$62, OP_IY      ; FD 62       | ld.iyh.d
-.BYTE   1 *16 | 7,       "e"   ,$63, OP_IY      ; FD 63       | ld.iyh.e
-.BYTE   3 *16 | 7,       "iyh" ,$64, OP_IY      ; FD 64       | ld.iyh.iyh
-.BYTE   1 *16 | 9,         "l" ,$65, OP_IY      ; FD 65       | ld.iyh.iyl
-.BYTE   1 *16 | 5,     "l"     ,$2e, OP_IYO     ; FD 2E nn    | ld.iyl    $nn
-.BYTE   2 *16 | 6,      ".a"   ,$6f, OP_IY      ; FD 6F       | ld.iyl.a
-.BYTE   1 *16 | 7,       "b"   ,$68, OP_IY      ; FD 68       | ld.iyl.b
-.BYTE   1 *16 | 7,       "c"   ,$69, OP_IY      ; FD 69       | ld.iyl.c
-.BYTE   1 *16 | 7,       "d"   ,$6a, OP_IY      ; FD 6A       | ld.iyl.d
-.BYTE   1 *16 | 7,       "e"   ,$6b, OP_IY      ; FD 6B       | ld.iyl.e
-.BYTE   3 *16 | 7,       "iyh" ,$6c, OP_IY      ; FD 6C       | ld.iyl.iyh
-.BYTE   1 *16 | 9,         "l" ,$6d, OP_IY      ; FD 6D       | ld.iyl.iyl
+.BYTE   1 *16 | 4,    "y"       ,$21, OP_IYW    ; FD 21 nn nn | ld.iy     $nnnn
+.BYTE   1 *16 | 5,     "*"      ,$2a, OP_IYW    ; FD 2A nn nn | ld.iy*    $nnnn
+.BYTE   1 *16 | 5,     "h"      ,$26, OP_IYO    ; FD 26 nn    | ld.iyh    $nn
+.BYTE   2 *16 | 6,      ".a"    ,$67, OP_IY     ; FD 67       | ld.iyh.a
+.BYTE   1 *16 | 7,       "b"    ,$60, OP_IY     ; FD 60       | ld.iyh.b
+.BYTE   1 *16 | 7,       "c"    ,$61, OP_IY     ; FD 61       | ld.iyh.c
+.BYTE   1 *16 | 7,       "d"    ,$62, OP_IY     ; FD 62       | ld.iyh.d
+.BYTE   1 *16 | 7,       "e"    ,$63, OP_IY     ; FD 63       | ld.iyh.e
+.BYTE   3 *16 | 7,       "iyh"  ,$64, OP_IY     ; FD 64       | ld.iyh.iyh
+.BYTE   1 *16 | 9,         "l"  ,$65, OP_IY     ; FD 65       | ld.iyh.iyl
+.BYTE   1 *16 | 5,     "l"      ,$2e, OP_IYO    ; FD 2E nn    | ld.iyl    $nn
+.BYTE   2 *16 | 6,      ".a"    ,$6f, OP_IY     ; FD 6F       | ld.iyl.a
+.BYTE   1 *16 | 7,       "b"    ,$68, OP_IY     ; FD 68       | ld.iyl.b
+.BYTE   1 *16 | 7,       "c"    ,$69, OP_IY     ; FD 69       | ld.iyl.c
+.BYTE   1 *16 | 7,       "d"    ,$6a, OP_IY     ; FD 6A       | ld.iyl.d
+.BYTE   1 *16 | 7,       "e"    ,$6b, OP_IY     ; FD 6B       | ld.iyl.e
+.BYTE   3 *16 | 7,       "iyh"  ,$6c, OP_IY     ; FD 6C       | ld.iyl.iyh
+.BYTE   1 *16 | 9,         "l"  ,$6d, OP_IY     ; FD 6D       | ld.iyl.iyl
 ;-------------------------------------------------------------------------------
-.BYTE   2 *16 | 3,   "sp"      ,$31, OP_W       ;    21 nn nn | ld.sp     $nnnn
-.BYTE   1 *16 | 5,     "*"     ,$7b, OP_EDW     ; ED 7B nn nn | ld.sp*    $nnnn
-.BYTE   3 *16 | 5,     ".hl"   ,$f9, OP         ;    F9       | ld.sp.hl
-.BYTE   2 *16 | 6,      "ix"   ,$f9, OP_IX      ; DD F9       | ld.sp.ix
-.BYTE   1 *16 | 7,       "y"   ,$f9, OP_IY      ; FD F9       | ld.sp.iy
+.BYTE   2 *16 | 3,   "sp"       ,$31, OP_W      ;    21 nn nn | ld.sp     $nnnn
+.BYTE   1 *16 | 5,     "*"      ,$7b, OP_EDW    ; ED 7B nn nn | ld.sp*    $nnnn
+.BYTE   3 *16 | 5,     ".hl"    ,$f9, OP        ;    F9       | ld.sp.hl
+.BYTE   2 *16 | 6,      "ix"    ,$f9, OP_IX     ; DD F9       | ld.sp.ix
+.BYTE   1 *16 | 7,       "y"    ,$f9, OP_IY     ; FD F9       | ld.sp.iy
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 3,   "r.a"     ,$4f, OP_ED      ; ED 4F       | ld.r.a
+.BYTE   3 *16 | 3,   "r.a"      ,$4f, OP_ED     ; ED 4F       | ld.r.a
 ;===============================================================================
-.BYTE   1 *16 | 2,   "d"       ,$a8, OP_ED      ; ED A8       | ldd
-.BYTE   1 *16 | 3,    "r"      ,$b8, OP_ED      ; ED B8       | lddr
-.BYTE   1 *16 | 2,   "i"       ,$a0, OP_ED      ; ED A0       | ldi
-.BYTE   1 *16 | 3,    "r"      ,$b0, OP_ED      ; ED B0       | ldir
+.BYTE   1 *16 | 2,   "d"        ,$a8, OP_ED     ; ED A8       | ldd
+.BYTE   1 *16 | 3,    "r"       ,$b8, OP_ED     ; ED B8       | lddr
+.BYTE   1 *16 | 2,   "i"        ,$a0, OP_ED     ; ED A0       | ldi
+.BYTE   1 *16 | 3,    "r"       ,$b0, OP_ED     ; ED B0       | ldir
 ;-------------------------------------------------------------------------------
 .BYTE   0
 
 n:
 ;===============================================================================
-.BYTE   2 *16 | 1,  "eg"       ,$44, OP_ED      ; ED 44       | neg
+.BYTE   2 *16 | 1,  "eg"        ,$44, OP_ED     ; ED 44       | neg
 ;-------------------------------------------------------------------------------
-.BYTE   2 *16 | 1,  "op"       ,$00, OP         ;    00       | nop
+.BYTE   2 *16 | 1,  "op"        ,$00, OP        ;    00       | nop
 ;-------------------------------------------------------------------------------
 .BYTE   0
 
 o:
 ;===============================================================================
-.BYTE   1 *16 | 1,  "r"        ,$f6, OP_B       ;    F6 nn    | or        $nn
-.BYTE   3 *16 | 2,   "*hl"     ,$b6, OP         ;    B6       | or*hl
-.BYTE   2 *16 | 3,    "ix"     ,$b6, OP_IXO     ; DD B6 nn    | or*ix     $nn
-.BYTE   1 *16 | 4,     "y"     ,$b6, OP_IYO     ; FD B6 nn    | or*iy     $nn
-.BYTE   2 *16 | 2,   ".a"      ,$b7, OP         ;    B7       | or.a
-.BYTE   1 *16 | 3,    "b"      ,$b0, OP         ;    B0       | or.b
-.BYTE   1 *16 | 3,    "c"      ,$b1, OP         ;    B1       | or.c
-.BYTE   1 *16 | 3,    "d"      ,$b2, OP         ;    B2       | or.d
-.BYTE   1 *16 | 3,    "e"      ,$b3, OP         ;    B3       | or.e
-.BYTE   1 *16 | 3,    "h"      ,$b4, OP         ;    B4       | or.h
-.BYTE   1 *16 | 3,    "l"      ,$b5, OP         ;    B5       | or.l
-.BYTE   3 *16 | 3,    "ixh"    ,$b4, OP_IX      ; DD B4       | or.ixh
-.BYTE   1 *16 | 5,      "l"    ,$b5, OP_IX      ; DD B5       | or.ixl
-.BYTE   2 *16 | 4,     "yh"    ,$b4, OP_IY      ; FD B4       | or.iyh
-.BYTE   1 *16 | 5,      "l"    ,$b5, OP_IY      ; FD B5       | or.iyl
+.BYTE   1 *16 | 1,  "r"         ,$f6, OP_B      ;    F6 nn    | or        $nn
+.BYTE   3 *16 | 2,   "*hl"      ,$b6, OP        ;    B6       | or*hl
+.BYTE   2 *16 | 3,    "ix"      ,$b6, OP_IXO    ; DD B6 nn    | or*ix     $nn
+.BYTE   1 *16 | 4,     "y"      ,$b6, OP_IYO    ; FD B6 nn    | or*iy     $nn
+.BYTE   2 *16 | 2,   ".a"       ,$b7, OP        ;    B7       | or.a
+.BYTE   1 *16 | 3,    "b"       ,$b0, OP        ;    B0       | or.b
+.BYTE   1 *16 | 3,    "c"       ,$b1, OP        ;    B1       | or.c
+.BYTE   1 *16 | 3,    "d"       ,$b2, OP        ;    B2       | or.d
+.BYTE   1 *16 | 3,    "e"       ,$b3, OP        ;    B3       | or.e
+.BYTE   1 *16 | 3,    "h"       ,$b4, OP        ;    B4       | or.h
+.BYTE   1 *16 | 3,    "l"       ,$b5, OP        ;    B5       | or.l
+.BYTE   3 *16 | 3,    "ixh"     ,$b4, OP_IX     ; DD B4       | or.ixh
+.BYTE   1 *16 | 5,      "l"     ,$b5, OP_IX     ; DD B5       | or.ixl
+.BYTE   2 *16 | 4,     "yh"     ,$b4, OP_IY     ; FD B4       | or.iyh
+.BYTE   1 *16 | 5,      "l"     ,$b5, OP_IY     ; FD B5       | or.iyl
 ;-------------------------------------------------------------------------------
-.BYTE   6 *16 | 1, "ut*$.a"    ,$d3, OP_B       ;    D3 nn    | out*$.a   $nn
-.BYTE   3 *16 | 4,    "c.a"    ,$79, OP_ED      ; ED 79       | out*c.a
-.BYTE   1 *16 | 6,      "b"    ,$41, OP_ED      ; ED 41       | out*c.b
-.BYTE   1 *16 | 6,      "c"    ,$49, OP_ED      ; ED 49       | out*c.c
-.BYTE   1 *16 | 6,      "d"    ,$51, OP_ED      ; ED 51       | out*c.d
-.BYTE   1 *16 | 6,      "e"    ,$59, OP_ED      ; ED 59       | out*c.e
-.BYTE   1 *16 | 6,      "h"    ,$61, OP_ED      ; ED 61       | out*c.h
-.BYTE   1 *16 | 6,      "l"    ,$69, OP_ED      ; ED 69       | out*c.l
+.BYTE   6 *16 | 1, "ut*$.a"     ,$d3, OP_B      ;    D3 nn    | out*$.a   $nn
+.BYTE   3 *16 | 4,    "c.a"     ,$79, OP_ED     ; ED 79       | out*c.a
+.BYTE   1 *16 | 6,      "b"     ,$41, OP_ED     ; ED 41       | out*c.b
+.BYTE   1 *16 | 6,      "c"     ,$49, OP_ED     ; ED 49       | out*c.c
+.BYTE   1 *16 | 6,      "d"     ,$51, OP_ED     ; ED 51       | out*c.d
+.BYTE   1 *16 | 6,      "e"     ,$59, OP_ED     ; ED 59       | out*c.e
+.BYTE   1 *16 | 6,      "h"     ,$61, OP_ED     ; ED 61       | out*c.h
+.BYTE   1 *16 | 6,      "l"     ,$69, OP_ED     ; ED 69       | out*c.l
 ;-------------------------------------------------------------------------------
-.BYTE   1 *16 | 3,   "d"       ,$ab, OP_ED      ; ED AB       | outd
-.BYTE   1 *16 | 3,   "i"       ,$a3, OP_ED      ; ED A3       | outi
-.BYTE   3 *16 | 1, "tdr"       ,$bb, OP_ED      ; ED BB       | otdr
-.BYTE   2 *16 | 2,  "ir"       ,$b3, OP_ED      ; ED B3       | otir
+.BYTE   1 *16 | 3,   "d"        ,$ab, OP_ED     ; ED AB       | outd
+.BYTE   1 *16 | 3,   "i"        ,$a3, OP_ED     ; ED A3       | outi
+.BYTE   3 *16 | 1, "tdr"        ,$bb, OP_ED     ; ED BB       | otdr
+.BYTE   2 *16 | 2,  "ir"        ,$b3, OP_ED     ; ED B3       | otir
 ;-------------------------------------------------------------------------------
 .BYTE   0
 
 p:
 ;===============================================================================
-.BYTE   6 *16 | 1, "ush.af"    ,$f5, OP         ;    F5       | push.af
-.BYTE   2 *16 | 5,     "bc"    ,$c5, OP         ;    C5       | push.bc
-.BYTE   2 *16 | 5,     "de"    ,$d5, OP         ;    D5       | push.de
-.BYTE   2 *16 | 5,     "hl"    ,$e5, OP         ;    E5       | push.hl
-.BYTE   2 *16 | 5,     "ix"    ,$e5, OP_IX      ; DD E5       | push.ix
-.BYTE   1 *16 | 6,      "y"    ,$e5, OP_IY      ; FD E5       | push.iy
+.BYTE   6 *16 | 1, "ush.af"     ,$f5, OP        ;    F5       | push.af
+.BYTE   2 *16 | 5,     "bc"     ,$c5, OP        ;    C5       | push.bc
+.BYTE   2 *16 | 5,     "de"     ,$d5, OP        ;    D5       | push.de
+.BYTE   2 *16 | 5,     "hl"     ,$e5, OP        ;    E5       | push.hl
+.BYTE   2 *16 | 5,     "ix"     ,$e5, OP_IX     ; DD E5       | push.ix
+.BYTE   1 *16 | 6,      "y"     ,$e5, OP_IY     ; FD E5       | push.iy
 ;-------------------------------------------------------------------------------
-.BYTE   5 *16 | 1, "op.af"     ,$f1, OP         ;    F1       | pop.af
-.BYTE   2 *16 | 4,    "bc"     ,$c1, OP         ;    C1       | pop.bc
-.BYTE   2 *16 | 4,    "de"     ,$d1, OP         ;    D1       | pop.de
-.BYTE   2 *16 | 4,    "hl"     ,$e1, OP         ;    E1       | pop.hl
-.BYTE   2 *16 | 4,    "ix"     ,$e1, OP_IX      ; DD E1       | pop.ix
-.BYTE   1 *16 | 5,     "y"     ,$e1, OP_IY      ; FD E1       | pop.iy
+.BYTE   5 *16 | 1, "op.af"      ,$f1, OP        ;    F1       | pop.af
+.BYTE   2 *16 | 4,    "bc"      ,$c1, OP        ;    C1       | pop.bc
+.BYTE   2 *16 | 4,    "de"      ,$d1, OP        ;    D1       | pop.de
+.BYTE   2 *16 | 4,    "hl"      ,$e1, OP        ;    E1       | pop.hl
+.BYTE   2 *16 | 4,    "ix"      ,$e1, OP_IX     ; DD E1       | pop.ix
+.BYTE   1 *16 | 5,     "y"      ,$e1, OP_IY     ; FD E1       | pop.iy
 ;-------------------------------------------------------------------------------
 .BYTE   0
 
 r:
 ;===============================================================================
-.BYTE   5 *16 | 1, "es0.a"     ,$87, OP_CB      ;    CB 87    | res0.a
-.BYTE   1 *16 | 5,     "b"     ,$80, OP_CB      ;    CB 80    | res0.b
-.BYTE   1 *16 | 5,     "c"     ,$81, OP_CB      ;    CB 81    | res0.c
-.BYTE   1 *16 | 5,     "d"     ,$82, OP_CB      ;    CB 82    | res0.d
-.BYTE   1 *16 | 5,     "e"     ,$83, OP_CB      ;    CB 83    | res0.e
-.BYTE   1 *16 | 5,     "h"     ,$84, OP_CB      ;    CB 84    | res0.h
-.BYTE   1 *16 | 5,     "l"     ,$85, OP_CB      ;    CB 85    | res0.l
-.BYTE   3 *16 | 4,    "*hl"    ,$86, OP_CB      ;    CB 86    | res0*hl
-.BYTE   2 *16 | 5,     "ix"    ,$86, OP_CBXO    ; DD CB nn 86 | res0*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$86, OP_CBYO    ; FD CB nn 86 | res0*iy   $nn
+.BYTE   5 *16 | 1, "es0.a"      ,$87, OP_CB     ;    CB 87    | res0.a
+.BYTE   1 *16 | 5,     "b"      ,$80, OP_CB     ;    CB 80    | res0.b
+.BYTE   1 *16 | 5,     "c"      ,$81, OP_CB     ;    CB 81    | res0.c
+.BYTE   1 *16 | 5,     "d"      ,$82, OP_CB     ;    CB 82    | res0.d
+.BYTE   1 *16 | 5,     "e"      ,$83, OP_CB     ;    CB 83    | res0.e
+.BYTE   1 *16 | 5,     "h"      ,$84, OP_CB     ;    CB 84    | res0.h
+.BYTE   1 *16 | 5,     "l"      ,$85, OP_CB     ;    CB 85    | res0.l
+.BYTE   3 *16 | 4,    "*hl"     ,$86, OP_CB     ;    CB 86    | res0*hl
+.BYTE   2 *16 | 5,     "ix"     ,$86, OP_CBXO   ; DD CB nn 86 | res0*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$86, OP_CBYO   ; FD CB nn 86 | res0*iy   $nn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 3,   "1.a"     ,$8f, OP_CB      ;    CB 8F    | res1.a
-.BYTE   1 *16 | 5,     "b"     ,$88, OP_CB      ;    CB 88    | res1.b
-.BYTE   1 *16 | 5,     "c"     ,$89, OP_CB      ;    CB 89    | res1.c
-.BYTE   1 *16 | 5,     "d"     ,$8a, OP_CB      ;    CB 8A    | res1.d
-.BYTE   1 *16 | 5,     "e"     ,$8b, OP_CB      ;    CB 8B    | res1.e
-.BYTE   1 *16 | 5,     "h"     ,$8c, OP_CB      ;    CB 8C    | res1.h
-.BYTE   1 *16 | 5,     "l"     ,$8d, OP_CB      ;    CB 8D    | res1.l
-.BYTE   3 *16 | 4,    "*hl"    ,$8e, OP_CB      ;    CB 8E    | res1*hl
-.BYTE   2 *16 | 5,     "ix"    ,$8e, OP_CBXO    ; DD CB nn 8E | res1*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$8e, OP_CBYO    ; FD CB nn 8E | res1*iy   $nn
+.BYTE   3 *16 | 3,   "1.a"      ,$8f, OP_CB     ;    CB 8F    | res1.a
+.BYTE   1 *16 | 5,     "b"      ,$88, OP_CB     ;    CB 88    | res1.b
+.BYTE   1 *16 | 5,     "c"      ,$89, OP_CB     ;    CB 89    | res1.c
+.BYTE   1 *16 | 5,     "d"      ,$8a, OP_CB     ;    CB 8A    | res1.d
+.BYTE   1 *16 | 5,     "e"      ,$8b, OP_CB     ;    CB 8B    | res1.e
+.BYTE   1 *16 | 5,     "h"      ,$8c, OP_CB     ;    CB 8C    | res1.h
+.BYTE   1 *16 | 5,     "l"      ,$8d, OP_CB     ;    CB 8D    | res1.l
+.BYTE   3 *16 | 4,    "*hl"     ,$8e, OP_CB     ;    CB 8E    | res1*hl
+.BYTE   2 *16 | 5,     "ix"     ,$8e, OP_CBXO   ; DD CB nn 8E | res1*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$8e, OP_CBYO   ; FD CB nn 8E | res1*iy   $nn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 3,   "2.a"     ,$97, OP_CB      ;    CB 97    | res2.a
-.BYTE   1 *16 | 5,     "b"     ,$90, OP_CB      ;    CB 90    | res2.b
-.BYTE   1 *16 | 5,     "c"     ,$91, OP_CB      ;    CB 91    | res2.c
-.BYTE   1 *16 | 5,     "d"     ,$92, OP_CB      ;    CB 92    | res2.d
-.BYTE   1 *16 | 5,     "e"     ,$93, OP_CB      ;    CB 93    | res2.e
-.BYTE   1 *16 | 5,     "h"     ,$94, OP_CB      ;    CB 94    | res2.h
-.BYTE   1 *16 | 5,     "l"     ,$95, OP_CB      ;    CB 95    | res2.l
-.BYTE   3 *16 | 4,    "*hl"    ,$96, OP_CB      ;    CB 96    | res2*hl
-.BYTE   2 *16 | 5,     "ix"    ,$96, OP_CBXO    ; DD CB nn 96 | res2*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$96, OP_CBYO    ; FD CB nn 96 | res2*iy   $nn
+.BYTE   3 *16 | 3,   "2.a"      ,$97, OP_CB     ;    CB 97    | res2.a
+.BYTE   1 *16 | 5,     "b"      ,$90, OP_CB     ;    CB 90    | res2.b
+.BYTE   1 *16 | 5,     "c"      ,$91, OP_CB     ;    CB 91    | res2.c
+.BYTE   1 *16 | 5,     "d"      ,$92, OP_CB     ;    CB 92    | res2.d
+.BYTE   1 *16 | 5,     "e"      ,$93, OP_CB     ;    CB 93    | res2.e
+.BYTE   1 *16 | 5,     "h"      ,$94, OP_CB     ;    CB 94    | res2.h
+.BYTE   1 *16 | 5,     "l"      ,$95, OP_CB     ;    CB 95    | res2.l
+.BYTE   3 *16 | 4,    "*hl"     ,$96, OP_CB     ;    CB 96    | res2*hl
+.BYTE   2 *16 | 5,     "ix"     ,$96, OP_CBXO   ; DD CB nn 96 | res2*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$96, OP_CBYO   ; FD CB nn 96 | res2*iy   $nn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 3,   "3.a"     ,$9f, OP_CB      ;    CB 9F    | res3.a
-.BYTE   1 *16 | 5,     "b"     ,$98, OP_CB      ;    CB 98    | res3.b
-.BYTE   1 *16 | 5,     "c"     ,$99, OP_CB      ;    CB 99    | res3.c
-.BYTE   1 *16 | 5,     "d"     ,$9a, OP_CB      ;    CB 9A    | res3.d
-.BYTE   1 *16 | 5,     "e"     ,$9b, OP_CB      ;    CB 9B    | res3.e
-.BYTE   1 *16 | 5,     "h"     ,$9c, OP_CB      ;    CB 9C    | res3.h
-.BYTE   1 *16 | 5,     "l"     ,$9d, OP_CB      ;    CB 9D    | res3.l
-.BYTE   3 *16 | 4,    "*hl"    ,$9e, OP_CB      ;    CB 9E    | res3*hl
-.BYTE   2 *16 | 5,     "ix"    ,$9e, OP_CBXO    ; DD CB nn 9E | res3*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$9e, OP_CBYO    ; FD CB nn 9E | res3*iy   $nn
+.BYTE   3 *16 | 3,   "3.a"      ,$9f, OP_CB     ;    CB 9F    | res3.a
+.BYTE   1 *16 | 5,     "b"      ,$98, OP_CB     ;    CB 98    | res3.b
+.BYTE   1 *16 | 5,     "c"      ,$99, OP_CB     ;    CB 99    | res3.c
+.BYTE   1 *16 | 5,     "d"      ,$9a, OP_CB     ;    CB 9A    | res3.d
+.BYTE   1 *16 | 5,     "e"      ,$9b, OP_CB     ;    CB 9B    | res3.e
+.BYTE   1 *16 | 5,     "h"      ,$9c, OP_CB     ;    CB 9C    | res3.h
+.BYTE   1 *16 | 5,     "l"      ,$9d, OP_CB     ;    CB 9D    | res3.l
+.BYTE   3 *16 | 4,    "*hl"     ,$9e, OP_CB     ;    CB 9E    | res3*hl
+.BYTE   2 *16 | 5,     "ix"     ,$9e, OP_CBXO   ; DD CB nn 9E | res3*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$9e, OP_CBYO   ; FD CB nn 9E | res3*iy   $nn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 3,   "4.a"     ,$a7, OP_CB      ;    CB A7    | res4.a
-.BYTE   1 *16 | 5,     "b"     ,$a0, OP_CB      ;    CB A0    | res4.b
-.BYTE   1 *16 | 5,     "c"     ,$a1, OP_CB      ;    CB A1    | res4.c
-.BYTE   1 *16 | 5,     "d"     ,$a2, OP_CB      ;    CB A2    | res4.d
-.BYTE   1 *16 | 5,     "e"     ,$a3, OP_CB      ;    CB A3    | res4.e
-.BYTE   1 *16 | 5,     "h"     ,$a4, OP_CB      ;    CB A4    | res4.h
-.BYTE   1 *16 | 5,     "l"     ,$a5, OP_CB      ;    CB A5    | res4.l
-.BYTE   3 *16 | 4,    "*hl"    ,$a6, OP_CB      ;    CB A6    | res4*hl
-.BYTE   2 *16 | 5,     "ix"    ,$a6, OP_CBXO    ; DD CB nn A6 | res4*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$a6, OP_CBYO    ; FD CB nn A6 | res4*iy   $nn
+.BYTE   3 *16 | 3,   "4.a"      ,$a7, OP_CB     ;    CB A7    | res4.a
+.BYTE   1 *16 | 5,     "b"      ,$a0, OP_CB     ;    CB A0    | res4.b
+.BYTE   1 *16 | 5,     "c"      ,$a1, OP_CB     ;    CB A1    | res4.c
+.BYTE   1 *16 | 5,     "d"      ,$a2, OP_CB     ;    CB A2    | res4.d
+.BYTE   1 *16 | 5,     "e"      ,$a3, OP_CB     ;    CB A3    | res4.e
+.BYTE   1 *16 | 5,     "h"      ,$a4, OP_CB     ;    CB A4    | res4.h
+.BYTE   1 *16 | 5,     "l"      ,$a5, OP_CB     ;    CB A5    | res4.l
+.BYTE   3 *16 | 4,    "*hl"     ,$a6, OP_CB     ;    CB A6    | res4*hl
+.BYTE   2 *16 | 5,     "ix"     ,$a6, OP_CBXO   ; DD CB nn A6 | res4*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$a6, OP_CBYO   ; FD CB nn A6 | res4*iy   $nn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 3,   "5.a"     ,$af, OP_CB      ;    CB AF    | res5.a
-.BYTE   1 *16 | 5,     "b"     ,$a8, OP_CB      ;    CB A8    | res5.b
-.BYTE   1 *16 | 5,     "c"     ,$a9, OP_CB      ;    CB A9    | res5.c
-.BYTE   1 *16 | 5,     "d"     ,$aa, OP_CB      ;    CB AA    | res5.d
-.BYTE   1 *16 | 5,     "e"     ,$ab, OP_CB      ;    CB AB    | res5.e
-.BYTE   1 *16 | 5,     "h"     ,$ac, OP_CB      ;    CB AC    | res5.h
-.BYTE   1 *16 | 5,     "l"     ,$ad, OP_CB      ;    CB AD    | res5.l
-.BYTE   3 *16 | 4,    "*hl"    ,$ae, OP_CB      ;    CB AE    | res5*hl
-.BYTE   2 *16 | 5,     "ix"    ,$ae, OP_CBXO    ; DD CB nn AE | res5*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$ae, OP_CBYO    ; FD CB nn AE | res5*iy   $nn
+.BYTE   3 *16 | 3,   "5.a"      ,$af, OP_CB     ;    CB AF    | res5.a
+.BYTE   1 *16 | 5,     "b"      ,$a8, OP_CB     ;    CB A8    | res5.b
+.BYTE   1 *16 | 5,     "c"      ,$a9, OP_CB     ;    CB A9    | res5.c
+.BYTE   1 *16 | 5,     "d"      ,$aa, OP_CB     ;    CB AA    | res5.d
+.BYTE   1 *16 | 5,     "e"      ,$ab, OP_CB     ;    CB AB    | res5.e
+.BYTE   1 *16 | 5,     "h"      ,$ac, OP_CB     ;    CB AC    | res5.h
+.BYTE   1 *16 | 5,     "l"      ,$ad, OP_CB     ;    CB AD    | res5.l
+.BYTE   3 *16 | 4,    "*hl"     ,$ae, OP_CB     ;    CB AE    | res5*hl
+.BYTE   2 *16 | 5,     "ix"     ,$ae, OP_CBXO   ; DD CB nn AE | res5*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$ae, OP_CBYO   ; FD CB nn AE | res5*iy   $nn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 3,   "6.a"     ,$b7, OP_CB      ;    CB B7    | res6.a
-.BYTE   1 *16 | 5,     "b"     ,$b0, OP_CB      ;    CB B0    | res6.b
-.BYTE   1 *16 | 5,     "c"     ,$b1, OP_CB      ;    CB B1    | res6.c
-.BYTE   1 *16 | 5,     "d"     ,$b2, OP_CB      ;    CB B2    | res6.d
-.BYTE   1 *16 | 5,     "e"     ,$b3, OP_CB      ;    CB B3    | res6.e
-.BYTE   1 *16 | 5,     "h"     ,$b4, OP_CB      ;    CB B4    | res6.h
-.BYTE   1 *16 | 5,     "l"     ,$b5, OP_CB      ;    CB B5    | res6.l
-.BYTE   3 *16 | 4,    "*hl"    ,$b6, OP_CB      ;    CB B6    | res6*hl
-.BYTE   2 *16 | 5,     "ix"    ,$b6, OP_CBXO    ; DD CB nn B6 | res6*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$b6, OP_CBYO    ; FD CB nn B6 | res6*iy   $nn
+.BYTE   3 *16 | 3,   "6.a"      ,$b7, OP_CB     ;    CB B7    | res6.a
+.BYTE   1 *16 | 5,     "b"      ,$b0, OP_CB     ;    CB B0    | res6.b
+.BYTE   1 *16 | 5,     "c"      ,$b1, OP_CB     ;    CB B1    | res6.c
+.BYTE   1 *16 | 5,     "d"      ,$b2, OP_CB     ;    CB B2    | res6.d
+.BYTE   1 *16 | 5,     "e"      ,$b3, OP_CB     ;    CB B3    | res6.e
+.BYTE   1 *16 | 5,     "h"      ,$b4, OP_CB     ;    CB B4    | res6.h
+.BYTE   1 *16 | 5,     "l"      ,$b5, OP_CB     ;    CB B5    | res6.l
+.BYTE   3 *16 | 4,    "*hl"     ,$b6, OP_CB     ;    CB B6    | res6*hl
+.BYTE   2 *16 | 5,     "ix"     ,$b6, OP_CBXO   ; DD CB nn B6 | res6*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$b6, OP_CBYO   ; FD CB nn B6 | res6*iy   $nn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 3,   "7.a"     ,$bf, OP_CB      ;    CB BF    | res7.a
-.BYTE   1 *16 | 5,     "b"     ,$b8, OP_CB      ;    CB B8    | res7.b
-.BYTE   1 *16 | 5,     "c"     ,$b9, OP_CB      ;    CB B9    | res7.c
-.BYTE   1 *16 | 5,     "d"     ,$ba, OP_CB      ;    CB BA    | res7.d
-.BYTE   1 *16 | 5,     "e"     ,$bb, OP_CB      ;    CB BB    | res7.e
-.BYTE   1 *16 | 5,     "h"     ,$bc, OP_CB      ;    CB BC    | res7.h
-.BYTE   1 *16 | 5,     "l"     ,$bd, OP_CB      ;    CB BD    | res7.l
-.BYTE   3 *16 | 4,    "*hl"    ,$be, OP_CB      ;    CB BE    | res7*hl
-.BYTE   2 *16 | 5,     "ix"    ,$be, OP_CBXO    ; DD CB nn BE | res7*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$be, OP_CBYO    ; FD CB nn BE | res7*iy   $nn
+.BYTE   3 *16 | 3,   "7.a"      ,$bf, OP_CB     ;    CB BF    | res7.a
+.BYTE   1 *16 | 5,     "b"      ,$b8, OP_CB     ;    CB B8    | res7.b
+.BYTE   1 *16 | 5,     "c"      ,$b9, OP_CB     ;    CB B9    | res7.c
+.BYTE   1 *16 | 5,     "d"      ,$ba, OP_CB     ;    CB BA    | res7.d
+.BYTE   1 *16 | 5,     "e"      ,$bb, OP_CB     ;    CB BB    | res7.e
+.BYTE   1 *16 | 5,     "h"      ,$bc, OP_CB     ;    CB BC    | res7.h
+.BYTE   1 *16 | 5,     "l"      ,$bd, OP_CB     ;    CB BD    | res7.l
+.BYTE   3 *16 | 4,    "*hl"     ,$be, OP_CB     ;    CB BE    | res7*hl
+.BYTE   2 *16 | 5,     "ix"     ,$be, OP_CBXO   ; DD CB nn BE | res7*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$be, OP_CBYO   ; FD CB nn BE | res7*iy   $nn
 ;===============================================================================
-.BYTE   1 *16 | 2,  "t"        ,$c9, OP         ;    C9       | ret
-.BYTE   2 *16 | 3,   "?z"      ,$c8, OP         ;    C8       | ret?z
-.BYTE   1 *16 | 4,    "c"      ,$d8, OP         ;    D8       | ret?c
-.BYTE   2 *16 | 4,    "nz"     ,$c0, OP         ;    C0       | ret?nz
-.BYTE   1 *16 | 5,     "c"     ,$d0, OP         ;    D0       | ret?nc
-.BYTE   1 *16 | 5,     "v"     ,$e0, OP         ;    E0       | ret?nv
-.BYTE   1 *16 | 4,    "m"      ,$f8, OP         ;    F8       | ret?m
-.BYTE   1 *16 | 4,    "v"      ,$e8, OP         ;    E8       | ret?v
-.BYTE   1 *16 | 4,    "p"      ,$f0, OP         ;    F0       | ret?p
-.BYTE   1 *16 | 5,     "o"     ,$e0, OP         ;    E0       | ret?po
-.BYTE   1 *16 | 5,     "e"     ,$e8, OP         ;    E8       | ret?pe
+.BYTE   1 *16 | 2,  "t"         ,$c9, OP        ;    C9       | ret
+.BYTE   2 *16 | 3,   "?z"       ,$c8, OP        ;    C8       | ret?z
+.BYTE   1 *16 | 4,    "c"       ,$d8, OP        ;    D8       | ret?c
+.BYTE   2 *16 | 4,    "nz"      ,$c0, OP        ;    C0       | ret?nz
+.BYTE   1 *16 | 5,     "c"      ,$d0, OP        ;    D0       | ret?nc
+.BYTE   1 *16 | 5,     "v"      ,$e0, OP        ;    E0       | ret?nv
+.BYTE   1 *16 | 4,    "m"       ,$f8, OP        ;    F8       | ret?m
+.BYTE   1 *16 | 4,    "v"       ,$e8, OP        ;    E8       | ret?v
+.BYTE   1 *16 | 4,    "p"       ,$f0, OP        ;    F0       | ret?p
+.BYTE   1 *16 | 5,     "o"      ,$e0, OP        ;    E0       | ret?po
+.BYTE   1 *16 | 5,     "e"      ,$e8, OP        ;    E8       | ret?pe
 ;===============================================================================
-.BYTE   1 *16 | 3,   "n"       ,$45, OP_ED      ; ED 45       | retn
-.BYTE   1 *16 | 3,   "i"       ,$4d, OP_ED      ; ED 4D       | reti
+.BYTE   1 *16 | 3,   "n"        ,$45, OP_ED     ; ED 45       | retn
+.BYTE   1 *16 | 3,   "i"        ,$4d, OP_ED     ; ED 4D       | reti
 ;===============================================================================
-.BYTE   2 *16 | 1, "la"        ,$17, OP         ;    17       | rla
-.BYTE   2 *16 | 2,  ".a"       ,$17, OP_CB      ;    CB 17    | rl.a
-.BYTE   1 *16 | 3,   "b"       ,$10, OP_CB      ;    CB 10    | rl.b
-.BYTE   1 *16 | 3,   "c"       ,$11, OP_CB      ;    CB 11    | rl.c
-.BYTE   1 *16 | 3,   "d"       ,$12, OP_CB      ;    CB 12    | rl.d
-.BYTE   1 *16 | 3,   "e"       ,$13, OP_CB      ;    CB 13    | rl.e
-.BYTE   1 *16 | 3,   "h"       ,$14, OP_CB      ;    CB 14    | rl.h
-.BYTE   1 *16 | 3,   "l"       ,$15, OP_CB      ;    CB 15    | rl.l
-.BYTE   3 *16 | 2,  "*hl"      ,$16, OP_CB      ;    CB 16    | rl*hl
-.BYTE   2 *16 | 3,   "ix"      ,$16, OP_CBXO    ; DD CB nn 16 | rl*ix     $nn
-.BYTE   1 *16 | 4,    "y"      ,$16, OP_CBYO    ; FD CB nn 16 | rl*iy     $nn
+.BYTE   2 *16 | 1, "la"         ,$17, OP        ;    17       | rla
+.BYTE   2 *16 | 2,  ".a"        ,$17, OP_CB     ;    CB 17    | rl.a
+.BYTE   1 *16 | 3,   "b"        ,$10, OP_CB     ;    CB 10    | rl.b
+.BYTE   1 *16 | 3,   "c"        ,$11, OP_CB     ;    CB 11    | rl.c
+.BYTE   1 *16 | 3,   "d"        ,$12, OP_CB     ;    CB 12    | rl.d
+.BYTE   1 *16 | 3,   "e"        ,$13, OP_CB     ;    CB 13    | rl.e
+.BYTE   1 *16 | 3,   "h"        ,$14, OP_CB     ;    CB 14    | rl.h
+.BYTE   1 *16 | 3,   "l"        ,$15, OP_CB     ;    CB 15    | rl.l
+.BYTE   3 *16 | 2,  "*hl"       ,$16, OP_CB     ;    CB 16    | rl*hl
+.BYTE   2 *16 | 3,   "ix"       ,$16, OP_CBXO   ; DD CB nn 16 | rl*ix     $nn
+.BYTE   1 *16 | 4,    "y"       ,$16, OP_CBYO   ; FD CB nn 16 | rl*iy     $nn
 ;-------------------------------------------------------------------------------
-.BYTE   2 *16 | 2,  "ca"       ,$07, OP         ;    07       | rlca
-.BYTE   2 *16 | 3,   ".a"      ,$07, OP_CB      ;    CB 07    | rlc.a
-.BYTE   1 *16 | 4,    "b"      ,$00, OP_CB      ;    CB 00    | rlc.b
-.BYTE   1 *16 | 4,    "c"      ,$01, OP_CB      ;    CB 01    | rlc.c
-.BYTE   1 *16 | 4,    "d"      ,$02, OP_CB      ;    CB 02    | rlc.d
-.BYTE   1 *16 | 4,    "e"      ,$03, OP_CB      ;    CB 03    | rlc.e
-.BYTE   1 *16 | 4,    "h"      ,$04, OP_CB      ;    CB 04    | rlc.h
-.BYTE   1 *16 | 4,    "l"      ,$05, OP_CB      ;    CB 05    | rlc.l
-.BYTE   3 *16 | 3,   "*hl"     ,$06, OP_CB      ;    CB 06    | rlc*hl
-.BYTE   2 *16 | 4,    "ix"     ,$06, OP_CBXO    ; DD CB nn 06 | rlc*ix    $nn
-.BYTE   1 *16 | 5,     "y"     ,$06, OP_CBYO    ; FD CB nn 06 | rlc*iy    $nn
+.BYTE   2 *16 | 2,  "ca"        ,$07, OP        ;    07       | rlca
+.BYTE   2 *16 | 3,   ".a"       ,$07, OP_CB     ;    CB 07    | rlc.a
+.BYTE   1 *16 | 4,    "b"       ,$00, OP_CB     ;    CB 00    | rlc.b
+.BYTE   1 *16 | 4,    "c"       ,$01, OP_CB     ;    CB 01    | rlc.c
+.BYTE   1 *16 | 4,    "d"       ,$02, OP_CB     ;    CB 02    | rlc.d
+.BYTE   1 *16 | 4,    "e"       ,$03, OP_CB     ;    CB 03    | rlc.e
+.BYTE   1 *16 | 4,    "h"       ,$04, OP_CB     ;    CB 04    | rlc.h
+.BYTE   1 *16 | 4,    "l"       ,$05, OP_CB     ;    CB 05    | rlc.l
+.BYTE   3 *16 | 3,   "*hl"      ,$06, OP_CB     ;    CB 06    | rlc*hl
+.BYTE   2 *16 | 4,    "ix"      ,$06, OP_CBXO   ; DD CB nn 06 | rlc*ix    $nn
+.BYTE   1 *16 | 5,     "y"      ,$06, OP_CBYO   ; FD CB nn 06 | rlc*iy    $nn
 ;-------------------------------------------------------------------------------
-.BYTE   1 *16 | 2,  "d"        ,$6f, OP_ED      ; ED 6F       | rld
+.BYTE   1 *16 | 2,  "d"         ,$6f, OP_ED     ; ED 6F       | rld
 ;===============================================================================
-.BYTE   2 *16 | 1, "ra"        ,$1f, OP         ;    1F       | rra
-.BYTE   2 *16 | 2,  ".a"       ,$1f, OP_CB      ;    CB 1F    | rr.a
-.BYTE   1 *16 | 3,   "b"       ,$18, OP_CB      ;    CB 18    | rr.b
-.BYTE   1 *16 | 3,   "c"       ,$19, OP_CB      ;    CB 19    | rr.c
-.BYTE   1 *16 | 3,   "d"       ,$1a, OP_CB      ;    CB 1A    | rr.d
-.BYTE   1 *16 | 3,   "e"       ,$1b, OP_CB      ;    CB 1B    | rr.e
-.BYTE   1 *16 | 3,   "h"       ,$1c, OP_CB      ;    CB 1C    | rr.h
-.BYTE   1 *16 | 3,   "l"       ,$1d, OP_CB      ;    CB 1D    | rr.l
-.BYTE   3 *16 | 2,  "*hl"      ,$1e, OP_CB      ;    CB 1E    | rr*hl
-.BYTE   2 *16 | 3,   "ix"      ,$1e, OP_CBXO    ; DD CB nn 1E | rr*ix     $nn
-.BYTE   1 *16 | 4,    "y"      ,$1e, OP_CBYO    ; FD CB nn 1E | rr*iy     $nn
+.BYTE   2 *16 | 1, "ra"         ,$1f, OP        ;    1F       | rra
+.BYTE   2 *16 | 2,  ".a"        ,$1f, OP_CB     ;    CB 1F    | rr.a
+.BYTE   1 *16 | 3,   "b"        ,$18, OP_CB     ;    CB 18    | rr.b
+.BYTE   1 *16 | 3,   "c"        ,$19, OP_CB     ;    CB 19    | rr.c
+.BYTE   1 *16 | 3,   "d"        ,$1a, OP_CB     ;    CB 1A    | rr.d
+.BYTE   1 *16 | 3,   "e"        ,$1b, OP_CB     ;    CB 1B    | rr.e
+.BYTE   1 *16 | 3,   "h"        ,$1c, OP_CB     ;    CB 1C    | rr.h
+.BYTE   1 *16 | 3,   "l"        ,$1d, OP_CB     ;    CB 1D    | rr.l
+.BYTE   3 *16 | 2,  "*hl"       ,$1e, OP_CB     ;    CB 1E    | rr*hl
+.BYTE   2 *16 | 3,   "ix"       ,$1e, OP_CBXO   ; DD CB nn 1E | rr*ix     $nn
+.BYTE   1 *16 | 4,    "y"       ,$1e, OP_CBYO   ; FD CB nn 1E | rr*iy     $nn
 ;-------------------------------------------------------------------------------
-.BYTE   2 *16 | 2,  "ca"       ,$0f, OP         ;    0F       | rrca
-.BYTE   2 *16 | 3,   ".a"      ,$0f, OP_CB      ;    CB 0F    | rrc.a
-.BYTE   1 *16 | 4,    "b"      ,$08, OP_CB      ;    CB 08    | rrc.b
-.BYTE   1 *16 | 4,    "c"      ,$09, OP_CB      ;    CB 09    | rrc.c
-.BYTE   1 *16 | 4,    "d"      ,$0a, OP_CB      ;    CB 0A    | rrc.d
-.BYTE   1 *16 | 4,    "e"      ,$0b, OP_CB      ;    CB 0B    | rrc.e
-.BYTE   1 *16 | 4,    "h"      ,$0c, OP_CB      ;    CB 0C    | rrc.h
-.BYTE   1 *16 | 4,    "l"      ,$0d, OP_CB      ;    CB 0D    | rrc.l
-.BYTE   3 *16 | 3,   "*hl"     ,$0e, OP_CB      ;    CB 0E    | rrc*hl
-.BYTE   2 *16 | 4,    "ix"     ,$0e, OP_CBXO    ; DD CB nn 0E | rrc*ix    $nn
-.BYTE   1 *16 | 5,     "y"     ,$0e, OP_CBYO    ; FD CB nn 0E | rrc*iy    $nn
+.BYTE   2 *16 | 2,  "ca"        ,$0f, OP        ;    0F       | rrca
+.BYTE   2 *16 | 3,   ".a"       ,$0f, OP_CB     ;    CB 0F    | rrc.a
+.BYTE   1 *16 | 4,    "b"       ,$08, OP_CB     ;    CB 08    | rrc.b
+.BYTE   1 *16 | 4,    "c"       ,$09, OP_CB     ;    CB 09    | rrc.c
+.BYTE   1 *16 | 4,    "d"       ,$0a, OP_CB     ;    CB 0A    | rrc.d
+.BYTE   1 *16 | 4,    "e"       ,$0b, OP_CB     ;    CB 0B    | rrc.e
+.BYTE   1 *16 | 4,    "h"       ,$0c, OP_CB     ;    CB 0C    | rrc.h
+.BYTE   1 *16 | 4,    "l"       ,$0d, OP_CB     ;    CB 0D    | rrc.l
+.BYTE   3 *16 | 3,   "*hl"      ,$0e, OP_CB     ;    CB 0E    | rrc*hl
+.BYTE   2 *16 | 4,    "ix"      ,$0e, OP_CBXO   ; DD CB nn 0E | rrc*ix    $nn
+.BYTE   1 *16 | 5,     "y"      ,$0e, OP_CBYO   ; FD CB nn 0E | rrc*iy    $nn
 ;-------------------------------------------------------------------------------
-.BYTE   1 *16 | 2,  "d"        ,$67, OP_ED      ; ED 67       | rrd
+.BYTE   1 *16 | 2,  "d"         ,$67, OP_ED     ; ED 67       | rrd
 ;===============================================================================
-.BYTE   4 *16 | 1, "st.0"      ,$c7, OP         ;    C7       | rst.0
-.BYTE   1 *16 | 4,    "8"      ,$cf, OP         ;    CF       | rst.8
-.BYTE   2 *16 | 4,    "10"     ,$d7, OP         ;    D7       | rst.10
-.BYTE   1 *16 | 5,     "8"     ,$df, OP         ;    DF       | rst.18
-.BYTE   2 *16 | 4,    "20"     ,$e7, OP         ;    E7       | rst.20
-.BYTE   1 *16 | 5,     "8"     ,$ef, OP         ;    EF       | rst.28
-.BYTE   2 *16 | 4,    "30"     ,$f7, OP         ;    F7       | rst.30
-.BYTE   1 *16 | 5,     "8"     ,$ff, OP         ;    FF       | rst.38
+.BYTE   4 *16 | 1, "st.0"       ,$c7, OP        ;    C7       | rst.0
+.BYTE   1 *16 | 4,    "8"       ,$cf, OP        ;    CF       | rst.8
+.BYTE   2 *16 | 4,    "10"      ,$d7, OP        ;    D7       | rst.10
+.BYTE   1 *16 | 5,     "8"      ,$df, OP        ;    DF       | rst.18
+.BYTE   2 *16 | 4,    "20"      ,$e7, OP        ;    E7       | rst.20
+.BYTE   1 *16 | 5,     "8"      ,$ef, OP        ;    EF       | rst.28
+.BYTE   2 *16 | 4,    "30"      ,$f7, OP        ;    F7       | rst.30
+.BYTE   1 *16 | 5,     "8"      ,$ff, OP        ;    FF       | rst.38
 ;-------------------------------------------------------------------------------
 .BYTE   0
 
 s:
 ;===============================================================================
-.BYTE   2 *16 | 1, "bc"        ,$de, OP_B       ;    DE nn    | sbc       $nn
-.BYTE   2 *16 | 3,   ".a"      ,$9f, OP         ;    9F       | sbc.a
-.BYTE   1 *16 | 4,    "b"      ,$98, OP         ;    98       | sbc.b
-.BYTE   1 *16 | 4,    "c"      ,$99, OP         ;    99       | sbc.c
-.BYTE   1 *16 | 4,    "d"      ,$9a, OP         ;    9A       | sbc.d
-.BYTE   1 *16 | 4,    "e"      ,$9b, OP         ;    9B       | sbc.e
-.BYTE   1 *16 | 4,    "h"      ,$9c, OP         ;    9C       | sbc.h
-.BYTE   4 *16 | 5,     "l.bc"  ,$42, OP_ED      ; ED 42       | sbc.hl.bc
-.BYTE   2 *16 | 7,       "de"  ,$52, OP_ED      ; ED 52       | sbc.hl.de
-.BYTE   2 *16 | 7,       "hl"  ,$62, OP_ED      ; ED 62       | sbc.hl.hl
-.BYTE   2 *16 | 7,       "sp"  ,$72, OP_ED      ; ED 72       | sbc.hl.sp
-.BYTE   1 *16 | 4,    "l"      ,$9d, OP         ;    9D       | sbc.l
-.BYTE   3 *16 | 4,    "ixh"    ,$9c, OP_IX      ; DD 9C       | sbc.ixh
-.BYTE   1 *16 | 6,      "l"    ,$9d, OP_IX      ; DD 9D       | sbc.ixl
-.BYTE   2 *16 | 5,     "yh"    ,$9c, OP_IY      ; FD 9C       | sbc.iyh
-.BYTE   1 *16 | 6,      "l"    ,$9d, OP_IY      ; FD 9D       | sbc.iyl
-.BYTE   3 *16 | 3,   "*hl"     ,$9e, OP         ;    9E       | sbc*hl
-.BYTE   2 *16 | 4,    "ix"     ,$9e, OP_IXO     ; DD 9E nn    | sbc*ix    $nn
-.BYTE   1 *16 | 5,     "y"     ,$9e, OP_IYO     ; FD 9E nn    | sbc*iy    $nn
+.BYTE   2 *16 | 1, "bc"         ,$de, OP_B      ;    DE nn    | sbc       $nn
+.BYTE   2 *16 | 3,   ".a"       ,$9f, OP        ;    9F       | sbc.a
+.BYTE   1 *16 | 4,    "b"       ,$98, OP        ;    98       | sbc.b
+.BYTE   1 *16 | 4,    "c"       ,$99, OP        ;    99       | sbc.c
+.BYTE   1 *16 | 4,    "d"       ,$9a, OP        ;    9A       | sbc.d
+.BYTE   1 *16 | 4,    "e"       ,$9b, OP        ;    9B       | sbc.e
+.BYTE   1 *16 | 4,    "h"       ,$9c, OP        ;    9C       | sbc.h
+.BYTE   4 *16 | 5,     "l.bc"   ,$42, OP_ED     ; ED 42       | sbc.hl.bc
+.BYTE   2 *16 | 7,       "de"   ,$52, OP_ED     ; ED 52       | sbc.hl.de
+.BYTE   2 *16 | 7,       "hl"   ,$62, OP_ED     ; ED 62       | sbc.hl.hl
+.BYTE   2 *16 | 7,       "sp"   ,$72, OP_ED     ; ED 72       | sbc.hl.sp
+.BYTE   1 *16 | 4,    "l"       ,$9d, OP        ;    9D       | sbc.l
+.BYTE   3 *16 | 4,    "ixh"     ,$9c, OP_IX     ; DD 9C       | sbc.ixh
+.BYTE   1 *16 | 6,      "l"     ,$9d, OP_IX     ; DD 9D       | sbc.ixl
+.BYTE   2 *16 | 5,     "yh"     ,$9c, OP_IY     ; FD 9C       | sbc.iyh
+.BYTE   1 *16 | 6,      "l"     ,$9d, OP_IY     ; FD 9D       | sbc.iyl
+.BYTE   3 *16 | 3,   "*hl"      ,$9e, OP        ;    9E       | sbc*hl
+.BYTE   2 *16 | 4,    "ix"      ,$9e, OP_IXO    ; DD 9E nn    | sbc*ix    $nn
+.BYTE   1 *16 | 5,     "y"      ,$9e, OP_IYO    ; FD 9E nn    | sbc*iy    $nn
 ;===============================================================================
-.BYTE   2 *16 | 1, "cf"        ,$37, OP         ;    37       | scf
+.BYTE   2 *16 | 1, "cf"         ,$37, OP        ;    37       | scf
 ;===============================================================================
-.BYTE   5 *16 | 1, "et0.a"     ,$c7, OP_CB      ;    CB C7    | set0.a
-.BYTE   1 *16 | 5,     "b"     ,$c0, OP_CB      ;    CB C0    | set0.b
-.BYTE   1 *16 | 5,     "c"     ,$c1, OP_CB      ;    CB C1    | set0.c
-.BYTE   1 *16 | 5,     "d"     ,$c2, OP_CB      ;    CB C2    | set0.d
-.BYTE   1 *16 | 5,     "e"     ,$c3, OP_CB      ;    CB C3    | set0.e
-.BYTE   1 *16 | 5,     "h"     ,$c4, OP_CB      ;    CB C4    | set0.h
-.BYTE   1 *16 | 5,     "l"     ,$c5, OP_CB      ;    CB C5    | set0.l
-.BYTE   3 *16 | 4,    "*hl"    ,$c6, OP_CB      ;    CB C6    | set0*hl
-.BYTE   2 *16 | 5,     "ix"    ,$c6, OP_CBXO    ; DD CB nn C6 | set0*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$c6, OP_CBYO    ; FD CB nn C6 | set0*iy   $nn
+.BYTE   5 *16 | 1, "et0.a"      ,$c7, OP_CB     ;    CB C7    | set0.a
+.BYTE   1 *16 | 5,     "b"      ,$c0, OP_CB     ;    CB C0    | set0.b
+.BYTE   1 *16 | 5,     "c"      ,$c1, OP_CB     ;    CB C1    | set0.c
+.BYTE   1 *16 | 5,     "d"      ,$c2, OP_CB     ;    CB C2    | set0.d
+.BYTE   1 *16 | 5,     "e"      ,$c3, OP_CB     ;    CB C3    | set0.e
+.BYTE   1 *16 | 5,     "h"      ,$c4, OP_CB     ;    CB C4    | set0.h
+.BYTE   1 *16 | 5,     "l"      ,$c5, OP_CB     ;    CB C5    | set0.l
+.BYTE   3 *16 | 4,    "*hl"     ,$c6, OP_CB     ;    CB C6    | set0*hl
+.BYTE   2 *16 | 5,     "ix"     ,$c6, OP_CBXO   ; DD CB nn C6 | set0*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$c6, OP_CBYO   ; FD CB nn C6 | set0*iy   $nn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 3,   "1.a"     ,$cf, OP_CB      ;    CB CF    | set1.a
-.BYTE   1 *16 | 5,     "b"     ,$c8, OP_CB      ;    CB C8    | set1.b
-.BYTE   1 *16 | 5,     "c"     ,$c9, OP_CB      ;    CB C9    | set1.c
-.BYTE   1 *16 | 5,     "d"     ,$ca, OP_CB      ;    CB CA    | set1.d
-.BYTE   1 *16 | 5,     "e"     ,$cb, OP_CB      ;    CB CB    | set1.e
-.BYTE   1 *16 | 5,     "h"     ,$cc, OP_CB      ;    CB CC    | set1.h
-.BYTE   1 *16 | 5,     "l"     ,$cd, OP_CB      ;    CB CD    | set1.l
-.BYTE   3 *16 | 4,    "*hl"    ,$ce, OP_CB      ;    CB CE    | set1*hl
-.BYTE   2 *16 | 5,     "ix"    ,$ce, OP_CBXO    ; DD CB nn CE | set1*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$ce, OP_CBYO    ; FD CB nn CE | set1*iy   $nn
+.BYTE   3 *16 | 3,   "1.a"      ,$cf, OP_CB     ;    CB CF    | set1.a
+.BYTE   1 *16 | 5,     "b"      ,$c8, OP_CB     ;    CB C8    | set1.b
+.BYTE   1 *16 | 5,     "c"      ,$c9, OP_CB     ;    CB C9    | set1.c
+.BYTE   1 *16 | 5,     "d"      ,$ca, OP_CB     ;    CB CA    | set1.d
+.BYTE   1 *16 | 5,     "e"      ,$cb, OP_CB     ;    CB CB    | set1.e
+.BYTE   1 *16 | 5,     "h"      ,$cc, OP_CB     ;    CB CC    | set1.h
+.BYTE   1 *16 | 5,     "l"      ,$cd, OP_CB     ;    CB CD    | set1.l
+.BYTE   3 *16 | 4,    "*hl"     ,$ce, OP_CB     ;    CB CE    | set1*hl
+.BYTE   2 *16 | 5,     "ix"     ,$ce, OP_CBXO   ; DD CB nn CE | set1*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$ce, OP_CBYO   ; FD CB nn CE | set1*iy   $nn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 3,   "2.a"     ,$d7, OP_CB      ;    CB D7    | set2.a
-.BYTE   1 *16 | 5,     "b"     ,$d0, OP_CB      ;    CB D0    | set2.b
-.BYTE   1 *16 | 5,     "c"     ,$d1, OP_CB      ;    CB D1    | set2.c
-.BYTE   1 *16 | 5,     "d"     ,$d2, OP_CB      ;    CB D2    | set2.d
-.BYTE   1 *16 | 5,     "e"     ,$d3, OP_CB      ;    CB D3    | set2.e
-.BYTE   1 *16 | 5,     "h"     ,$d4, OP_CB      ;    CB D4    | set2.h
-.BYTE   1 *16 | 5,     "l"     ,$d5, OP_CB      ;    CB D5    | set2.l
-.BYTE   3 *16 | 4,    "*hl"    ,$d6, OP_CB      ;    CB D6    | set2*hl
-.BYTE   2 *16 | 5,     "ix"    ,$d6, OP_CBXO    ; DD CB nn D6 | set2*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$d6, OP_CBYO    ; FD CB nn D6 | set2*iy   $nn
+.BYTE   3 *16 | 3,   "2.a"      ,$d7, OP_CB     ;    CB D7    | set2.a
+.BYTE   1 *16 | 5,     "b"      ,$d0, OP_CB     ;    CB D0    | set2.b
+.BYTE   1 *16 | 5,     "c"      ,$d1, OP_CB     ;    CB D1    | set2.c
+.BYTE   1 *16 | 5,     "d"      ,$d2, OP_CB     ;    CB D2    | set2.d
+.BYTE   1 *16 | 5,     "e"      ,$d3, OP_CB     ;    CB D3    | set2.e
+.BYTE   1 *16 | 5,     "h"      ,$d4, OP_CB     ;    CB D4    | set2.h
+.BYTE   1 *16 | 5,     "l"      ,$d5, OP_CB     ;    CB D5    | set2.l
+.BYTE   3 *16 | 4,    "*hl"     ,$d6, OP_CB     ;    CB D6    | set2*hl
+.BYTE   2 *16 | 5,     "ix"     ,$d6, OP_CBXO   ; DD CB nn D6 | set2*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$d6, OP_CBYO   ; FD CB nn D6 | set2*iy   $nn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 3,   "3.a"     ,$df, OP_CB      ;    CB DF    | set3.a
-.BYTE   1 *16 | 5,     "b"     ,$d8, OP_CB      ;    CB D8    | set3.b
-.BYTE   1 *16 | 5,     "c"     ,$d9, OP_CB      ;    CB D9    | set3.c
-.BYTE   1 *16 | 5,     "d"     ,$da, OP_CB      ;    CB DA    | set3.d
-.BYTE   1 *16 | 5,     "e"     ,$db, OP_CB      ;    CB DB    | set3.e
-.BYTE   1 *16 | 5,     "h"     ,$dc, OP_CB      ;    CB DC    | set3.h
-.BYTE   1 *16 | 5,     "l"     ,$dd, OP_CB      ;    CB DD    | set3.l
-.BYTE   3 *16 | 4,    "*hl"    ,$de, OP_CB      ;    CB DE    | set3*hl
-.BYTE   2 *16 | 5,     "ix"    ,$de, OP_CBXO    ; DD CB nn DE | set3*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$de, OP_CBYO    ; FD CB nn DE | set3*iy   $nn
+.BYTE   3 *16 | 3,   "3.a"      ,$df, OP_CB     ;    CB DF    | set3.a
+.BYTE   1 *16 | 5,     "b"      ,$d8, OP_CB     ;    CB D8    | set3.b
+.BYTE   1 *16 | 5,     "c"      ,$d9, OP_CB     ;    CB D9    | set3.c
+.BYTE   1 *16 | 5,     "d"      ,$da, OP_CB     ;    CB DA    | set3.d
+.BYTE   1 *16 | 5,     "e"      ,$db, OP_CB     ;    CB DB    | set3.e
+.BYTE   1 *16 | 5,     "h"      ,$dc, OP_CB     ;    CB DC    | set3.h
+.BYTE   1 *16 | 5,     "l"      ,$dd, OP_CB     ;    CB DD    | set3.l
+.BYTE   3 *16 | 4,    "*hl"     ,$de, OP_CB     ;    CB DE    | set3*hl
+.BYTE   2 *16 | 5,     "ix"     ,$de, OP_CBXO   ; DD CB nn DE | set3*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$de, OP_CBYO   ; FD CB nn DE | set3*iy   $nn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 3,   "4.a"     ,$e7, OP_CB      ;    CB E7    | set4.a
-.BYTE   1 *16 | 5,     "b"     ,$e0, OP_CB      ;    CB E0    | set4.b
-.BYTE   1 *16 | 5,     "c"     ,$e1, OP_CB      ;    CB E1    | set4.c
-.BYTE   1 *16 | 5,     "d"     ,$e2, OP_CB      ;    CB E2    | set4.d
-.BYTE   1 *16 | 5,     "e"     ,$e3, OP_CB      ;    CB E3    | set4.e
-.BYTE   1 *16 | 5,     "h"     ,$e4, OP_CB      ;    CB E4    | set4.h
-.BYTE   1 *16 | 5,     "l"     ,$e5, OP_CB      ;    CB E5    | set4.l
-.BYTE   3 *16 | 4,    "*hl"    ,$e6, OP_CB      ;    CB E6    | set4*hl
-.BYTE   2 *16 | 5,     "ix"    ,$e6, OP_CBXO    ; DD CB nn E6 | set4*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$e6, OP_CBYO    ; FD CB nn E6 | set4*iy   $nn
+.BYTE   3 *16 | 3,   "4.a"      ,$e7, OP_CB     ;    CB E7    | set4.a
+.BYTE   1 *16 | 5,     "b"      ,$e0, OP_CB     ;    CB E0    | set4.b
+.BYTE   1 *16 | 5,     "c"      ,$e1, OP_CB     ;    CB E1    | set4.c
+.BYTE   1 *16 | 5,     "d"      ,$e2, OP_CB     ;    CB E2    | set4.d
+.BYTE   1 *16 | 5,     "e"      ,$e3, OP_CB     ;    CB E3    | set4.e
+.BYTE   1 *16 | 5,     "h"      ,$e4, OP_CB     ;    CB E4    | set4.h
+.BYTE   1 *16 | 5,     "l"      ,$e5, OP_CB     ;    CB E5    | set4.l
+.BYTE   3 *16 | 4,    "*hl"     ,$e6, OP_CB     ;    CB E6    | set4*hl
+.BYTE   2 *16 | 5,     "ix"     ,$e6, OP_CBXO   ; DD CB nn E6 | set4*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$e6, OP_CBYO   ; FD CB nn E6 | set4*iy   $nn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 3,   "5.a"     ,$ef, OP_CB      ;    CB EF    | set5.a
-.BYTE   1 *16 | 5,     "b"     ,$e8, OP_CB      ;    CB E8    | set5.b
-.BYTE   1 *16 | 5,     "c"     ,$e9, OP_CB      ;    CB E9    | set5.c
-.BYTE   1 *16 | 5,     "d"     ,$ea, OP_CB      ;    CB EA    | set5.d
-.BYTE   1 *16 | 5,     "e"     ,$eb, OP_CB      ;    CB EB    | set5.e
-.BYTE   1 *16 | 5,     "h"     ,$ec, OP_CB      ;    CB EC    | set5.h
-.BYTE   1 *16 | 5,     "l"     ,$ed, OP_CB      ;    CB ED    | set5.l
-.BYTE   3 *16 | 4,    "*hl"    ,$ee, OP_CB      ;    CB EE    | set5*hl
-.BYTE   2 *16 | 5,     "ix"    ,$ee, OP_CBXO    ; DD CB nn EE | set5*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$ee, OP_CBYO    ; FD CB nn EE | set5*iy   $nn
+.BYTE   3 *16 | 3,   "5.a"      ,$ef, OP_CB     ;    CB EF    | set5.a
+.BYTE   1 *16 | 5,     "b"      ,$e8, OP_CB     ;    CB E8    | set5.b
+.BYTE   1 *16 | 5,     "c"      ,$e9, OP_CB     ;    CB E9    | set5.c
+.BYTE   1 *16 | 5,     "d"      ,$ea, OP_CB     ;    CB EA    | set5.d
+.BYTE   1 *16 | 5,     "e"      ,$eb, OP_CB     ;    CB EB    | set5.e
+.BYTE   1 *16 | 5,     "h"      ,$ec, OP_CB     ;    CB EC    | set5.h
+.BYTE   1 *16 | 5,     "l"      ,$ed, OP_CB     ;    CB ED    | set5.l
+.BYTE   3 *16 | 4,    "*hl"     ,$ee, OP_CB     ;    CB EE    | set5*hl
+.BYTE   2 *16 | 5,     "ix"     ,$ee, OP_CBXO   ; DD CB nn EE | set5*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$ee, OP_CBYO   ; FD CB nn EE | set5*iy   $nn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 3,   "6.a"     ,$f7, OP_CB      ;    CB F7    | set6.a
-.BYTE   1 *16 | 5,     "b"     ,$f0, OP_CB      ;    CB F0    | set6.b
-.BYTE   1 *16 | 5,     "c"     ,$f1, OP_CB      ;    CB F1    | set6.c
-.BYTE   1 *16 | 5,     "d"     ,$f2, OP_CB      ;    CB F2    | set6.d
-.BYTE   1 *16 | 5,     "e"     ,$f3, OP_CB      ;    CB F3    | set6.e
-.BYTE   1 *16 | 5,     "h"     ,$f4, OP_CB      ;    CB F4    | set6.h
-.BYTE   1 *16 | 5,     "l"     ,$f5, OP_CB      ;    CB F5    | set6.l
-.BYTE   3 *16 | 4,    "*hl"    ,$f6, OP_CB      ;    CB F6    | set6*hl
-.BYTE   2 *16 | 5,     "ix"    ,$f6, OP_CBXO    ; DD CB nn F6 | set6*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$f6, OP_CBYO    ; FD CB nn F6 | set6*iy   $nn
+.BYTE   3 *16 | 3,   "6.a"      ,$f7, OP_CB     ;    CB F7    | set6.a
+.BYTE   1 *16 | 5,     "b"      ,$f0, OP_CB     ;    CB F0    | set6.b
+.BYTE   1 *16 | 5,     "c"      ,$f1, OP_CB     ;    CB F1    | set6.c
+.BYTE   1 *16 | 5,     "d"      ,$f2, OP_CB     ;    CB F2    | set6.d
+.BYTE   1 *16 | 5,     "e"      ,$f3, OP_CB     ;    CB F3    | set6.e
+.BYTE   1 *16 | 5,     "h"      ,$f4, OP_CB     ;    CB F4    | set6.h
+.BYTE   1 *16 | 5,     "l"      ,$f5, OP_CB     ;    CB F5    | set6.l
+.BYTE   3 *16 | 4,    "*hl"     ,$f6, OP_CB     ;    CB F6    | set6*hl
+.BYTE   2 *16 | 5,     "ix"     ,$f6, OP_CBXO   ; DD CB nn F6 | set6*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$f6, OP_CBYO   ; FD CB nn F6 | set6*iy   $nn
 ;-------------------------------------------------------------------------------
-.BYTE   3 *16 | 3,   "7.a"     ,$ff, OP_CB      ;    CB FF    | set7.a
-.BYTE   1 *16 | 5,     "b"     ,$f8, OP_CB      ;    CB F8    | set7.b
-.BYTE   1 *16 | 5,     "c"     ,$f9, OP_CB      ;    CB F9    | set7.c
-.BYTE   1 *16 | 5,     "d"     ,$fa, OP_CB      ;    CB FA    | set7.d
-.BYTE   1 *16 | 5,     "e"     ,$fb, OP_CB      ;    CB FB    | set7.e
-.BYTE   1 *16 | 5,     "h"     ,$fc, OP_CB      ;    CB FC    | set7.h
-.BYTE   1 *16 | 5,     "l"     ,$fd, OP_CB      ;    CB FD    | set7.l
-.BYTE   3 *16 | 4,    "*hl"    ,$fe, OP_CB      ;    CB FE    | set7*hl
-.BYTE   2 *16 | 5,     "ix"    ,$fe, OP_CBXO    ; DD CB nn FE | set7*ix   $nn
-.BYTE   1 *16 | 6,      "y"    ,$fe, OP_CBYO    ; FD CB nn FE | set7*iy   $nn
+.BYTE   3 *16 | 3,   "7.a"      ,$ff, OP_CB     ;    CB FF    | set7.a
+.BYTE   1 *16 | 5,     "b"      ,$f8, OP_CB     ;    CB F8    | set7.b
+.BYTE   1 *16 | 5,     "c"      ,$f9, OP_CB     ;    CB F9    | set7.c
+.BYTE   1 *16 | 5,     "d"      ,$fa, OP_CB     ;    CB FA    | set7.d
+.BYTE   1 *16 | 5,     "e"      ,$fb, OP_CB     ;    CB FB    | set7.e
+.BYTE   1 *16 | 5,     "h"      ,$fc, OP_CB     ;    CB FC    | set7.h
+.BYTE   1 *16 | 5,     "l"      ,$fd, OP_CB     ;    CB FD    | set7.l
+.BYTE   3 *16 | 4,    "*hl"     ,$fe, OP_CB     ;    CB FE    | set7*hl
+.BYTE   2 *16 | 5,     "ix"     ,$fe, OP_CBXO   ; DD CB nn FE | set7*ix   $nn
+.BYTE   1 *16 | 6,      "y"     ,$fe, OP_CBYO   ; FD CB nn FE | set7*iy   $nn
 ;===============================================================================
-.BYTE   4 *16 | 1, "la.a"      ,$27, OP_CB      ;    CB 27    | sla.a
-.BYTE   1 *16 | 4,    "b"      ,$20, OP_CB      ;    CB 20    | sla.b
-.BYTE   1 *16 | 4,    "c"      ,$21, OP_CB      ;    CB 21    | sla.c
-.BYTE   1 *16 | 4,    "d"      ,$22, OP_CB      ;    CB 22    | sla.d
-.BYTE   1 *16 | 4,    "e"      ,$23, OP_CB      ;    CB 23    | sla.e
-.BYTE   1 *16 | 4,    "h"      ,$24, OP_CB      ;    CB 24    | sla.h
-.BYTE   1 *16 | 4,    "l"      ,$25, OP_CB      ;    CB 25    | sla.l
-.BYTE   3 *16 | 3,   "*hl"     ,$26, OP_CB      ;    CB 26    | sla*hl
-.BYTE   2 *16 | 4,    "ix"     ,$26, OP_CBXO    ; DD CB nn 26 | sla*ix    $nn
-.BYTE   1 *16 | 5,     "y"     ,$26, OP_CBYO    ; FD CB nn 26 | sla*iy    $nn
+.BYTE   4 *16 | 1, "la.a"       ,$27, OP_CB     ;    CB 27    | sla.a
+.BYTE   1 *16 | 4,    "b"       ,$20, OP_CB     ;    CB 20    | sla.b
+.BYTE   1 *16 | 4,    "c"       ,$21, OP_CB     ;    CB 21    | sla.c
+.BYTE   1 *16 | 4,    "d"       ,$22, OP_CB     ;    CB 22    | sla.d
+.BYTE   1 *16 | 4,    "e"       ,$23, OP_CB     ;    CB 23    | sla.e
+.BYTE   1 *16 | 4,    "h"       ,$24, OP_CB     ;    CB 24    | sla.h
+.BYTE   1 *16 | 4,    "l"       ,$25, OP_CB     ;    CB 25    | sla.l
+.BYTE   3 *16 | 3,   "*hl"      ,$26, OP_CB     ;    CB 26    | sla*hl
+.BYTE   2 *16 | 4,    "ix"      ,$26, OP_CBXO   ; DD CB nn 26 | sla*ix    $nn
+.BYTE   1 *16 | 5,     "y"      ,$26, OP_CBYO   ; FD CB nn 26 | sla*iy    $nn
 ;===============================================================================
-.BYTE   3 *16 | 2,  "1.a"      ,$37, OP_CB      ;    CB 37    | sl1.a
-.BYTE   1 *16 | 4,    "b"      ,$30, OP_CB      ;    CB 30    | sl1.b
-.BYTE   1 *16 | 4,    "c"      ,$31, OP_CB      ;    CB 31    | sl1.c
-.BYTE   1 *16 | 4,    "d"      ,$32, OP_CB      ;    CB 32    | sl1.d
-.BYTE   1 *16 | 4,    "e"      ,$33, OP_CB      ;    CB 33    | sl1.e
-.BYTE   1 *16 | 4,    "h"      ,$34, OP_CB      ;    CB 34    | sl1.h
-.BYTE   1 *16 | 4,    "l"      ,$35, OP_CB      ;    CB 35    | sl1.l
-.BYTE   3 *16 | 3,   "*hl"     ,$36, OP_CB      ;    CB 36    | sl1*hl
-.BYTE   2 *16 | 4,    "ix"     ,$36, OP_CBXO    ; DD CB nn 36 | sl1*ix    $nn
-.BYTE   1 *16 | 5,     "y"     ,$36, OP_CBYO    ; FD CB nn 36 | sl1*iy    $nn
+.BYTE   3 *16 | 2,  "1.a"       ,$37, OP_CB     ;    CB 37    | sl1.a
+.BYTE   1 *16 | 4,    "b"       ,$30, OP_CB     ;    CB 30    | sl1.b
+.BYTE   1 *16 | 4,    "c"       ,$31, OP_CB     ;    CB 31    | sl1.c
+.BYTE   1 *16 | 4,    "d"       ,$32, OP_CB     ;    CB 32    | sl1.d
+.BYTE   1 *16 | 4,    "e"       ,$33, OP_CB     ;    CB 33    | sl1.e
+.BYTE   1 *16 | 4,    "h"       ,$34, OP_CB     ;    CB 34    | sl1.h
+.BYTE   1 *16 | 4,    "l"       ,$35, OP_CB     ;    CB 35    | sl1.l
+.BYTE   3 *16 | 3,   "*hl"      ,$36, OP_CB     ;    CB 36    | sl1*hl
+.BYTE   2 *16 | 4,    "ix"      ,$36, OP_CBXO   ; DD CB nn 36 | sl1*ix    $nn
+.BYTE   1 *16 | 5,     "y"      ,$36, OP_CBYO   ; FD CB nn 36 | sl1*iy    $nn
 ;===============================================================================
-.BYTE   4 *16 | 1, "ra.a"      ,$2f, OP_CB      ;    CB 2F    | sra.a
-.BYTE   1 *16 | 4,    "b"      ,$28, OP_CB      ;    CB 28    | sra.b
-.BYTE   1 *16 | 4,    "c"      ,$29, OP_CB      ;    CB 29    | sra.c
-.BYTE   1 *16 | 4,    "d"      ,$2a, OP_CB      ;    CB 2A    | sra.d
-.BYTE   1 *16 | 4,    "e"      ,$2b, OP_CB      ;    CB 2B    | sra.e
-.BYTE   1 *16 | 4,    "h"      ,$2c, OP_CB      ;    CB 2C    | sra.h
-.BYTE   1 *16 | 4,    "l"      ,$2d, OP_CB      ;    CB 2D    | sra.l
-.BYTE   3 *16 | 3,   "*hl"     ,$2e, OP_CB      ;    CB 2E    | sra*hl
-.BYTE   2 *16 | 4,    "ix"     ,$2e, OP_CBXO    ; DD CB nn 2E | sra*ix    $nn
-.BYTE   1 *16 | 5,     "y"     ,$2e, OP_CBYO    ; FD CB nn 2E | sra*iy    $nn
+.BYTE   4 *16 | 1, "ra.a"       ,$2f, OP_CB     ;    CB 2F    | sra.a
+.BYTE   1 *16 | 4,    "b"       ,$28, OP_CB     ;    CB 28    | sra.b
+.BYTE   1 *16 | 4,    "c"       ,$29, OP_CB     ;    CB 29    | sra.c
+.BYTE   1 *16 | 4,    "d"       ,$2a, OP_CB     ;    CB 2A    | sra.d
+.BYTE   1 *16 | 4,    "e"       ,$2b, OP_CB     ;    CB 2B    | sra.e
+.BYTE   1 *16 | 4,    "h"       ,$2c, OP_CB     ;    CB 2C    | sra.h
+.BYTE   1 *16 | 4,    "l"       ,$2d, OP_CB     ;    CB 2D    | sra.l
+.BYTE   3 *16 | 3,   "*hl"      ,$2e, OP_CB     ;    CB 2E    | sra*hl
+.BYTE   2 *16 | 4,    "ix"      ,$2e, OP_CBXO   ; DD CB nn 2E | sra*ix    $nn
+.BYTE   1 *16 | 5,     "y"      ,$2e, OP_CBYO   ; FD CB nn 2E | sra*iy    $nn
 ;===============================================================================
-.BYTE   3 *16 | 2,  "l.a"      ,$3f, OP_CB      ;    CB 3F    | srl.a
-.BYTE   1 *16 | 4,    "b"      ,$38, OP_CB      ;    CB 38    | srl.b
-.BYTE   1 *16 | 4,    "c"      ,$39, OP_CB      ;    CB 39    | srl.c
-.BYTE   1 *16 | 4,    "d"      ,$3a, OP_CB      ;    CB 3A    | srl.d
-.BYTE   1 *16 | 4,    "e"      ,$3b, OP_CB      ;    CB 3B    | srl.e
-.BYTE   1 *16 | 4,    "h"      ,$3c, OP_CB      ;    CB 3C    | srl.h
-.BYTE   1 *16 | 4,    "l"      ,$3d, OP_CB      ;    CB 3D    | srl.l
-.BYTE   3 *16 | 3,   "*hl"     ,$3e, OP_CB      ;    CB 3E    | srl*hl
-.BYTE   2 *16 | 4,    "ix"     ,$3e, OP_CBXO    ; DD CB nn 3E | srl*ix    $nn
-.BYTE   1 *16 | 5,     "y"     ,$3e, OP_CBYO    ; FD CB nn 3E | srl*iy    $nn
+.BYTE   3 *16 | 2,  "l.a"       ,$3f, OP_CB     ;    CB 3F    | srl.a
+.BYTE   1 *16 | 4,    "b"       ,$38, OP_CB     ;    CB 38    | srl.b
+.BYTE   1 *16 | 4,    "c"       ,$39, OP_CB     ;    CB 39    | srl.c
+.BYTE   1 *16 | 4,    "d"       ,$3a, OP_CB     ;    CB 3A    | srl.d
+.BYTE   1 *16 | 4,    "e"       ,$3b, OP_CB     ;    CB 3B    | srl.e
+.BYTE   1 *16 | 4,    "h"       ,$3c, OP_CB     ;    CB 3C    | srl.h
+.BYTE   1 *16 | 4,    "l"       ,$3d, OP_CB     ;    CB 3D    | srl.l
+.BYTE   3 *16 | 3,   "*hl"      ,$3e, OP_CB     ;    CB 3E    | srl*hl
+.BYTE   2 *16 | 4,    "ix"      ,$3e, OP_CBXO   ; DD CB nn 3E | srl*ix    $nn
+.BYTE   1 *16 | 5,     "y"      ,$3e, OP_CBYO   ; FD CB nn 3E | srl*iy    $nn
 ;===============================================================================
-.BYTE   2 *16 | 1, "ub"        ,$d6, OP_B       ;    D6 nn    | sub       $nn
-.BYTE   2 *16 | 3,   ".a"      ,$97, OP         ;    97       | sub.a
-.BYTE   1 *16 | 4,    "b"      ,$90, OP         ;    90       | sub.b
-.BYTE   1 *16 | 4,    "c"      ,$91, OP         ;    91       | sub.c
-.BYTE   1 *16 | 4,    "d"      ,$92, OP         ;    92       | sub.d
-.BYTE   1 *16 | 4,    "e"      ,$93, OP         ;    93       | sub.e
-.BYTE   1 *16 | 4,    "h"      ,$94, OP         ;    94       | sub.h
-.BYTE   1 *16 | 4,    "l"      ,$95, OP         ;    95       | sub.l
-.BYTE   3 *16 | 4,    "ixh"    ,$94, OP_IX      ; DD 94       | sub.ixh
-.BYTE   1 *16 | 6,      "l"    ,$95, OP_IX      ; DD 95       | sub.ixl
-.BYTE   2 *16 | 5,     "yh"    ,$94, OP_IY      ; FD 94       | sub.iyh
-.BYTE   1 *16 | 6,      "l"    ,$95, OP_IY      ; FD 95       | sub.iyl
-.BYTE   3 *16 | 3,   "*hl"     ,$96, OP         ;    96       | sub*hl
-.BYTE   2 *16 | 4,    "ix"     ,$96, OP_IXO     ; DD 96 nn    | sub*ix    $nn
-.BYTE   1 *16 | 5,     "y"     ,$96, OP_IYO     ; FD 96 nn    | sub*iy    $nn
+.BYTE   2 *16 | 1, "ub"         ,$d6, OP_B      ;    D6 nn    | sub       $nn
+.BYTE   2 *16 | 3,   ".a"       ,$97, OP        ;    97       | sub.a
+.BYTE   1 *16 | 4,    "b"       ,$90, OP        ;    90       | sub.b
+.BYTE   1 *16 | 4,    "c"       ,$91, OP        ;    91       | sub.c
+.BYTE   1 *16 | 4,    "d"       ,$92, OP        ;    92       | sub.d
+.BYTE   1 *16 | 4,    "e"       ,$93, OP        ;    93       | sub.e
+.BYTE   1 *16 | 4,    "h"       ,$94, OP        ;    94       | sub.h
+.BYTE   1 *16 | 4,    "l"       ,$95, OP        ;    95       | sub.l
+.BYTE   3 *16 | 4,    "ixh"     ,$94, OP_IX     ; DD 94       | sub.ixh
+.BYTE   1 *16 | 6,      "l"     ,$95, OP_IX     ; DD 95       | sub.ixl
+.BYTE   2 *16 | 5,     "yh"     ,$94, OP_IY     ; FD 94       | sub.iyh
+.BYTE   1 *16 | 6,      "l"     ,$95, OP_IY     ; FD 95       | sub.iyl
+.BYTE   3 *16 | 3,   "*hl"      ,$96, OP        ;    96       | sub*hl
+.BYTE   2 *16 | 4,    "ix"      ,$96, OP_IXO    ; DD 96 nn    | sub*ix    $nn
+.BYTE   1 *16 | 5,     "y"      ,$96, OP_IYO    ; FD 96 nn    | sub*iy    $nn
 ;-------------------------------------------------------------------------------
 .BYTE   0
 
 x:
 ;===============================================================================
-.BYTE   2 *16 | 1, "or"        ,$ee, OP_B       ;    EE nn    | xor       $nn
-.BYTE   2 *16 | 3,   ".a"      ,$af, OP         ;    AF       | xor.a
-.BYTE   1 *16 | 4,    "b"      ,$a8, OP         ;    A8       | xor.b
-.BYTE   1 *16 | 4,    "c"      ,$a9, OP         ;    A9       | xor.c
-.BYTE   1 *16 | 4,    "d"      ,$aa, OP         ;    AA       | xor.d
-.BYTE   1 *16 | 4,    "e"      ,$ab, OP         ;    AB       | xor.e
-.BYTE   1 *16 | 4,    "h"      ,$ac, OP         ;    AC       | xor.h
-.BYTE   1 *16 | 4,    "l"      ,$ad, OP         ;    AD       | xor.l
-.BYTE   3 *16 | 4,    "ixh"    ,$ac, OP_IX      ; DD AC       | xor.ixh
-.BYTE   1 *16 | 6,      "l"    ,$ad, OP_IX      ; DD AD       | xor.ixl
-.BYTE   2 *16 | 5,     "yh"    ,$ac, OP_IY      ; FD AC       | xor.iyh
-.BYTE   1 *16 | 6,      "l"    ,$ad, OP_IY      ; FD AD       | xor.iyl
-.BYTE   3 *16 | 3,   "*hl"     ,$ae, OP         ;    AE       | xor*hl
-.BYTE   2 *16 | 4,    "ix"     ,$ae, OP_IXO     ; DD AE nn    | xor*ix    $nn
-.BYTE   1 *16 | 5,     "y"     ,$ae, OP_IYO     ; FD AE nn    | xor*iy    $nn
+.BYTE   2 *16 | 1, "or"         ,$ee, OP_B      ;    EE nn    | xor       $nn
+.BYTE   2 *16 | 3,   ".a"       ,$af, OP        ;    AF       | xor.a
+.BYTE   1 *16 | 4,    "b"       ,$a8, OP        ;    A8       | xor.b
+.BYTE   1 *16 | 4,    "c"       ,$a9, OP        ;    A9       | xor.c
+.BYTE   1 *16 | 4,    "d"       ,$aa, OP        ;    AA       | xor.d
+.BYTE   1 *16 | 4,    "e"       ,$ab, OP        ;    AB       | xor.e
+.BYTE   1 *16 | 4,    "h"       ,$ac, OP        ;    AC       | xor.h
+.BYTE   1 *16 | 4,    "l"       ,$ad, OP        ;    AD       | xor.l
+.BYTE   3 *16 | 4,    "ixh"     ,$ac, OP_IX     ; DD AC       | xor.ixh
+.BYTE   1 *16 | 6,      "l"     ,$ad, OP_IX     ; DD AD       | xor.ixl
+.BYTE   2 *16 | 5,     "yh"     ,$ac, OP_IY     ; FD AC       | xor.iyh
+.BYTE   1 *16 | 6,      "l"     ,$ad, OP_IY     ; FD AD       | xor.iyl
+.BYTE   3 *16 | 3,   "*hl"      ,$ae, OP        ;    AE       | xor*hl
+.BYTE   2 *16 | 4,    "ix"      ,$ae, OP_IXO    ; DD AE nn    | xor*ix    $nn
+.BYTE   1 *16 | 5,     "y"      ,$ae, OP_IYO    ; FD AE nn    | xor*iy    $nn
 ;-------------------------------------------------------------------------------
 .BYTE   0
 

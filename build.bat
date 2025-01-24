@@ -38,7 +38,7 @@ REM # build v80 assembler [v0] from WLA-DX source:
 REM # ==========================================================================
 REM # this builds "v80_wla.com", the WLA version of v80
 
-%WLA_Z80% -v ^
+%WLA_Z80% -v %WLA_DEBUG% ^
     -I "v0" ^
     -o "%DIR_BUILD%\v80_wla.o" ^
        "v80.wla"
@@ -65,12 +65,13 @@ COPY /N /Y "%DIR_BUILD%\*.com" /B "%DIR_RUNCPM%\A\0" /B  >NUL
 REM # copy test v80/v65 files
 COPY /N /Y "%DIR_TEST%\*.v??"  /A "%DIR_RUNCPM%\A\0" /A  >NUL
 
-REM # assemble "test.v80" using the WLA-built [v0] version of v80
-CALL :v80_wla "test.v80"
-
 REM # do binary comparisons:
 REM # - all Z80 instructions
 CALL :RunTestWLA z80
+
+REM # assemble "test.v80" using the WLA-built [v0] version of v80
+CALL :v80_wla "test.v80"
+
 REM # - relative jump distances
 CALL :RunTestWLA jr
 
@@ -200,12 +201,11 @@ ECHO * v80_wla.com %~1 %~2
 PUSHD "%DIR_BUILD%"
 
 %BIN_NTVCM% v80_wla.com %~1 %~2 > %~n1.sym
-IF ERRORLEVEL 1 TYPE %~n1.sym
+IF ERRORLEVEL 1 TYPE %~n1.sym & GOTO:ERR
 
 REM # if NTVCM hits a HALT instruction, launch RunCPM
 REM # TODO: prefill the input buffer with the same invocation used
 IF %ERRORLEVEL% EQU -1 GOTO :runCPM
-IF ERRORLEVEL 1 GOTO:ERR
 
 POPD
 GOTO:EOF
@@ -218,20 +218,21 @@ ECHO * v80.com %~1 %~2
 PUSHD "%DIR_BUILD%"
 
 %BIN_NTVCM% v80.com %~1 %~2 > %~n1.sym
-IF ERRORLEVEL 1 TYPE %~n1.sym
+IF ERRORLEVEL 1 TYPE %~n1.sym & GOTO:ERR
 
 REM # if NTVCM hits a HALT instruction, launch RunCPM
 IF %ERRORLEVEL% EQU -1 GOTO :runCPM
-IF ERRORLEVEL 1 GOTO:ERR
 
 POPD
 GOTO:EOF
 
 :runCPM
 REM # --------------------------------------------------------------------------
+TYPE %~n1.sym
 POPD
-COPY /N /Y "%DIR_BUILD%\v80.com" /B "%DIR_RUNCPM%\A\0\v80.com" /B  >NUL
-START "RunCPM" /D "%DIR_RUNCPM%" %BIN_RUNCPM% & GOTO:ERR
+COPY /N /Y "%DIR_BUILD%\v80_wla.com" /B "%DIR_RUNCPM%\A\0\v80_wla.com" /B  >NUL
+COPY /N /Y "%DIR_BUILD%\v80.com"     /B "%DIR_RUNCPM%\A\0\v80.com"     /B  >NUL
+START "RunCPM" /D "%DIR_RUNCPM%" %BIN_RUNCPM%
 GOTO:ERR
 
 :RunTest6502
@@ -286,11 +287,10 @@ ECHO * v65.com %~1 %~2
 PUSHD "%DIR_BUILD%"
 
 %BIN_NTVCM% v65.com %~1 %~2  > %~n1.sym
-IF ERRORLEVEL 1 TYPE %~n1.sym
+IF ERRORLEVEL 1 TYPE %~n1.sym & GOTO:ERR
 
 REM # if NTVCM hits a HALT instruction, launch RunCPM
 IF %ERRORLEVEL% EQU -1 POPD & START "RunCPM" /D "%DIR_RUNCPM%" %BIN_RUNCPM% & GOTO:ERR
-IF ERRORLEVEL 1 GOTO:ERR
 
 POPD
 ECHO:

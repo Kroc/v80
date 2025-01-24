@@ -454,8 +454,6 @@ _next:  call    nextChar                ; use current char or skip whitespace
         jr      z,      -               ; ...
         cp      CHAR_OP_HI              ; the hi-byte unary operator?
         jr      z,      -               ; ...
-        cp      CHAR_EXPR_IN2           ; the square bracket
-        jr      z,      -               ; ...
         jp      _next                   ; leave if not an expression
 
 @lt0:   cp      CHAR_CONST              ; a constant?
@@ -470,7 +468,7 @@ _next:  call    nextChar                ; use current char or skip whitespace
         jr      z,      -               ; ...
         cp      CHAR_OP_NOT             ; the not unary operator?
         jr      z,      -               ; ...
-        cp      CHAR_EXPR_IN1           ; a parenthesis
+        cp      CHAR_EXPR_IN            ; a parenthesis
         jr      z,      -               ; ...
         cp      CHAR_STR                ; a string?
         jp      nz,     _next           ; leave if not an expression
@@ -485,7 +483,7 @@ _next:  call    nextChar                ; use current char or skip whitespace
         ; a part of an expression or a parameter; it is a series of bytes, so
         ; strings and expressions are complimentary but mutually-exclusive
         ;
-@str:   ld      A,      [param]         ; a string cannot be a part of 
+@str:   ld      A,      [param]         ; a string cannot be a part of
         cp      2                       ;  a list of words!
         jp      z,      errRangeStr     ;  (i.e. `.w` keyword)
         ;-----------------------------------------------------------------------
@@ -584,7 +582,7 @@ nextWord:
         ; the parser will think the file ended. instead look for space itself
         ; -- for any ASCII code below we continue looping, and space itself
         ; is caught with the zero-flag and re-looped
-        ; 
+        ;
         cp      ASCII_SPC               ; is ASCII code a space?
         jr      c,      -               ; keep reading if codes 1-31
         jr      z,      -               ; also, keep reading if space
@@ -1220,7 +1218,7 @@ parseInstruction:
 ;===============================================================================
 ; parse an instruction into opcodes:
 ;
-; the CPU-specific module (e.g. "z80.wla") provides a list of instructions
+; the CPU-specific module (i.e. "z80.wla") provides a list of instructions
 ; that this routine walks to match instruction names to opcodes and a set of
 ; CPU-specific flags that determine which parameters are required
 ;
@@ -1233,43 +1231,28 @@ parseInstruction:
 ;-------------------------------------------------------------------------------
         push    HL                      ; backup heap addr
 
-        ; read the full word ahead of time as we will need to know its length.
-        ; we read into the bottom of the buffer which is always page-aligned
-        ; so that the lo-byte == string-length
+        ; the first character of the word is used to skip to
+        ; the alphabetic start point in the instruction list
         ;
-        ld      DE,     buffers
-
         ; to allow for case-insensitivty we force lowercase, without also
         ; affecting numbers, by setting bit 5. this essentially forces ASCII
         ; codes 64-95 (@A-Z[\]^_) to codes 96-127 (`a-z{|}~) which makes A-Z
         ; lowercase with the caveat that punctuation cannot be differentiated
-        ; "@"<->"`", "[]"<->"{}", "\"<->"|" and "^"<->"~" but we aren't using
-        ; any of those in the instruction names anyway
-        ; 
+        ; "@"<->"`", "[]"<->"{}", "\"<->"|" and "^"<->"~"
+        ;
         ; it also means that ASCII codes 0-31 (non-visible) are promoted
         ; to 32-64 (visible) so we must eliminate white-space first
-        ;-----------------------------------------------------------------------
--       or      %00100000               ; force partial lowercase
-        ld      [DE],   A               ; write character
-        inc     E                       ; next char in captured word
-        call    readChar                ; get an input char
-        cp      ASCII_SPC + 1           ; ASCII <= SPC is end-of-word
-        jr      nc,     -               ; keep reading chars
-        ;-----------------------------------------------------------------------
-        ld      A,      E               ; E is our word-length
-        dec     A                       ; subtract 1 for 0-based check
-        ld      [@apos+1],      A       ; patch length into later comparison
-        xor     A                       ; must write null-terminator
-        ld      [DE],   A               ; to end of word
-
-        ; the first character of the word is used to skip to the alphabetic
-        ; start point in the instruction list
         ;
-        ld      E,      A               ; rewind to beginning of word
-        ld      B,      A               ; (for add.HL.BC, set B to zero)
-        ld      A,      [DE]            ; restore first character
-        sub     'a'                     ; rebase to "a" = 0 etc.
+        ;///////////////////////////////////////////////////////////////////////
+        push    AF
+        call    osPrintChar
+        pop     AF
+        ;///////////////////////////////////////////////////////////////////////
+        or      %00100000               ; force partial lowercase
+        sub     'a'                     ; rebase char to "a" = 0 etc.
         add     A                       ; double char for 16-bits per entry
+        ld      B,      0               ; (for ADD HL, BC, set B to zero)
+        ld      E,      B               ; (E will be matched char count)
         ld      C,      A               ; put offset into BC
         ld      HL,     opcodes         ; start of alphabetic skip table
         add     HL,     BC              ; offset HL into the table
@@ -1280,16 +1263,16 @@ parseInstruction:
         or      H                       ; if the value is zero, then no
         jr      z,      @err            ;  instruction begins with that letter
 
-        ; the first character is already matched, so we have to get the 2nd
-        ; before entering the loop. this implies that there are no one-letter
-        ; instructions, so error if unexpected whitespace
-        ; 
-        inc     E                       ; E doubles as matched char count!
-        ld      A,      [DE]            ; read 2nd input char
-        and     A                       ; is it null terminator?
-        jr      z,      @err            ; error if 1-letter word
+        ; TODO: we may be able to avoid this block
+        ;       by jumping into the right place
+        ;
+        inc     E                       ; increase matched count (1st char)
+        call    readChar                ; get 2nd char before entering the loop
+        jr      z,      @err            ; there are no 1-char instructions!
+        or      %00100000               ; force partial lowercase
+        ld      D,      A               ; D = current char
 
-        jr      @loop                   ; jump into loop
+        jr      @line
 
         ;=======================================================================
         ; length mis-match, skip to next line:
@@ -1305,7 +1288,7 @@ parseInstruction:
         ; - lo-nybble = number of chars re-used from the previous entry
         ; - hi-nybble = number of chars being added to previous entry
         ;
-@loop:  ld      C,      [HL]            ; get instruction length byte
+@line:  ld      C,      [HL]            ; get instruction length byte
         inc     HL                      ; (we won't be returning to it!)
         ld      A,      C               ; lo-nybble will be handled in A
         and     %00001111               ; mask off hi-nybble
@@ -1328,80 +1311,79 @@ parseInstruction:
         ;
         ; it is normal for the number of re-used chars to be more than our
         ; matched count as it means we could be looking at an instruction
-        ; branch that doesn't apply to us (e.g. first "." instead of "*")
+        ; branch that doesn't apply to us
         ;
         ;dec     A                       ; fix A for greater-than check
         cp      E                       ; compare re-used with matched count
-        jr      c,      @err            ; skip unmatchable line
-        jr      nz,     @skip
+        jr      c,      @err            ; - branch has ended without match
+        jr      nz,     @skip           ; - skip unmatchable line
 
         ; match chars with current line:
         ;-----------------------------------------------------------------------
-@char:  ld      A,      [DE]            ; retrieve our current input char
+@char:  ld      A,      [HL]            ; get character from instruction line
+        or      %00100000               ; force psuedo-lowercase
 
-        ; Z80:  shadow registers are marked with an apostrophe; encoding this
-        ;       in the list would add hundreds of additional lines so we cheat
-        ;       where we can. anywhere a dot appears an apostrophe is accepted
-        ;       and trailing apostrophes are ignored
+        ; in Z80, shadow registers are marked by an apostrophe (e.g. BC'),
+        ; we treat all apostrophes as optional to avoid bloating the Z80
+        ; instruction table with separate branches for shadow registers
         ;
-        cp      '''                     ; is this an apostrophe?
-        jr      nz,     +               ; if not skip over apostrophe fixing
+        cp      ''' | %00100000         ; check if apostrophe expected
+        jr      z,      @apos           ; go handle optional apostrophe
 
-        cp      [HL]                    ; the list may contain an apostrophe
-        jr      z,      ++              ; if we match that, continue as normal
+        cp      '$' | %00100000         ; is this a parameter marker?
+        jr      z,      @param          ; parse inline parameter
 
-        ; if the character we're matching against is a dot then replace
-        ; the apostrophe with dot to allow for a match
-        ;
-        ld      A,      '.'             ; change input char to a dot
-
-+       cp      [HL]                    ; compare with instruction list
+        cp      D                       ; compare input with instruction list
         jr      nz,     @skip           ; no match? skip to next line
 
-        ; one additional char matched!
-        ;-----------------------------------------------------------------------
-++      ;///////////////////////////////////////////////////////////////////////
-        ;ld      A,      [DE]
-        ;call    osPrintChar
         ;///////////////////////////////////////////////////////////////////////
-        inc     E                       ; increment matched counter
-        inc     HL                      ; step to next char in list
+        push    AF
+        call    osPrintChar
+        pop     AF
+        ;///////////////////////////////////////////////////////////////////////
 
-        ld      A,      [DE]            ; read next char from our input word
-        and     A                       ; (set flags)
-        jr      z,      @eow            ; handle end-of-word...
+        ; characters match:
+        ;-----------------------------------------------------------------------
+        ; read the next character from input
+        ;
+@get:   call    readChar                ; get next char from input
+        jr      z,      @eow            ; 0 = EOL/EOF; handle end-of-word...
+        or      %00100000               ; force partial lowercase
+        ld      D,      A               ; update current char register
 
-        dec     C                       ; one less char to check/skip
-        jr      nz,     @char           ; do all additional chars for this line
+        ; a single space in the instruction line allows for multiple spaces
+        ; from the input; one space may already been matched, so we check for
+        ; another space and then confirm that with the instruction line
+        ; (doing it this way around proves to be less code)
+        ;
+        cp      ASCII_SPC | %00100000   ; is the next char a space?
+        jr      nz,     @inc            ; if not, proceed normally
+
+        ; if the *next* char is a space, check if the already-matched
+        ; char from the instruction line is also a space
+        ;
+        cp      [HL]                    ; A = SPC due to above compare
+        jr      z,      @get            ; multi-space -- skip it!
+
+@inc:   inc     E                       ; increment matched counter
+        inc     HL                      ; step to next char in instruction list
+
+@next:  dec     C                       ; one less char to check/skip
+        jr      nz,     @char           ; all chars done?
 
         ; all chars matched:
         ;-----------------------------------------------------------------------
-        ; Z80:  if the chars in the line match, but the input word is longer,
-        ;       check for trailing apostrophe
-        ;
-        cp      '''
-
         ; if the chars in the line match, but the input word is longer,
-        ; we need to move to the next line, e.g.
+        ; we need to move to the next instruction line, e.g.
         ;
-        ;       adc                     ; matched, but more chars remain
-        ;       adc.z                   ; complete match
+        ;       inc H                   ; matched, but more chars remain
+        ;       inc HL                  ; complete match
         ;
+        cp      ASCII_SPC | %00100000
         jr      nz,     @skip
+        inc     C
 
-        ;///////////////////////////////////////////////////////////////////////
-        ;call    osPrintChar
-        ;///////////////////////////////////////////////////////////////////////
-
-        ; has the input word come to an end? even though the list instruction
-        ; has ended, and the input word contains an apostrophe in the same
-        ; place, it could still be much longer
-        ;
-@apos   ld      A,      $ff             ; word length is patched in here
-        cp      E
-        jr      z,      @ok
-        jr      @skip
-
+        ; end-of-word:
         ;-----------------------------------------------------------------------
         ; when the input word ends, we have two possible end-cases:
         ;
@@ -1412,7 +1394,6 @@ parseInstruction:
         jr      nz,     @err            ; if chars remain, mismatch
 
         ; instruction match! read the opcode and flags byte
-        ; and handle parameters (if any)
         ;-----------------------------------------------------------------------
 @ok:    ld      C,      [HL]            ; upon match, next byte is opcode
         inc     HL                      ;  followed by the opcode-flags
@@ -1420,11 +1401,11 @@ parseInstruction:
         pop     HL                      ; (restore heap address)
 
         ;///////////////////////////////////////////////////////////////////////
-        ;ld      A,      ASCII_TAB
-        ;call    osPrintChar
-        ;ld      A,      C
-        ;call    printHexByte
-        ;call    osPrintNewline
+        ld      A,      ASCII_TAB
+        call    osPrintChar
+        ld      A,      C
+        call    printHexByte
+        call    osPrintNewline
         ;///////////////////////////////////////////////////////////////////////
 
         ; the flags byte is a set of flags for CPU-specifics and what,
@@ -1452,5 +1433,145 @@ parseInstruction:
         ;  over using conditional absolute jumps in each instance)
         ;
 @err:   jp      errInvalIns
+
+        ;=======================================================================
+        ; handle optional apostrophe:
+        ;
+@apos:  cp      D                       ; is the input an apostrophe too?
+        jr      z,      @get            ; if present, proceed normally
+
+        ; an apostrophe is in the instruction table, but not input;
+        ; keep input char but move to the next char in the instruction
+        ;
+        jr      @inc
+
+        ;=======================================================================
+        ; skip multiple spaces as one:
+        ;
+;@spc:   call    readChar                ; get next char from input
+;        jr      z,      @eow            ; 0 = EOL/EOF; sudden end-of-word
+;        cp      ASCII_SPC               ; is this also a space?
+;        jr      z,      @spc            ; if so, keep going
+;
+;        or      %00100000               ; force partial lowercase
+;        ld      D,      A               ; update current char register
+;        ret                             ; return to the loop
+
+        ;=======================================================================
+        ; parse an inline parameter:
+        ;
+        ; an expression parameter can occur before we have confirmed
+        ; which instruction we're using! e.g.
+        ;
+        ;       ld [$0000] HL
+        ;       ld [$0000] BC
+        ;
+        ; therefore we cannot reserve the space in the code-segment, nor
+        ; enforce the size constraint (byte or word) beforehand. to manage
+        ; inline parameters, we parse them and save them to be retrieved
+        ; after the instruction opcode has been matched and the parameter
+        ; types are known
+        ;
+@param: 
+        ;///////////////////////////////////////////////////////////////////////
+        ld      A,      '$'
+        call    osPrintChar
+        ;///////////////////////////////////////////////////////////////////////
+
+        call    parseExpr               ; parse an expression
+
+        call    printHexWord
+        halt
+
+        ; the result of the expression is returned in BC, however if the expr
+        ; contains a forward-reference and can't be evaluated carry is returned
+        ; set. this poses a problem: we need to defer the expression, but we
+        ; don't yet know where in the code-segement it will go, or what the
+        ; constraint is (byte or word)!
+        ;
+        jr      c,      @defer
+
+        halt
+
+        ;-----------------------------------------------------------------------
+        ; defer the bytecode of an expression:
+        ;
+@defer: 
+        halt
+
+;        ;//////////////////////////////////////////////////////////////////////
+;        ;
+;        ; all chars matched:
+;        ;----------------------------------------------------------------------
+;        ; Z80:  if the chars in the line match, but the input word is longer,
+;        ;       check for trailing apostrophe
+;        ;
+;        cp      '''
+;
+;        ; if the chars in the line match, but the input word is longer,
+;        ; we need to move to the next line, e.g.
+;        ;
+;        ;       adc                     ; matched, but more chars remain
+;        ;       adc.z                   ; complete match
+;        ;
+;        jr      nz,     @skip
+;
+;        ;//////////////////////////////////////////////////////////////////////
+;        ;call    osPrintChar
+;        ;//////////////////////////////////////////////////////////////////////
+;
+;        ; has the input word come to an end? even though the list instruction
+;        ; has ended, and the input word contains an apostrophe in the same
+;        ; place, it could still be much longer
+;        ;
+;@apos   ld      A,      $ff             ; word length is patched in here
+;        cp      E
+;        jr      z,      @ok
+;        jr      @skip
+;
+;        ;----------------------------------------------------------------------
+;        ; when the input word ends, we have two possible end-cases:
+;        ;
+;        ; 1. the line and word ended at the same time -- instruction match!
+;        ; 2. the word ended before the line, no instruction matched!
+;        ;
+;@eow:   dec     C                       ; (last char did match)
+;        jr      nz,     @err            ; if chars remain, mismatch
+;
+;        ; instruction match! read the opcode and flags byte
+;        ; and handle parameters (if any)
+;        ;----------------------------------------------------------------------
+;@ok:    ld      C,      [HL]            ; upon match, next byte is opcode
+;        inc     HL                      ;  followed by the opcode-flags
+;        ld      B,      [HL]            ;  byte for parameters
+;        pop     HL                      ; (restore heap address)
+;
+;        ;//////////////////////////////////////////////////////////////////////
+;        ;ld      A,      ASCII_TAB
+;        ;call    osPrintChar
+;        ;ld      A,      C
+;        ;call    printHexByte
+;        ;call    osPrintNewline
+;        ;//////////////////////////////////////////////////////////////////////
+;
+;        ; the flags byte is a set of flags for CPU-specifics and what,
+;        ; if any, kind of parameter is required. regardless of ISA,
+;        ; a zero always indicates no-parameters
+;        ;
+;        ld      A,      B               ; opcode flags byte
+;        and     A                       ; (set flags!)
+;
+;        ; if flags byte is non-zero, analyse further (this routine is in
+;        ; the CPU-specific module, i.e. "z80.wla")
+;        ;
+;        jp      nz,     emitOpcode
+;
+;        ; single opcode, no params:
+;        ;----------------------------------------------------------------------
+;        ld      [IY+0], C               ; emit opcode byte
+;        inc     IY                      ; move to next byte in code-segment
+;        inc     IX                      ; increment virtual program-counter
+;
+;        ret
 
 .ENDB

@@ -165,12 +165,13 @@ deferExpr:
 ; heap in a defer record (below) to be re-evaluated after all source-code has
 ; been parsed
 ;
-;        - - - -+--------+-------+-----+-----+------+------+------+
-;        <-heap | <expr> | param | col | row | file | code | link |
-;        - - - -+--------+-------+-----+-----+------+------+------+
+;        - - - -+--------+-------+-----+-----+------+----+------+------+
+;        <-heap | <expr> | param | col | row | file | pc | code | link |
+;        - - - -+--------+-------+-----+-----+------+----+------+------+
 ;
 ;       link    addr to next deferred expr in chain
 ;       code    addr in code-segment to write value when known
+;       pc      virtual program-counter at that point in the code
 ;       file    addr to file-name record
 ;       row     line number of expr
 ;       col     column number of expr
@@ -178,7 +179,7 @@ deferExpr:
 ;       expr    expression bytecode, null terminated
 ;
 ; in:   BC              length of expression bytecode; returned by nextExpr
-;                       when an forward-reference is encountered
+;                       when a forward-reference has been encountered
 ;       HL              current heap position
 ;       [param]         the param size & rel-flag byte must be set
 ;                       (e.g. parseParam above)
@@ -247,7 +248,7 @@ deferExpr:
         push    BC                      ; preserve expr bytecode size
         call    printThisComment
                 .BYTE   "DEFER <' ", 0
-        ld      HL,     12              ; add 12 to expre bytecode size
+        ld      HL,     12              ; add 12 to expr bytecode size
         add     HL,     BC              ;  to get full record size
         push    HL                      ; (print size at end)
         ld      DE,     [file]
@@ -352,7 +353,7 @@ parseExpr:
         ld      [ecol], A               ; backup for current expression
 
         ; if a reference to a label that isn't defined yet is encountered,
-        ; the whole expression has to be deferred until the 2nd pass
+        ; the whole expression will have to be deferred until the 2nd pass
         ;
         xor     A                       ; set A to zero
         ld      [@flag],A               ; clear 'defer' flag
@@ -488,10 +489,8 @@ parseExpr:
 
         ; values:
         ;=======================================================================
-@value: cp      CHAR_EXPR_IN1           ; parenthesis?
+@value: cp      CHAR_EXPR_IN            ; parenthesis?
         jr      z,      @paren          ; handle nested expression!
-        cp      CHAR_EXPR_IN2           ; (and its square cousin)
-        jr      z,      @paren          ; ...
 
         ; PRO-TIP: check for decimal digits first! the result of the comparison
         ; automatically excludes certain ASCII ranges. in our case, "#", "$"
@@ -597,12 +596,10 @@ parseExpr:
 
         ; closing parenthesis?
         ;-----------------------------------------------------------------------
-        cp      CHAR_EXPR_OUT1          ; check for closing parenthesis
-        jr      z,      +               ; ...
-        cp      CHAR_EXPR_OUT2          ; (and our square cousin)
+        cp      CHAR_EXPR_OUT           ; check for closing parenthesis
         jr      nz,     @end            ; if not, expr has ended
 
-+       ex      DE,     HL              ; put HL aside
+        ex      DE,     HL              ; put HL aside
         ld      HL,     @nest           ; address of our counter
         dec     [HL]                    ; decrement it by one
         ex      DE,     HL              ; return HL to token space
@@ -694,10 +691,8 @@ evalExpr:
         and     A                       ; (set CPU flags!)
         ret     z                       ; end on expr terminator
         dec     HL                      ; move to next token space
-        cp      CHAR_EXPR_OUT1          ; close parenthesis?
+        cp      CHAR_EXPR_OUT           ; close parenthesis?
         ret     z                       ; also end of current expr
-        cp      CHAR_EXPR_OUT2          ; (and our square cousin?)
-        ret     z                       ; same
 
         ; an operator follows:
         ;-----------------------------------------------------------------------
@@ -888,10 +883,8 @@ evalValue:
         cp      CHAR_LABEL              ; a label? (that was deferred)
         jr      z,      @label          ; ...
 
-        cp      CHAR_EXPR_IN1           ; check for parenthesis
+        cp      CHAR_EXPR_IN            ; check for parenthesis
         jr      z,      @paren          ; recurse for parens
-        cp      CHAR_EXPR_IN2           ; (and our square cousin)
-        jr      z,      @paren          ; ...
 
         ; we don't care what unary operator is present, we'll need
         ; the value first, so store the unary operator until later
@@ -981,6 +974,7 @@ evalValue:
         dec     HL                      ; (we must preserve this token addr)
         ex      DE,     HL              ; label addr in HL, token addr in DE
         or      [HL]                    ; is label flag-byte zero?
+        ; TODO: dec16 does not change zero-flag -- change to RET nz at bottom?
         jr      z,      @err            ; error if label was never defined!
         dec     HL                      ; move past label flag-byte
         ld      B,      [HL]            ; get label value hi-byte
