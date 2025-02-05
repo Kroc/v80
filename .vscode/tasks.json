@@ -4,10 +4,13 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "RunCPM: Build & Run",
+            "label": "Build",
             "type": "shell",
             "windows": {
                 "command": "build.bat"
+            },
+            "linux" : { 
+                "command" : "./build.sh"
             },
             "presentation": {
                 "echo": true,

@@ -105,5 +105,6 @@
             "italic": false
           }
     ],
-    "evenbettercomments.highlightTagOnly": true
+    "evenbettercomments.highlightTagOnly": true,
+    "makefile.configureOnOpen": false
 }
