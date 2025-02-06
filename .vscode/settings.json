@@ -30,6 +30,7 @@
     },
     "files.exclude": {
         "**/__*" : true,
+        "**/*.com" : true,
         "build/*.o" : true
     },
     "search.exclude": {
