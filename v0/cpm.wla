@@ -227,6 +227,10 @@ osParseParams:
 ; out:  DE              addr of input file-name, forwards, null-terminated
 ;       A, BC, HL       (clobbered)
 ;-------------------------------------------------------------------------------
+        ;; print the command-tail 
+        ;ld      DE,     cpm_dma+1
+        ;call    osPrintStrZ
+
         ; search for a first parameter:
         ; (input file-name)
         ;

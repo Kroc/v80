@@ -30,6 +30,7 @@
     },
     "files.exclude": {
         "**/__*" : true,
+        "**/*.com" : true,
         "build/*.o" : true
     },
     "search.exclude": {
@@ -105,5 +106,6 @@
             "italic": false
           }
     ],
-    "evenbettercomments.highlightTagOnly": true
+    "evenbettercomments.highlightTagOnly": true,
+    "makefile.configureOnOpen": false
 }
