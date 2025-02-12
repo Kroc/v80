@@ -10,7 +10,8 @@
                 "command": "build.bat"
             },
             "linux" : { 
-                "command" : "./build.sh"
+                // do this to not need to `chmod +x` compared to `./build.sh`
+                "command" : "sh build.sh"
             },
             "presentation": {
                 "echo": true,
