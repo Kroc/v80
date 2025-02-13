@@ -108,8 +108,21 @@ wla_z80() {
 v80_wla() {
         echo "* v80_wla.com $1 $2"
         cd build
-        # TODO: handle HALT return -> RunCPM
-        ./ntvcm/ntvcm -l -p v80_wla.com "$1" "$2" > "${1%.*}.sym"
+        # we want to capture the NTVCM return value and check for HALT status
+        # but `set -e` will normally terminate the script. `set -e` will not 
+        # trigger if a `&&` or `||` chain is used. by appending `&& true` we
+        # retain the return value if it is non-zero. technique adapted from:
+        # <https://stackoverflow.com/a/11231970>
+        #
+        ./ntvcm/ntvcm -l -p v80_wla.com "$1" "$2" > "${1%.*}.sym" && true
+        err=$?
+        if ! [ "$err" -eq "0" ]
+        then
+                # when an error occurs, print the log
+                # that should display the assembly error
+                cat "${1%.*}.sym"
+                exit $err
+        fi
         cd ..
 }
 
@@ -155,8 +168,20 @@ v80_wla "cpm_z80.v80" "v80.com"
 v80() {
         echo "* v80.com $1 $2"
         cd build
-        # TODO: handle HALT return -> RunCPM
-        ./ntvcm/ntvcm -l -p v80_wla.com "$1" "$2" > "${1%.*}.sym"
+        # we want to capture the NTVCM return value and check for HALT status
+        # but `set -e` will normally terminate the script. `set -e` will not 
+        # trigger if a `&&` or `||` chain is used. by appending `&& true` we
+        # retain the return value if it is non-zero. technique adapted from:
+        # <https://stackoverflow.com/a/11231970>
+        #
+        ./ntvcm/ntvcm -l -p v80.com "$1" "$2" > "${1%.*}.sym" && true; err=$?
+        if ! [ "$err" -eq "0" ]
+        then
+                # when an error occurs, print the log
+                # that should display the assembly error
+                cat "${1%.*}.sym"
+                exit $err
+        fi
         cd ..
 }
 
@@ -201,34 +226,30 @@ v65() {
         echo "* v65.com $1 $2"
         cd build
         # assemble the source file with v65 and write stdout to symbol file
-        ./ntvcm/ntvcm -l -p v65.com "$1" "$2" > "${1%.*}.sym"
-
-        ## TODO: handle HALT return -> RunCPM
-        ##
-        ## we want to capture the NTVCM return value and check for HALT status
-        ## but `set -e` will normally terminate the script. `set -e` will not 
-        ## trigger if a `&&` or `||` chain is used. by appending `&& true` we
-        ## retain the return value if it is non-zero. technique adapted from:
-        ## <https://stackoverflow.com/a/11231970>
-        ##
-        #./ntvcm/ntvcm -l -p v65.com "$1" "$2" > "${1%.*}.sym" && true; err=$?
-        #if ! [ "$err" -eq "0" ]
-        #then
-        #        # when an error occurs, print the log
-        #        # that should display the assembly error
-        #        cat "${1%.*}.sym"
-        #        # check for error caused by the Z80 HALT instruction
-        #        if [ "$err" -eq "255" ]; then
-        #                # rerun the assembly with RunCPM to allow for debugging
-        #                # FIXME: RunCPM doesn't support lowercase
-        #                # <https://github.com/MockbaTheBorg/RunCPM/issues/204>
-        #                echo v65.com "$1" "$2" > "runcpm/RunCPM/AUTOEXEC.TXT"
-        #                cd runcpm/RunCPM
-        #                ./RunCPM
-        #        fi
-        #        exit $err
-        #fi
-
+        #
+        # we want to capture the NTVCM return value and check for HALT status
+        # but `set -e` will normally terminate the script. `set -e` will not 
+        # trigger if a `&&` or `||` chain is used. by appending `&& true` we
+        # retain the return value if it is non-zero. technique adapted from:
+        # <https://stackoverflow.com/a/11231970>
+        #
+        ./ntvcm/ntvcm -l -p v65.com "$1" "$2" > "${1%.*}.sym" && true; err=$?
+        if ! [ "$err" -eq "0" ]
+        then
+                # when an error occurs, print the log
+                # that should display the assembly error
+                cat "${1%.*}.sym"
+                ## check for error caused by the Z80 HALT instruction
+                #if [ "$err" -eq "255" ]; then
+                #        # rerun the assembly with RunCPM to allow for debugging
+                #        # FIXME: RunCPM doesn't support lowercase
+                #        # <https://github.com/MockbaTheBorg/RunCPM/issues/204>
+                #        echo v65.com "$1" "$2" > "runcpm/RunCPM/AUTOEXEC.TXT"
+                #        cd runcpm/RunCPM
+                #        ./RunCPM
+                #fi
+                exit $err
+        fi
         cd ..
 }
 
