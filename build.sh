@@ -156,8 +156,8 @@ run_test_wla "jr"
 # ==============================================================================
 # copy v80 [v1] source into build directory
 cp v1/*.v?? build
-# and to RunCPM
-cp v1/*.v?? build/runcpm/RunCPM/A/0
+## and to RunCPM
+#cp v1/*.v?? build/runcpm/RunCPM/A/0
 
 # do a 1st-generation build of v80 [v1] using v80 [v0]!
 v80_wla "cpm_z80.v80" "v80.com"
