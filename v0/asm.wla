@@ -1463,7 +1463,7 @@ parseInstruction:
         ; an expression parameter can occur before we have confirmed
         ; which instruction we're using! e.g.
         ;
-        ;       ld [$0000] HL
+        ;       ld [$0000] A
         ;       ld [$0000] BC
         ;
         ; therefore we cannot reserve the space in the code-segment, nor
@@ -1472,31 +1472,60 @@ parseInstruction:
         ; after the instruction opcode has been matched and the parameter
         ; types are known
         ;
-@param: 
-        ;///////////////////////////////////////////////////////////////////////
-        ld      A,      '$'
-        call    osPrintChar
-        ;///////////////////////////////////////////////////////////////////////
+@param: ex      [SP],   HL              ; swap to heap addr!
+        push    BC                      ; backup instruction-matching state
+        push    DE                      ; ...
 
         call    parseExpr               ; parse an expression
 
-        call    printHexWord
-        halt
-
-        ; the result of the expression is returned in BC, however if the expr
-        ; contains a forward-reference and can't be evaluated carry is returned
-        ; set. this poses a problem: we need to defer the expression, but we
-        ; don't yet know where in the code-segement it will go, or what the
-        ; constraint is (byte or word)!
+        ; if the expr contains a forward-reference and can't be evaluated,
+        ; carry is returned set. this poses a problem: we need to defer the
+        ; expression, but we don't yet know where in the code-segement
+        ; it will go, or what the constraint is (byte or word)!
         ;
         jr      c,      @defer
+        
+        ;///////////////////////////////////////////////////////////////////////
+        ld      A,      '$'
+        call    osPrintChar
+        call    printHexWord
+        ;///////////////////////////////////////////////////////////////////////
 
+        ld      A,      [paramCount]    ; current number of parameters
+        and     A                       ; (set flags)
+        jr      z,      +
+        ;-----------------------------------------------------------------------
+        inc     A                       ; increment param count
+        ld      [param2+0],     A       ; set flag to non-0 = not deferred
+        ld      [param2+1],     BC      ; preserve literal value
+        jr      nz,     ++              ; (always branches)
+        ;-----------------------------------------------------------------------
++       inc     A                       ; increment param count
+        ld      [param1+0],     A       ; set flag to non-0 = not deferred
+        ld      [param1+1],     BC      ; preserve literal value
+        ;-----------------------------------------------------------------------
+++      ld      [paramCount],   A       ; update param count
+
+        pop     DE
+        pop     BC
+        ex      [SP],   HL              ; restore instruction list position
         halt
 
         ;-----------------------------------------------------------------------
-        ; defer the bytecode of an expression:
+        ; defer the bytecode of a parameter expression:
         ;
-@defer: 
+        ; the patch-addr in the code segement won't be known until the full
+        ; instruction is matched (which may have more than 1 parameter!),
+        ; so we add a temporary defer record to be fixed up later
+        ;
+        ; WARN: code-segment, program-counter & parameter flags for this defer
+        ;       record WILL BE WRONG!
+        ;
+@defer: call    deferExpr
+
+        pop     DE
+        pop     BC
+        ex      [SP],   HL              ; restore instruction list position
         halt
 
 ;        ;//////////////////////////////////////////////////////////////////////
@@ -1573,5 +1602,12 @@ parseInstruction:
 ;        inc     IX                      ; increment virtual program-counter
 ;
 ;        ret
+
+paramCount:
+        .BYTE   $00
+param2: .BYTE   $00
+        .WORD   $0000
+param1: .BYTE   $00
+        .WORD   $0000
 
 .ENDB
