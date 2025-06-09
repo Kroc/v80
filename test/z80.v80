@@ -1,14 +1,12 @@
 ; v80 test file; z80 instructions:
 ;===============================================================================
-adc	$1234
-
 $0100	; v80			; z80				; opcodes
 	;-----------------------------------------------------------------------
+	adc	$00		; adc	A,	$00		;    CE 00
 :adc	adc	[HL]		; adc	A,	[HL]		;    8E
 	adc	[HL']		; adc	A,	[HL']		;    8E
 	adc	[IX+$00]	; adc	A,	[IX+$00]	; DD 8E 00
 	adc	[IY+$00]	; adc	A,	[IY+$00]	; FD 8E 00
-	adc	$00		; adc	A,	$00		;    CE 00
 	adc	A		; adc	A,	A		;    8F
 	adc	A'		; adc	A,	A'		;    8F
 	adc	B		; adc	A,	B		;    88

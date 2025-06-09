@@ -4,6 +4,11 @@
 # halt on any error
 set -e
 
+# TODO: check requirements?
+# git
+# build-essential (debian) | gcc gcc-c++ glibc-devel-static (opensuse)
+# cmake (for wla-dx)
+
 # binaries we'll be using
 #
 ntvcm=build/ntvcm/ntvcm

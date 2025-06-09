@@ -7,9 +7,8 @@ emitOpcode:
 ;===============================================================================
 ; write CPU opcode bytes, parsing any required parameters:
 ;
-; in:   B               opcode flags byte from the opcode table
-;       A               same as above but with bit 7 ANDed off
-;       C               opcode byte
+; in:   A, D            opcode flags byte from the opcode table
+;       E               opcode byte
 ;       HL              heap address for any deferred expressions
 ;
 ; out:  HL              parsing of instruction parameters may push to heap
@@ -17,12 +16,12 @@ emitOpcode:
 ;===============================================================================
         ; opcode with extensions or parameters:
         ;
-        bit     6,      B               ; bit 6 indicates IX or IY
+        bit     6,      D               ; bit 6 indicates IX or IY
         jr      nz,     @ixy            ; go handle IX|IY madness...
 
         ; is it a $CB or $ED extended opcode?
         ;
-        bit     4,      B               ; bit 4 indicates an extended opcode
+        bit     4,      D               ; bit 4 indicates an extended opcode
         jr      z,      @noext          ; not extended? skip over $CB/$ED
 
         ; output $CB or $ED opcode extension byte:
@@ -36,7 +35,7 @@ emitOpcode:
         ; at this point, all parameters (if any) follow the opcode,
         ; so we can output the opcode now and forget it
         ;-----------------------------------------------------------------------
-@noext: ld      [IY+0], C               ; emit opcode byte
+@noext: ld      [IY+0], E               ; emit opcode byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
         ;-----------------------------------------------------------------------
@@ -47,20 +46,18 @@ emitOpcode:
         ; i.e. 8 / 16 bit immediate, or relative (bit 3). there are no
         ; 2-parameter Z80 opcodes without IX|IY so 1 param can be assumed
         ;
-        bit     2,      B               ; if no parameters, extensions
+        bit     2,      D               ; if no parameters, extensions
         ret     z                       ;  have been done, finish now!
 
         ; a single, 1 or 2 byte parameter:
         and     %00000001               ; LSB indicates 2-bytes
         add     1                       ; param has at least 1-byte
 
-        bit     3,      B               ; relative jump?
+        bit     3,      D               ; relative jump?
         jr      z,      +               ; skip over the next instruction if not
         or      %10000000               ; add the rel-flag to the param type
 
-        ; parse the following expression and
-        ; write the value to the code-segment
-+       jp      parseParam
++       jp      @p1                     ; write opcode param to code-segment
 
         ;=======================================================================
         ; handle IX|IY opcodes: (bit 5 chooses between IX & IY)
@@ -75,13 +72,13 @@ emitOpcode:
         ; the opcode after the offset parameter! if this is the case, we
         ; have to insert the parameter first, then return for the opcode
         ;
-        bit     4,      B               ; bit 4 on indicates $CB-extended
+        bit     4,      D               ; bit 4 on indicates $CB-extended
         jr      nz,     @cb             ; go handle reverse parameter order
 
         ; at this point, all parameters (if any) follow the opcode,
         ; so we can output the opcode now and forget it
         ;-----------------------------------------------------------------------
-        ld      [IY+0], C               ; emit opcode byte
+        ld      [IY+0], E               ; emit opcode byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
         ;-----------------------------------------------------------------------
@@ -89,7 +86,7 @@ emitOpcode:
         ; bit 3 (offset), bit 2 (8-bit immediate), and
         ; bit 0 (16-bit immediate) indicate parameters
         ;
-        ld      A,      B               ; opcode flags byte
+        ld      A,      D               ; opcode flags byte
         and     %00001101               ; filter out parameter flags
         ret     z                       ; if none, we are finished
 
@@ -103,24 +100,17 @@ emitOpcode:
         ; -- determine parameter width (byte or word)
         ;
         xor     A                       ; set A to zero
-        rrc     B                       ; pop off bit 0 of opcode-flags
+        rrc     D                       ; pop off bit 0 of opcode-flags
         adc     1                       ; add that bit, if present
 
-        ; parse the following expression and
-        ; write the value to the code-segment
-        jp      parseParam
+        jp      @p1                     ; write opcode param to code-segment
 
         ;-----------------------------------------------------------------------
         ; handle two-parameter instruction special case:
         ;
-@two:   inc     A                       ; (set the parameter width to 1-byte)
-
-        ; the first expression will read to the first character of the next
-        ; word following the expression, or a newline / end-of-file. since
-        ; a 2nd parameter is expected, newline or end-of-file is an error!
-        ;
-        call    parseParam              ; parse and emit 1st parameter
-        jp      nextParam               ; parse and emit 2nd parameter
+@two:   inc     A                       ; set the parameter width to 1-byte
+        call    @p1                     ; emit 1st parameter to code-segment
+        jp      @p2                     ; emit 2nd parameter to code-segment
 
         ;-----------------------------------------------------------------------
         ; IX|IY + $CB is the edge-case that keeps on giving: at all other
@@ -129,17 +119,36 @@ emitOpcode:
 @cb:    ld      [IY+0], $cb             ; emit $CB prefix byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
-        push    BC                      ; keep opcode until emit time
+        push    DE                      ; keep opcode until emit time
 
-        ld      A,      1               ; parse the following expression and
-        call    parseParam              ;  write the value to the code-segment
+        ld      A,      1               ; set parameter-width to 1 byte
+        call    @p1                     ; write opcode param to code-segment
 
-        pop     BC                      ; retrieve delayed opcode
-        ld      [IY+0], C               ; emit opcode byte
+        pop     DE                      ; retrieve delayed opcode
+        ld      [IY+0], E               ; emit opcode byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
 
         ret
+
+        ;-----------------------------------------------------------------------
+        ; emit the 1st parameter: (saved during instruction parsing)
+        ; note that A must be set to parameter width / relative-flag
+        ;
+        ; TODO: handle deferred param
+@p1:    ld      [param],        A       ; set the parameter width
+        ld      BC,     [param1+1]      ; retrieve parameter 1 value
+        jp      emitParam               ; write opcode param to code-segment
+
+        ;-----------------------------------------------------------------------
+        ; emit the 2nd parameter: (saved during instruction parsing)
+        ; note that A must be set to parameter width / relative-flag
+        ;
+        ; TODO: handle deferred param
+@p2:    ld      A,              1       ; NOTE: 2nd param is always 8-bit
+        ld      [param],        A       ; set the parameter width
+        ld      BC,     [param2+1]      ; retrieve parameter 2 value
+        jp      emitParam               ; write opcode param to code-segment
 
 .ENDB
 .BLOCK  "data-z80"

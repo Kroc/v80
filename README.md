@@ -14,7 +14,6 @@ and/or run on different host CPUs are available, or are planned:
     v65         assembles 6502 code ".v65", currently running on Z80
 
     v69*        assembles 6809 code ".v69"
-    v83*        assembles GameBoy (SM83) code ".v83"
 
     *(coming in a future release)
 

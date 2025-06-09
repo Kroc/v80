@@ -17,7 +17,7 @@
 defer:  .ADDR   $0000                   ; addr of last deferred expr
 
 ; the starting line/column number of an expr is recorded because the whole
-; expression is parsed before evaluation so an error in evaluation may give
+; expression is parsed before evaluation, so an error in evaluation may give
 ; the line/col number of the next word or line
 ;
 ; NOTE: these two bytes are specifically grouped together because they
@@ -27,6 +27,13 @@ param_ecol:
 param:  .BYTE   $00                     ; parameter type / relative-flag
 ecol:   .BYTE   $00                     ; start-of-expr column number
 erow:   .WORD   $0000                   ; start-of-expr line number
+
+paramCount:
+        .BYTE   $00
+param2: .BYTE   $00
+        .WORD   $0000
+param1: .BYTE   $00
+        .WORD   $0000
 
 
 parseParam:
@@ -70,17 +77,20 @@ emitParam:
 ;       [param]         param size & rel-flag byte; this defines the number of
 ;                       bytes the value occupies in the code-segment and if the
 ;                       value is a relative jump which needs calculating
-; out:  HL              (preserved) -- does not push to heap
+; out:  IX, IY          code-segment & virtual program-counter are advanced
+;       HL              (preserved) -- does not push to heap
 ;       A, BC, DE       (clobbered)
+;       !               halts if a relative jump exceeds 8-bit range
 ;-------------------------------------------------------------------------------
+        ld      A,      [param]         ; retrieve the parameter type
+
+emitParamA:
         ; validate size / value:
         ;-----------------------------------------------------------------------
-        ld      A,      [param]         ; retrieve the parameter type
         rla                             ; pop hi-bit (relative-flag) into carry
         jr      c,      @rel            ; handle relative jump parameter
         rra                             ; correct param byte from above shift
 
-        ; write lo-byte of result:
         ld      [IY+0], C               ; write value lo-byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
@@ -131,8 +141,8 @@ emitParam:
         ; check for 8-bit signed bounds:
         ;-----------------------------------------------------------------------
         ; the carry-flag indicates if the jump is forward (clear) or backward
-        ; (set). we set A to 0 or -1 ($FF) depending on carry-flag: (any value
-        ; minus itself is 0, but the carry-flag is an additional -1)
+        ; (set). we set A to 0 or -1 ($FF) depending on carry-flag: any value
+        ; minus itself is 0, but the carry-flag is an additional -1
         sbc     A,      A
 
         ; detect 8-bit overflow in either direction: if the distance is > 255
@@ -343,7 +353,7 @@ parseExpr:
 ;       HL              forward-references to labels are pushed to the heap
 ;       A, DE           (clobbered)
 ;-------------------------------------------------------------------------------
-        ; capture the starting line/col number of the expression,
+        ; capture the starting line/col number of the expression:
         ; if an error doesn't occur during parsing, these values
         ; we be used for errors during evaluation
         ;
@@ -464,6 +474,8 @@ parseExpr:
 
         ; unary operators:
         ;=======================================================================
+        ; NOTE: loop starts here
+        ;
         ; an expression must begin with either a value,
         ; or unary operator(s) and a value
         ;
@@ -528,7 +540,7 @@ parseExpr:
         ; char is "0" or above:
         ;
 +       cp      '9'+1                   ; is decimal "0"-"9"?
-        jp      nc,     @label          ; if not, only labels remain!
+        jr      nc,     @label          ; if not, only labels remain!
 
         ; fall through
         ; ...
@@ -1128,7 +1140,7 @@ parseBinNumber:
 ;       zf              zero-flag is guaranteed to be clear
 ;       HL              (preserved)
 ;       A, DE           (clobbered)
-;       -               halts with error if a digit is non-binary,
+;       !               halts with error if a digit is non-binary,
 ;                       or the number of digits exceeed 16
 ;-------------------------------------------------------------------------------
         ld      DE,     0               ; starting value
@@ -1168,7 +1180,7 @@ parseDecNumber:
 ;                       of whitespace -- space, newline or end-of-file
 ;       HL              (preserved)
 ;       A, DE           (clobbered)
-;       -               halts with error if a digit is non-decimal,
+;       !               halts with error if a digit is non-decimal,
 ;                       or the number exceeds 16-bits (65'535)
 ;-------------------------------------------------------------------------------
         ; adapted from "string_to_uint16.z80" from:

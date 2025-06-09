@@ -154,7 +154,7 @@ osBoot:
         jp      main                    ; we will not return from here!
 
         ;-----------------------------------------------------------------------
-@banner .BYTE   CHAR_COMMENT, " v80 CP/M v0.1.4 - github.com/kroc/v80\n"
+@banner .BYTE   CHAR_COMMENT, " v80 CP/M v0.2.0 - github.com/kroc/v80\n"
         .BYTE   CHAR_COMMENT, " (C) Kroc Camen 2023-2025, MIT License", 0
 
         ;=======================================================================
@@ -869,7 +869,7 @@ _readSector:
         ld      A,      ASCII_SUB       ; write the CP/M EOF marker
         ld      [cpm_dma],      A       ;  to the first byte for next read
 
-        ret
+        ret                             ; note that zero-flag IS set!
 
 
 osPrintLn:
