@@ -1,6 +1,8 @@
 ; v80, (C) Kroc Camen 2023-2025, MIT License
 ; a z80 assembler for Z80s
 ;
+.DEF    DEBUG           1               ; enable debug features
+
 ; constants:
 ;
 NULL                    = 0
@@ -43,8 +45,6 @@ ASCII_SUB               = $1a           ; ASCII "substitute", end-of-file char
 .DEF    CHAR_OP_MOD     '\'             ; modulo operator
 .DEF    CHAR_EXPR_IN    '('             ; open parenthesis
 .DEF    CHAR_EXPR_OUT   ')'             ; close parenthesis
-
-;.DEF    DEBUG           1               ; enable debug features
 
 .INC    "cpm.wla"                       ; CP/M bootstrap and interface
 .INC    "debug.wla"                     ; debug-only functionality
@@ -163,7 +163,7 @@ wrow:   .WORD   $0000                   ; line number to report on err
 .INC    "err.wla"                       ; error messages
 .INC    "asm.wla"                       ; main parsing and assembling loop
 .INC    "expr.wla"                      ; expression parsing and evaluation
-.INC    "z80.wla"                       ; Z80 parser & opcode binary tree
+.INC    "z80.wla"                       ; Z80 emitter & instruction list
 
 .BLOCK  "code"
 

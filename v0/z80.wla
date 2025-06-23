@@ -163,11 +163,11 @@ emitOpcode:
 ;             op nn             ; immediate, 8-bit
 ;             op nn nn          ; immediate, 16-bit
 ;    ED       op nn nn          ; immediate, 16-bit, ED-extended
-;             op rr             ; immediate, relative
+;             op rr             ; immediate, relative (i.e. JR | DJNZ)
 ; DD|FD       op                ; IXY implied
-; DD|FD       op oo             ; IXY offset
-; DD|FD CB oo op                ; IXY offset, CB-extended (the cursed opcode!)
-; DD|FD       op oo nn          ; IXY offset, immediate -- 2 parameters!
+; DD|FD       op rr             ; IXY relative
+; DD|FD CB rr op                ; IXY relative, CB-extended: the cursed opcode!
+; DD|FD       op rr nn          ; IXY relative, immediate -- 2 parameters!
 ; DD|FD       op nn nn          ; IXY implied, immediate, 16-bit
 ;
 ; opcode flags byte:
@@ -187,12 +187,12 @@ emitOpcode:
 ;       bits 5 & 1 are off ($00). bits 5 & 1 are combined this way because
 ;       $CB + $22 = $ED
 ;
-; bit 3 on indicates an offset is present. if bit 6 is on, then this is the
-;       IX|IY offset byte. if bit 6 is off, then this indicates a relative
-;       jump offset (e.g. JR / DJNZ)
+; bit 3 on indicates a relative offset is present. if bit 6 is on, then
+;       this is the IX|IY relative offset byte. if bit 6 is off, then this
+;       indicates a relative jump offset (e.g. JR | DJNZ)
 ;
-; bit 2 on indicates an immediate parameter. this is separate from
-;       the offset parameter above as there can be two parameters!
+; bit 2 on indicates an immediate parameter. this is separate from the
+;       relative offset parameter above as there can be two parameters!
 ;
 ; bit 1 is on for $ED extended opcodes
 ;
@@ -212,7 +212,7 @@ OP_IXO      = OP_IX | OP_O      ; = immediate, IX ($DD) + offset
 OP_IYO      = OP_IY | OP_O      ; = immediate, IY ($FD) + offset
 OP_CBXO     = OP_IXO | OP_CB    ; = extended ($CB), IX ($DD) + offset
 OP_CBYO     = OP_IYO | OP_CB    ; = extended ($CB), IY ($FD) + offset
-OP_R        = %00001100         ; bit 6=0, bit 3=1, bit 2=1: relative jump
+OP_R        = %00001000         ; bit 6=0, bit 3=1, bit 2=?: relative jump
 OP_B        = %00000100         ; bit 2=1: immediate parameter, 8-bits (byte)
 OP_W        = %00000101         ; bit 2=1, bit 0=1: immediate 16-bits (word)
 
@@ -257,28 +257,31 @@ a:
 ;===============================================================================
 ; NOTE:
 ; -     a single space will match multiple spaces from the input
-; -     "$" is expanded to a full expression, i.e. a parameter
+; -     "$" is expanded to a full expression, i.e. an instruction parameter
 ; -     apostrophes are always optional, and a trailing apostrophe
 ;       is allowed for all instructions (so, not needed here)
+; -     TODO: whitespace is automatically skipped after "[" and before "]"
+; -     TODO: "+" can also be "-" and whitespace is automatically
+;       skipped either side
 ;
 ;       .---------- = number of new chars introduced (i.e. str-length)
 ;       |       .-- = number of chars re-used from previous line
 ;       |       |     (with the first character assumed)
 ;       V       V
 .BYTE   4 *16 | 1, "dc $"       ,$ce, OP_B      ;    CE nn    | adc $nn
-.BYTE   5 *16 | 4,    "[HL']"   ,$8e, OP        ;    8E       | adc [HL]
-.BYTE   5 *16 | 5,     "IX+$]"  ,$8e, OP_IXO    ; DD 8E nn    | adc [IX+$nn]
-.BYTE   4 *16 | 6,      "Y+$]"  ,$8e, OP_IYO    ; FD 8E nn    | adc [IY+$nn]
+;.BYTE   4 *16 | 4,    "[HL]"    ,$8e, OP        ;    8E       | adc [HL]
+;.BYTE   5 *16 | 5,     "IX+$]"  ,$8e, OP_IXO    ; DD 8E nn    | adc [IX+$nn]
+;.BYTE   4 *16 | 6,      "Y+$]"  ,$8e, OP_IYO    ; FD 8E nn    | adc [IY+$nn]
 .BYTE   1 *16 | 4,    "A"       ,$8f, OP        ;    8F       | adc A
 .BYTE   1 *16 | 4,    "B"       ,$88, OP        ;    88       | adc B
 .BYTE   1 *16 | 4,    "C"       ,$89, OP        ;    89       | adc C
 .BYTE   1 *16 | 4,    "D"       ,$8a, OP        ;    8A       | adc D
 .BYTE   1 *16 | 4,    "E"       ,$8b, OP        ;    8B       | adc E
 .BYTE   1 *16 | 4,    "H"       ,$8c, OP        ;    8C       | adc H
-.BYTE   5 *16 | 5,     "L' BC"  ,$4a, OP_ED     ; ED 4A       | adc HL BC
-.BYTE   2 *16 | 8,        "DE"  ,$5a, OP_ED     ; ED 5A       | adc HL DE
-.BYTE   2 *16 | 8,        "HL"  ,$6a, OP_ED     ; ED 6A       | adc HL HL
-.BYTE   2 *16 | 8,        "SP"  ,$7a, OP_ED     ; ED 7A       | adc HL SP
+.BYTE   4 *16 | 5,     "L BC"   ,$4a, OP_ED     ; ED 4A       | adc HL BC
+.BYTE   2 *16 | 7,       "DE"   ,$5a, OP_ED     ; ED 5A       | adc HL DE
+.BYTE   2 *16 | 7,       "HL"   ,$6a, OP_ED     ; ED 6A       | adc HL HL
+.BYTE   2 *16 | 7,       "SP"   ,$7a, OP_ED     ; ED 7A       | adc HL SP
 .BYTE   1 *16 | 4,    "L"       ,$8d, OP        ;    8D       | adc L
 .BYTE   3 *16 | 4,    "IXH"     ,$8c, OP_IX     ; DD 8C       | adc IXH
 .BYTE   1 *16 | 6,      "L"     ,$8d, OP_IX     ; DD 8D       | adc IXL

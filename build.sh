@@ -4,18 +4,20 @@
 # halt on any error
 set -e
 
-# TODO: check requirements?
-# git
-# build-essential (debian) | gcc gcc-c++ glibc-devel-static (opensuse)
-# cmake (for wla-dx)
-
-# binaries we'll be using
+# binaries we'll be using:
+#
+# these are not shipped with the repo because... linux... so we download
+# and compile them on-demand. you will need the following installed:
+#
+# - git
+# - build-essential (debian) | gcc gcc-c++ glibc-devel-static (opensuse)
+# - cmake (for wla-dx)
 #
 ntvcm=build/ntvcm/ntvcm
 wla_z80=build/wla-dx/binaries/wla-z80
 wla_6502=build/wla-dx/binaries/wla-6502
 wla_link=build/wla-dx/binaries/wlalink
-#runcpm=build/runcpm/RunCPM/RunCPM
+runcpm=build/runcpm/RunCPM/RunCPM
 
 
 # download and build NTVCM, if not present:
@@ -24,7 +26,7 @@ wla_link=build/wla-dx/binaries/wlalink
 if ! [ -d build/ntvcm ]; then
         echo Cloning NTVCM...
         git clone --recurse-submodules \
-		https://github.com/davidly/ntvcm.git build/ntvcm
+                https://github.com/davidly/ntvcm.git build/ntvcm
 fi
 if ! [ -f $ntvcm ]; then
         echo Building NTVCM...
@@ -58,21 +60,21 @@ if ! [ -f $wla_link ]; then
         cd ../..
 fi
 
-## download and build RunCPM, if not present:
-## <https://github.com/MockbaTheBorg/RunCPM>
-##
-#if ! [ -d build/runcpm ]; then
-#        echo Cloning RunCPM...
-#        git clone --recurse-submodules \
-#                https://github.com/MockbaTheBorg/RunCPM.git build/runcpm
-#fi
-#if ! [ -f $runcpm ]; then
-#        echo Building RunCPM...
-#        cd build/runcpm/RunCPM
-#        # NOTE: Mac requires "macosx" instead of "posix" here
-#        make posix build
-#        cd ../../..
-#fi
+# download and build RunCPM, if not present:
+# <https://github.com/MockbaTheBorg/RunCPM>
+#
+if ! [ -d build/runcpm ]; then
+        echo Cloning RunCPM...
+        git clone --recurse-submodules \
+                https://github.com/MockbaTheBorg/RunCPM.git build/runcpm
+fi
+if ! [ -f $runcpm ]; then
+        echo Building RunCPM...
+        cd build/runcpm/RunCPM
+        # NOTE: Mac requires "macosx" instead of "posix" here
+        make posix build
+        cd ../../..
+fi
 
 # delete previous build files (but not the sub-directories)
 echo Clean build files...

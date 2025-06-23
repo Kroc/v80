@@ -411,15 +411,15 @@ parseExpr:
 
 .IFDEF  DEBUG
         ;///////////////////////////////////////////////////////////////////////
-        call    printThis
-                .BYTE   "; FWDREF | ", 0
-        push    DE
-        ld      D,      B
-        ld      E,      C
-        ld      A,      CHAR_LABEL
-        call    printSymbolNameSigil
-        call    osPrintNewline
-        pop     DE
+        ;call    printThis
+        ;        .BYTE   "; FWDREF | ", 0
+        ;push    DE
+        ;ld      D,      B
+        ;ld      E,      C
+        ;ld      A,      CHAR_LABEL
+        ;call    printSymbolNameSigil
+        ;call    osPrintNewline
+        ;pop     DE
 .ENDIF  ;///////////////////////////////////////////////////////////////////////
 
         ; this label has not been seen before but because it's in an expression
@@ -742,7 +742,7 @@ evalExpr:
         jr      z,      @add            ; ...
         cp      CHAR_OP_SUB             ; subtract operator?
         jr      z,      @sub            ; ...
-        
+
         ; the multiply / divide / modulo
         ; operators use all registers:
         ;

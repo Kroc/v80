@@ -11,7 +11,8 @@ REM # is assembling the correct opcodes etc.
 SET WLA_Z80="%DIR_BIN%\wla-dx\wla-z80.exe" -x
 SET WLA_6502="%DIR_BIN%\wla-dx\wla-6502.exe" -x
 SET WLA_LINK="%DIR_BIN%\wla-dx\wlalink.exe" -A -S
-SET WLA_DEBUG=-DDEBUG=1
+REM SET WLA_DEBUG=-DDEBUG=1
+SET WLA_DEBUG=
 
 REM # RunCPM "emulator"
 SET DIR_RUNCPM=%DIR_BIN%\RunCPM

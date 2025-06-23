@@ -6,11 +6,11 @@
 ; these macros have to be defined, even if debugging is not enabled, so that
 ; assembly can still succeed with debugging off where these macros occur
 
-.MACRO .printFlags
+.MACRO .printState
 ;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 .IFDEF  DEBUG
         ;///////////////////////////////////////////////////////////////////////
-        call    _printFlags
+        call    _printState
 .ENDIF  ;///////////////////////////////////////////////////////////////////////
 ;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 .ENDM
@@ -47,17 +47,6 @@
 ;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 .ENDM
 
-; print register BC as a hexadecimal number:
-;
-.MACRO  .printBC
-;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-.IFDEF  DEBUG
-        ;///////////////////////////////////////////////////////////////////////
-        call    _printBC
-.ENDIF  ;///////////////////////////////////////////////////////////////////////
-;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-.ENDM
-
 ; print the value stored at an absolute address:
 ;
 .MACRO  .printAddr
@@ -88,17 +77,6 @@
 ;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 .ENDM
 
-; print register HL as a hexadecimal word:
-;
-.MACRO  .printHL
-;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-.IFDEF  DEBUG
-        ;///////////////////////////////////////////////////////////////////////
-        call    _printHL
-.ENDIF  ;///////////////////////////////////////////////////////////////////////
-;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-.ENDM
-
 .MACRO  .printAddrHL
 ;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 .IFDEF  DEBUG
@@ -107,22 +85,6 @@
         ld      A,      '$'
         call    osPrintChar
         ld      A,      [HL]
-        call    printHexByte
-        pop     AF
-.ENDIF  ;///////////////////////////////////////////////////////////////////////
-;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-.ENDM
-
-.MACRO  .printDE
-;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-.IFDEF  DEBUG
-        ;///////////////////////////////////////////////////////////////////////
-        push    AF
-        ld      A,      '$'
-        call    osPrintChar
-        ld      A,      D
-        call    printHexByte
-        ld      A,      E
         call    printHexByte
         pop     AF
 .ENDIF  ;///////////////////////////////////////////////////////////////////////
@@ -157,37 +119,143 @@ _printA:
         pop     AF
         ret
 
-_printBC:
+_printState:
         ;=======================================================================
-        push    AF
-        call    printHexNumber
-        pop     AF
+        ; print the current state of the CPU:
+        ;
+        ld      [@bc],  BC              ; backup current CPU registers
+        ld      [@de],  DE              ; 
+        ld      [@hl],  HL              ;
+        ld      [@ix],  IX              ;
+        ld      [@iy],  IY              ;
+        ld      [@sp],  SP              ;
+        push    AF                      ; we cannot load the flags register
+        pop     HL                      ;  directly, so transfer via HL
+        ld      [@af],  HL              ;  and write to backup
+
+        ; program-counter:
+        ;-----------------------------------------------------------------------
+        call    osPrintNewline
+        call    printThisComment        ; print the program-counter:
+                .BYTE   "PC: ", 0       ;
+        ex      [SP],   HL              ; swap the return address into HL
+        ld      B,      H               ; copy HL to BC for printing
+        ld      C,      L               ; ...
+        ex      [SP],   HL              ; return the return address to stack
+        call    printHexNumber          ; print the program-counter
+
+        ; A-register:
+        ;-----------------------------------------------------------------------
+        call    printThis
+                .BYTE    " AF: $", 0
+        ld      A,      [@af+1]         ; A is the hi-byte in AF!
+        call    printHexByte
+
+        ; CPU-flags:
+        ;-----------------------------------------------------------------------
+        ld      A,      [@af+0]         ; flags are the lo-byte of AF!
+        ld      E,      A               ; copy to E as A will be clobbered lots
+        call    printThis
+                .BYTE   "  [", 0
+        ld      D,      '-'             ; use "-" for unset flags
+        ;-----------------------------------------------------------------------
+        ld      A,      D               ; starting with MSB
+        bit     7,      E               ; check sign flag
+        jr      z,      +
+        ld      A,      'S'
++       call    osPrintChar
+        ;-----------------------------------------------------------------------
+        ld      A,      D               ; 
+        bit     6,      E               ; check zero flag
+        jr      z,      +
+        ld      A,      'Z'
++       call    osPrintChar
+        ;-----------------------------------------------------------------------
+        ld      A,      D               ; bit 5 is unused
+        call    osPrintChar
+        ;-----------------------------------------------------------------------
+        ld      A,      D               ; 
+        bit     4,      E               ; check half-carry flag
+        jr      z,      +
+        ld      A,      'H'
++       call    osPrintChar
+        ;-----------------------------------------------------------------------
+        ld      A,      D               ; bit 3 is unused
+        call    osPrintChar
+        ;-----------------------------------------------------------------------
+        ld      A,      D               ; 
+        bit     2,      E               ; check overflow flag
+        jr      z,      +
+        ld      A,      'V'
++       call    osPrintChar
+        ;-----------------------------------------------------------------------
+        ld      A,      D               ; 
+        bit     1,      E               ; check add / subtract flag
+        jr      z,      +
+        ld      A,      'N'
++       call    osPrintChar
+        ;-----------------------------------------------------------------------
+        ld      A,      D               ; 
+        bit     0,      E               ; check carry flag
+        jr      z,      +
+        ld      A,      'V'
++       call    osPrintChar
+        ld      A,      ']'
+        call    osPrintChar
+
+        ; IX-register:
+        ;-----------------------------------------------------------------------
+        call    printThis               ; print IX register
+                .BYTE   " IX: ", 0      ;
+        ld      BC,     [@ix]           ; retrieve register from backup
+        call    printHexNumber          ; print the register value
+        call    osPrintNewline
+
+        ; BC, DE & HL registers:
+        ;-----------------------------------------------------------------------
+        call    printThisComment        ; print BC register
+                .BYTE   "BC: ", 0       ;
+        ld      BC,     [@bc]           ; retrieve register from backup
+        call    printHexNumber          ; print the register value
+        ;-----------------------------------------------------------------------
+        call    printThis               ; print DE register
+                .BYTE   " DE: ", 0      ;
+        ld      BC,     [@de]           ; retrieve register from backup
+        call    printHexNumber          ; print the register value
+        ;-----------------------------------------------------------------------
+        call    printThis               ; print DE register
+                .BYTE   " HL: ", 0      ;
+        ld      BC,     [@hl]           ; retrieve register from backup
+        call    printHexNumber          ; print the register value
+
+        ; IY-register:
+        ;-----------------------------------------------------------------------
+        call    printThis               ; print IY register
+                .BYTE   " IY: ", 0      ;
+        ld      BC,     [@iy]           ; retrieve register from backup
+        call    printHexNumber          ; print the register value
+        call    osPrintNewline
+
+        ; restore registers and return to program:
+        ;-----------------------------------------------------------------------
+        ld      BC,     [@af]           ; transfer flags register
+        push    BC                      ;  via the stack
+        pop     AF                      ; restore flags
+        ld      BC,     [@bc]           ; 
+        ld      DE,     [@de]           ;
+        ld      HL,     [@hl]           ; restore registers
+        ld      IX,     [@ix]           ;
+        ld      IY,     [@iy]           ;
         ret
 
-_printHL:
-        ;=======================================================================
-        push    AF
-        push    BC
-        ld      B,      H
-        ld      C,      L
-        call    printHexNumber
-        pop     BC
-        pop     AF
-        ret
+@af     .WORD   $0000
+@bc     .WORD   $0000
+@de     .WORD   $0000
+@hl     .WORD   $0000
+@ix     .WORD   $0000
+@iy     .WORD   $0000
+@sp     .WORD   $0000
 
-_printFlags:
-        ;=======================================================================
-        .printChar '['
-        jr      nz,     +               ; zero flag?
-        .printChar 'z'
-+       jp      p,      +               ; sign flag?
-        .printChar 'm'
-+       jr      nc,     +               ; carry flag?
-        .printChar 'c'
-+       jp      po,     +               ; overflow flag?
-        .printChar 'v'
-+       .printChar ']'
-        ret
 ;///////////////////////////////////////////////////////////////////////////////
 .ENDIF
 
