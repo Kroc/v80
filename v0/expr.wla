@@ -584,9 +584,9 @@ parseExpr:
         ; if there's no operator, the expression ends here
         ;
 @op:    ld      A,      [char]          ; last read character
-        cp      ASCII_SPC               ; ASCII<32 = newline (or end-of-file)?
-        jr      c,      @end            ; no op? expression ends here
-        call    nextWord                ; read first character of the next word
+        cp      ASCII_SPC               ; spaces between operand + operator?
+        jr      c,      @end            ; ASCII<32 = newline (or end-of-file)
+        call    z,      nextWord        ; skip spaces and get next char
         jr      z,      @end            ; end expr at newline / end-of-file
 
 -       cp      CHAR_OP_ADD             ; add operator?
@@ -1138,8 +1138,9 @@ parseBinNumber:
 ; parses an ASCII binary number and returns the value:
 ;
 ; out:  BC              the value, 0 padded for numbers < 256
-;       [char]          the last character read will always be some kind
-;                       of whitespace -- space, newline or end-of-file
+;       [char]          the last character read -- this could be whitespace,
+;                       or punctuation due to expressions, e.g. `%11+...`,
+;                       or CPU instructions, e.g. `ld A [IX+%11]`
 ;       zf              zero-flag is guaranteed to be clear
 ;       HL              (preserved)
 ;       A, DE           (clobbered)
@@ -1147,30 +1148,44 @@ parseBinNumber:
 ;                       or the number of digits exceeed 16
 ;-------------------------------------------------------------------------------
         ld      DE,     0               ; starting value
-        ld      B,      17              ; following char must be whitespace!
+        ld      B,      17              ; following char must be non-alphanum!
         ;-----------------------------------------------------------------------
 -       call    readChar                ; read char from input
         sub     '0'                     ; rebase to 0 for digits "0" and above
-        jr      c,       +              ; check chars < "0" for end-of-number
+        jr      c,       @ok            ; end early for chars < "0"
         sub     2                       ; eliminate digits above 1
-        jr      nc,      @err           ; error if ASCII code was > "1"
+        jr      nc,      +              ; check punctuation for digits >"1"
         add     1                       ; cause a carry only for "1" digit
         rl      E                       ; shift bit into E
         rl      D                       ;  and ripple into D
         djnz    -                       ; loop for all digits...
         ;-----------------------------------------------------------------------
-        ; we only drop through here if a 17th digit is read
-        ; that isn't whitespace -- too many binary digits!
+        ; error if a 17th binary digit is read -- too many binary digits!
+        ;
 @err:   jp              errInvalNum
 
-        ; note that on return zero-flag will be clear because the ADD to check
-        ; for correct end-of-number character considers zero an error; we use
-        ; this for an optimisation in the expression parser
+        ;-----------------------------------------------------------------------
+        ; chars above "1" could either be alphanum (invalid) or punctuation
+        ; such as an operator or "]" used in CPU instructions. A is currently
+        ; centered on ASCII "2" (i.e. "2" = 0) so check for digits 2-9
         ;
-+       add     ('0' - ASCII_SPC - 1)   ; adjust again so <= SPC is negative
-        jr      c,      @err            ; error on invalid digit
-        ld      B,      D               ; copy value to BC
+        ; we pull the ASCII table down enough that ASCII code $40 now equals 0.
+        ; by removing bit 5, codes $60-$7F become codes $40-$7F, essentially
+        ; merging "A"-"Z" and "a"-"z" (plus surrounding punctuation)
+        ;
++       sub     8
+        jr      c,      @err            ; digit is "2"-"9", not binary!
+        sub     6                       ; check for ":;<=>?"
+        jr      c,      @ok             ; valid stop on punctuation
+        and     %11011111               ; merge "A"-"Z" and "a"-"z"! 
+        jr      z,      @ok             ; valid stop if "@" or "`"
+        sub     27                      ; is A-Z?
+        jr      c,      @err            ; if yes -- not binary!
+
+@ok:    ld      B,      D               ; copy value to BC
         ld      C,      E               ;  for return
+
+        inc     A                       ; zero-flag MUST be clear upon return
         ret
 
 
@@ -1179,8 +1194,9 @@ parseDecNumber:
 ; parse an ASCII decimal number and returns the value:
 ;
 ; out:  BC              the value, 0 padded for numbers < 256
-;       [char]          the last character read will always be some kind
-;                       of whitespace -- space, newline or end-of-file
+;       [char]          the last character read -- this could be whitespace,
+;                       or punctuation due to expressions, e.g. `1+...`,
+;                       or CPU instructions, e.g. `ld A [IX+0]`
 ;       HL              (preserved)
 ;       A, DE           (clobbered)
 ;       !               halts with error if a digit is non-decimal,
@@ -1195,9 +1211,9 @@ parseDecNumber:
         ;-----------------------------------------------------------------------
 -       call    readChar                ; get digit from input
 +       sub     '0'                     ; re-base "0" to 0
-        jr      c,      +               ; if < "0", check for end-of-number
+        jr      c,      @ok             ; any char < "0", valid end-of-number
         cp      10                      ; check if >9
-        jr      nc,     +               ; if > "9", check for end-of-number
+        jr      nc,     @end            ; if > "9", check for end-of-number
         ld      B,      H               ; take a copy of current value
         ld      C,      L               ;  as part of multiplying by 10
         add     HL,     HL              ; multiply by 2
@@ -1210,14 +1226,28 @@ parseDecNumber:
         inc     H                       ; ripple carry to hi-byte
         jr      nz,     -               ; keep looping if <=65'535
         ;-----------------------------------------------------------------------
-@err:   jp      errInvalNum             ; err if >65'535 or invalid digit
+@err:   jp      errInvalNum             ; err if >65'535
 
-        ; the loop exits here on any any non-decimal digit; check if the digit
-        ; is a valid end-of-number separator such as space, end-of-line|file
+        ; the loop exits here on chars over "9"; check if the char is a valid
+        ; end-of-number separator such as space, EOL / EOF, or an operator
+        ; like "]" used in CPU instructions
         ;
-+       add     ('0' - ASCII_SPC - 1)   ; adjust again so <= SPC is negative
-        jr      c,      @err            ; error on invalid digit
-        ld      B,      H               ; copy result from HL
+        ; A is currently centered on ASCII "0" (i.e. "0" = 0),
+        ; so check for the punctuation that comes after "9"
+        ;
+@end:   sub     16                      ; is char any of ":;<=>?"
+        jr      c,      @ok             ; valid end on punctuation
+
+        ; we pull the ASCII table down enough that ASCII code $40 now equals 0.
+        ; by removing bit 5, codes $60-$7F become codes $40-$7F, essentially
+        ; merging "A"-"Z" and "a"-"z" (plus surrounding punctuation)
+        ;
+        and     %11011111               ; merge "A"-"Z" and "a"-"z"!
+        jr      z,      @ok             ; valid end if "@" or "`"
+        sub     27                      ; is A-Z?
+        jr      c,      @err            ; if yes -- not binary!
+
+@ok:    ld      B,      H               ; copy result from HL
         ld      C,      L               ; ... to BC
         ex      DE,     HL              ; restore caller's HL
         ret

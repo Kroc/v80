@@ -1299,8 +1299,6 @@ parseInstruction:
         inc     C                       ;  plus 2 bytes for the opcode
         add     HL,     BC              ;  and opcode-flags that follows
 
-        .printChar '?'
-
         ; check line:
         ;-----------------------------------------------------------------------
         ; the first byte of each instruction line consists of two nybbles:
@@ -1344,8 +1342,6 @@ parseInstruction:
 @char:  ld      A,      [HL]            ; get character from instruction line
         or      %00100000               ; force psuedo-lowercase
 
-        .printCharA
-
         cp      '$' | %00100000         ; is this a parameter marker?
         jr      z,      @param          ; parse inline parameter
 
@@ -1385,17 +1381,9 @@ parseInstruction:
         ;       inc H                   ; matched, but more chars remain
         ;       inc HL                  ; complete match
         ;
-        ; one exception is a trailing apostrophe (Z80 shadow register).
-        ; these are not encoded in the instruction list to save space,
-        ; so we check for it at the end of the word
-        ;
-        ;       ld A B                  ; matched, but more input remains
-        ;       ld A B'                 ; check for optional apostrophe
-        ;
-        cp      ''' | %00100000         ; if *next* char is apostrophe, skip it
-        jr      z,      @in             ; loop again to check for actual EOW
         cp      ASCII_SPC | %00100000
         jr      nz,     @skip
+
         ; FIXME move the above to below EOW? (must allow EOF through)
         inc     C                       ; (an ugly fix for falling through)
 
@@ -1424,7 +1412,6 @@ parseInstruction:
         ld      A,      D               ; opcode flags byte
         and     A                       ; (set flags!)
 
-        .printChar '!'
         call    osPrintNewline
 
         ; if flags byte is non-zero, analyse further
@@ -1566,7 +1553,6 @@ parseInstruction:
         inc     HL                      ; step to next char in instruction list
         ld      A,      [char]          ; re-use last read char from expr
         .printCharA
-        halt
 
         ; FIXME this is an ugly hack to recreate the output of readChar
         ;       and osGetChar, it doesn't belong here at all!!
