@@ -1535,6 +1535,7 @@ parseInstruction:
         jr      c,      @defer
 
         ;///////////////////////////////////////////////////////////////////////
+        .printChar '='
         ld      A,      '$'
         call    osPrintChar
         call    printHexWord
@@ -1564,6 +1565,8 @@ parseInstruction:
         inc     E                       ; increment matched counter
         inc     HL                      ; step to next char in instruction list
         ld      A,      [char]          ; re-use last read char from expr
+        .printCharA
+        halt
 
         ; FIXME this is an ugly hack to recreate the output of readChar
         ;       and osGetChar, it doesn't belong here at all!!

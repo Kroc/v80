@@ -256,22 +256,22 @@ opcodes:
 a:
 ;===============================================================================
 ; NOTE:
-; -     a single space will match multiple spaces from the input
+; -     a single space here will match multiple spaces from the input
 ; -     "$" is expanded to a full expression, i.e. an instruction parameter
-; -     apostrophes are always optional, and a trailing apostrophe
-;       is allowed for all instructions (so, not needed here)
+; -     all apostrophes in the input are ignored so shadow registers
+;       do not need to be defined here
 ; -     TODO: whitespace is automatically skipped after "[" and before "]"
 ; -     TODO: "+" can also be "-" and whitespace is automatically
 ;       skipped either side
 ;
 ;       .---------- = number of new chars introduced (i.e. str-length)
 ;       |       .-- = number of chars re-used from previous line
-;       |       |     (with the first character assumed)
+;       |       |     (with the first character included)
 ;       V       V
 .BYTE   4 *16 | 1, "dc $"       ,$ce, OP_B      ;    CE nn    | adc $nn
-;.BYTE   4 *16 | 4,    "[HL]"    ,$8e, OP        ;    8E       | adc [HL]
-;.BYTE   5 *16 | 5,     "IX+$]"  ,$8e, OP_IXO    ; DD 8E nn    | adc [IX+$nn]
-;.BYTE   4 *16 | 6,      "Y+$]"  ,$8e, OP_IYO    ; FD 8E nn    | adc [IY+$nn]
+.BYTE   4 *16 | 4,    "[HL]"    ,$8e, OP        ;    8E       | adc [HL]
+.BYTE   5 *16 | 5,     "IX+$]"  ,$8e, OP_IXO    ; DD 8E nn    | adc [IX+$nn]
+.BYTE   4 *16 | 6,      "Y+$]"  ,$8e, OP_IYO    ; FD 8E nn    | adc [IY+$nn]
 .BYTE   1 *16 | 4,    "A"       ,$8f, OP        ;    8F       | adc A
 .BYTE   1 *16 | 4,    "B"       ,$88, OP        ;    88       | adc B
 .BYTE   1 *16 | 4,    "C"       ,$89, OP        ;    89       | adc C
