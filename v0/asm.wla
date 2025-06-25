@@ -1298,6 +1298,7 @@ parseInstruction:
 @skip:  inc     C                       ; add number of chars this line
         inc     C                       ;  plus 2 bytes for the opcode
         add     HL,     BC              ;  and opcode-flags that follows
+        .printChar '>'
 
         ; check line:
         ;-----------------------------------------------------------------------
@@ -1368,10 +1369,12 @@ parseInstruction:
         jr      z,      @in             ; multi-space -- skip it!
 
 @inc:   inc     E                       ; increment matched counter
-        inc     HL                      ; step to next char in instruction list
+        inc     HL                      ; move to next char in instruction list
 
 @next:  dec     C                       ; one less char to check/skip
         jr      nz,     @char           ; all chars done?
+
+        ;halt
 
         ; all chars matched:
         ;-----------------------------------------------------------------------
@@ -1394,8 +1397,7 @@ parseInstruction:
         ; 1. the word ended at the same time as the instruction -- match!
         ; 2. the word ended before the instruction, no instruction matched!
         ;
-@eow:
-@eol:   dec     C                       ; (last char did match)
+@eow:   dec     C                       ; (last char did match)
         jr      nz,     @err            ; if chars remain, mismatch
 
         ; instruction match! read the opcode and flags byte
@@ -1495,7 +1497,7 @@ parseInstruction:
 
         jp      @skip                   ; leave if not an expression
 
-        ;-----------------------------------------------------------------------
+        ;=======================================================================
         ; an expression parameter can occur before we have confirmed
         ; which instruction we're using! e.g.
         ;
@@ -1543,23 +1545,7 @@ parseInstruction:
         ;-----------------------------------------------------------------------
 ++      ld      [paramCount],   A       ; update param count
 
-        ; return to parsing the instruction list...
-        ;
-        pop     DE                      ; restore instruction-matching state
-        pop     BC                      ; ...
-        ex      [SP],   HL              ; restore instruction list position
-
-        inc     E                       ; increment matched counter
-        inc     HL                      ; step to next char in instruction list
-        ld      A,      [char]          ; re-use last read char from expr
-        .printCharA
-
-        ; FIXME this is an ugly hack to recreate the output of readChar
-        ;       and osGetChar, it doesn't belong here at all!!
-        cp      ASCII_SUB               ; is this the CP/M EOF marker?
-        jp      z,      @inA            ; if so, unwind
-        cp      ASCII_LF                ; is this a newline? (set z-flag)
-        jp      @inA                    ; process as next char
+        jr      @ret
 
         ;-----------------------------------------------------------------------
         ; defer the bytecode of a parameter expression:
@@ -1573,10 +1559,27 @@ parseInstruction:
         ;
 @defer: call    deferExpr
 
-        pop     DE
-        pop     BC
-        ex      [SP],   HL              ; restore instruction list position
-
         halt
+
+        ; return to parsing the instruction list...
+        ;-----------------------------------------------------------------------
+        ; restore instruction-matching state:
+@ret:   pop     DE                      ; last input char & matched char count
+        pop     BC                      ; remaining chars in instruction line
+        ex      [SP],   HL              ; current instruction list position
+
+        ld      A,      [char]          ; re-use last read char from expr
+        .printCharA
+        or      %00100000               ; force psuedo-lowercase
+        ld      D,      A               ; input char goes in D for parser
+
+        ; FIXME this is an ugly hack to recreate the output of readChar
+        ;       and osGetChar, it doesn't belong here at all!!
+        cp      ASCII_SUB               ; is this the CP/M EOF marker?
+        jp      z,      @eow            ; if so, handle end-of-word
+        cp      ASCII_LF                ; is this a newline? (set z-flag)
+        jp      z,      @eow            ; if so, handle end-of-word
+
+        jp      @inc
 
 .ENDB
