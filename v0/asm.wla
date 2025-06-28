@@ -1575,9 +1575,9 @@ parseInstruction:
 
         ; FIXME this is an ugly hack to recreate the output of readChar
         ;       and osGetChar, it doesn't belong here at all!!
-        cp      ASCII_SUB               ; is this the CP/M EOF marker?
+        cp      ASCII_SUB | %00100000   ; is this the CP/M EOF marker?
         jp      z,      @eow            ; if so, handle end-of-word
-        cp      ASCII_LF                ; is this a newline? (set z-flag)
+        cp      ASCII_LF  | %00100000   ; is this a newline? (set z-flag)
         jp      z,      @eow            ; if so, handle end-of-word
 
         jp      @inc
