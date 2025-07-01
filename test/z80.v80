@@ -295,37 +295,37 @@ $0100	; v80			; z80				; opcodes
 	;-----------------------------------------------------------------------
 :daa	daa			; daa				;    27
 	;-----------------------------------------------------------------------
-:dec	dec*hl			; dec	[HL]			;    35
-	dec*hl'			; dec	[HL']			;    35
-	dec*ix	$00		; dec	[IX+$00]		; DD 35 00
-	dec*iy	$00		; dec	[IY+$00]		; FD 35 00
-	dec.a			; dec	A			;    3D
-	dec.a'			; dec	A'			;    3D
-	dec.b			; dec	B			;    05
-	dec.b'			; dec	B'			;    05
-	dec.c			; dec	C			;    0D
-	dec.c'			; dec	C'			;    0D
-	dec.d			; dec	D			;    15
-	dec.d'			; dec	D'			;    15
-	dec.e			; dec	E			;    1D
-	dec.e'			; dec	E'			;    1D
-	dec.h			; dec	H			;    25
-	dec.h'			; dec	H'			;    25
-	dec.l			; dec	L			;    2D
-	dec.l'			; dec	L'			;    2D
-	dec.ixh			; dec	IXH			; DD 25
-	dec.ixl			; dec	IXL			; DD 2D 
-	dec.iyh			; dec	IYH			; FD 25
-	dec.iyl			; dec	IYL			; FD 2D
-	dec.bc			; dec	BC			;    0B
-	dec.bc'			; dec	BC'			;    0B
-	dec.de			; dec	DE			;    1B
-	dec.de'			; dec	DE'			;    1B
-	dec.hl			; dec	HL			;    2B
-	dec.hl'			; dec	HL'			;    2B
-	dec.ix			; dec	IX			; DD 2B
-	dec.iy			; dec	IY			; FD 2B
-	dec.sp			; dec	SP			;    3B
+:dec	dec	[HL]		; dec	[HL]			;    35
+	dec	[HL']		; dec	[HL']			;    35
+	dec	[IX+$00]	; dec	[IX+$00]		; DD 35 00
+	dec	[IY+$00]	; dec	[IY+$00]		; FD 35 00
+	dec	A		; dec	A			;    3D
+	dec	A'		; dec	A'			;    3D
+	dec	B		; dec	B			;    05
+	dec	B'		; dec	B'			;    05
+	dec	C		; dec	C			;    0D
+	dec	C'		; dec	C'			;    0D
+	dec	D		; dec	D			;    15
+	dec	D'		; dec	D'			;    15
+	dec	E		; dec	E			;    1D
+	dec	E'		; dec	E'			;    1D
+	dec	H		; dec	H			;    25
+	dec	H'		; dec	H'			;    25
+	dec	L		; dec	L			;    2D
+	dec	L'		; dec	L'			;    2D
+	dec	IXH		; dec	IXH			; DD 25
+	dec	IXL		; dec	IXL			; DD 2D 
+	dec	IYH		; dec	IYH			; FD 25
+	dec	IYL		; dec	IYL			; FD 2D
+	dec	BC		; dec	BC			;    0B
+	dec	BC'		; dec	BC'			;    0B
+	dec	DE		; dec	DE			;    1B
+	dec	DE'		; dec	DE'			;    1B
+	dec	HL		; dec	HL			;    2B
+	dec	HL'		; dec	HL'			;    2B
+	dec	IX		; dec	IX			; DD 2B
+	dec	IY		; dec	IY			; FD 2B
+	dec	SP		; dec	SP			;    3B
 	;-----------------------------------------------------------------------
 :di	di			; di				;    F3
 	;-----------------------------------------------------------------------
@@ -333,17 +333,17 @@ $0100	; v80			; z80				; opcodes
 	;-----------------------------------------------------------------------
 :ei	ei			; ei				;    FB
 	;-----------------------------------------------------------------------
-:ex	ex*sp.hl		; ex	[SP],	HL		;    E3
-	ex*sp.hl'		; ex	[SP],	HL'		;    E3
-	ex*sp.ix		; ex	[SP],	IX		; DD E3
-	ex*sp.iy		; ex	[SP],	IY		; FD E3
-	ex.af.af		; ex	AF,	AF'		;    08
-	ex.af.af'		; ex	AF,	AF'		;    08
-	ex.af'af		; ex	AF',	AF		;    08
-	ex.de.hl		; ex	DE,	HL		;    EB
-	ex.de'hl'		; ex	DE',	HL'		;    EB
-	ex.hl.de		; ex	DE,	HL		;    EB
-	ex.hl'de'		; ex	DE',	HL'		;    EB
+:ex	ex	[SP]	HL	; ex	[SP],	HL		;    E3
+	ex	[SP]	HL'	; ex	[SP],	HL'		;    E3
+	ex	[SP]	IX	; ex	[SP],	IX		; DD E3
+	ex	[SP]	IY	; ex	[SP],	IY		; FD E3
+	ex	AF	AF	; ex	AF,	AF'		;    08
+	ex	AF	AF'	; ex	AF,	AF'		;    08
+	ex	AF	AF	; ex	AF',	AF		;    08
+	ex	DE	HL	; ex	DE,	HL		;    EB
+	ex	DE	HL'	; ex	DE',	HL'		;    EB
+	ex	HL	DE	; ex	DE,	HL		;    EB
+	ex	HL	DE'	; ex	DE',	HL'		;    EB
 	exx			; exx				;    D9
 	;-----------------------------------------------------------------------
 :halt	halt			; halt				;    76
