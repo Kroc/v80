@@ -1295,9 +1295,10 @@ parseInstruction:
         ;=======================================================================
         ; length mis-match, skip to next line:
         ;
+@next:  inc     C                       ; (skip instruction-length byte)
 @skip:  inc     C                       ; add number of chars this line
         inc     C                       ;  plus 2 bytes for the opcode
-        add     HL,     BC              ;  and opcode-flags that follows
+        add     HL,     BC              ;  and opcode-flags bytes
         .printChar '>'
 
         ; check line:
@@ -1308,7 +1309,6 @@ parseInstruction:
         ; - hi-nybble = number of chars being added to previous entry
         ;
 @line:  ld      C,      [HL]            ; get instruction length byte
-        inc     HL                      ; (we won't be returning to it!)
         ld      A,      C               ; lo-nybble will be handled in A
         and     %00001111               ; mask off hi-nybble
         jr      z,      @err            ; if zero, hit an alphabet boundary
@@ -1336,11 +1336,12 @@ parseInstruction:
         ;dec     A                       ; fix A for greater-than check
         cp      E                       ; compare re-used with matched count
         jr      c,      @err            ; less - branch ended without match
-        jr      nz,     @skip           ; not-equal - skip unmatchable line
+        jr      nz,     @next           ; not-equal - skip unmatchable line
 
         ; match chars with current line:
         ;-----------------------------------------------------------------------
-@char:  ld      A,      [HL]            ; get character from instruction line
+@char:  inc     HL                      ; next char in instruction line
+        ld      A,      [HL]            ; get char from instruction line
         or      %00100000               ; force psuedo-lowercase
 
         cp      '$' | %00100000         ; is this a parameter marker?
@@ -1369,12 +1370,8 @@ parseInstruction:
         jr      z,      @in             ; multi-space -- skip it!
 
 @inc:   inc     E                       ; increment matched counter
-        inc     HL                      ; move to next char in instruction list
-
-@next:  dec     C                       ; one less char to check/skip
+        dec     C                       ; one less char to check/skip
         jr      nz,     @char           ; all chars done?
-
-        ;halt
 
         ; all chars matched:
         ;-----------------------------------------------------------------------
@@ -1385,7 +1382,7 @@ parseInstruction:
         ;       inc HL                  ; complete match
         ;
         cp      ASCII_SPC | %00100000
-        jr      nz,     @skip
+        jr      nz,     @next
 
         ; FIXME move the above to below EOW? (must allow EOF through)
         inc     C                       ; (an ugly fix for falling through)
@@ -1402,7 +1399,8 @@ parseInstruction:
 
         ; instruction match! read the opcode and flags byte
         ;-----------------------------------------------------------------------
-@ok:    ld      E,      [HL]            ; upon match, next byte is opcode
+@ok:    inc     HL                      ; upon match,
+        ld      E,      [HL]            ;  next byte is opcode byte
         inc     HL                      ;  followed by the opcode-flags
         ld      D,      [HL]            ;  byte for parameters
         pop     HL                      ; (restore heap address)
@@ -1414,7 +1412,7 @@ parseInstruction:
         ld      A,      D               ; opcode flags byte
         and     A                       ; (set flags!)
 
-        call    osPrintNewline
+        .printChar ASCII_LF
 
         ; if flags byte is non-zero, analyse further
         ; (this routine is in the CPU-specific module, i.e. "z80.wla")
@@ -1559,6 +1557,7 @@ parseInstruction:
         ;
 @defer: call    deferExpr
 
+        .printChar '!'
         halt
 
         ; return to parsing the instruction list...
@@ -1573,13 +1572,16 @@ parseInstruction:
         or      %00100000               ; force psuedo-lowercase
         ld      D,      A               ; input char goes in D for parser
 
+        ; if the input has ended (EOL/EOF) with the parameter,
+        ; check if the instruction also ends with the parameter
+        ;
         ; FIXME this is an ugly hack to recreate the output of readChar
         ;       and osGetChar, it doesn't belong here at all!!
         cp      ASCII_SUB | %00100000   ; is this the CP/M EOF marker?
         jp      z,      @eow            ; if so, handle end-of-word
-        cp      ASCII_LF  | %00100000   ; is this a newline? (set z-flag)
-        jp      z,      @eow            ; if so, handle end-of-word
+        cp      ASCII_LF  | %00100000   ; is this a newline? 
+        jp      z,      @eow            ; (set z-flag if so)
 
-        jp      @inc
+        jp      @inc                    ; keep processing for chars >= $20
 
 .ENDB
