@@ -908,7 +908,8 @@ pop:	pop	AF			; pop.af		;    F1
 	pop	IX			; pop.ix		; DD E1
 	pop	IY			; pop.iy		; FD E1
 	;-----------------------------------------------------------------------
-res:	res	0,	[HL']		; res0*hl'		;    CB 86
+res:	res	0,	[HL]		; res0*hl'		;    CB 86
+	res	0,	[HL']		; res0*hl'		;    CB 86
 	res	0,	[IX+$00]	; res0*ix	$00	; DD CB 00 86
 	res	0,	[IY+$00]	; res0*iy	$00	; FD CB 00 86
 	res	0,	A		; res0.a		;    CB 87
@@ -925,6 +926,7 @@ res:	res	0,	[HL']		; res0*hl'		;    CB 86
 	res	0,	H'		; res0.h'		;    CB 84
 	res	0,	L		; res0.l		;    CB 85
 	res	0,	L'		; res0.l'		;    CB 85
+
 	res	1,	[HL]		; res1*hl		;    CB 8E
 	res	1,	[HL']		; res1*hl'		;    CB 8E
 	res	1,	[IX+$00]	; res1*ix	$00	; DD CB 00 8E
@@ -943,6 +945,7 @@ res:	res	0,	[HL']		; res0*hl'		;    CB 86
 	res	1,	H'		; res1.h'		;    CB 8C
 	res	1,	L		; res1.l		;    CB 8D
 	res	1,	L'		; res1.l'		;    CB 8D
+
 	res	2,	[HL]		; res2*hl		;    CB 96
 	res	2,	[HL']		; res2*hl		;    CB 96
 	res	2,	[IX+$00]	; res2*ix	$00	; DD CB 00 96
@@ -961,6 +964,7 @@ res:	res	0,	[HL']		; res0*hl'		;    CB 86
 	res	2,	H'		; res2.h'		;    CB 94
 	res	2,	L		; res2.l		;    CB 95
 	res	2,	L'		; res2.l'		;    CB 95
+
 	res	3,	[HL]		; res3*hl		;    CB 9E
 	res	3,	[HL']		; res3*hl'		;    CB 9E
 	res	3,	[IX+$00]	; res3*ix	$00	; DD CB 00 9E
@@ -979,6 +983,7 @@ res:	res	0,	[HL']		; res0*hl'		;    CB 86
 	res	3,	H'		; res3.h'		;    CB 9C
 	res	3,	L		; res3.l		;    CB 9D
 	res	3,	L'		; res3.l'		;    CB 9D
+
 	res	4,	[HL]		; res4*hl		;    CB A6
 	res	4,	[HL']		; res4*hl'		;    CB A6
 	res	4,	[IX+$00]	; res4*ix	$00	; DD CB 00 A6
@@ -997,6 +1002,7 @@ res:	res	0,	[HL']		; res0*hl'		;    CB 86
 	res	4,	H'		; res4.h'		;    CB A4
 	res	4,	L		; res4.l		;    CB A5
 	res	4,	L'		; res4.l'		;    CB A5
+
 	res	5,	[HL]		; res5*hl		;    CB AE
 	res	5,	[HL']		; res5*hl'		;    CB AE
 	res	5,	[IX+$00]	; res5*ix	$00	; DD CB 00 AE
@@ -1015,6 +1021,7 @@ res:	res	0,	[HL']		; res0*hl'		;    CB 86
 	res	5,	H'		; res5.h'		;    CB AC
 	res	5,	L		; res5.l		;    CB AD
 	res	5,	L'		; res5.l'		;    CB AD
+
 	res	6,	[HL]		; res6*hl		;    CB B6
 	res	6,	[HL']		; res6*hl'		;    CB B6
 	res	6,	[IX+$00]	; res6*ix	$00	; DD CB 00 B6
@@ -1033,6 +1040,7 @@ res:	res	0,	[HL']		; res0*hl'		;    CB 86
 	res	6,	H'		; res6.h'		;    CB B4
 	res	6,	L		; res6.l		;    CB B5
 	res	6,	L'		; res6.l'		;    CB B5
+
 	res	7,	[HL]		; res7*hl		;    CB BE
 	res	7,	[HL']		; res7*hl'		;    CB BE
 	res	7,	[IX+$00]	; res7*ix	$00	; DD CB 00 BE
