@@ -970,8 +970,10 @@ r:
 .BYTE   5 *16 | 7,       "IX+$]",$be, OP_CBXR   ; DD CB nn BE | res 7 [IX+$nn]
 .BYTE   4 *16 | 8,        "Y+$]",$be, OP_CBYR   ; FD CB nn BE | res 7 [IY+$nn]
 ;===============================================================================
-.BYTE   1 *16 | 2,  "t"         ,$c9, OP        ;    C9       | ret
-.BYTE   2 *16 | 3,   " z"       ,$c8, OP        ;    C8       | ret z
+; note the parameterless marker (";") here that forces the parser to
+; read ahead to check for a parameter before matching
+.BYTE   2 *16 | 2,  "t;"        ,$c9, OP        ;    C9       | ret
+.BYTE   1 *16 | 4,    "z"       ,$c8, OP        ;    C8       | ret z
 .BYTE   1 *16 | 4,    "c"       ,$d8, OP        ;    D8       | ret c
 .BYTE   2 *16 | 4,    "nz"      ,$c0, OP        ;    C0       | ret nz
 .BYTE   1 *16 | 5,     "c"      ,$d0, OP        ;    D0       | ret nc

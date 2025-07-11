@@ -1239,14 +1239,11 @@ parseInstruction:
         ; the first character of the word is used to skip to
         ; the alphabetic start point in the instruction list
         ;
-        ; to allow for case-insensitivty we force lowercase, without also
-        ; affecting numbers, by setting bit 5. this essentially forces ASCII
-        ; codes 64-95 (@A-Z[\]^_) to codes 96-127 (`a-z{|}~) which makes A-Z
-        ; lowercase with the caveat that punctuation cannot be differentiated
-        ; "@"<->"`", "[]"<->"{}", "\"<->"|" and "^"<->"~"
-        ;
-        ; it also means that ASCII codes 0-31 (non-visible) are promoted
-        ; to 32-64 (visible) so we must eliminate white-space first
+        ; to allow for case-insensitivty we force lowercase, without affecting
+        ; numbers, by setting bit 5. this essentially forces ASCII codes 64-95
+        ; (@A-Z[\]^_) to codes 96-127 (`a-z{|}~) which makes A-Z lowercase with
+        ; the caveat that punctuation cannot be differentiated "@"<->"`",
+        ; "[]"<->"{}", "\"<->"|" and "^"<->"~"
         ;
         .printCharA
         or      %00100000               ; force partial lowercase
@@ -1265,9 +1262,6 @@ parseInstruction:
         jr      z,      @err            ;  instruction begins with that letter
         inc     E                       ; increase matched count (1st char)
 
-        ; TODO: we may be able to avoid this block
-        ;       by jumping into the right place?
-        ;
         call    @get                    ; get 2nd char before entering the loop
         jr      @line                   ; enter instruction-list loop
 
@@ -1277,6 +1271,8 @@ parseInstruction:
         ;
 @get:   call    readChar                ; get next char from input
         ret     z                       ; 0 = EOL/EOF; handle end-of-word...
+        cp      CHAR_COMMENT|%00100000  ; is this the start of a comment?
+        jr      z,      +               ; if yes, skip until EOL
 
         .printCharA
 
@@ -1292,7 +1288,79 @@ parseInstruction:
 
         ret                             ; (OR above guarantees no zero-flag!)
 
+        ;-----------------------------------------------------------------------
++       ; skip over a comment until the newline / end-of-line:
+        ;
+-       call    readChar                ; read a character (returns z-flag)
+        jr      nz,     -               ; read until newline / end-of-file
+        ret                             ; return with zero-flag set
+
         ;=======================================================================
+        ; (a relative jump to here is used to save 1 byte and 3 cycles
+        ;  over using conditional absolute jumps in each instance)
+        ;
+@err:   jp      errInvalIns
+
+        ;=======================================================================
+        ; parameterless marker:
+        ;
+        ; differentiate an instruction between its parameter and parameterless
+        ; incantation: since a space ends an instruction word, an input such as
+        ; `ret nz` will match the instruction line `ret` without continuing
+        ;
+        ;       ret                     input `ret nz` would end here,
+        ;       ret nz                  we need to read ahead instead!
+        ;
+        ; a special symbol ";" (non-literal) is provided to fix for this case
+        ; by reading ahead the next non-whitespace char. we check the mnemonic
+        ; matches first by ensuring that the current word does not continue:
+        ;
+        ;       ret                     are we here?
+        ;       retn                    or does the word continue!?
+        ;
+@nopar: ld      A,      ASCII_SPC | %00100000
+        cp      D                       ; check against current input char
+        jr      nz,     @next           ; if word continues, skip
+
+        ; we need to count the ";" as matched, even if a parameter does
+        ; exist and we end up skipping. note that we DON'T decrement C here
+        ; so as to allow fall through the extra `inc C` in @next
+        ;
+        inc     E                       ; (count as a match)
+
+        ; scan ahead the whitespace to check for an [optional] parameter:
+        ;
+-       call    @get                    ; fetch next input char
+        jr      z,      @ok             ; if EOL, match current instruction!
+        cp      ASCII_SPC | %00100000   ; is this also a space?
+        jr      z,      -               ; keep walking spaces
+
+        ; once we've hit a non-space character we check if it's valid for
+        ; instruction parameters, i.e. registers, flags, and expressions.
+        ; in practice, it's easier to test the opposite, the only valid
+        ; non-parameter syntax is the keyword marker "."
+        ;
+        ; FIXME this, by its nature, means that one instruction can't follow
+        ;       another as they will be mistaken for parameters, e.g.:
+        ;
+        ;               ret ora         ; "ora" will be seen as a parameter
+        ;
+        ;       in Z80 this applies only to the `ret` instruction, so unlikely
+        ;       to be a major issue. we should probably introduce specific
+        ;       syntax for separating instructions
+        ;
+        cp      CHAR_KEYWORD |%00100000 ; is this a keyword?
+        jr      z,      @ok             ; if so, match as parameterless
+
+        ; potential parameter exists --
+        ; fallthrough to the next instruction line
+        ; ...
+        .printState
+        ld      A,      [HL]
+        call    osPrintChar
+        ;halt
+
+        ;-----------------------------------------------------------------------
         ; length mis-match, skip to next line:
         ;
 @next:  inc     C                       ; (skip instruction-length byte)
@@ -1300,6 +1368,13 @@ parseInstruction:
         inc     C                       ;  plus 2 bytes for the opcode
         add     HL,     BC              ;  and opcode-flags bytes
         .printChar '>'
+
+        cp      ';'
+        jr      nz,     +
+        ld      A,      [HL]
+        call    printHexByte
+        ;halt
++
 
         ; check line:
         ;-----------------------------------------------------------------------
@@ -1333,7 +1408,7 @@ parseInstruction:
         ; we could be looking at an instruction branch that doesn't apply
         ; to us, e.g. `ld A, ?` coming before `ld B, ?`
         ;
-        ;dec     A                       ; fix A for greater-than check
+        ;dec     A                       ; (fix A for greater-than check)
         cp      E                       ; compare re-used with matched count
         jr      c,      @err            ; less - branch ended without match
         jr      nz,     @next           ; not-equal - skip unmatchable line
@@ -1345,7 +1420,9 @@ parseInstruction:
         or      %00100000               ; force psuedo-lowercase
 
         cp      '$' | %00100000         ; is this a parameter marker?
-        jr      z,      @param          ; parse inline parameter
+        jr      z,      @param          ; - parse inline parameter
+        cp      ';' | %00100000         ; is this a parameterless marker?
+        jr      z,      @nopar          ; - handle parameterless marker
 
         cp      D                       ; compare input with instruction list
         jr      nz,     @skip           ; if mismatch, skip!
@@ -1353,7 +1430,7 @@ parseInstruction:
         ; characters match:
         ;-----------------------------------------------------------------------
 @in:    call    @get                    ; get next char from input
-@inA:   jr      z,      @eow            ; 0 = EOL/EOF; handle end-of-word...
+        jr      z,      @eow            ; 0 = EOL/EOF; handle end-of-word...
 
         ; a single space in the instruction line allows for multiple spaces
         ; from the input; one space may already been matched, so we check for
@@ -1384,7 +1461,6 @@ parseInstruction:
         cp      ASCII_SPC | %00100000
         jr      nz,     @next
 
-        ; FIXME move the above to below EOW? (must allow EOF through)
         inc     C                       ; (an ugly fix for falling through)
 
         ; end-of-word:
@@ -1438,12 +1514,6 @@ parseInstruction:
 ;        or      %00100000               ; force partial lowercase
 ;        ld      D,      A               ; update current char register
 ;        ret                             ; return to the loop
-
-        ;=======================================================================
-        ; (a relative jump to here is used to save 1 byte and 3 cycles
-        ;  over using conditional absolute jumps in each instance)
-        ;
-@err:   jp      errInvalIns
 
         ;=======================================================================
         ; parse an inline parameter:
