@@ -882,7 +882,25 @@ p:
 
 r:
 ;===============================================================================
-.BYTE   6 *16 | 1, "es 0 A"     ,$87, OP_CB     ;    CB 87    | res 0 A
+; we choose to put RET first because it's far more common than RES (which is a
+; large block). note the parameterless marker (";") here that forces the parser
+; to read ahead to check for a parameter before matching
+;
+.BYTE   3 *16 | 1, "et;"        ,$c9, OP        ;    C9       | ret
+.BYTE   1 *16 | 4,    "z"       ,$c8, OP        ;    C8       | ret z
+.BYTE   1 *16 | 4,    "c"       ,$d8, OP        ;    D8       | ret c
+.BYTE   2 *16 | 4,    "nz"      ,$c0, OP        ;    C0       | ret nz
+.BYTE   1 *16 | 5,     "c"      ,$d0, OP        ;    D0       | ret nc
+.BYTE   1 *16 | 5,     "v"      ,$e0, OP        ;    E0       | ret nv
+.BYTE   1 *16 | 4,    "m"       ,$f8, OP        ;    F8       | ret m
+.BYTE   1 *16 | 4,    "v"       ,$e8, OP        ;    E8       | ret v
+.BYTE   1 *16 | 4,    "p"       ,$f0, OP        ;    F0       | ret p
+.BYTE   1 *16 | 5,     "o"      ,$e0, OP        ;    E0       | ret po
+.BYTE   1 *16 | 5,     "e"      ,$e8, OP        ;    E8       | ret pe
+.BYTE   1 *16 | 3,   "n"        ,$45, OP_ED     ; ED 45       | retn
+.BYTE   1 *16 | 3,   "i"        ,$4d, OP_ED     ; ED 4D       | reti
+;-------------------------------------------------------------------------------
+.BYTE   5 *16 | 2,  "s 0 A"     ,$87, OP_CB     ;    CB 87    | res 0 A
 .BYTE   1 *16 | 6,      "B"     ,$80, OP_CB     ;    CB 80    | res 0 B
 .BYTE   1 *16 | 6,      "C"     ,$81, OP_CB     ;    CB 81    | res 0 C
 .BYTE   1 *16 | 6,      "D"     ,$82, OP_CB     ;    CB 82    | res 0 D
@@ -970,23 +988,7 @@ r:
 .BYTE   5 *16 | 7,       "IX+$]",$be, OP_CBXR   ; DD CB nn BE | res 7 [IX+$nn]
 .BYTE   4 *16 | 8,        "Y+$]",$be, OP_CBYR   ; FD CB nn BE | res 7 [IY+$nn]
 ;===============================================================================
-; note the parameterless marker (";") here that forces the parser to
-; read ahead to check for a parameter before matching
-.BYTE   2 *16 | 2,  "t;"        ,$c9, OP        ;    C9       | ret
-.BYTE   1 *16 | 4,    "z"       ,$c8, OP        ;    C8       | ret z
-.BYTE   1 *16 | 4,    "c"       ,$d8, OP        ;    D8       | ret c
-.BYTE   2 *16 | 4,    "nz"      ,$c0, OP        ;    C0       | ret nz
-.BYTE   1 *16 | 5,     "c"      ,$d0, OP        ;    D0       | ret nc
-.BYTE   1 *16 | 5,     "v"      ,$e0, OP        ;    E0       | ret nv
-.BYTE   1 *16 | 4,    "m"       ,$f8, OP        ;    F8       | ret m
-.BYTE   1 *16 | 4,    "v"       ,$e8, OP        ;    E8       | ret v
-.BYTE   1 *16 | 4,    "p"       ,$f0, OP        ;    F0       | ret p
-.BYTE   1 *16 | 5,     "o"      ,$e0, OP        ;    E0       | ret po
-.BYTE   1 *16 | 5,     "e"      ,$e8, OP        ;    E8       | ret pe
-;===============================================================================
-.BYTE   1 *16 | 3,   "n"        ,$45, OP_ED     ; ED 45       | retn
-.BYTE   1 *16 | 3,   "i"        ,$4d, OP_ED     ; ED 4D       | reti
-;===============================================================================
+.BYTE   0
 .BYTE   2 *16 | 1, "la"         ,$17, OP        ;    17       | rla
 .BYTE   2 *16 | 2,  ".a"        ,$17, OP_CB     ;    CB 17    | rl.a
 .BYTE   1 *16 | 3,   "b"        ,$10, OP_CB     ;    CB 10    | rl.b
