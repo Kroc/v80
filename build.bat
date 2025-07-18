@@ -1,5 +1,5 @@
 @ECHO OFF
-CLS & TITLE Building v80...
+CLS && TITLE Building v80...
 CD %~dp0
 ECHO:
 
@@ -53,7 +53,7 @@ IF ERRORLEVEL 1 GOTO:ERR
 IF ERRORLEVEL 1 GOTO:ERR
 ECHO:
 
-REM # build & run tests:
+REM # build + run tests:
 REM # --------------------------------------------------------------------------
 SET DIR_TEST=%~dp0test
 
@@ -82,7 +82,7 @@ REM COPY /N /Y "v1\*.v80" /A "%DIR_BIN%\agon\sdcard\v80\*.v80" /A
 REM 
 REM PUSHD "%DIR_BIN%\agon"
 REM "fab-agon-emulator.exe" --scale integer --mode 3
-REM POPD & EXIT
+REM POPD + EXIT
 
 REM # if no errors, use v80 to assemble itself
 REM # ==========================================================================
@@ -129,7 +129,7 @@ REM ////////////////////////////////////////////////////////////////////////////
 
 :RunTestWLA
 REM # ==========================================================================
-REM # run a comparison between WLA-DX-Z80 [PC] & v80_wla [v0]
+REM # run a comparison between WLA-DX-Z80 [PC] + v80_wla [v0]
 REM # --------------------------------------------------------------------------
 
 REM # build "%~1.wla" with WLA-DX [PC],
@@ -142,20 +142,19 @@ FC /B ^
     "%DIR_BUILD%\%~1_wla.com" ^
     "%DIR_BUILD%\%~1.com"  >NUL
 
-IF ERRORLEVEL 1 ^
-    START "" %BIN_VBINDIFF% ^
-        "%DIR_BUILD%\%~1_wla.com" ^
-        "%DIR_BUILD%\%~1.com" ^
-    & GOTO:ERR
+IF ERRORLEVEL 1 (
+    START "" %BIN_VBINDIFF% "%DIR_BUILD%\%~1_wla.com" "%DIR_BUILD%\%~1.com"
+    GOTO:ERR
+)
 
 GOTO:EOF
 
 :RunTestZ80
 REM # ==========================================================================
-REM # run a comparison between WLA-DX-Z80 [PC] & v80 [v1]
+REM # run a comparison between WLA-DX-Z80 [PC] + v80 [v1]
 REM # --------------------------------------------------------------------------
 
-REM # build "%~1.wla" with WLA-DX & "%~1.v80" with v80
+REM # build "%~1.wla" with WLA-DX && "%~1.v80" with v80
 CALL :wla_z80   %~1
 CALL :v80       %~1.v80
 
@@ -164,11 +163,10 @@ FC /B ^
     "%DIR_BUILD%\%~1_wla.com" ^
     "%DIR_BUILD%\%~1.com"  >NUL
 
-IF ERRORLEVEL 1 ^
-    START "" %BIN_VBINDIFF% ^
-        "%DIR_BUILD%\%~1_wla.com" ^
-        "%DIR_BUILD%\%~1.com" ^
-    & GOTO:ERR
+IF ERRORLEVEL 1 (
+    START "" %BIN_VBINDIFF% "%DIR_BUILD%\%~1_wla.com" "%DIR_BUILD%\%~1.com"
+    GOTO:ERR
+)
 
 GOTO:EOF
 
@@ -202,7 +200,7 @@ ECHO * v80_wla.com %~1 %~2
 PUSHD "%DIR_BUILD%"
 
 %BIN_NTVCM% v80_wla.com %~1 %~2 > %~n1.sym
-IF ERRORLEVEL 1 TYPE %~n1.sym & GOTO:ERR
+IF ERRORLEVEL 1 TYPE %~n1.sym && GOTO:ERR
 
 REM # if NTVCM hits a HALT instruction, launch RunCPM
 REM # TODO: prefill the input buffer with the same invocation used
@@ -219,7 +217,7 @@ ECHO * v80.com %~1 %~2
 PUSHD "%DIR_BUILD%"
 
 %BIN_NTVCM% v80.com %~1 %~2 > %~n1.sym
-IF ERRORLEVEL 1 TYPE %~n1.sym & GOTO:ERR
+IF ERRORLEVEL 1 TYPE %~n1.sym && GOTO:ERR
 
 REM # if NTVCM hits a HALT instruction, launch RunCPM
 IF %ERRORLEVEL% EQU -1 GOTO :runCPM
@@ -238,7 +236,7 @@ GOTO:ERR
 
 :RunTest6502
 REM # ==========================================================================
-REM # run a comparison between WLA-DX-6502 & v65
+REM # run a comparison between WLA-DX-6502 + v65
 REM # --------------------------------------------------------------------------
 REM # build "%~1.wla" with WLA-DX-6502 [PC],
 CALL :wla_6502  %~1
@@ -250,11 +248,10 @@ FC /B ^
     "%DIR_BUILD%\%~1_wla.prg" ^
     "%DIR_BUILD%\%~1.prg"  >NUL
 
-IF ERRORLEVEL 1 ^
-    START "" %BIN_VBINDIFF% ^
-        "%DIR_BUILD%\%~1_wla.prg" ^
-        "%DIR_BUILD%\%~1.prg" ^
-    & GOTO:ERR
+IF ERRORLEVEL 1 (
+    START "" %BIN_VBINDIFF% "%DIR_BUILD%\%~1_wla.prg" "%DIR_BUILD%\%~1.prg"
+    GOTO:ERR
+)
 
 GOTO:EOF
 
@@ -288,10 +285,14 @@ ECHO * v65.com %~1 %~2
 PUSHD "%DIR_BUILD%"
 
 %BIN_NTVCM% v65.com %~1 %~2  > %~n1.sym
-IF ERRORLEVEL 1 TYPE %~n1.sym & GOTO:ERR
+IF ERRORLEVEL 1 TYPE %~n1.sym && GOTO:ERR
 
 REM # if NTVCM hits a HALT instruction, launch RunCPM
-IF %ERRORLEVEL% EQU -1 POPD & START "RunCPM" /D "%DIR_RUNCPM%" %BIN_RUNCPM% & GOTO:ERR
+IF %ERRORLEVEL% EQU -1 (
+    POPD
+    START "RunCPM" /D "%DIR_RUNCPM%" %BIN_RUNCPM%
+    GOTO:ERR
+)
 
 POPD
 ECHO:

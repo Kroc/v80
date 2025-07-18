@@ -1383,7 +1383,6 @@ sl1:	sl1	[HL]			; sl1*hl		;    CB 36
 	sl1	H'			; sl1.h'		;    CB 34
 	sl1	L			; sl1.l			;    CB 35
 	sl1	L'			; sl1.l'		;    CB 35
-	sl1	[HL]			; sl1*hl		;    CB 36
 	;-----------------------------------------------------------------------
 sra:	sra	[HL]			; sra*hl		;    CB 2E
 	sra	[HL']			; sra*hl'		;    CB 2E
