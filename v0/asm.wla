@@ -1491,7 +1491,7 @@ parseInstruction:
         jr      nz,     @skip           ; if not, word is longer
 
         ; instruction match! read the opcode and flags byte
-        ;-----------------------------------------------------------------------
+        ;=======================================================================
 @ok:    ld      E,      [HL]            ; next byte is opcode byte
         inc     HL                      ;  followed by the opcode-flags
         ld      D,      [HL]            ;  byte for parameters
@@ -1611,9 +1611,6 @@ parseInstruction:
         jr      c,      @defer
 
         ;///////////////////////////////////////////////////////////////////////
-        .printChar '='
-        ld      A,      '$'
-        call    osPrintChar
         call    printHexWord
         ;///////////////////////////////////////////////////////////////////////
 
@@ -1670,6 +1667,8 @@ parseInstruction:
         ;
         ; FIXME this is an ugly hack to recreate the output of `readChar`
         ;       and `osGetChar`, it doesn't belong here at all!!
+        ; TODO: parseExpr now returns correct last-read char AF
+        ;
         cp      ASCII_SUB | %00100000   ; is this the CP/M EOF marker?
         jp      z,      @eow            ; if so, handle end-of-word
         cp      ASCII_LF  | %00100000   ; is this a newline? 

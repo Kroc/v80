@@ -350,28 +350,28 @@ $0100	; v80			; z80				; opcodes
 	hlt			; halt				;    76
 	hcf			; halt				;    76
 	;-----------------------------------------------------------------------
-:im	im 0			; im	0			; ED 46
-	im 1			; im	1			; ED 56
-	im 2			; im	2			; ED 5E
+:im	im 	0		; im	0			; ED 46
+	im 	1		; im	1			; ED 56
+	im 	2		; im	2			; ED 5E
 	;-----------------------------------------------------------------------
-:in	in A 	[$00]		; in	A,	[$00]		;    DB 00
-	in A'	[$00]		; in	A',	[$00]		;    DB 00
-	in A	[C]		; in	A,	[C]		; ED 78
-	in A'	[C]		; in	A',	[C]		; ED 78
-	in A	[C']		; in	A,	[C']		; ED 78
-	in A'	[C']		; in	A',	[C']		; ED 78
-	in B	[C]		; in	B,	[C]		; ED 40
-	in B'	[C']		; in	B',	[C']		; ED 40
-	in C	[C]		; in	C,	[C]		; ED 48
-	in C'	[C']		; in	C',	[C']		; ED 48
-	in D	[C]		; in	D,	[C]		; ED 50
-	in D'	[C']		; in	D',	[C']		; ED 50
-	in E	[C]		; in	E,	[C]		; ED 58
-	in E'	[C']		; in	E',	[C']		; ED 58
-	in H	[C]		; in	H,	[C]		; ED 60
-	in H'	[C']		; in	H',	[C']		; ED 60
-	in L	[C]		; in	L,	[C]		; ED 68
-	in L'	[C']		; in	L',	[C']		; ED 68
+:in	in 	A 	[$00]	; in	A,	[$00]		;    DB 00
+	in 	A'	[$00]	; in	A',	[$00]		;    DB 00
+	in 	A	[C]	; in	A,	[C]		; ED 78
+	in 	A'	[C]	; in	A',	[C]		; ED 78
+	in 	A	[C']	; in	A,	[C']		; ED 78
+	in 	A'	[C']	; in	A',	[C']		; ED 78
+	in 	B	[C]	; in	B,	[C]		; ED 40
+	in 	B'	[C']	; in	B',	[C']		; ED 40
+	in 	C	[C]	; in	C,	[C]		; ED 48
+	in 	C'	[C']	; in	C',	[C']		; ED 48
+	in 	D	[C]	; in	D,	[C]		; ED 50
+	in 	D'	[C']	; in	D',	[C']		; ED 50
+	in 	E	[C]	; in	E,	[C]		; ED 58
+	in 	E'	[C']	; in	E',	[C']		; ED 58
+	in 	H	[C]	; in	H,	[C]		; ED 60
+	in 	H'	[C']	; in	H',	[C']		; ED 60
+	in 	L	[C]	; in	L,	[C]		; ED 68
+	in 	L'	[C']	; in	L',	[C']		; ED 68
 	;-----------------------------------------------------------------------
 :inc	inc	[HL]		; inc	[HL]			;    34
 	inc	[HL']		; inc	[HL']			;    34

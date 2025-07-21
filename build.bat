@@ -143,7 +143,7 @@ FC /B ^
     "%DIR_BUILD%\%~1.com"  >NUL
 
 IF ERRORLEVEL 1 (
-    START "" %BIN_VBINDIFF% "%DIR_BUILD%\%~1_wla.com" "%DIR_BUILD%\%~1.com"
+    %BIN_VBINDIFF% "%DIR_BUILD%\%~1_wla.com" "%DIR_BUILD%\%~1.com"
     GOTO:ERR
 )
 
@@ -164,7 +164,7 @@ FC /B ^
     "%DIR_BUILD%\%~1.com"  >NUL
 
 IF ERRORLEVEL 1 (
-    START "" %BIN_VBINDIFF% "%DIR_BUILD%\%~1_wla.com" "%DIR_BUILD%\%~1.com"
+    %BIN_VBINDIFF% "%DIR_BUILD%\%~1_wla.com" "%DIR_BUILD%\%~1.com"
     GOTO:ERR
 )
 
@@ -249,7 +249,7 @@ FC /B ^
     "%DIR_BUILD%\%~1.prg"  >NUL
 
 IF ERRORLEVEL 1 (
-    START "" %BIN_VBINDIFF% "%DIR_BUILD%\%~1_wla.prg" "%DIR_BUILD%\%~1.prg"
+    %BIN_VBINDIFF% "%DIR_BUILD%\%~1_wla.prg" "%DIR_BUILD%\%~1.prg"
     GOTO:ERR
 )
 

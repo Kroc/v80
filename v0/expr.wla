@@ -85,31 +85,32 @@ emitParam:
         ld      A,      [param]         ; retrieve the parameter type
 
 emitParamA:
-        ; validate size / value:
         ;-----------------------------------------------------------------------
         rla                             ; pop hi-bit (relative-flag) into carry
         jr      c,      @rel            ; handle relative jump parameter
         rra                             ; correct param byte from above shift
 
+        ; lo-byte:
+        ;-----------------------------------------------------------------------
         ld      [IY+0], C               ; write value lo-byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
 
         ; is this a 16-bit parameter?
         dec     A                       ; decement byte count; if it's not 0
-        jr      nz,      +              ;  then it was 2, do upper-byte
+        jr      nz,      @hi            ;  then it was 2, do upper-byte
 
         ; 8-bit parameter, but is the result 16-bit? (parameter overflow)
         ; note that A = 0 due to above check falling through
         ;
-        or      B                       ; are any bits in hi-byte 1?
+        or      B                       ; are any bits in hi-byte?
         ret     z                       ; if zero, value fits in 8-bits
-        jp      errRangeParam           ; out-of-range instruction parameter!
+@err:   jp      errRangeParam           ; out-of-range instruction parameter!
 
         ;-----------------------------------------------------------------------
         ; write upper-byte of 16-bit result:
         ;
-+       ld      [IY+0], B               ; write value hi-byte
+@hi:    ld      [IY+0], B               ; write value hi-byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
 
@@ -142,7 +143,8 @@ emitParamA:
         ;-----------------------------------------------------------------------
         ; the carry-flag indicates if the jump is forward (clear) or backward
         ; (set). we set A to 0 or -1 ($FF) depending on carry-flag: any value
-        ; minus itself is 0, but the carry-flag is an additional -1
+        ; minus itself is 0, but the carry-flag is an additional -1 (note that
+        ; the initial value of A is meaningless here, the result is the same)
         sbc     A,      A
 
         ; detect 8-bit overflow in either direction: if the distance is > 255
@@ -150,7 +152,7 @@ emitParamA:
         ; therefore we expect A = H. compare sets flags without changing A,
         ; allowing us to do two tests using the same A value!
         cp      H
-        jp      nz,     errRangeParam   ; err if hi-byte is not 'empty'
+        jr      nz,     @err            ; err if hi-byte is not 'empty'
 
         ; because the relative-distance byte is signed, we expect its sign
         ; to match that of the result -- a forward jump can only produce
@@ -341,22 +343,26 @@ parseExpr:
 ;                       read. DO NOT call this routine with whitespace as the
 ;                       last character read!
 ;
-; out:  BC              the result of the expression evaluation. if the expr
-;                       cannot be evaluated and has to be deferred, BC is the
-;                       length of the expression bytecode
+; out:  A               last-read char. if not SPC/EOL/EOF, it will be the
+;                       first char of the next word -- caller *must* reuse
+;                       this char! also available in [char]
+;       zf              zero-flag is set if last-char was an EOL or EOF
+;                       do *not* assume zero-flag set means A = $00!!!!
 ;       cf              carry-clear indicates success
 ;                       carry-set indicates the expression includes
 ;                       forward-references and couldn't be evaluated
-;       [char]          depending where an expression ends, the last character
-;                       read can be either whitespace/EOL/EOF *OR* the first-
-;                       character of the following word
+;       BC              the result of the expression evaluation. if the expr
+;                       cannot be evaluated and has to be deferred, BC is the
+;                       length of the expression bytecode
 ;       HL              forward-references to labels are pushed to the heap
-;       A, DE           (clobbered)
+;       DE              (clobbered)
+;                       TODO: return DE = defer expr address?
 ;-------------------------------------------------------------------------------
         ; capture the starting line/col number of the expression:
         ; if an error doesn't occur during parsing, these values
         ; we be used for errors during evaluation
         ;
+        ; TODO: setting the row only needs to be done each line change
         ld      BC,     [wrow]          ; current start-of-word line number
         ld      [erow], BC              ; backup for current expression
         ld      A,      [wcol]          ; current start-of-word column number
@@ -407,7 +413,7 @@ parseExpr:
 
         ; if the label exists and isn't a forward-reference,
         ; its value is in BC to go into the expr bytecode
-        jp      nc,      @num
+        jr      nc,      @num
 
 .IFDEF  DEBUG
         ;///////////////////////////////////////////////////////////////////////
@@ -630,7 +636,11 @@ parseExpr:
 
         ; end of expr:
         ;=======================================================================
-@end:   ld      A,      [@nest]         ; get parenthesis nested depth
+        ; we want to return the last-read char and the state of the zero flag
+        ; which indicates an EOL or EOF (which may not be $00!)
+@end:   push    AF
+
+        ld      A,      [@nest]         ; get parenthesis nested depth
         and     A                       ; check for zero (set flags)
         jp      nz,     errInvalExpr    ; parenthesis aren't matched!
 
@@ -652,7 +662,11 @@ parseExpr:
         ld      B,      D               ; return expr result in BC
         ld      C,      E               ;  as expected elsewhere
 
-        xor     A                       ; carry-flag *must* be clear
+        ; TODO: can we guarantee that carry-flag will be clear when we pop?
+        ;
+        pop     AF                      ; return last-read char & EOL/EOF flag
+        scf                             ; carry flag *must* be clear (no defer)
+        ccf                             ;  so set it and then flip it
         pop     HL                      ; restore heap addr to HL
         ret
 
@@ -675,8 +689,9 @@ parseExpr:
         ; because the expression could not be evaluated
         ; we must return carry-flag set to indicate no-value
         ;
+        pop     AF                      ; return last-read char & EOL/EOF flag
         pop     HL                      ; restore heap addr to HL
-        scf                             ; "set carry-flag"
+        scf                             ; "set carry-flag" (expr deferred)
         ret
 
 

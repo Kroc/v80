@@ -14,8 +14,8 @@ emitOpcode:
 ; out:  HL              parsing of instruction parameters may push to heap
 ;       A, BC, DE       (clobbered)
 ;===============================================================================
-        ; opcode with extensions or parameters:
-        ;
+        ; opcode with extensions or parameters?
+        ;-----------------------------------------------------------------------
         bit     6,      D               ; bit 6 indicates IX or IY
         jr      nz,     @ixy            ; go handle IX|IY madness...
 
@@ -57,7 +57,22 @@ emitOpcode:
         jr      z,      +               ; skip over the next instruction if not
         or      %10000000               ; add the rel-flag to the param type
 
-+       jp      @p1                     ; write opcode param to code-segment
++       ; emit the 1st parameter: (saved during instruction parsing)
+        ;-----------------------------------------------------------------------
+        ; register A must be param width / relative-flag. note that we delay
+        ; clearing the parameter count (set by `parseInstruction`) to here
+        ; to avoid wasting cycles clearing it on parameterless instructions
+        ;
+        ; TODO: handle deferred param
+        ;///////////////////////////////////////////////////////////////////////
+        .printA
+        ;///////////////////////////////////////////////////////////////////////
+
+@p1:    ld      [param],        A       ; set the parameter width
+        ld      BC,     [param1+1]      ; retrieve parameter 1 value
+        xor     A                       ; (set A to zero)
+        ld      [paramCount],   A       ; reset parameter count for next time
+        jp      emitParam               ; write opcode param to code-segment
 
         ;=======================================================================
         ; handle IX|IY opcodes: (bit 5 chooses between IX & IY)
@@ -91,7 +106,7 @@ emitOpcode:
         ret     z                       ; if none, we are finished
 
         ; there are only two Z80 instructions that use 2 parameters
-        ; -- LD [IX+$aa], $bb and the matching IY-variant
+        ; -- `ld [IX+$aa], $bb` and the matching IY-variant
         ;
         xor     %00001100               ; flip just the bits for 2 params
         jr      z,      @two            ; divert for 2 params!
@@ -103,14 +118,7 @@ emitOpcode:
         rrc     D                       ; pop off bit 0 of opcode-flags
         adc     1                       ; add that bit, if present
 
-        jp      @p1                     ; write opcode param to code-segment
-
-        ;-----------------------------------------------------------------------
-        ; handle two-parameter instruction special case:
-        ;
-@two:   inc     A                       ; set the parameter width to 1-byte
-        call    @p1                     ; emit 1st parameter to code-segment
-        jp      @p2                     ; emit 2nd parameter to code-segment
+        jr      @p1                     ; write opcode param to code-segment
 
         ;-----------------------------------------------------------------------
         ; IX|IY + $CB is the edge-case that keeps on giving: at all other
@@ -132,17 +140,12 @@ emitOpcode:
         ret
 
         ;-----------------------------------------------------------------------
-        ; emit the 1st parameter: (saved during instruction parsing)
-        ; note that A must be set to parameter width / relative-flag
+        ; handle two-parameter instruction special case:
         ;
-        ; TODO: handle deferred param
-@p1:    ld      [param],        A       ; set the parameter width
-        ld      BC,     [param1+1]      ; retrieve parameter 1 value
-        jp      emitParam               ; write opcode param to code-segment
+@two:   inc     A                       ; set the parameter width to 1-byte
+        call    @p1                     ; emit 1st parameter to code-segment
 
-        ;-----------------------------------------------------------------------
         ; emit the 2nd parameter: (saved during instruction parsing)
-        ; note that A must be set to parameter width / relative-flag
         ;
         ; TODO: handle deferred param
 @p2:    ld      A,              1       ; NOTE: 2nd param is always 8-bit
@@ -208,7 +211,7 @@ OP_IX       = OP_I | OP_X       ; = implied, IX ($DD)
 OP_IY       = OP_I | OP_Y       ; = implied, IY ($FD)
 OP_CB       = %00010000         ; bit 6=?, bit 4=1, bit 5&1=0: IX|Y CB-extended
 OP_ED       = %00110010         ; bit 6=0, bit 4=1, bit 5&1=1: ED-extended
-OP_IXR      = OP_IX | OP_R      ; = immediate, IX ($DD) + realtive offset
+OP_IXR      = OP_IX | OP_R      ; = immediate, IX ($DD) + relative offset
 OP_IYR      = OP_IY | OP_R      ; = immediate, IY ($FD) + relative offset
 OP_CBXR     = OP_IXR | OP_CB    ; = extended ($CB), IX ($DD) + relative offset
 OP_CBYR     = OP_IYR | OP_CB    ; = extended ($CB), IY ($FD) + relative offset
