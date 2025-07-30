@@ -60,7 +60,7 @@
         ; fall through
         ; ...
 
-:emitParam
+:emitValue
 ;===============================================================================
 ; emit a value to the code-segment:
 ;

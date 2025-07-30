@@ -11,9 +11,12 @@ emitOpcode:
 ;       E               opcode byte
 ;       HL              heap address for any deferred expressions
 ;
-; out:  HL              parsing of instruction parameters may push to heap
+; out:  HL              deferred parameters values may push to heap
 ;       A, BC, DE       (clobbered)
 ;===============================================================================
+        ; FIXME im 0,1,2                        $46 $56 $5E
+        ;       rst 0,8,10,18,20,28,30,38       $C7 $CF $D7 $DF $E7 $EF $F7 $FF
+
         ; opcode with extensions or parameters?
         ;-----------------------------------------------------------------------
         bit     6,      D               ; bit 6 indicates IX or IY
@@ -31,6 +34,7 @@ emitOpcode:
         ld      [IY+0], A               ; emit $CB|$ED prefix byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
+        ld      A,      D               ; restore bits
 
         ; at this point, all parameters (if any) follow the opcode,
         ; so we can output the opcode now and forget it
@@ -46,6 +50,8 @@ emitOpcode:
         ; i.e. 8 / 16 bit immediate, or relative (bit 3). there are no
         ; 2-parameter Z80 opcodes without IX|IY so 1 param can be assumed
         ;
+        ; FIXME: this conflicts with relative flag
+        ;
         bit     2,      D               ; if no parameters, extensions
         ret     z                       ;  have been done, finish now!
 
@@ -59,20 +65,16 @@ emitOpcode:
 
 +       ; emit the 1st parameter: (saved during instruction parsing)
         ;-----------------------------------------------------------------------
-        ; register A must be param width / relative-flag. note that we delay
-        ; clearing the parameter count (set by `parseInstruction`) to here
-        ; to avoid wasting cycles clearing it on parameterless instructions
-        ;
-        ; TODO: handle deferred param
+;        ; register A must be param width / relative-flag. note that we delay
+;        ; clearing the parameter count (set by `parseInstruction`) to here
+;        ; to avoid wasting cycles clearing it on parameterless instructions
+;        ;
         ;///////////////////////////////////////////////////////////////////////
         .printA
         ;///////////////////////////////////////////////////////////////////////
 
-@p1:    ld      [param],        A       ; set the parameter width
-        ld      BC,     [param1+1]      ; retrieve parameter 1 value
-        xor     A                       ; (set A to zero)
-        ld      [paramCount],   A       ; reset parameter count for next time
-        jp      emitParam               ; write opcode param to code-segment
+@p1:    ld      BC,     [param1+1]      ; retrieve parameter 1 value
+        jp      emitValueA              ; write opcode param to code-segment
 
         ;=======================================================================
         ; handle IX|IY opcodes: (bit 5 chooses between IX & IY)
@@ -147,11 +149,9 @@ emitOpcode:
 
         ; emit the 2nd parameter: (saved during instruction parsing)
         ;
-        ; TODO: handle deferred param
 @p2:    ld      A,              1       ; NOTE: 2nd param is always 8-bit
-        ld      [param],        A       ; set the parameter width
         ld      BC,     [param2+1]      ; retrieve parameter 2 value
-        jp      emitParam               ; write opcode param to code-segment
+        jp      emitValueA              ; write opcode param to code-segment
 
 .ENDB
 .BLOCK  "data-z80"
@@ -203,20 +203,20 @@ emitOpcode:
 ;       this is always paired with bit 2, both must be on to be valid
 ;
 OP          = %00000000         ; implied -- no parameters
-OP_R        = %00001000         ; bit 3=1: relative offset parameter
+OP_B        = %00000100         ; bit 2=1: immediate parameter, 8-bits (byte)
+OP_W        = %00000101         ; bit 2=1, bit 0=1: immediate 16-bits (word)
+OP_R        = %00001000         ; bit 3=1: relative offset param (always byte)
 OP_I        = %01000000         ; bit 6=1: IX or IY extended
 OP_X        = %01000000         ; bit 6=1, bit 5=0: IX
 OP_Y        = %01100000         ; bit 6=1, bit 5=1: IY
 OP_IX       = OP_I | OP_X       ; = implied, IX ($DD)
 OP_IY       = OP_I | OP_Y       ; = implied, IY ($FD)
-OP_CB       = %00010000         ; bit 6=?, bit 4=1, bit 5&1=0: IX|Y CB-extended
+OP_CB       = %00010000         ; bit 6=?, bit 4=1, bit 5&1=0: CB-extended
 OP_ED       = %00110010         ; bit 6=0, bit 4=1, bit 5&1=1: ED-extended
 OP_IXR      = OP_IX | OP_R      ; = immediate, IX ($DD) + relative offset
 OP_IYR      = OP_IY | OP_R      ; = immediate, IY ($FD) + relative offset
 OP_CBXR     = OP_IXR | OP_CB    ; = extended ($CB), IX ($DD) + relative offset
 OP_CBYR     = OP_IYR | OP_CB    ; = extended ($CB), IY ($FD) + relative offset
-OP_B        = %00000100         ; bit 2=1: immediate parameter, 8-bits (byte)
-OP_W        = %00000101         ; bit 2=1, bit 0=1: immediate 16-bits (word)
 
 OP_IXB      = OP_B | OP_IX      ; = IX + immediate 8-bits
 OP_IYB      = OP_B | OP_IY      ; = IY + immediate 8-bits

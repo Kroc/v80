@@ -411,7 +411,7 @@ _defer  ld.A*HL                         ; read next expr addr, lo-byte
 
         dec.HL                          ; lastly, the expr bytecode
         call    :evalExpr               ; evaluate! returns result in DE
-        ld.B.D                          ; swap to BC for emitParam
+        ld.B.D                          ; swap to BC for emitValue
         ld.C.E                          ; ...
 
         ; patch the result into the binary:
@@ -420,7 +420,7 @@ _defer  ld.A*HL                         ; read next expr addr, lo-byte
         ; the source file / line / column and the parameter byte restored
         ; we just need to emit the value to the code-segment
         ;
-        call    :emitParam
+        call    :emitValue
 
         pop.HL                          ; snap back to the defer record
         jr      _defer                  ;  link-field to follow the chain

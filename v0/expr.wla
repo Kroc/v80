@@ -12,7 +12,7 @@
 ;   +-----+--------+--------+-------+------- - - -
 ;   | v80 | <-word | <-expr | str-> | code->
 ;   +-----+--------+--------+-------+------- - - -
-;         |     32       96   128   |       
+;         |     32       96   128   |
 ;
 defer:  .ADDR   $0000                   ; addr of last deferred expr
 
@@ -23,8 +23,8 @@ defer:  .ADDR   $0000                   ; addr of last deferred expr
 ; NOTE: these two bytes are specifically grouped together because they
 ;       are required by deferred expressions written to the heap
 ;       and are pushed together as a single word
-param_ecol:
-param:  .BYTE   $00                     ; parameter type / relative-flag
+width_ecol:
+width:  .BYTE   $00                     ; value size (b|w) & relative-flag
 ecol:   .BYTE   $00                     ; start-of-expr column number
 erow:   .WORD   $0000                   ; start-of-expr line number
 
@@ -48,11 +48,12 @@ parseParam:
 ;
 ; out:  BC              expr value. if deferred, BC is length of expr bytecode
 ;       HL              heap addr will be modified if expr is deferred
-;       [param]         the param size & rel-flag byte is set and is re-used
-;                       for each additional call of nextParam (below)
+;       [width]         the param width & rel-flag byte is set and is re-used
+;                       for each additional call of nextParam (below), e.g.
+;                       for `.b` (bytes) and `.w` (words) keywords
 ;       A, DE           (clobbered)
 ;-------------------------------------------------------------------------------
-        ld      [param],        A
+        ld      [width],        A
 
         ; fall through
         ; ...
@@ -69,12 +70,12 @@ nextParam:
         ; fall through
         ; ...
 
-emitParam:
+emitValue:
 ;===============================================================================
 ; emit a value to the code-segment:
 ;
-; in:   BC              parameter value
-;       [param]         param size & rel-flag byte; this defines the number of
+; in:   BC              literal value
+;       [width]         value width & rel-flag byte; this defines the number of
 ;                       bytes the value occupies in the code-segment and if the
 ;                       value is a relative jump which needs calculating
 ; out:  IX, IY          code-segment & virtual program-counter are advanced
@@ -82,9 +83,9 @@ emitParam:
 ;       A, BC, DE       (clobbered)
 ;       !               halts if a relative jump exceeds 8-bit range
 ;-------------------------------------------------------------------------------
-        ld      A,      [param]         ; retrieve the parameter type
+        ld      A,      [width]         ; retrieve the value width / rel-flag
 
-emitParamA:
+emitValueA:
         ;-----------------------------------------------------------------------
         rla                             ; pop hi-bit (relative-flag) into carry
         jr      c,      @rel            ; handle relative jump parameter
@@ -105,6 +106,10 @@ emitParamA:
         ;
         or      B                       ; are any bits in hi-byte?
         ret     z                       ; if zero, value fits in 8-bits
+
+        .printState
+        halt
+
 @err:   jp      errRangeParam           ; out-of-range instruction parameter!
 
         ;-----------------------------------------------------------------------
@@ -235,7 +240,7 @@ deferExpr:
         push    HL                      ;  (addr of file-name symbol record)
         ld      HL,     [erow]          ; push the source file
         push    HL                      ;  line-number (16-bits)
-        ld      HL,     [param_ecol]    ; push parameter-flags & column-number
+        ld      HL,     [width_ecol]    ; push value width & column-number
         push    HL                      ; (combined because they're 1-byte ea.)
 
         ; since the expression result is not known we can't validate it and we
