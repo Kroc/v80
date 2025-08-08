@@ -27,7 +27,7 @@
 :erow   .w      $0000                   ; start-of-expr line number
 
 
-:parseParam
+:emitParam
 ;===============================================================================
 ; parse, evaluate and emit an expression to the code-segment:
 ;
@@ -37,7 +37,7 @@
 ;       HL              current heap position -- if the expression is deferred
 ;                       it will be copied to the heap
 ;       [param]         the param size & rel-flag byte must be set
-;                       (e.g. parseParam above)
+;                       (e.g. emitParam above)
 ;
 ; out:  BC              expr value. if deferred, BC is length of expr bytecode
 ;       HL              heap addr will be modified if expr is deferred
@@ -48,7 +48,7 @@
         ; fall through
         ; ...
 
-:nextParam
+:emitNextParam
         ;=======================================================================
         ; parse the next expression and evaluate it. if it contains a
         ; forward-reference, the parameter cannot be evaluated (yet)
@@ -181,7 +181,7 @@ _rel    ex.DE.HL                        ; preserve heap-addr in DE
 ;                       when an forward-reference is encountered
 ;       HL              current heap position
 ;       [param]         the param size & rel-flag byte must be set
-;                       (e.g. parseParam above)
+;                       (e.g. emitParam above)
 ;
 ; out:  HL              heap addr will be modified if expr is deferred
 ;       A, BC, DE       (clobbered)

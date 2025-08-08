@@ -28,6 +28,6 @@
 
         ; parse the following expression and
         ; write the value to the code-segment
-        jp      :parseParam
+        jp      :emitParam
 
 #size_of_emit   $ - :emitOpcode

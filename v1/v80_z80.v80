@@ -59,7 +59,7 @@ _noext  ld*IY.C [ 0 ]                   ; emit opcode byte
 
         ; parse the following expression and
         ; write the value to the code-segment
-_1      jp      :parseParam
+_1      jp      :emitParam
 
         ;=======================================================================
         ; handle IX|IY opcodes: (bit 5 chooses between IX & IY)
@@ -107,7 +107,7 @@ _ixy    and     %00100000               ; isolate bit 5
 
         ; parse the following expression and
         ; write the value to the code-segment
-        jp      :parseParam
+        jp      :emitParam
 
         ;-----------------------------------------------------------------------
         ; handle two-parameter instruction special case:
@@ -118,8 +118,8 @@ _two    inc.A                           ; (set the parameter width to 1-byte)
         ; word following the expression, or a newline / end-of-file. since
         ; a 2nd parameter is expected, newline or end-of-file is an error!
         ;
-        call    :parseParam             ; parse and emit 1st parameter
-        jp      :nextParam              ; parse and emit 2nd parameter
+        call    :emitParam             ; parse and emit 1st parameter
+        jp      :emitNextParam         ; parse and emit 2nd parameter
 
         ;-----------------------------------------------------------------------
         ; IX|IY + $CB is the edge-case that keeps on giving: at all other
@@ -131,7 +131,7 @@ _cb     ld*IY   [ 0 ]   $cb             ; emit $CB prefix byte
         push.BC                         ; keep opcode until emit time
 
         ld.A    1                       ; parse the following expression and
-        call    :parseParam             ;  write the value to the code-segment
+        call    :emitParam             ;  write the value to the code-segment
 
         pop.BC                          ; retrieve delayed opcode
         ld*IY.C [ 0 ]                   ; emit opcode byte

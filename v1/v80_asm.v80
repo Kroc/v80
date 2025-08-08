@@ -447,7 +447,7 @@ _data   call    :nextWord               ; skip in-between spaces
         ; not a string, parse as an expression and output to code-segment:
         ; deferred expressions will automatically be pushed to the heap
         ;
-_isexpr call    :nextParam
+_isexpr call    :emitNextParam
 
         ; the last character read by expression parsing will be either EOL/EOF,
         ; where the line ends without any further expressions, or the fist char

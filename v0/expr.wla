@@ -36,21 +36,20 @@ param1: .BYTE   $00
         .WORD   $0000
 
 
-parseParam:
+emitParam:
 ;===============================================================================
 ; parse, evaluate and emit an expression to the code-segment:
 ;
-; in:   A               parameter size & relative-jump flag:
-;                       set to the number of bytes the parameter must occupy
-;                       in the code-segment. bit 7 set indicates relative jump
-;       HL              current heap position -- if the expression is deferred
-;                       it will be copied to the heap
+; in:   A               the number of bytes the parameter must occupy
+;                       in the code-segment (i.e. byte or word)
+;       HL              current heap position -- if the expression
+;                       is deferred it will be copied to the heap
 ;
 ; out:  BC              expr value. if deferred, BC is length of expr bytecode
 ;       HL              heap addr will be modified if expr is deferred
-;       [width]         the param width & rel-flag byte is set and is re-used
-;                       for each additional call of nextParam (below), e.g.
-;                       for `.b` (bytes) and `.w` (words) keywords
+;       [width]         the param width is set and is re-used for each
+;                       additional call of `emitNextParam` (below),
+;                       e.g. `.b` (bytes) and `.w` (words) keywords
 ;       A, DE           (clobbered)
 ;-------------------------------------------------------------------------------
         ld      [width],        A
@@ -58,11 +57,11 @@ parseParam:
         ; fall through
         ; ...
 
-nextParam:
+emitNextParam:
         ;=======================================================================
-        ; parse the next expression and evaluate it. if it contains a
-        ; forward-reference, the parameter cannot be evaluated (yet)
-        ; and it'll be pushed to the heap for later evaluation
+        ; parse the next expression, evaluate it, and emit it to the code
+        ; segment. if it contains a forward-reference, the parameter cannot
+        ; be evaluated (yet) and it'll be pushed to the heap for later
         ;
         call    nextExpr                ; parse and evaluate expression
         jr      c,      deferExpr       ; defer to heap? (note early exit)
@@ -75,57 +74,88 @@ emitValue:
 ; emit a value to the code-segment:
 ;
 ; in:   BC              literal value
-;       [width]         value width & rel-flag byte; this defines the number of
-;                       bytes the value occupies in the code-segment and if the
-;                       value is a relative jump which needs calculating
+;       [width]         value width; this defines the number of bytes
+;                       the value occupies in the code-segment
+;       IX              whilst the virtual program-counter is not used,
+;                       it will be incremented automatically
+;       IY              code-segement address where the value will be written
+;
 ; out:  IX, IY          code-segment & virtual program-counter are advanced
-;       HL              (preserved) -- does not push to heap
-;       A, BC, DE       (clobbered)
-;       !               halts if a relative jump exceeds 8-bit range
+;       HL, BC, DE      (preserved)
+;       A               (clobbered)
+;       !               halts with error if the width parameter specifies
+;                       a byte, but the number in BC is >255
 ;-------------------------------------------------------------------------------
         ld      A,      [width]         ; retrieve the value width / rel-flag
 
 emitValueA:
-        ;-----------------------------------------------------------------------
-        rla                             ; pop hi-bit (relative-flag) into carry
-        jr      c,      @rel            ; handle relative jump parameter
-        rra                             ; correct param byte from above shift
-
-        ; lo-byte:
-        ;-----------------------------------------------------------------------
-        ld      [IY+0], C               ; write value lo-byte
-        inc     IY                      ; move to next byte in code-segment
-        inc     IX                      ; increment virtual program-counter
-
         ; is this a 16-bit parameter?
-        dec     A                       ; decement byte count; if it's not 0
-        jr      nz,      @hi            ;  then it was 2, do upper-byte
+        dec     A                       ; decrement byte count; if it's not 0
+        jr      nz,     emitWord        ;  then it was 2, emit a word
 
+        ; fallthrough to emit byte
+        ; ...
+
+emitByte:
+;===============================================================================
+; emit a byte to the code-segment:
+;
+; in:   BC              input value -- must be provided as 16-bits as this is
+;                       how all values come from the parser. the value will
+;                       be validated to make sure it fits within 8-bits
+; out:  IX, IY          code-segment & virtual program-counter are advanced
+;       BC, DE, HL      (preserved)
+;       A               (clobbered)
+;-------------------------------------------------------------------------------
         ; 8-bit parameter, but is the result 16-bit? (parameter overflow)
         ; note that A = 0 due to above check falling through
         ;
-        or      B                       ; are any bits in hi-byte?
-        ret     z                       ; if zero, value fits in 8-bits
+        xor     A                       ; (clear A / flags)
+        or      B                       ; are there any bits in hi-byte?
+        jp      nz,     errRangeParam   ; out-of-range instruction parameter!
 
-        .printState
-        halt
-
-@err:   jp      errRangeParam           ; out-of-range instruction parameter!
-
+emitByteC:
         ;-----------------------------------------------------------------------
-        ; write upper-byte of 16-bit result:
-        ;
-@hi:    ld      [IY+0], B               ; write value hi-byte
+        ld      [IY+0], C               ; write lo-byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
-
         ret
 
-        ;=======================================================================
-        ; (for now, we assume a relative parameter is the only parameter and is
-        ;  1-byte wide as that's the case with most 8-bit CPUs I'm aware of)
+emitWord:
+;===============================================================================
+; emit a word to the code-segment:
+;
+;-------------------------------------------------------------------------------
+        ld      [IY+0], C               ; write lo-hi bytes to code-segment
+        inc     IY                      ;
+        inc     IX                      ; whilst we could save bytes by calling
+        ld      [IY+0], B               ;  the above routine, this is already
+        inc     IY                      ;  78 cycles and will be called often
+        inc     IX                      ;  when parsing `.b` keywords
+        ret
+
+
+emitJrVal:
+;===============================================================================
+; emits a relative jump offset, e.g. for `djnz` / `jr` instructions:
+; (this does not emit the opcode, only the offset value)
+;
+; in:   BC              destination virtual program-counter address
+;                       (parsed from source code)
+;       IX              relative value will be calculated using
+;                       the current virtual program-counter address
+;       IY              code-segment addr; relative byte is written here
+;
+; out:  IX              virtual program-counter will be incremented by 1
+;       IY              code-segment address will be incremented by 1
+;       HL              (preserved)
+;       A, BC, DE       (clobbered)
+;       !               halts if relative jump exceeds signed 8-bit range
+;-------------------------------------------------------------------------------
+        ; (for now, we assume a relative parameter is 1-byte wide as that's
+        ;  the case with most 8-bit CPUs I'm aware of)
         ;
-@rel:   ex      DE,     HL              ; preserve heap-addr in DE
+        ex      DE,     HL              ; preserve heap-addr in DE
 
         ; BC is the value of the expr -- the address to jump to. we calculate
         ; the relative offset with 'value - PC' so that positive is forward and
@@ -137,9 +167,9 @@ emitValueA:
 
         ; the relative offset byte has to account for the automatic increment
         ; of the program-counter after every instruction, here compensated by
-        ; carry already being set! (this was done by the rel-flag check at
-        ; the start of this routine)
+        ; setting carry! (this avoids having to do a sixteen bit INC instead)
         ;
+        scf                             ; compensate for PC+1
         ld      B,      IXH             ; load BC with current
         ld      C,      IXL             ;  virtual program-counter (IX)
         sbc     HL,     BC              ; do 'destination - PC'
@@ -157,7 +187,7 @@ emitValueA:
         ; therefore we expect A = H. compare sets flags without changing A,
         ; allowing us to do two tests using the same A value!
         cp      H
-        jr      nz,     @err            ; err if hi-byte is not 'empty'
+        jp      nz,     errRangeParam   ; err if hi-byte is not 'empty'
 
         ; because the relative-distance byte is signed, we expect its sign
         ; to match that of the result -- a forward jump can only produce
@@ -171,6 +201,7 @@ emitValueA:
         ld      [IY+0], L               ; write relative distance byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
+
         ex      DE,     HL              ; restore heap-addr to HL
         ret
 
@@ -199,7 +230,7 @@ deferExpr:
 ;                       when a forward-reference has been encountered
 ;       HL              current heap position
 ;       [param]         the param size & rel-flag byte must be set
-;                       (e.g. parseParam above)
+;                       (e.g. emitParam above)
 ;
 ; out:  HL              heap addr will be modified if expr is deferred
 ;       A, BC, DE       (clobbered)

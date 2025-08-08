@@ -5,92 +5,84 @@
 
 emitOpcode:
 ;===============================================================================
-; write CPU opcode bytes, parsing any required parameters:
+; write Z80 opcode byte(s) to code-segment, including parameters:
 ;
 ; in:   A, D            opcode flags byte from the opcode table
-;       E               opcode byte
+;       E               opcode byte (to be emitted)
 ;       HL              heap address for any deferred expressions
 ;
-; out:  HL              deferred parameters values may push to heap
-;       A, BC, DE       (clobbered)
+; out:  HL              deferred parameter values may push to heap
+;       BC              (preserved)
+;       A, DE           (clobbered)
 ;===============================================================================
-        ; FIXME im 0,1,2                        $46 $56 $5E
-        ;       rst 0,8,10,18,20,28,30,38       $C7 $CF $D7 $DF $E7 $EF $F7 $FF
+        rra                             ; pop off bit 0 -- IX|IY prefix?
+        jr      c,      @ixy            ; handle IX|IY-prefixed opcodes
 
-        ; opcode with extensions or parameters?
+        ; extended opcode?
         ;-----------------------------------------------------------------------
-        bit     6,      D               ; bit 6 indicates IX or IY
-        jr      nz,     @ixy            ; go handle IX|IY madness...
-
-        ; is it a $CB or $ED extended opcode?
-        ;
-        bit     4,      D               ; bit 4 indicates an extended opcode
-        jr      z,      @noext          ; not extended? skip over $CB/$ED
-
-        ; output $CB or $ED opcode extension byte:
-        ;
-        and     %00100010               ; bit 5&1 = $22 ($ED) or $00 ($CB)
-        add     $cb                     ; $CB+$00 = $CB or $CB+$22 = $ED
-        ld      [IY+0], A               ; emit $CB|$ED prefix byte
+        rra                             ; pop off bit 1 -- ED-extended opcode?
+        jr      nc,     +               ; skip over if not required
+        ld      [IY+0], $ed             ; emit $ED opcode prefix
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
-        ld      A,      D               ; restore bits
-
++
+        rra                             ; pop off bit 2 -- CB-extended opcode?
+        jr      nc,     +               ; skip over if not required
+        ld      [IY+0], $cb             ; emit $CB opcode prefix
+        inc     IY                      ; move to next byte in code-segment
+        inc     IX                      ; increment virtual program-counter
++
         ; at this point, all parameters (if any) follow the opcode,
         ; so we can output the opcode now and forget it
         ;-----------------------------------------------------------------------
-@noext: ld      [IY+0], E               ; emit opcode byte
+        ld      [IY+0], E               ; emit opcode byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
         ;-----------------------------------------------------------------------
 
-        ; any parameters?
+        ; after prefix-bytes, are there any parameters? the next 3 bits specify
+        ; parameters but we must mask out the high bits as carries may have
+        ; been shifted in earlier
         ;
-        ; bit 2 indicates any kind of parameter for non IX|IY opcodes,
-        ; i.e. 8 / 16 bit immediate, or relative (bit 3). there are no
-        ; 2-parameter Z80 opcodes without IX|IY so 1 param can be assumed
+        and     %00000111               ; check bottom 3 bits
+        ret     z                       ; no parameters? return early
+
+        ; (one parameter exists regardless, so preload it now)
         ;
-        ; FIXME: this conflicts with relative flag
-        ;
-        bit     2,      D               ; if no parameters, extensions
-        ret     z                       ;  have been done, finish now!
+        ld      BC,     [param1+1]      ; retrieve parameter 1 value
 
-        ; a single, 1 or 2 byte parameter:
-        and     %00000001               ; LSB indicates 2-bytes
-        add     1                       ; param has at least 1-byte
-
-        bit     3,      D               ; relative jump?
-        jr      z,      +               ; skip over the next instruction if not
-        or      %10000000               ; add the rel-flag to the param type
-
-+       ; emit the 1st parameter: (saved during instruction parsing)
+        ; relative jump?
         ;-----------------------------------------------------------------------
-;        ; register A must be param width / relative-flag. note that we delay
-;        ; clearing the parameter count (set by `parseInstruction`) to here
-;        ; to avoid wasting cycles clearing it on parameterless instructions
-;        ;
-        ;///////////////////////////////////////////////////////////////////////
-        .printA
-        ;///////////////////////////////////////////////////////////////////////
+        ; note that the only two-parameter instructons in Z80 are IX|IY-based
+        ; so we can exit early when emitting a relative jump parameter
+        ;
+        rra                             ; pop off bit 3 -- relative jump?
+        jp      c,      emitJrVal       ; output relative jump parameter
 
-@p1:    ld      BC,     [param1+1]      ; retrieve parameter 1 value
-        jp      emitValueA              ; write opcode param to code-segment
+        ; byte or word parameter?
+        ;-----------------------------------------------------------------------
+        ; only bits 4 and 5 remain (now bits 0 & 1), which form a 2-bit
+        ; number representing the width of the parameter, byte or word
+        ;
+        jp      emitValueA              ; write param to code-segment
 
         ;=======================================================================
-        ; handle IX|IY opcodes: (bit 5 chooses between IX & IY)
+        ; handle IX|IY opcodes:
         ;
-@ixy:   and     %00100000               ; isolate bit 5
-        or      %11011101               ; map to $DD (IX) or $FD (IY)
-        ld      [IY+0], A               ; emit IX|IY prefix byte
+@ixy:   rra                             ; pop off bit 1 -- IX or IY opcode?
+        ld      D,      $dd             ; use D to select $DD (IX) or $FD (IY)
+        jr      nc,     +               ; select $DD for IX
+        ld      D,      $fd             ;  or $FD for IY
++       ld      [IY+0], D               ; emit IX|IY prefix byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
 
-        ; on the Z80, a combination of $DD|$FB (IX|IY) + $CB opcodes place
+        ; on the Z80, a combination of $DD|$FD (IX|IY) + $CB prefixes place
         ; the opcode after the offset parameter! if this is the case, we
         ; have to insert the parameter first, then return for the opcode
         ;
-        bit     4,      D               ; bit 4 on indicates $CB-extended
-        jr      nz,     @cb             ; go handle reverse parameter order
+        rra                             ; pop off bit 2 -- CB-extended opcode?
+        jr      c,      @cb             ; handle CB-extended IX|IY opcode
 
         ; at this point, all parameters (if any) follow the opcode,
         ; so we can output the opcode now and forget it
@@ -100,27 +92,43 @@ emitOpcode:
         inc     IX                      ; increment virtual program-counter
         ;-----------------------------------------------------------------------
 
-        ; bit 3 (offset), bit 2 (8-bit immediate), and
-        ; bit 0 (16-bit immediate) indicate parameters
+        ; after prefix-bytes, are there any parameters? the next 3 bits specify
+        ; parameters but we must mask out the high bits as carries may have
+        ; been shifted in earlier
         ;
-        ld      A,      D               ; opcode flags byte
-        and     %00001101               ; filter out parameter flags
-        ret     z                       ; if none, we are finished
+        and     %00000111               ; check bottom 3 bits
+        ret     z                       ; no parameters? return early
 
-        ; there are only two Z80 instructions that use 2 parameters
-        ; -- `ld [IX+$aa], $bb` and the matching IY-variant
+        ; (at least one parameter exists regardless, so preload it now)
         ;
-        xor     %00001100               ; flip just the bits for 2 params
-        jr      z,      @two            ; divert for 2 params!
+        ld      BC,     [param1+1]      ; retrieve parameter 1 value
 
-        ; only one parameter
-        ; -- determine parameter width (byte or word)
+        rra                             ; pop off bit 3 -- IX|IY offset byte?
+        jr      c,      @off            ; go handle offset byte
+
+        ; only bits 4 and 5 remain (now bits 0 & 1), which form a 2-bit
+        ; number representing the width of the parameter, byte or word
         ;
-        xor     A                       ; set A to zero
-        rrc     D                       ; pop off bit 0 of opcode-flags
-        adc     1                       ; add that bit, if present
+        jp      emitValueA              ; write param to code-segment
 
-        jr      @p1                     ; write opcode param to code-segment
+        ;-----------------------------------------------------------------------
+        ; output an IX|IY offset byte:
+        ;
+        ; an offset byte is always the first parameter and there are only two
+        ; Z80 instructions that use 2 parameters -- `ld [IX+$aa], $bb` and the
+        ; matching IY-variant. pop off bit 4 to check for the second param:
+        ;
+@off:   rra                             ; pop off bit 4 -- 2nd parameter?
+        jr      c,      @two            ; output both parameters together
+
+        jp      emitByte                ; write param 1 byte and return
+
+        ;-----------------------------------------------------------------------
+        ; handle two-parameter instruction special case:
+        ;
+@two:   call    emitByte                ; write param 1 to code-segement
+        ld      BC,     [param2+1]      ; retrieve parameter 2 value
+        jp      emitByte                ; write param 2 to code-segment
 
         ;-----------------------------------------------------------------------
         ; IX|IY + $CB is the edge-case that keeps on giving: at all other
@@ -129,29 +137,20 @@ emitOpcode:
 @cb:    ld      [IY+0], $cb             ; emit $CB prefix byte
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
-        push    DE                      ; keep opcode until emit time
+        ld      [IY+1], E               ; emit opcode *after* parameter byte!
 
-        ld      A,      1               ; set parameter-width to 1 byte
-        call    @p1                     ; write opcode param to code-segment
+        ; all CB-extended IX|IY opcodes only have a single byte parameter
+        ; so we don't need to check for parameter width
+        ;
+        ld      BC,     [param1+1]      ; retrieve parameter 1 value
+        call    emitByte                ; write param to code-segment
 
-        pop     DE                      ; retrieve delayed opcode
-        ld      [IY+0], E               ; emit opcode byte
+        ; (step over opcode byte we wrote ahead of time)
+        ;
         inc     IY                      ; move to next byte in code-segment
         inc     IX                      ; increment virtual program-counter
 
         ret
-
-        ;-----------------------------------------------------------------------
-        ; handle two-parameter instruction special case:
-        ;
-@two:   inc     A                       ; set the parameter width to 1-byte
-        call    @p1                     ; emit 1st parameter to code-segment
-
-        ; emit the 2nd parameter: (saved during instruction parsing)
-        ;
-@p2:    ld      A,              1       ; NOTE: 2nd param is always 8-bit
-        ld      BC,     [param2+1]      ; retrieve parameter 2 value
-        jp      emitValueA              ; write opcode param to code-segment
 
 .ENDB
 .BLOCK  "data-z80"
@@ -175,56 +174,52 @@ emitOpcode:
 ;
 ; opcode flags byte:
 ;-------------------------------------------------------------------------------
-; the opcode tree indicates the end of a branch with an opcode-flags byte
-; that describes the opcode prefixes and parameters used:
+; the opcode flags byte defines any prefixes and parameters required by an
+; instruction. the bits in this byte are ordered specifically so as to be
+; popped off 1-by-1 from the right (bit 0)
 ;
-; bit 7 is unused
+; bit 0 if set indicates an IX|IY prefixed opcode,
+;       in which case bit 1 takes on the following meaning:
 ;
-; bit 6 on indicates that the opcode is IX ($DD) or IY ($FD) extended
+;       bit 1 clear = IX
+;       bit 1 set   = IY
 ;
-; bit 5 is used to select between extensions; if bit 6 is on,
-;       then bit 5 off chooses IX, and bit 5 on chooses IY
+; bit 1 if set, indicates an $ED extended opcode
+;       (cannot be combined with bit 0)
 ;
-; bit 4 on indicates a $CB (or $ED) extension. if bit 6 is off (no IX|Y),
-;       then bits 5 & 1 on ($22) indicates an $ED extensions, otherwise
-;       bits 5 & 1 are off ($00). bits 5 & 1 are combined this way because
-;       $CB + $22 = $ED
+; bit 2 if set, indicates a $CB extended opcode
 ;
-; bit 3 on indicates a relative offset is present. if bit 6 is on, then
-;       this is the IX|IY relative offset byte. if bit 6 is off, then this
-;       indicates a relative jump offset (e.g. JR | DJNZ)
+; bit 3 indicates a relative offset parameter (1 byte). for non-IX|IY opcodes
+;       this means `djnz` & `jr` relative jumps. for IX|IY opcodes this means
+;       a signed byte relative to IX|IY (there are opcodes that are IX|IY but
+;       don't use an offset byte, like `add IX IX`)
 ;
-; bit 2 on indicates an immediate parameter. this is separate from the
-;       relative offset parameter above as there can be two parameters!
-;
-; bit 1 is on for $ED extended opcodes
-;
-; bit 0 on indicates an immediate parameter is 16-bits instead of 8,
-;       this is always paired with bit 2, both must be on to be valid
+; bits 4 & 5 form a 2-bit number that indicates the number of bytes (0-3) of
+; the following parameter. this is in addition to the relative offset parameter
+; above, allowing for two parameters on an opcode. only two instructions in Z80
+; have two parameters so most of the time the relative flag and parameter-width
+; bits are exclusive
 ;
 OP          = %00000000         ; implied -- no parameters
-OP_B        = %00000100         ; bit 2=1: immediate parameter, 8-bits (byte)
-OP_W        = %00000101         ; bit 2=1, bit 0=1: immediate 16-bits (word)
-OP_R        = %00001000         ; bit 3=1: relative offset param (always byte)
-OP_I        = %01000000         ; bit 6=1: IX or IY extended
-OP_X        = %01000000         ; bit 6=1, bit 5=0: IX
-OP_Y        = %01100000         ; bit 6=1, bit 5=1: IY
-OP_IX       = OP_I | OP_X       ; = implied, IX ($DD)
-OP_IY       = OP_I | OP_Y       ; = implied, IY ($FD)
-OP_CB       = %00010000         ; bit 6=?, bit 4=1, bit 5&1=0: CB-extended
-OP_ED       = %00110010         ; bit 6=0, bit 4=1, bit 5&1=1: ED-extended
-OP_IXR      = OP_IX | OP_R      ; = immediate, IX ($DD) + relative offset
-OP_IYR      = OP_IY | OP_R      ; = immediate, IY ($FD) + relative offset
-OP_CBXR     = OP_IXR | OP_CB    ; = extended ($CB), IX ($DD) + relative offset
-OP_CBYR     = OP_IYR | OP_CB    ; = extended ($CB), IY ($FD) + relative offset
-
-OP_IXB      = OP_B | OP_IX      ; = IX + immediate 8-bits
-OP_IYB      = OP_B | OP_IY      ; = IY + immediate 8-bits
-OP_IXRB     = OP_B | OP_IXR     ; = IX ($DD) + offset + immediate (2 params!)
-OP_IYRB     = OP_B | OP_IYR     ; = IY ($FD) + offset + immediate (2 params!)
-OP_EDW      = OP_W | OP_ED      ; = immediate, extended ($ED), 16-bit!
-OP_IXW      = OP_W | OP_IX      ; = immediate, IX ($DD), 16-bit
-OP_IYW      = OP_W | OP_IY      ; = immediate, IY ($FD), 16-bit
+OP_I        = %00000001         ; IX or IY prefixed
+OP_X        = %00000000         ; = IX ($DD)
+OP_Y        = %00000010         ; = IY ($FD)
+OP_IX       = OP_I | OP_X       ; IX implied
+OP_IY       = OP_I | OP_Y       ; IY implied
+OP_ED       = %00000010         ; ED-extended
+OP_CB       = %00000100         ; CB-extended
+OP_R        = %00001000         ; relative (always 1 byte)
+OP_IXR      = OP_IX | OP_R      ; IX relative
+OP_IYR      = OP_IY | OP_R      ; IY relative
+OP_CBXR     = OP_IXR | OP_CB    ; IX, CB-extended, relative
+OP_CBYR     = OP_IYR | OP_CB    ; IY, CB-extended, relative
+OP_B        = %00010000         ; immediate, 8-bits (byte)
+OP_W        = %00100000         ; immediate, 16-bits (word)
+OP_IXRB     = OP_B | OP_IXR     ; IX relative + immediate 8-bits (2 params!)
+OP_IYRB     = OP_B | OP_IYR     ; IY relative + immediate 8-bits (2 params!)
+OP_EDW      = OP_W | OP_ED      ; ED-extended, immediate 16-bits
+OP_IXW      = OP_W | OP_IX      ; IX, immediate 16-bits
+OP_IYW      = OP_W | OP_IY      ; IY, immediate 16-bits
 
 opcodes:
 ;===============================================================================
@@ -262,11 +257,11 @@ a:
 ;       distinguish mnemonics from registers and registers from flags
 ; -     a single space here will match multiple spaces from the input
 ; -     "$" is expanded to a full expression, i.e. an instruction parameter
-; -     all apostrophes in the input are ignored so shadow registers
+; -     all apostrophes in the input are ignored, so shadow registers
 ;       do not need to be defined here
-; -     TODO: whitespace is automatically skipped after "[" and before "]"
-; -     TODO: "+" can also be "-" and whitespace is automatically
-;       skipped either side
+; TODO: whitespace is automatically skipped after "[" and before "]"
+; TODO: "+" can also be "-" and whitespace is automatically
+;       skipped either side of it
 ;
 ;       .---------- = number of new chars introduced (i.e. str-length)
 ;       |       .-- = number of chars re-used from previous line
@@ -618,22 +613,22 @@ l:
 .BYTE   1 *16 | 8,        "E"   ,$73, OP        ;    73       | ld [HL] E
 .BYTE   1 *16 | 8,        "H"   ,$74, OP        ;    74       | ld [HL] H
 .BYTE   1 *16 | 8,        "L"   ,$75, OP        ;    75       | ld [HL] L
-.BYTE   7 *16 | 4,    "IX+$] $" ,$36, OP_IXRB   ; DD 36 nn nn | ld [IX+$nn] $nn
-.BYTE   1 *16 | 10,         "A" ,$77, OP_IXR    ; DD 77 nn    | ld [IX+$nn] A
-.BYTE   1 *16 | 10,         "B" ,$70, OP_IXR    ; DD 70 nn    | ld [IX+$nn] B
-.BYTE   1 *16 | 10,         "C" ,$71, OP_IXR    ; DD 71 nn    | ld [IX+$nn] C
-.BYTE   1 *16 | 10,         "D" ,$72, OP_IXR    ; DD 72 nn    | ld [IX+$nn] D
-.BYTE   1 *16 | 10,         "E" ,$73, OP_IXR    ; DD 73 nn    | ld [IX+$nn] E
-.BYTE   1 *16 | 10,         "H" ,$74, OP_IXR    ; DD 74 nn    | ld [IX+$nn] H
-.BYTE   1 *16 | 10,         "L" ,$75, OP_IXR    ; DD 75 nn    | ld [IX+$nn] L
-.BYTE   6 *16 | 5,     "Y+$] $" ,$36, OP_IYRB   ; FD 36 nn nn | ld [IY+$nn] $nn
-.BYTE   1 *16 | 10,         "A" ,$77, OP_IYR    ; FD 77 nn    | ld [IY+$nn] A
-.BYTE   1 *16 | 10,         "B" ,$70, OP_IYR    ; FD 70 nn    | ld [IY+$nn] B
-.BYTE   1 *16 | 10,         "C" ,$71, OP_IYR    ; FD 71 nn    | ld [IY+$nn] C
-.BYTE   1 *16 | 10,         "D" ,$72, OP_IYR    ; FD 72 nn    | ld [IY+$nn] D
-.BYTE   1 *16 | 10,         "E" ,$73, OP_IYR    ; FD 73 nn    | ld [IY+$nn] E
-.BYTE   1 *16 | 10,         "H" ,$74, OP_IYR    ; FD 74 nn    | ld [IY+$nn] H
-.BYTE   1 *16 | 10,         "L" ,$75, OP_IYR    ; FD 75 nn    | ld [IY+$nn] L
+.BYTE   7 *16 | 4,    "IX+$] $" ,$36, OP_IXRB   ; DD 36 nn nn | ld [IX±$nn] $nn
+.BYTE   1 *16 | 10,         "A" ,$77, OP_IXR    ; DD 77 nn    | ld [IX±$nn] A
+.BYTE   1 *16 | 10,         "B" ,$70, OP_IXR    ; DD 70 nn    | ld [IX±$nn] B
+.BYTE   1 *16 | 10,         "C" ,$71, OP_IXR    ; DD 71 nn    | ld [IX±$nn] C
+.BYTE   1 *16 | 10,         "D" ,$72, OP_IXR    ; DD 72 nn    | ld [IX±$nn] D
+.BYTE   1 *16 | 10,         "E" ,$73, OP_IXR    ; DD 73 nn    | ld [IX±$nn] E
+.BYTE   1 *16 | 10,         "H" ,$74, OP_IXR    ; DD 74 nn    | ld [IX±$nn] H
+.BYTE   1 *16 | 10,         "L" ,$75, OP_IXR    ; DD 75 nn    | ld [IX±$nn] L
+.BYTE   6 *16 | 5,     "Y+$] $" ,$36, OP_IYRB   ; FD 36 nn nn | ld [IY±$nn] $nn
+.BYTE   1 *16 | 10,         "A" ,$77, OP_IYR    ; FD 77 nn    | ld [IY±$nn] A
+.BYTE   1 *16 | 10,         "B" ,$70, OP_IYR    ; FD 70 nn    | ld [IY±$nn] B
+.BYTE   1 *16 | 10,         "C" ,$71, OP_IYR    ; FD 71 nn    | ld [IY±$nn] C
+.BYTE   1 *16 | 10,         "D" ,$72, OP_IYR    ; FD 72 nn    | ld [IY±$nn] D
+.BYTE   1 *16 | 10,         "E" ,$73, OP_IYR    ; FD 73 nn    | ld [IY±$nn] E
+.BYTE   1 *16 | 10,         "H" ,$74, OP_IYR    ; FD 74 nn    | ld [IY±$nn] H
+.BYTE   1 *16 | 10,         "L" ,$75, OP_IYR    ; FD 75 nn    | ld [IY±$nn] L
 ;===============================================================================
 .BYTE   3 *16 | 3,   "A $"      ,$3e, OP_B      ;    3E nn    | ld A $nn
 .BYTE   1 *16 | 5,     "A"      ,$7f, OP        ;    7F       | ld A A
@@ -654,8 +649,8 @@ l:
 .BYTE   3 *16 | 6,      "BC]"   ,$0a, OP        ;    0A       | ld A [BC]
 .BYTE   3 *16 | 6,      "DE]"   ,$1a, OP        ;    1A       | ld A [DE]
 .BYTE   3 *16 | 6,      "HL]"   ,$7e, OP        ;    7E       | ld A [HL]
-.BYTE   5 *16 | 6,      "IX+$]" ,$7e, OP_IXR    ; DD 7E nn    | ld A [IX+$nn]
-.BYTE   4 *16 | 7,       "Y+$]" ,$7e, OP_IYR    ; FD 7E nn    | ld A [IY+$nn]
+.BYTE   5 *16 | 6,      "IX+$]" ,$7e, OP_IXR    ; DD 7E nn    | ld A [IX±$nn]
+.BYTE   4 *16 | 7,       "Y+$]" ,$7e, OP_IYR    ; FD 7E nn    | ld A [IY±$nn]
 ;===============================================================================
 .BYTE   3 *16 | 3,   "B $"      ,$06, OP_B      ;    06 nn    | ld B $nn
 .BYTE   1 *16 | 5,     "A"      ,$47, OP        ;    47       | ld B A
@@ -671,8 +666,8 @@ l:
 .BYTE   1 *16 | 7,       "L"    ,$45, OP_IY     ; FD 45       | ld B IYL
 ;-------------------------------------------------------------------------------
 .BYTE   4 *16 | 5,     "[HL]"   ,$46, OP        ;    46       | ld B [HL]
-.BYTE   5 *16 | 6,      "IX+$]" ,$46, OP_IXR    ; DD 46 nn    | ld B [IX+$nn]
-.BYTE   4 *16 | 7,       "Y+$]" ,$46, OP_IYR    ; FD 46 nn    | ld B [IY+$nn]
+.BYTE   5 *16 | 6,      "IX+$]" ,$46, OP_IXR    ; DD 46 nn    | ld B [IX±$nn]
+.BYTE   4 *16 | 7,       "Y+$]" ,$46, OP_IYR    ; FD 46 nn    | ld B [IY±$nn]
 ;-------------------------------------------------------------------------------
 .BYTE   3 *16 | 4,    "C $"     ,$01, OP_W      ;    01 nn nn | ld BC $nnnn
 .BYTE   3 *16 | 6,      "[$]"   ,$4b, OP_EDW    ; ED 4B nn nn | ld BC [$nnnn]
@@ -691,8 +686,8 @@ l:
 .BYTE   1 *16 | 7,       "L"    ,$4d, OP_IY     ; FD 4D       | ld C IYL
 ;-------------------------------------------------------------------------------
 .BYTE   4 *16 | 5,     "[HL]"   ,$4e, OP        ;    4E       | ld C [HL]
-.BYTE   5 *16 | 6,      "IX+$]" ,$4e, OP_IXR    ; DD 4E nn    | ld C [IX+$nn]
-.BYTE   4 *16 | 7,       "Y+$]" ,$4e, OP_IYR    ; FD 4E nn    | ld C [IY+$nn]
+.BYTE   5 *16 | 6,      "IX+$]" ,$4e, OP_IXR    ; DD 4E nn    | ld C [IX±$nn]
+.BYTE   4 *16 | 7,       "Y+$]" ,$4e, OP_IYR    ; FD 4E nn    | ld C [IY±$nn]
 ;===============================================================================
 .BYTE   3 *16 | 3,   "D $"      ,$16, OP_B      ;    16 nn    | ld D $nn
 .BYTE   1 *16 | 5,     "A"      ,$57, OP        ;    57       | ld D A
@@ -708,8 +703,8 @@ l:
 .BYTE   1 *16 | 7,       "L"    ,$55, OP_IY     ; FD 55       | ld D IYL
 ;-------------------------------------------------------------------------------
 .BYTE   4 *16 | 5,     "[HL]"   ,$56, OP        ;    56       | ld D [HL]
-.BYTE   5 *16 | 6,      "IX+$]" ,$56, OP_IXR    ; DD 56 nn    | ld D [IX+$nn]
-.BYTE   4 *16 | 7,       "Y+$]" ,$56, OP_IYR    ; FD 56 nn    | ld D [IY+$nn]
+.BYTE   5 *16 | 6,      "IX+$]" ,$56, OP_IXR    ; DD 56 nn    | ld D [IX±$nn]
+.BYTE   4 *16 | 7,       "Y+$]" ,$56, OP_IYR    ; FD 56 nn    | ld D [IY±$nn]
 ;-------------------------------------------------------------------------------
 .BYTE   3 *16 | 4,    "E $"     ,$11, OP_W      ;    11 nn nn | ld DE $nnnn
 .BYTE   3 *16 | 6,      "[$]"   ,$5b, OP_EDW    ; ED 5B nn nn | ld DE [$nnnn]
@@ -728,8 +723,8 @@ l:
 .BYTE   1 *16 | 7,       "L"    ,$5d, OP_IY     ; FD 5D       | ld E IYL
 ;-------------------------------------------------------------------------------
 .BYTE   4 *16 | 5,     "[HL]"   ,$5e, OP        ;    5E       | ld E [HL]
-.BYTE   5 *16 | 6,      "IX+$]" ,$5e, OP_IXR    ; DD 5E nn    | ld E [IX+$nn]
-.BYTE   4 *16 | 7,       "Y+$]" ,$5e, OP_IYR    ; FD 5E nn    | ld E [IY+$nn]
+.BYTE   5 *16 | 6,      "IX+$]" ,$5e, OP_IXR    ; DD 5E nn    | ld E [IX±$nn]
+.BYTE   4 *16 | 7,       "Y+$]" ,$5e, OP_IYR    ; FD 5E nn    | ld E [IY±$nn]
 ;===============================================================================
 .BYTE   3 *16 | 3,   "H $"      ,$26, OP_B      ;    26 nn    | ld H $nn
 .BYTE   1 *16 | 5,     "A"      ,$67, OP        ;    67       | ld H A
@@ -745,8 +740,8 @@ l:
 .BYTE   1 *16 | 7,       "L"    ,$65, OP_IY     ; FD 65       | ld H IYL
 ;-------------------------------------------------------------------------------
 .BYTE   4 *16 | 5,     "[HL]"   ,$66, OP        ;    66       | ld H [HL]
-.BYTE   5 *16 | 6,      "IX+$]" ,$66, OP_IXR    ; DD 66 nn    | ld H [IX+$nn]
-.BYTE   4 *16 | 7,       "Y+$]" ,$66, OP_IYR    ; FD 66 nn    | ld H [IY+$nn]
+.BYTE   5 *16 | 6,      "IX+$]" ,$66, OP_IXR    ; DD 66 nn    | ld H [IX±$nn]
+.BYTE   4 *16 | 7,       "Y+$]" ,$66, OP_IYR    ; FD 66 nn    | ld H [IY±$nn]
 ;-------------------------------------------------------------------------------
 .BYTE   3 *16 | 4,    "L $"     ,$21, OP_W      ;    21 nn nn | ld HL $nnnn
 .BYTE   3 *16 | 6,      "[$]"   ,$2a, OP_W      ;    2A nn nn | ld HL [$nnnn]
@@ -765,8 +760,8 @@ l:
 .BYTE   1 *16 | 7,       "L"    ,$6d, OP_IY     ; FD 6D       | ld L IYL
 ;-------------------------------------------------------------------------------
 .BYTE   4 *16 | 5,     "[HL]"   ,$6e, OP        ;    6E       | ld L [HL]
-.BYTE   5 *16 | 6,      "IX+$]" ,$6e, OP_IXR    ; DD 6E nn    | ld L [IX+$nn]
-.BYTE   4 *16 | 7,       "Y+$]" ,$6e, OP_IYR    ; FD 6E nn    | ld L [IY+$nn]
+.BYTE   5 *16 | 6,      "IX+$]" ,$6e, OP_IXR    ; DD 6E nn    | ld L [IX±$nn]
+.BYTE   4 *16 | 7,       "Y+$]" ,$6e, OP_IYR    ; FD 6E nn    | ld L [IY±$nn]
 ;===============================================================================
 .BYTE   3 *16 | 3,   "I A"      ,$47, OP_ED     ; ED 47       | ld I A
 ;-------------------------------------------------------------------------------
@@ -846,8 +841,8 @@ o:
 .BYTE   2 *16 | 4,     "YH"     ,$b4, OP_IY     ; FD B4       | or IYH
 .BYTE   1 *16 | 5,      "L"     ,$b5, OP_IY     ; FD B5       | or IYL
 .BYTE   4 *16 | 3,    "[HL]"    ,$b6, OP        ;    B6       | or [HL]
-.BYTE   5 *16 | 4,     "IX+$]"  ,$b6, OP_IXR    ; DD B6 nn    | or [IX+$nn]
-.BYTE   4 *16 | 5,      "Y+$]"  ,$b6, OP_IYR    ; FD B6 nn    | or [IY+$nn]
+.BYTE   5 *16 | 4,     "IX+$]"  ,$b6, OP_IXR    ; DD B6 nn    | or [IX±$nn]
+.BYTE   4 *16 | 5,      "Y+$]"  ,$b6, OP_IYR    ; FD B6 nn    | or [IY±$nn]
 ;-------------------------------------------------------------------------------
 .BYTE   8 *16 | 1, "ut [$] A"   ,$d3, OP_B      ;    D3 nn    | out [$nn] A
 .BYTE   4 *16 | 5,     "C] A"   ,$79, OP_ED     ; ED 79       | out [C]   A
@@ -911,8 +906,8 @@ r:
 .BYTE   1 *16 | 6,      "H"     ,$84, OP_CB     ;    CB 84    | res 0 H
 .BYTE   1 *16 | 6,      "L"     ,$85, OP_CB     ;    CB 85    | res 0 L
 .BYTE   4 *16 | 6,      "[HL]"  ,$86, OP_CB     ;    CB 86    | res 0 [HL
-.BYTE   5 *16 | 7,       "IX+$]",$86, OP_CBXR   ; DD CB nn 86 | res 0 [IX+$nn]
-.BYTE   4 *16 | 8,        "Y+$]",$86, OP_CBYR   ; FD CB nn 86 | res 0 [IY+$nn]
+.BYTE   5 *16 | 7,       "IX+$]",$86, OP_CBXR   ; DD CB nn 86 | res 0 [IX±$nn]
+.BYTE   4 *16 | 8,        "Y+$]",$86, OP_CBYR   ; FD CB nn 86 | res 0 [IY±$nn]
 ;-------------------------------------------------------------------------------
 .BYTE   3 *16 | 4,    "1 A"     ,$8f, OP_CB     ;    CB 8F    | res 1 A
 .BYTE   1 *16 | 6,      "B"     ,$88, OP_CB     ;    CB 88    | res 1 B
@@ -922,8 +917,8 @@ r:
 .BYTE   1 *16 | 6,      "H"     ,$8c, OP_CB     ;    CB 8C    | res 1 H
 .BYTE   1 *16 | 6,      "L"     ,$8d, OP_CB     ;    CB 8D    | res 1 L
 .BYTE   4 *16 | 6,      "[HL]"  ,$8e, OP_CB     ;    CB 8E    | res 1 [HL]
-.BYTE   5 *16 | 7,       "IX+$]",$8e, OP_CBXR   ; DD CB nn 8E | res 1 [IX+$nn]
-.BYTE   4 *16 | 8,        "Y+$]",$8e, OP_CBYR   ; FD CB nn 8E | res 1 [IY+$nn]
+.BYTE   5 *16 | 7,       "IX+$]",$8e, OP_CBXR   ; DD CB nn 8E | res 1 [IX±$nn]
+.BYTE   4 *16 | 8,        "Y+$]",$8e, OP_CBYR   ; FD CB nn 8E | res 1 [IY±$nn]
 ;-------------------------------------------------------------------------------
 .BYTE   3 *16 | 4,    "2 A"     ,$97, OP_CB     ;    CB 97    | res 2 A
 .BYTE   1 *16 | 6,      "B"     ,$90, OP_CB     ;    CB 90    | res 2 B
@@ -933,8 +928,8 @@ r:
 .BYTE   1 *16 | 6,      "H"     ,$94, OP_CB     ;    CB 94    | res 2 H
 .BYTE   1 *16 | 6,      "L"     ,$95, OP_CB     ;    CB 95    | res 2 L
 .BYTE   4 *16 | 6,      "[HL]"  ,$96, OP_CB     ;    CB 96    | res 2 [HL]
-.BYTE   5 *16 | 7,       "IX+$]",$96, OP_CBXR   ; DD CB nn 96 | res 2 [IX+$nn]
-.BYTE   4 *16 | 8,        "Y+$]",$96, OP_CBYR   ; FD CB nn 96 | res 2 [IY+$nn]
+.BYTE   5 *16 | 7,       "IX+$]",$96, OP_CBXR   ; DD CB nn 96 | res 2 [IX±$nn]
+.BYTE   4 *16 | 8,        "Y+$]",$96, OP_CBYR   ; FD CB nn 96 | res 2 [IY±$nn]
 ;-------------------------------------------------------------------------------
 .BYTE   3 *16 | 4,    "3 A"     ,$9f, OP_CB     ;    CB 9F    | res 3 A
 .BYTE   1 *16 | 6,      "B"     ,$98, OP_CB     ;    CB 98    | res 3 B
@@ -944,8 +939,8 @@ r:
 .BYTE   1 *16 | 6,      "H"     ,$9c, OP_CB     ;    CB 9C    | res 3 H
 .BYTE   1 *16 | 6,      "L"     ,$9d, OP_CB     ;    CB 9D    | res 3 L
 .BYTE   4 *16 | 6,      "[HL]"  ,$9e, OP_CB     ;    CB 9E    | res 3 [HL]
-.BYTE   5 *16 | 7,       "IX+$]",$9e, OP_CBXR   ; DD CB nn 9E | res 3 [IX+$nn]
-.BYTE   4 *16 | 8,        "Y+$]",$9e, OP_CBYR   ; FD CB nn 9E | res 3 [IY+$nn]
+.BYTE   5 *16 | 7,       "IX+$]",$9e, OP_CBXR   ; DD CB nn 9E | res 3 [IX±$nn]
+.BYTE   4 *16 | 8,        "Y+$]",$9e, OP_CBYR   ; FD CB nn 9E | res 3 [IY±$nn]
 ;-------------------------------------------------------------------------------
 .BYTE   3 *16 | 4,    "4 A"     ,$a7, OP_CB     ;    CB A7    | res 4 A
 .BYTE   1 *16 | 6,      "B"     ,$a0, OP_CB     ;    CB A0    | res 4 B
@@ -955,8 +950,8 @@ r:
 .BYTE   1 *16 | 6,      "H"     ,$a4, OP_CB     ;    CB A4    | res 4 H
 .BYTE   1 *16 | 6,      "L"     ,$a5, OP_CB     ;    CB A5    | res 4 L
 .BYTE   4 *16 | 6,      "[HL]"  ,$a6, OP_CB     ;    CB A6    | res 4 [HL]
-.BYTE   5 *16 | 7,       "IX+$]",$a6, OP_CBXR   ; DD CB nn A6 | res 4 [IX+$nn]
-.BYTE   4 *16 | 8,        "Y+$]",$a6, OP_CBYR   ; FD CB nn A6 | res 4 [IY+$nn]
+.BYTE   5 *16 | 7,       "IX+$]",$a6, OP_CBXR   ; DD CB nn A6 | res 4 [IX±$nn]
+.BYTE   4 *16 | 8,        "Y+$]",$a6, OP_CBYR   ; FD CB nn A6 | res 4 [IY±$nn]
 ;-------------------------------------------------------------------------------
 .BYTE   3 *16 | 4,    "5 A"     ,$af, OP_CB     ;    CB AF    | res 5 A
 .BYTE   1 *16 | 6,      "B"     ,$a8, OP_CB     ;    CB A8    | res 5 B
@@ -966,8 +961,8 @@ r:
 .BYTE   1 *16 | 6,      "H"     ,$ac, OP_CB     ;    CB AC    | res 5 H
 .BYTE   1 *16 | 6,      "L"     ,$ad, OP_CB     ;    CB AD    | res 5 L
 .BYTE   4 *16 | 6,      "[HL]"  ,$ae, OP_CB     ;    CB AE    | res 5 [HL]
-.BYTE   5 *16 | 7,       "IX+$]",$ae, OP_CBXR   ; DD CB nn AE | res 5 [IX+$nn]
-.BYTE   4 *16 | 8,        "Y+$]",$ae, OP_CBYR   ; FD CB nn AE | res 5 [IY+$nn]
+.BYTE   5 *16 | 7,       "IX+$]",$ae, OP_CBXR   ; DD CB nn AE | res 5 [IX±$nn]
+.BYTE   4 *16 | 8,        "Y+$]",$ae, OP_CBYR   ; FD CB nn AE | res 5 [IY±$nn]
 ;-------------------------------------------------------------------------------
 .BYTE   3 *16 | 4,    "6 A"     ,$b7, OP_CB     ;    CB B7    | res 6 A
 .BYTE   1 *16 | 6,      "B"     ,$b0, OP_CB     ;    CB B0    | res 6 B
@@ -977,8 +972,8 @@ r:
 .BYTE   1 *16 | 6,      "H"     ,$b4, OP_CB     ;    CB B4    | res 6 H
 .BYTE   1 *16 | 6,      "L"     ,$b5, OP_CB     ;    CB B5    | res 6 L
 .BYTE   4 *16 | 6,      "[HL]"  ,$b6, OP_CB     ;    CB B6    | res 6 [HL]
-.BYTE   5 *16 | 7,       "IX+$]",$b6, OP_CBXR   ; DD CB nn B6 | res 6 [IX+$nn]
-.BYTE   4 *16 | 8,        "Y+$]",$b6, OP_CBYR   ; FD CB nn B6 | res 6 [IY+$nn]
+.BYTE   5 *16 | 7,       "IX+$]",$b6, OP_CBXR   ; DD CB nn B6 | res 6 [IX±$nn]
+.BYTE   4 *16 | 8,        "Y+$]",$b6, OP_CBYR   ; FD CB nn B6 | res 6 [IY±$nn]
 ;-------------------------------------------------------------------------------
 .BYTE   3 *16 | 4,    "7 A"     ,$bf, OP_CB     ;    CB BF    | res 7 A
 .BYTE   1 *16 | 6,      "B"     ,$b8, OP_CB     ;    CB B8    | res 7 B
@@ -988,8 +983,8 @@ r:
 .BYTE   1 *16 | 6,      "H"     ,$bc, OP_CB     ;    CB BC    | res 7 H
 .BYTE   1 *16 | 6,      "L"     ,$bd, OP_CB     ;    CB BD    | res 7 L
 .BYTE   4 *16 | 6,      "[HL]"  ,$be, OP_CB     ;    CB BE    | res 7 [HL]
-.BYTE   5 *16 | 7,       "IX+$]",$be, OP_CBXR   ; DD CB nn BE | res 7 [IX+$nn]
-.BYTE   4 *16 | 8,        "Y+$]",$be, OP_CBYR   ; FD CB nn BE | res 7 [IY+$nn]
+.BYTE   5 *16 | 7,       "IX+$]",$be, OP_CBXR   ; DD CB nn BE | res 7 [IX±$nn]
+.BYTE   4 *16 | 8,        "Y+$]",$be, OP_CBYR   ; FD CB nn BE | res 7 [IY±$nn]
 ;===============================================================================
 .BYTE   2 *16 | 1, "la"         ,$17, OP        ;    17       | rla
 .BYTE   2 *16 | 2,  " A"        ,$17, OP_CB     ;    CB 17    | rl A
@@ -1000,8 +995,8 @@ r:
 .BYTE   1 *16 | 3,   "H"        ,$14, OP_CB     ;    CB 14    | rl H
 .BYTE   1 *16 | 3,   "L"        ,$15, OP_CB     ;    CB 15    | rl L
 .BYTE   4 *16 | 3,   "[HL]"     ,$16, OP_CB     ;    CB 16    | rl [HL]
-.BYTE   5 *16 | 4,    "IX+$]"   ,$16, OP_CBXR   ; DD CB nn 16 | rl [IX+$nn]
-.BYTE   4 *16 | 5,     "Y+$]"   ,$16, OP_CBYR   ; FD CB nn 16 | rl [IY+$nn]
+.BYTE   5 *16 | 4,    "IX+$]"   ,$16, OP_CBXR   ; DD CB nn 16 | rl [IX±$nn]
+.BYTE   4 *16 | 5,     "Y+$]"   ,$16, OP_CBYR   ; FD CB nn 16 | rl [IY±$nn]
 ;-------------------------------------------------------------------------------
 .BYTE   2 *16 | 2,  "ca"        ,$07, OP        ;    07       | rlca
 .BYTE   2 *16 | 3,   " A"       ,$07, OP_CB     ;    CB 07    | rlc A
@@ -1012,8 +1007,8 @@ r:
 .BYTE   1 *16 | 4,    "H"       ,$04, OP_CB     ;    CB 04    | rlc H
 .BYTE   1 *16 | 4,    "L"       ,$05, OP_CB     ;    CB 05    | rlc L
 .BYTE   4 *16 | 4,    "[HL]"    ,$06, OP_CB     ;    CB 06    | rlc [HL]
-.BYTE   5 *16 | 5,     "IX+$]"  ,$06, OP_CBXR   ; DD CB nn 06 | rlc [IX+$nn]
-.BYTE   4 *16 | 6,      "Y+$]"  ,$06, OP_CBYR   ; FD CB nn 06 | rlc [IY+$nn]
+.BYTE   5 *16 | 5,     "IX+$]"  ,$06, OP_CBXR   ; DD CB nn 06 | rlc [IX±$nn]
+.BYTE   4 *16 | 6,      "Y+$]"  ,$06, OP_CBYR   ; FD CB nn 06 | rlc [IY±$nn]
 ;-------------------------------------------------------------------------------
 .BYTE   1 *16 | 2,  "d"         ,$6f, OP_ED     ; ED 6F       | rld
 ;===============================================================================
@@ -1026,8 +1021,8 @@ r:
 .BYTE   1 *16 | 3,   "H"        ,$1c, OP_CB     ;    CB 1C    | rr H
 .BYTE   1 *16 | 3,   "L"        ,$1d, OP_CB     ;    CB 1D    | rr L
 .BYTE   4 *16 | 3,   "[HL]"     ,$1e, OP_CB     ;    CB 1E    | rr [HL]
-.BYTE   5 *16 | 4,    "IX+$]"   ,$1e, OP_CBXR   ; DD CB nn 1E | rr [IX+$nn]
-.BYTE   4 *16 | 5,     "Y+$]"   ,$1e, OP_CBYR   ; FD CB nn 1E | rr [IY+$nn]
+.BYTE   5 *16 | 4,    "IX+$]"   ,$1e, OP_CBXR   ; DD CB nn 1E | rr [IX±$nn]
+.BYTE   4 *16 | 5,     "Y+$]"   ,$1e, OP_CBYR   ; FD CB nn 1E | rr [IY±$nn]
 ;-------------------------------------------------------------------------------
 .BYTE   2 *16 | 2,  "ca"        ,$0f, OP        ;    0F       | rrca
 .BYTE   2 *16 | 3,   " A"       ,$0f, OP_CB     ;    CB 0F    | rrc A
@@ -1038,8 +1033,8 @@ r:
 .BYTE   1 *16 | 4,    "H"       ,$0c, OP_CB     ;    CB 0C    | rrc H
 .BYTE   1 *16 | 4,    "L"       ,$0d, OP_CB     ;    CB 0D    | rrc L
 .BYTE   4 *16 | 4,    "[HL]"    ,$0e, OP_CB     ;    CB 0E    | rrc [HL]
-.BYTE   5 *16 | 5,     "IX+$]"  ,$0e, OP_CBXR   ; DD CB nn 0E | rrc [IX+$nn]
-.BYTE   4 *16 | 6,      "Y+$]"  ,$0e, OP_CBYR   ; FD CB nn 0E | rrc [IY+$nn]
+.BYTE   5 *16 | 5,     "IX+$]"  ,$0e, OP_CBXR   ; DD CB nn 0E | rrc [IX±$nn]
+.BYTE   4 *16 | 6,      "Y+$]"  ,$0e, OP_CBYR   ; FD CB nn 0E | rrc [IY±$nn]
 ;-------------------------------------------------------------------------------
 .BYTE   1 *16 | 2,  "d"         ,$67, OP_ED     ; ED 67       | rrd
 ;===============================================================================
@@ -1074,8 +1069,8 @@ s:
 .BYTE   2 *16 | 5,     "YH"     ,$9c, OP_IY     ; FD 9C       | sbc IYH
 .BYTE   1 *16 | 6,      "L"     ,$9d, OP_IY     ; FD 9D       | sbc IYL
 .BYTE   4 *16 | 4,    "[HL]"    ,$9e, OP        ;    9E       | sbc [HL]
-.BYTE   5 *16 | 5,     "IX+$]"  ,$9e, OP_IXR    ; DD 9E nn    | sbc [IX+$nn]
-.BYTE   4 *16 | 6,      "Y+$]"  ,$9e, OP_IYR    ; FD 9E nn    | sbc [IY+$nn]
+.BYTE   5 *16 | 5,     "IX+$]"  ,$9e, OP_IXR    ; DD 9E nn    | sbc [IX±$nn]
+.BYTE   4 *16 | 6,      "Y+$]"  ,$9e, OP_IYR    ; FD 9E nn    | sbc [IY±$nn]
 ;===============================================================================
 .BYTE   2 *16 | 1, "cf"         ,$37, OP        ;    37       | scf
 ;===============================================================================
@@ -1087,8 +1082,8 @@ s:
 .BYTE   1 *16 | 6,      "H"     ,$c4, OP_CB     ;    CB C4    | set 0 H
 .BYTE   1 *16 | 6,      "L"     ,$c5, OP_CB     ;    CB C5    | set 0 L
 .BYTE   4 *16 | 6,      "[HL]"  ,$c6, OP_CB     ;    CB C6    | set 0 [HL]
-.BYTE   5 *16 | 7,       "IX+$]",$c6, OP_CBXR   ; DD CB nn C6 | set 0 [IX+$nn]
-.BYTE   4 *16 | 8,        "Y+$]",$c6, OP_CBYR   ; FD CB nn C6 | set 0 [IY+$nn]
+.BYTE   5 *16 | 7,       "IX+$]",$c6, OP_CBXR   ; DD CB nn C6 | set 0 [IX±$nn]
+.BYTE   4 *16 | 8,        "Y+$]",$c6, OP_CBYR   ; FD CB nn C6 | set 0 [IY±$nn]
 ;-------------------------------------------------------------------------------
 .BYTE   3 *16 | 4,    "1 A"     ,$cf, OP_CB     ;    CB CF    | set 1 A
 .BYTE   1 *16 | 6,      "B"     ,$c8, OP_CB     ;    CB C8    | set 1 B
@@ -1098,8 +1093,8 @@ s:
 .BYTE   1 *16 | 6,      "H"     ,$cc, OP_CB     ;    CB CC    | set 1 H
 .BYTE   1 *16 | 6,      "L"     ,$cd, OP_CB     ;    CB CD    | set 1 L
 .BYTE   4 *16 | 6,      "[HL]"  ,$ce, OP_CB     ;    CB CE    | set 1 [HL]
-.BYTE   5 *16 | 7,       "IX+$]",$ce, OP_CBXR   ; DD CB nn CE | set 1 [IX+$nn]
-.BYTE   4 *16 | 8,        "Y+$]",$ce, OP_CBYR   ; FD CB nn CE | set 1 [IY+$nn]
+.BYTE   5 *16 | 7,       "IX+$]",$ce, OP_CBXR   ; DD CB nn CE | set 1 [IX±$nn]
+.BYTE   4 *16 | 8,        "Y+$]",$ce, OP_CBYR   ; FD CB nn CE | set 1 [IY±$nn]
 ;-------------------------------------------------------------------------------
 .BYTE   3 *16 | 4,    "2 A"     ,$d7, OP_CB     ;    CB D7    | set 2 A
 .BYTE   1 *16 | 6,      "B"     ,$d0, OP_CB     ;    CB D0    | set 2 B
@@ -1109,8 +1104,8 @@ s:
 .BYTE   1 *16 | 6,      "H"     ,$d4, OP_CB     ;    CB D4    | set 2 H
 .BYTE   1 *16 | 6,      "L"     ,$d5, OP_CB     ;    CB D5    | set 2 L
 .BYTE   4 *16 | 6,      "[HL]"  ,$d6, OP_CB     ;    CB D6    | set 2 [HL]
-.BYTE   5 *16 | 7,       "IX+$]",$d6, OP_CBXR   ; DD CB nn D6 | set 2 [IX+$nn]
-.BYTE   4 *16 | 8,        "Y+$]",$d6, OP_CBYR   ; FD CB nn D6 | set 2 [IY+$nn]
+.BYTE   5 *16 | 7,       "IX+$]",$d6, OP_CBXR   ; DD CB nn D6 | set 2 [IX±$nn]
+.BYTE   4 *16 | 8,        "Y+$]",$d6, OP_CBYR   ; FD CB nn D6 | set 2 [IY±$nn]
 ;-------------------------------------------------------------------------------
 .BYTE   3 *16 | 4,    "3 A"     ,$df, OP_CB     ;    CB DF    | set 3 A
 .BYTE   1 *16 | 6,      "B"     ,$d8, OP_CB     ;    CB D8    | set 3 B
@@ -1120,8 +1115,8 @@ s:
 .BYTE   1 *16 | 6,      "H"     ,$dc, OP_CB     ;    CB DC    | set 3 H
 .BYTE   1 *16 | 6,      "L"     ,$dd, OP_CB     ;    CB DD    | set 3 L
 .BYTE   4 *16 | 6,      "[HL]"  ,$de, OP_CB     ;    CB DE    | set 3 [HL]
-.BYTE   5 *16 | 7,       "IX+$]",$de, OP_CBXR   ; DD CB nn DE | set 3 [IX+$nn]
-.BYTE   4 *16 | 8,        "Y+$]",$de, OP_CBYR   ; FD CB nn DE | set 3 [IY+$nn]
+.BYTE   5 *16 | 7,       "IX+$]",$de, OP_CBXR   ; DD CB nn DE | set 3 [IX±$nn]
+.BYTE   4 *16 | 8,        "Y+$]",$de, OP_CBYR   ; FD CB nn DE | set 3 [IY±$nn]
 ;-------------------------------------------------------------------------------
 .BYTE   3 *16 | 4,    "4 A"     ,$e7, OP_CB     ;    CB E7    | set 4 A
 .BYTE   1 *16 | 6,      "B"     ,$e0, OP_CB     ;    CB E0    | set 4 B
@@ -1131,8 +1126,8 @@ s:
 .BYTE   1 *16 | 6,      "H"     ,$e4, OP_CB     ;    CB E4    | set 4 H
 .BYTE   1 *16 | 6,      "L"     ,$e5, OP_CB     ;    CB E5    | set 4 L
 .BYTE   4 *16 | 6,      "[HL]"  ,$e6, OP_CB     ;    CB E6    | set 4 [HL]
-.BYTE   5 *16 | 7,       "IX+$]",$e6, OP_CBXR   ; DD CB nn E6 | set 4 [IX+$nn]
-.BYTE   4 *16 | 8,        "Y+$]",$e6, OP_CBYR   ; FD CB nn E6 | set 4 [IY+$nn]
+.BYTE   5 *16 | 7,       "IX+$]",$e6, OP_CBXR   ; DD CB nn E6 | set 4 [IX±$nn]
+.BYTE   4 *16 | 8,        "Y+$]",$e6, OP_CBYR   ; FD CB nn E6 | set 4 [IY±$nn]
 ;-------------------------------------------------------------------------------
 .BYTE   3 *16 | 4,    "5 A"     ,$ef, OP_CB     ;    CB EF    | set 5 A
 .BYTE   1 *16 | 6,      "B"     ,$e8, OP_CB     ;    CB E8    | set 5 B
@@ -1142,8 +1137,8 @@ s:
 .BYTE   1 *16 | 6,      "H"     ,$ec, OP_CB     ;    CB EC    | set 5 H
 .BYTE   1 *16 | 6,      "L"     ,$ed, OP_CB     ;    CB ED    | set 5 L
 .BYTE   4 *16 | 6,      "[HL]"  ,$ee, OP_CB     ;    CB EE    | set 5 [HL]
-.BYTE   5 *16 | 7,       "IX+$]",$ee, OP_CBXR   ; DD CB nn EE | set 5 [IX+$nn]
-.BYTE   4 *16 | 8,        "Y+$]",$ee, OP_CBYR   ; FD CB nn EE | set 5 [IY+$nn]
+.BYTE   5 *16 | 7,       "IX+$]",$ee, OP_CBXR   ; DD CB nn EE | set 5 [IX±$nn]
+.BYTE   4 *16 | 8,        "Y+$]",$ee, OP_CBYR   ; FD CB nn EE | set 5 [IY±$nn]
 ;-------------------------------------------------------------------------------
 .BYTE   3 *16 | 4,    "6 A"     ,$f7, OP_CB     ;    CB F7    | set 6 A
 .BYTE   1 *16 | 6,      "B"     ,$f0, OP_CB     ;    CB F0    | set 6 B
@@ -1153,8 +1148,8 @@ s:
 .BYTE   1 *16 | 6,      "H"     ,$f4, OP_CB     ;    CB F4    | set 6 H
 .BYTE   1 *16 | 6,      "L"     ,$f5, OP_CB     ;    CB F5    | set 6 L
 .BYTE   4 *16 | 6,      "[HL]"  ,$f6, OP_CB     ;    CB F6    | set 6 [HL]
-.BYTE   5 *16 | 7,       "IX+$]",$f6, OP_CBXR   ; DD CB nn F6 | set 6 [IX+$nn]
-.BYTE   4 *16 | 8,        "Y+$]",$f6, OP_CBYR   ; FD CB nn F6 | set 6 [IY+$nn]
+.BYTE   5 *16 | 7,       "IX+$]",$f6, OP_CBXR   ; DD CB nn F6 | set 6 [IX±$nn]
+.BYTE   4 *16 | 8,        "Y+$]",$f6, OP_CBYR   ; FD CB nn F6 | set 6 [IY±$nn]
 ;-------------------------------------------------------------------------------
 .BYTE   3 *16 | 4,    "7 A"     ,$ff, OP_CB     ;    CB FF    | set 7 A
 .BYTE   1 *16 | 6,      "B"     ,$f8, OP_CB     ;    CB F8    | set 7 B
@@ -1164,8 +1159,8 @@ s:
 .BYTE   1 *16 | 6,      "H"     ,$fc, OP_CB     ;    CB FC    | set 7 H
 .BYTE   1 *16 | 6,      "L"     ,$fd, OP_CB     ;    CB FD    | set 7 L
 .BYTE   4 *16 | 6,      "[HL]"  ,$fe, OP_CB     ;    CB FE    | set 7 [HL]
-.BYTE   5 *16 | 7,       "IX+$]",$fe, OP_CBXR   ; DD CB nn FE | set 7 [IX+$nn]
-.BYTE   4 *16 | 8,        "Y+$]",$fe, OP_CBYR   ; FD CB nn FE | set 7 [IY+$nn]
+.BYTE   5 *16 | 7,       "IX+$]",$fe, OP_CBXR   ; DD CB nn FE | set 7 [IX±$nn]
+.BYTE   4 *16 | 8,        "Y+$]",$fe, OP_CBYR   ; FD CB nn FE | set 7 [IY±$nn]
 ;===============================================================================
 .BYTE   4 *16 | 1, "la A"       ,$27, OP_CB     ;    CB 27    | sla A
 .BYTE   1 *16 | 4,    "B"       ,$20, OP_CB     ;    CB 20    | sla B
@@ -1175,8 +1170,8 @@ s:
 .BYTE   1 *16 | 4,    "H"       ,$24, OP_CB     ;    CB 24    | sla H
 .BYTE   1 *16 | 4,    "L"       ,$25, OP_CB     ;    CB 25    | sla L
 .BYTE   4 *16 | 4,    "[HL]"    ,$26, OP_CB     ;    CB 26    | sla [HL]
-.BYTE   5 *16 | 5,     "IX+$]"  ,$26, OP_CBXR   ; DD CB nn 26 | sla [IX+$nn]
-.BYTE   4 *16 | 6,      "Y+$]"  ,$26, OP_CBYR   ; FD CB nn 26 | sla [IY+$nn]
+.BYTE   5 *16 | 5,     "IX+$]"  ,$26, OP_CBXR   ; DD CB nn 26 | sla [IX±$nn]
+.BYTE   4 *16 | 6,      "Y+$]"  ,$26, OP_CBYR   ; FD CB nn 26 | sla [IY±$nn]
 ;===============================================================================
 .BYTE   3 *16 | 2,  "1 A"       ,$37, OP_CB     ;    CB 37    | sl1 A
 .BYTE   1 *16 | 4,    "B"       ,$30, OP_CB     ;    CB 30    | sl1 B
@@ -1186,8 +1181,8 @@ s:
 .BYTE   1 *16 | 4,    "H"       ,$34, OP_CB     ;    CB 34    | sl1 H
 .BYTE   1 *16 | 4,    "L"       ,$35, OP_CB     ;    CB 35    | sl1 L
 .BYTE   4 *16 | 4,    "[HL]"    ,$36, OP_CB     ;    CB 36    | sl1 [HL]
-.BYTE   5 *16 | 5,     "IX+$]"  ,$36, OP_CBXR   ; DD CB nn 36 | sl1 [IX+$nn]
-.BYTE   4 *16 | 6,      "Y+$]"  ,$36, OP_CBYR   ; FD CB nn 36 | sl1 [IY+$nn]
+.BYTE   5 *16 | 5,     "IX+$]"  ,$36, OP_CBXR   ; DD CB nn 36 | sl1 [IX±$nn]
+.BYTE   4 *16 | 6,      "Y+$]"  ,$36, OP_CBYR   ; FD CB nn 36 | sl1 [IY±$nn]
 ;===============================================================================
 .BYTE   4 *16 | 1, "ra A"       ,$2f, OP_CB     ;    CB 2F    | sra A
 .BYTE   1 *16 | 4,    "B"       ,$28, OP_CB     ;    CB 28    | sra B
@@ -1197,8 +1192,8 @@ s:
 .BYTE   1 *16 | 4,    "H"       ,$2c, OP_CB     ;    CB 2C    | sra H
 .BYTE   1 *16 | 4,    "L"       ,$2d, OP_CB     ;    CB 2D    | sra L
 .BYTE   4 *16 | 4,    "[HL]"    ,$2e, OP_CB     ;    CB 2E    | sra [HL]
-.BYTE   5 *16 | 5,     "IX+$]"  ,$2e, OP_CBXR   ; DD CB nn 2E | sra [IX+$nn]
-.BYTE   4 *16 | 6,      "Y+$]"  ,$2e, OP_CBYR   ; FD CB nn 2E | sra [IY+$nn]
+.BYTE   5 *16 | 5,     "IX+$]"  ,$2e, OP_CBXR   ; DD CB nn 2E | sra [IX±$nn]
+.BYTE   4 *16 | 6,      "Y+$]"  ,$2e, OP_CBYR   ; FD CB nn 2E | sra [IY±$nn]
 ;===============================================================================
 .BYTE   3 *16 | 2,  "l A"       ,$3f, OP_CB     ;    CB 3F    | srl A
 .BYTE   1 *16 | 4,    "B"       ,$38, OP_CB     ;    CB 38    | srl B
@@ -1208,8 +1203,8 @@ s:
 .BYTE   1 *16 | 4,    "H"       ,$3c, OP_CB     ;    CB 3C    | srl H
 .BYTE   1 *16 | 4,    "L"       ,$3d, OP_CB     ;    CB 3D    | srl L
 .BYTE   4 *16 | 4,    "[HL]"    ,$3e, OP_CB     ;    CB 3E    | srl [HL]
-.BYTE   5 *16 | 5,     "IX+$]"  ,$3e, OP_CBXR   ; DD CB nn 3E | srl [IX+$nn]
-.BYTE   4 *16 | 6,      "Y+$]"  ,$3e, OP_CBYR   ; FD CB nn 3E | srl [IY+$nn]
+.BYTE   5 *16 | 5,     "IX+$]"  ,$3e, OP_CBXR   ; DD CB nn 3E | srl [IX±$nn]
+.BYTE   4 *16 | 6,      "Y+$]"  ,$3e, OP_CBYR   ; FD CB nn 3E | srl [IY±$nn]
 ;===============================================================================
 .BYTE   4 *16 | 1, "ub $"       ,$d6, OP_B      ;    D6 nn    | sub $nn
 .BYTE   1 *16 | 4,    "A"       ,$97, OP        ;    97       | sub A
@@ -1224,8 +1219,8 @@ s:
 .BYTE   2 *16 | 5,     "YH"     ,$94, OP_IY     ; FD 94       | sub IYH
 .BYTE   1 *16 | 6,      "L"     ,$95, OP_IY     ; FD 95       | sub IYL
 .BYTE   4 *16 | 4,    "[HL]"    ,$96, OP        ;    96       | sub [HL]
-.BYTE   5 *16 | 5,     "IX+$]"  ,$96, OP_IXR    ; DD 96 nn    | sub [IX+$nn]
-.BYTE   4 *16 | 6,      "Y+$]"  ,$96, OP_IYR    ; FD 96 nn    | sub [IY+$nn]
+.BYTE   5 *16 | 5,     "IX+$]"  ,$96, OP_IXR    ; DD 96 nn    | sub [IX±$nn]
+.BYTE   4 *16 | 6,      "Y+$]"  ,$96, OP_IYR    ; FD 96 nn    | sub [IY±$nn]
 ;-------------------------------------------------------------------------------
 .BYTE   0
 
@@ -1244,8 +1239,8 @@ x:
 .BYTE   2 *16 | 5,     "YH"     ,$ac, OP_IY     ; FD AC       | xor IYH
 .BYTE   1 *16 | 6,      "L"     ,$ad, OP_IY     ; FD AD       | xor IYL
 .BYTE   4 *16 | 4,    "[HL]"    ,$ae, OP        ;    AE       | xor [HL]
-.BYTE   5 *16 | 5,     "IX+$]"  ,$ae, OP_IXR    ; DD AE nn    | xor [IX+$nn]
-.BYTE   4 *16 | 6,      "Y+$]"  ,$ae, OP_IYR    ; FD AE nn    | xor [IY+$nn]
+.BYTE   5 *16 | 5,     "IX+$]"  ,$ae, OP_IXR    ; DD AE nn    | xor [IX±$nn]
+.BYTE   4 *16 | 6,      "Y+$]"  ,$ae, OP_IYR    ; FD AE nn    | xor [IY±$nn]
 ;-------------------------------------------------------------------------------
 .BYTE   0
 

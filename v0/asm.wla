@@ -434,7 +434,7 @@ _next:  call    nextChr                 ; use current char or skip whitespace
         ; not a string, parse as an expression and output to code-segment:
         ; deferred expressions will automatically be pushed to the heap
         ;
--       call    nextParam
+-       call    emitNextParam
 
         ; the last character read by expression parsing will be either EOL/EOF,
         ; where the line ends without any further expressions, or the fist char
@@ -1671,7 +1671,7 @@ parseInstruction:
         ;
         ; FIXME this is an ugly hack to recreate the output of `readChar`
         ;       and `osGetChar`, it doesn't belong here at all!!
-        ; TODO: parseExpr now returns correct last-read char AF
+        ; TODO: `parseExpr` now returns correct last-read char AF
         ;
         cp      ASCII_SUB | %00100000   ; is this the CP/M EOF marker?
         jp      z,      @eow            ; if so, handle end-of-word
