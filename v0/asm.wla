@@ -1354,11 +1354,13 @@ parseInstruction:
         cp      D                       ; check against current input char
         jr      nz,     @skip           ; if word continues, skip
 
-        ; we need to count the ";" as matched, even if a parameter does exist
+        ; the ";" must be counted as matched, even if a parameter does exist
         ; and we end up skipping. on the next instruction line, the ";" will
-        ; have taken the place of the whitespace between instruction and
-        ; parameter
-        inc     E
+        ; take the place of the whitespace between instruction and parameter
+        ;
+        inc     E                       ; count ";" as matched
+        inc     HL                      ; step over it
+        dec     C                       ; decrement char count
 
         ; scan ahead the whitespace to check for an [optional] parameter:
         ;
@@ -1505,10 +1507,6 @@ parseInstruction:
         ; a zero always indicates no-parameters
         ;
         ld      A,      D               ; opcode flags byte
-        ;///////////////////////////////////////////////////////////////////////
-        ;;.printChar ASCII_LF
-        .printState
-        ;///////////////////////////////////////////////////////////////////////
         and     A                       ; (set flags!)
 
         ; if flags byte is non-zero, analyse further
